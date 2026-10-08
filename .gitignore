@@ -1,0 +1,12 @@
+# Raw call transcripts and anything with people's words stay off GitHub.
+research/*transcript*
+.DS_Store
+node_modules/
+.wrangler/
+.dev.vars
+screens/
+*.zip
+# These two research files quote private messages and class recordings (students' words and
+# names appear in the source material). They stay on this Mac; SCOPE.md carries their findings.
+research/01-conversations.md
+research/08-privacy-rights.md

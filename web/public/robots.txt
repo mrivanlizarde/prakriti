@@ -1,0 +1,37 @@
+# Prakriti is a private product for three invited people. Nothing here is for any crawler,
+# search engine or AI. Ivan, 2026-10-03: block AI crawlers on every site; a private app blocks
+# everyone. The named AI crawlers are listed as well, so the intent survives if the catch-all
+# rule is ever loosened. Served as a file from web/public/; the Worker adds X-Robots-Tag too.
+User-agent: GPTBot
+User-agent: ChatGPT-User
+User-agent: OAI-SearchBot
+User-agent: ClaudeBot
+User-agent: Claude-User
+User-agent: Claude-SearchBot
+User-agent: anthropic-ai
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: CCBot
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: Bytespider
+User-agent: Meta-ExternalAgent
+User-agent: Meta-ExternalFetcher
+User-agent: FacebookBot
+User-agent: Amazonbot
+User-agent: cohere-ai
+User-agent: cohere-training-data-crawler
+User-agent: Diffbot
+User-agent: ImagesiftBot
+User-agent: Omgilibot
+User-agent: Timpibot
+User-agent: YouBot
+User-agent: DuckAssistBot
+User-agent: MistralAI-User
+User-agent: AI2Bot
+User-agent: PanguBot
+User-agent: img2dataset
+Disallow: /
+
+User-agent: *
+Disallow: /

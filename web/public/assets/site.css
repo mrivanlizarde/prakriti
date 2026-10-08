@@ -1,0 +1,1270 @@
+/* Prakriti, public pages (features + sign-in, roadmap, 404). Shared stylesheet.
+ *
+ * LAYOUT CONCEPT: matter and form.
+ * Two registers of type run through every page.
+ *   Raw: the system monospace, in --ink-3. Only file names, timecodes, the sample package's
+ *        header and the step lines that show engine output, exactly as the disk or the engine
+ *        reports them. This is the raw matter. Dates, plan words ("target", "Same visit", "For
+ *        information") and labels are people's words, so they are set in the system sans with
+ *        tabular figures (.meta), never in mono (round 3, B13).
+ *   Form: Tiro Devanagari Sanskrit for the wordmark and headlines (a face drawn for Sanskrit
+ *        scholarship, so the lineage is in the letters, not in ornaments), and the system text
+ *        face for everything people read. This is what Prakriti composes.
+ * One bold idea: the wordmark "prakrti" with its dot below the r in ultramarine, set huge in the
+ * hero and small in the bar and footer. That dot is the diacritic that makes the word Sanskrit,
+ * and it is the only decorative color on the page. Ultramarine has exactly four jobs: the
+ * underdot (and the 404's large dot, which is the same mark), the yes line, "Ready for your yes",
+ * and focus rings. Now, a person's own rows, links, progress and thumbnail C are ink (round 3,
+ * B12: ultramarine had carried five meanings). Ultramarine is ground from lapis: raw matter
+ * recomposed. Everything else is quiet: cool stone ground, hairline rules, a 12-column grid with
+ * a margin column for section labels, left-aligned, and cards only for the two objects in the
+ * hero (the sign-in card and the package).
+ *
+ * Rules this file keeps: nothing under 12px; body 17px on the system stack (SF on Apple devices,
+ * no SF files served); light and dark follow the system with no toggle; status is always a word
+ * plus a shape, never color alone; no inline styles anywhere (the Worker's CSP blocks them).
+ *
+ * The accent is two tokens, because one value cannot do both jobs in dark mode:
+ *   --accent-text  focus rings and "Ready for your yes": text, so it must reach 4.5:1.
+ *   --accent-mark  the underdot and the yes line: shapes, so 3:1 is the bar, and in dark it
+ *                  stays a saturated ultramarine. One light tint
+ *                  for both made the dot read lavender in dark mode (round 1, finding B18).
+ *
+ * Contrast (WCAG 2.x, computed 2026-10-08 with the relative-luminance formula; ground / surface
+ * / sunk):
+ *   Light  ink 16.43 / 18.27 / 15.11   ink-2 8.11 / 9.02 / 7.46   ink-3 7.05 / 7.83 / 6.48
+ *          accent-text and accent-mark (#2337C6) 7.76 / 8.63 / 7.14   btn-border 3.37 / 3.75 / 3.10
+ *   Dark   ink 15.94 / 14.83 / 16.52   ink-2 9.46 / 8.80 / 9.80   ink-3 7.59 / 7.06 / 7.87
+ *          accent-text (#8E9CFF) 7.51 / 6.99 / 7.78   accent-mark (#4459E8) 3.45 / 3.21 / 3.58
+ *          btn-border 3.64 / 3.38 / 3.77
+ * Increased contrast (recomputed 2026-10-08, round 2): ink-2 and ink-3 share one value, which
+ * is also every control edge and every hairline.
+ *   Light  #2E3036 11.86 / 13.19 / 10.91
+ *   Dark   #D4D5CF 12.79 / 11.90 / 13.26
+ * --hair-strong (about 2:1) is for decorative rules only. Any border that shows where a control
+ * is uses --btn-border, which clears the 3:1 that WCAG 1.4.11 asks of control edges.
+ *
+ * Components (reuse these on new pages rather than inventing new ones):
+ *   .wrap .bar .brand .dot .nav .btn(.btn-primary .btn-quiet .btn-block) .section .section-label
+ *   .section-body .h2 .lead .raw .meta .eyebrow .steps .yesline .side .list .key .tag(.tag-first .tag-next
+ *   .tag-later .tag-consent) .state(.state-ready .state-look .state-source .state-yes)
+ *   .rules .faq(.faq-q .faq-toggle .faq-where) .note .footer .sr-only .skip-link
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Color, light */
+  --ground: #F3F3F0;        /* cool stone, deliberately not cream */
+  --surface: #FFFFFF;
+  --sunk: #E9EAE5;
+  --ink: #141517;
+  --ink-2: #464950;
+  --ink-3: #4F5258;
+  --hair: #D9DAD4;
+  --hair-strong: #B8BAB3;   /* decorative rules only */
+  --btn-border: #82857E;    /* control edges: 3:1 or better on every background */
+  --accent-text: #2337C6;   /* ultramarine as text: focus, "Ready for your yes" */
+  --accent-mark: #2337C6;   /* ultramarine as a shape: the underdot, the yes line */
+  --on-accent: #FFFFFF;
+  --bar-bg: rgba(243, 243, 240, 0.82);
+
+  /* Type */
+  --font-display: "Tiro Devanagari Sanskrit", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-text: -apple-system, BlinkMacSystemFont, system-ui, "Helvetica Neue", Arial, sans-serif;
+  --font-raw: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  --t-12: 12px;             /* the floor: raw labels only */
+  --t-13: 13px;
+  --t-15: 15px;
+  --t-17: 17px;             /* body */
+  --t-21: 21px;             /* lead */
+  --t-26: 26px;
+  --t-h2: clamp(30px, 3.3vw, 44px);
+  --t-mark: clamp(88px, 31vw, 300px);
+
+  /* Space and layout */
+  --wrap: 1240px;
+  --gutter: clamp(16px, 4vw, 48px);
+  --gap: clamp(16px, 2.4vw, 32px);
+  --section-pad: clamp(48px, 5.6vw, 80px);
+  --bar-h: 60px;
+  --radius: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #101113;
+    --surface: #18191C;
+    --sunk: #0B0C0D;
+    --ink: #ECECE7;
+    --ink-2: #B7B8B2;
+    --ink-3: #A3A59F;
+    --hair: #2A2C2F;
+    --hair-strong: #45484D;
+    --btn-border: #6A6D72;
+    --accent-text: #8E9CFF;
+    --accent-mark: #4459E8;
+    --on-accent: #0B0C0D;
+    --bar-bg: rgba(16, 17, 19, 0.82);
+  }
+}
+
+/* Increased contrast (System Settings, Accessibility, Display). Round 1's version only swapped
+   two grays and barely changed anything (round 2, H13). Now both secondary inks become one
+   darker shared value, every control edge takes that ink, and every hairline takes the control
+   edge, so dividers and the dimmed sign-in button both read clearly. */
+@media (prefers-contrast: more) {
+  :root {
+    --ink-2: #2E3036;
+    --ink-3: #2E3036;
+    --btn-border: var(--ink-2);
+    --hair: var(--btn-border);
+  }
+}
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+  :root { --ink-2: #D4D5CF; --ink-3: #D4D5CF; }
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-top: calc(var(--bar-h) + 16px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: var(--t-17);
+  line-height: 1.47;
+  letter-spacing: -0.012em;
+  -webkit-font-smoothing: antialiased;
+  font-kerning: normal;
+  overflow-wrap: break-word;
+}
+
+h1, h2, h3, h4, p, ol, ul, dl, dd, figure, blockquote { margin: 0; }
+ol, ul { padding: 0; list-style: none; }
+img, svg { display: block; max-width: 100%; }
+
+a { color: var(--ink); text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
+a:hover { text-decoration-thickness: 2px; }
+
+:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+strong, b { font-weight: 600; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.skip-link {
+  position: absolute; left: 16px; top: -100px; z-index: 20;
+  background: var(--ink); color: var(--ground); padding: 10px 14px;
+  border-radius: var(--radius); text-decoration: none; font-size: var(--t-15);
+}
+.skip-link:focus { top: 12px; }
+
+.wrap {
+  width: 100%;
+  max-width: calc(var(--wrap) + 2 * var(--gutter));
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* The raw register: what the machine sees. */
+.raw {
+  font-family: var(--font-raw);
+  font-size: var(--t-13);
+  line-height: 1.5;
+  letter-spacing: 0;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* People's words about time and plans: dates, "target", "Same visit", "For information". The
+   system sans at 15px with tabular figures, so columns of dates still line up (round 3, B13). */
+.meta {
+  font-size: var(--t-15);
+  line-height: 1.4;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.eyebrow {
+  font-size: var(--t-13);
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+}
+
+.h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--t-h2);
+  line-height: 1.08;
+  letter-spacing: -0.012em;
+  max-width: 20ch;
+  text-wrap: balance;
+}
+
+.lead {
+  font-size: var(--t-21);
+  line-height: 1.42;
+  color: var(--ink-2);
+  max-width: 34em;
+  text-wrap: pretty;
+}
+
+.note {
+  margin-top: 24px;
+  font-size: var(--t-15);
+  line-height: 1.5;
+  color: var(--ink-3);
+  max-width: 44em;
+}
+
+/* ── Top bar ──────────────────────────────────────────────────────────── */
+
+.bar {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bar-bg);
+  -webkit-backdrop-filter: saturate(160%) blur(16px);
+  backdrop-filter: saturate(160%) blur(16px);
+  border-bottom: 1px solid var(--hair);
+}
+.bar-inner {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  min-height: var(--bar-h);
+}
+.brand {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1;
+  color: var(--ink);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+  padding-block: 10px;
+}
+.nav { display: flex; align-items: center; gap: clamp(12px, 2.4vw, 28px); }
+.nav a { white-space: nowrap; }
+.nav a:not(.btn) {
+  color: var(--ink-2);
+  text-decoration: none;
+  font-size: var(--t-15);
+  padding-block: 12px;
+}
+.nav a:not(.btn):hover { color: var(--ink); }
+.nav a:not(.btn)[aria-current="page"] { color: var(--ink); }
+@media (max-width: 640px) {
+  .nav .nav-wide { display: none; }
+}
+/* Under 360px (an iPhone SE in zoomed display is 320) Sign In wrapped onto two lines (round 3,
+   H11). Privacy goes the way How It Works went at 640; the front page's sections are one scroll
+   away, and Sign In and Roadmap stay. */
+@media (max-width: 359px) {
+  .nav .nav-mid { display: none; }
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--btn-border);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--t-15);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn:hover { border-color: var(--ink-3); text-decoration: none; }
+.btn-primary { background: var(--ink); border-color: var(--ink); color: var(--ground); }
+.btn-primary:hover { background: var(--ink-2); border-color: var(--ink-2); }
+.btn-quiet { border-color: var(--btn-border); }
+.btn-block { width: 100%; justify-content: flex-start; }
+.btn[disabled], .btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  color: var(--ink-3);
+  background: var(--sunk);
+  border-color: var(--hair);
+}
+@media (prefers-contrast: more) {
+  .btn[disabled], .btn[aria-disabled="true"] { border-color: var(--btn-border); }
+}
+.bar .btn { padding: 8px 16px; }
+
+/* ── Sections ─────────────────────────────────────────────────────────── */
+
+.section {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--gap);
+  row-gap: 24px;
+  padding-block: var(--section-pad);
+}
+.section::before {
+  /* The rule between sections sits on the content edges, not the gutters. */
+  content: "";
+  position: absolute; top: 0; left: var(--gutter); right: var(--gutter);
+  height: 1px;
+  background: var(--hair);
+}
+.section-label {
+  grid-column: 1 / span 3;
+  display: flex; gap: 10px; align-items: baseline;
+  font-size: var(--t-15);
+  color: var(--ink-2);
+  padding-top: 0.55em;
+}
+.section-body { grid-column: 4 / -1; min-width: 0; }
+.section-body > .h2 + .lead,
+.section-body > .h2 + p { margin-top: 20px; }
+@media (min-width: 901px) {
+  .section-label { position: sticky; top: calc(var(--bar-h) + 24px); align-self: start; }
+}
+@media (max-width: 900px) {
+  .section-label, .section-body { grid-column: 1 / -1; }
+  .section-label { padding-top: 0; }
+}
+
+
+/* A plain list with hairlines between items. */
+.list > li {
+  padding-block: 12px;
+  border-top: 1px solid var(--hair);
+}
+.list > li:last-child { border-bottom: 1px solid var(--hair); }
+.list-head {
+  font-size: var(--t-15);
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: flex; align-items: center; gap: 10px;
+}
+
+/* ── Status: a word plus a shape, never color alone ─────────────────── */
+
+.tag, .state {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: var(--t-13);
+  line-height: 1.3;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.tag::before, .state::before {
+  content: "";
+  flex: none;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+}
+.tag-first::before, .state-ready::before { background: currentColor; }
+.tag-next::before, .state-look::before { background: linear-gradient(90deg, currentColor 50%, transparent 50%); }
+.tag-later::before, .state-source::before { background: transparent; }
+.tag-consent::before { border-radius: 2px; transform: rotate(45deg); width: 8px; height: 8px; }
+.state-yes { color: var(--accent-text); font-weight: 600; }
+.state-yes::before { background: currentColor; }
+/* Now: a heavy ink ring, heavier than the hollow ring of Planned, so the filled dot keeps one
+   meaning per page (round 2, H10). Ink, not ultramarine (round 3, B12). */
+.tag-now, .state-now { color: var(--ink); font-weight: 600; }
+.tag-now::before, .state-now::before { background: transparent; border: 2.5px solid var(--ink); width: 10px; height: 10px; }
+
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+
+.hero { padding-top: clamp(28px, 4vw, 48px); padding-bottom: var(--section-pad); }
+
+.hero-mark {
+  display: flex; flex-wrap: wrap; align-items: flex-end;
+  column-gap: clamp(24px, 4vw, 64px); row-gap: 32px;   /* room for the p's descender when the intro wraps under the mark */
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--t-mark);
+  line-height: 0.86;
+  letter-spacing: -0.04em;
+  margin-left: -0.04em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+/* The dot below the r, wherever the wordmark appears (hero, bar, footer, 404). The real glyph
+   is used, so the dot is the font's own; a hard color stop at the baseline paints the letter in
+   ink and only the dot in ultramarine. The stop was set by rendering and looking (77.5% of the
+   glyph box sits above the dot in this face). An inline box's background covers the font's
+   content area whatever the line-height, so the same stop holds at every size. */
+.dot {
+  background: linear-gradient(to bottom, var(--ink) 0 77.5%, var(--accent-mark) 77.5% 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* At hero size the k's foot serif ran into the r's (round 2, B23). A sliver of space before the
+   r, and only in the hero, separates them. Chosen over loosening the whole word to -0.025em by
+   rendering both at 2x in light and dark: the looser word still touched at the serifs and pushed
+   the intro under the mark at 1440. */
+.wordmark .dot { margin-left: 0.03em; }
+
+.hero-intro {
+  flex: 1 1 320px;
+  max-width: 470px;
+  padding-bottom: 0.4em;
+}
+.definition {
+  font-size: var(--t-17);
+  color: var(--ink-2);
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--hair);
+}
+.definition i {
+  font-family: var(--font-display);
+  font-size: var(--t-26);
+  line-height: 1;
+  color: var(--ink);
+  margin-right: 8px;
+}
+.definition .def-tag { font-size: var(--t-13); color: var(--ink-3); letter-spacing: 0.02em; }
+.hero-intro .lead { font-size: var(--t-21); color: var(--ink); }
+/* Where it stands, said once, under the lead: a hollow ring, the same shape as Not started. */
+.hero-status {
+  display: flex; gap: 10px; align-items: baseline;
+  margin-top: 16px;
+  font-size: var(--t-15);
+  color: var(--ink-2);
+}
+.hero-status::before {
+  content: "";
+  flex: none;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  transform: translateY(-1px);
+}
+
+/* Two plain facts under the hero, lined up with the sign-in card and the package below. */
+.hero-facts {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 12px var(--gap);
+  margin-top: clamp(32px, 3.4vw, 44px);
+  padding-top: 20px;
+  border-top: 1px solid var(--hair);
+}
+.hero-facts p { color: var(--ink-2); max-width: 36em; text-wrap: pretty; }
+.hero-facts p:first-child { grid-column: 1 / span 4; }
+.hero-facts p:last-child { grid-column: 5 / -1; }
+@media (max-width: 1000px) {
+  .hero-facts p:first-child, .hero-facts p:last-child { grid-column: 1 / -1; }
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--gap);
+  margin-top: clamp(28px, 3.5vw, 40px);
+  align-items: start;
+}
+.hero-grid > .signin { grid-column: 1 / span 4; position: sticky; top: calc(var(--bar-h) + 24px); }
+.hero-grid > .package { grid-column: 5 / -1; }
+@media (max-width: 1000px) {
+  .hero-grid > .signin, .hero-grid > .package { grid-column: 1 / -1; position: static; }
+}
+
+/* ── Sign-in card ─────────────────────────────────────────────────────── */
+
+.signin {
+  background: var(--surface);
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  padding: clamp(20px, 2.6vw, 32px);
+}
+.signin-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--t-26);
+  line-height: 1.15;
+  margin-top: 6px;
+}
+.signin-why { margin-top: 8px; color: var(--ink-2); }
+.signin-status {
+  display: flex; gap: 12px; align-items: flex-start;
+  margin-top: 20px;
+  padding: 14px 16px;
+  background: var(--sunk);
+  border-radius: var(--radius);
+  font-size: var(--t-15);
+  line-height: 1.45;
+}
+.signin-status .ring {
+  flex: none;
+  width: 10px; height: 10px; margin-top: 0.42em;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink-2);
+}
+.signin-methods { display: grid; gap: 10px; margin-top: 20px; }
+.signin-methods .btn { white-space: nowrap; }
+.signin-step { font-size: var(--t-15); line-height: 1.45; color: var(--ink-2); }
+.signin .fine { margin-top: 16px; font-size: var(--t-13); line-height: 1.5; color: var(--ink-3); }
+
+/* ── The sample package ───────────────────────────────────────────────── */
+
+.package {
+  background: var(--surface);
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.pk-head {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px;
+  padding: 16px clamp(16px, 2.2vw, 28px);
+  border-bottom: 1px solid var(--hair);
+  background: var(--sunk);
+}
+.pk-title { font-family: var(--font-text); font-size: var(--t-15); font-weight: 600; line-height: 1.4; letter-spacing: -0.005em; }
+.pk-block {
+  padding: 16px clamp(16px, 2.2vw, 28px);
+  border-bottom: 1px solid var(--hair);
+}
+.pk-row { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+.pk-row > .pk-block + .pk-block { border-left: 1px solid var(--hair); }
+@media (max-width: 620px) {
+  .pk-row { grid-template-columns: 1fr; }
+  .pk-row > .pk-block + .pk-block { border-left: 0; }
+}
+.pk-label {
+  font-size: var(--t-13);
+  font-weight: 400;
+  color: var(--ink-3);
+  margin-bottom: 12px;
+}
+.pk-turn { display: flex; gap: 12px; align-items: baseline; margin-bottom: 6px; }
+.pk-speaker { font-weight: 600; font-size: var(--t-15); }
+.pk-quote p {
+  font-family: var(--font-display);
+  font-size: clamp(22px, 2.2vw, 28px);
+  line-height: 1.3;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+
+.verdicts { display: grid; gap: 12px; }
+.verdicts > div { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); gap: 12px; }
+.verdicts dt { font-size: var(--t-15); font-weight: 600; }
+.verdicts dd { display: grid; gap: 2px; }
+.verdicts .why { font-size: var(--t-15); color: var(--ink-2); line-height: 1.4; }
+
+.accuracy-item { font-size: var(--t-15); line-height: 1.45; color: var(--ink-2); }
+.accuracy-item + .accuracy-item { margin-top: 10px; }
+
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.tiles > li { container-type: inline-size; min-width: 0; }
+.tile {
+  aspect-ratio: 16 / 9;
+  border-radius: 4px;
+  padding: 7%;
+  display: flex; align-items: flex-end;
+  font-family: var(--font-display);
+  line-height: 1.04;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(128, 128, 128, 0.16);
+}
+.tile span { display: block; }
+.tile-a { background: #141517; color: #F3F3F0; font-size: max(13px, 16cqi); }
+.tile-b { background: #E4E5DF; color: #141517; font-size: max(13px, 14cqi); align-items: center; }
+/* Tile C: ink on stone through tokens, with an ink edge so it stays apart from B in light and
+   from A in dark (round 3, B12: it was the only ultramarine fill on the page). */
+.tile-c { background: var(--ground); color: var(--ink); font-size: max(12px, 10.5cqi); align-items: flex-start; box-shadow: inset 0 0 0 1.5px var(--ink); }
+.tile-cap { margin-top: 6px; font-size: var(--t-13); line-height: 1.4; color: var(--ink-3); }
+.pk-caption { margin-top: 14px; font-size: var(--t-13); line-height: 1.45; color: var(--ink-3); max-width: 46em; }
+/* In dark mode the ink tile sits on a near-ink surface (1.04:1), so it gets the strong rule as
+   an edge or it disappears. */
+@media (prefers-color-scheme: dark) {
+  .tile-a { box-shadow: inset 0 0 0 1px var(--hair-strong); }
+}
+
+.episode { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+/* Placeholder show art: a wordless ink tile until Gabriel names the show and Ivan makes the art
+   (round 3, B22: the old tile spelled a show name nobody had chosen). Tokens, so it inverts in
+   dark mode; the strong rule keeps its edge on the dark surface. */
+.episode-art {
+  flex: none;
+  width: 72px; height: 72px;
+  border-radius: 6px;
+  background: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--hair-strong);
+}
+.episode-note { margin-top: 2px; font-size: var(--t-13); line-height: 1.4; color: var(--ink-3); }
+.episode-text { flex: 1 1 180px; min-width: 0; }
+.episode-title { font-weight: 600; font-size: var(--t-17); line-height: 1.3; }
+.episode-meta { font-size: var(--t-15); color: var(--ink-2); }
+
+.pk-note {
+  padding: 14px clamp(16px, 2.2vw, 28px) 18px;
+  font-size: var(--t-13);
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+/* ── How it works: the steps and the line ─────────────────────────────── */
+
+.steps { margin-top: 32px; }
+.steps > li {
+  display: grid;
+  grid-template-columns: clamp(44px, 6vw, 72px) minmax(0, 1fr);
+  gap: var(--gap);
+  padding-block: 18px;
+  border-top: 1px solid var(--hair);
+}
+.step-n {
+  font-family: var(--font-display);
+  font-size: clamp(30px, 3.2vw, 42px);
+  line-height: 0.9;
+  color: var(--ink-3);
+}
+.steps h3 { font-size: var(--t-17); font-weight: 600; line-height: 1.35; }
+.steps p { color: var(--ink-2); max-width: 40em; margin-top: 4px; }
+.steps .raw { margin-top: 10px; color: var(--ink-3); max-width: none; }
+.steps .step-state { margin-top: 10px; }
+.steps-after { margin-top: 0; }
+.steps-after > li:last-child { border-bottom: 1px solid var(--hair); }
+
+/* The autonomy line: the one place a person must act. */
+.yesline {
+  display: grid;
+  grid-template-columns: clamp(44px, 6vw, 72px) minmax(0, 1fr);
+  gap: var(--gap);
+  align-items: center;
+  padding-block: 18px;
+  border-top: 2px solid var(--accent-mark);
+  border-bottom: 2px solid var(--accent-mark);
+}
+.yesline-mark {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent-mark);
+}
+.yesline p { font-size: var(--t-17); color: var(--ink); }
+.yesline strong { color: var(--accent-text); }
+
+/* What sits on each side of the yes line: "On its own" directly above it, "Waits for a person"
+   directly below it, each on the steps' text column, so every list sits on the side of the line
+   its label names (round 3, B1: both lists had been under the line). Each list runs in two
+   columns on wide screens to keep the page short. */
+.side { padding: 22px 0 26px calc(clamp(44px, 6vw, 72px) + var(--gap)); border-top: 1px solid var(--hair); }
+.side .list-head { margin-bottom: 8px; }
+.side .list > li { font-size: var(--t-15); line-height: 1.45; padding-block: 9px; color: var(--ink-2); }
+.side-wait { border-top: 0; padding-bottom: 14px; }
+.side-wait .list > li:last-child { border-bottom: 0; }
+@media (min-width: 900px) {
+  .side .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--gap); }
+  .side-own .list { border-bottom: 1px solid var(--hair); }
+  .side-own .list > li:last-child { border-bottom: 0; }
+}
+@media (max-width: 720px) {
+  .side { padding-left: 0; }
+}
+
+/* ── Outputs ──────────────────────────────────────────────────────────── */
+
+.outputs { margin-top: 28px; }
+.outputs > li {
+  display: grid;
+  grid-template-columns: minmax(0, 15em) minmax(0, 1fr) 9.5em;
+  gap: 8px var(--gap);
+  padding-block: 16px;
+  border-top: 1px solid var(--hair);
+  align-items: baseline;
+}
+.outputs > li:last-child { border-bottom: 1px solid var(--hair); }
+.outputs h3 { font-size: var(--t-17); font-weight: 600; line-height: 1.35; }
+.outputs p { color: var(--ink-2); }
+@media (max-width: 760px) {
+  .outputs > li { grid-template-columns: minmax(0, 1fr) auto; }
+  .outputs p { grid-column: 1 / -1; grid-row: 2; }
+}
+/* Wide screens: two columns of outputs, each with its name and tag on one line and the
+   description under them. Order runs down the first column, then the second, so First stays
+   together at the top left (round 2, B10: the front page had grown to 9,287px at 1440). */
+@media (min-width: 1000px) {
+  .outputs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(6, auto);
+    grid-auto-flow: column;
+    column-gap: var(--gap);
+    border-bottom: 1px solid var(--hair);
+  }
+  .outputs > li { grid-template-columns: minmax(0, 1fr) auto; align-content: start; gap: 4px 16px; padding-block: 14px; }
+  .outputs > li:last-child { border-bottom: 0; }
+  .outputs p { grid-column: 1 / -1; grid-row: 2; font-size: var(--t-15); line-height: 1.45; }
+}
+/* A visible "Key:" line, the same on both pages (round 3, H12: the front page's key was an
+   unlabeled div). */
+.key .tag, .key .state { margin: 0 14px 4px 6px; }
+.section-body > .key { margin-top: 20px; }
+
+.download-line { margin-top: 28px; color: var(--ink); max-width: 40em; }
+
+/* ── Privacy rules ────────────────────────────────────────────────────── */
+
+.rules {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--gap);
+  margin-top: 32px;
+}
+.rules > li { padding-block: 16px 18px; border-top: 1px solid var(--hair); }
+.rules h3 { font-size: var(--t-17); font-weight: 600; line-height: 1.35; }
+.rules p { color: var(--ink-2); margin-top: 4px; }
+@media (max-width: 720px) { .rules { grid-template-columns: 1fr; } }
+
+/* ── Questions ────────────────────────────────────────────────────────── */
+
+.faq { margin-top: 32px; border-bottom: 1px solid var(--hair); }
+.faq details { border-top: 1px solid var(--hair); }
+.faq summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+  padding-block: 12px;
+  font-weight: 600;
+  min-height: 44px;
+}
+.faq summary::-webkit-details-marker { display: none; }
+/* The plus and minus live in an aria-hidden span, so a screen reader hears only the question
+   (a ::after on the summary itself was read out as "plus", round 2 H7). */
+.faq-toggle::after { content: "+"; font-family: var(--font-raw); font-weight: 400; color: var(--ink-3); }
+.faq details[open] .faq-toggle::after { content: "\2212"; }
+.faq details > p { color: var(--ink-2); padding-bottom: 18px; max-width: 42em; }
+.faq-where { padding-bottom: 18px; max-width: 46em; }
+.faq-where > div {
+  display: grid;
+  grid-template-columns: minmax(0, 13em) minmax(0, 1fr);
+  gap: 2px var(--gap);
+  padding-block: 8px;
+}
+.faq-where dt { font-weight: 600; font-size: var(--t-15); padding-top: 0.1em; }
+.faq-where dd { color: var(--ink-2); }
+@media (max-width: 720px) { .faq-where > div { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── Footer ───────────────────────────────────────────────────────────── */
+
+.footer { border-top: 1px solid var(--hair); }
+.footer-inner {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 12px 32px;
+  padding-block: 28px 40px;
+}
+.footer .brand { font-size: 30px; padding-block: 8px; }
+.footer-links { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: var(--t-15); }
+.footer-links a { color: var(--ink-2); text-decoration: none; padding-block: 11px; display: inline-block; }
+.footer-links a:hover { color: var(--ink); }
+.footer-credit { font-size: var(--t-15); color: var(--ink-3); }
+
+/* ── 404 ──────────────────────────────────────────────────────────────── */
+
+.lost { padding-block: clamp(64px, 12vw, 160px); }
+.lost-mark {
+  width: clamp(56px, 9vw, 96px); height: clamp(56px, 9vw, 96px);
+  border-radius: 50%;
+  background: var(--accent-mark);
+  margin-bottom: 36px;
+}
+.lost .h2 { font-size: clamp(40px, 6vw, 72px); max-width: 14ch; }
+.lost .lead { margin-top: 20px; }
+.lost-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+
+/* ── Roadmap (/roadmap) ───────────────────────────────────────────────── */
+/* Added 2026-10-08. Same tokens, registers and components as the front page; the roadmap adds:
+ *   .progress .rm-hero .rm-title .glance .doc .doc-rail .toc .doc-body .doc-section .sec-num
+ *   .standing .state-wait .figures .who-scope .who .seg .phase-tools .phases .phase .ph-*
+ *   .deliv .needs .need .owner .done .not-here .dec-group .decs .dec .rules.never .closing
+ * Its behavior lives in assets/roadmap.js. Without that script the page still works: phases are
+ * native <details>, and the filter and the Open All button stay hidden, so no control is ever
+ * shown that does nothing.
+ * The "What's needed from" filter marks matching rows with .is-mine (an ink edge on the sunk
+ * fill; ultramarine is kept for the yes, round 3 B12) and the rest with .is-other (ink-3, which
+ * still measures 5.3:1 light, 6.1:1 dark, so nothing becomes unreadable when it is not yours). */
+
+/* Author display rules beat the UA's [hidden]; this keeps hidden meaning hidden. */
+[hidden] { display: none !important; }
+
+/* Reading progress: a 2px ink line along the bottom edge of the bar. */
+.progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; pointer-events: none; }
+.progress span {
+  display: block; height: 100%;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+
+/* Hero */
+.rm-hero { padding-top: clamp(40px, 6vw, 88px); padding-bottom: clamp(48px, 6vw, 80px); }
+.rm-hero .eyebrow { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; font-size: var(--t-15); color: var(--ink-2); }
+.rm-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(40px, 5.4vw, 76px);
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  max-width: 17ch;
+  margin-top: 18px;
+  text-wrap: balance;
+}
+.rm-hero .lead { margin-top: 24px; }
+.rm-sub { margin-top: 14px; font-size: var(--t-15); color: var(--ink-2); max-width: 44em; }
+
+/* For Gabriel: what changed since the 7 Oct page. One line each, with its reason beside it when
+   it has one. Its own section below Where things stand since round 3 (B10). */
+.since-list { margin-top: 28px; border-bottom: 1px solid var(--hair); }
+.since-list > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 4px var(--gap);
+  padding-block: 14px;
+  border-top: 1px solid var(--hair);
+}
+.since-what { color: var(--ink); max-width: 36em; }
+.since-why { color: var(--ink-2); max-width: 34em; }
+@media (max-width: 760px) {
+  .since-list > li { grid-template-columns: minmax(0, 1fr); }
+  .since-why { font-size: var(--t-15); }
+}
+
+/* The six phases at a glance: a typographic strip, each one a link into the document. */
+.glance {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 28px var(--gap);
+  margin-top: clamp(40px, 5vw, 64px);
+}
+.glance a {
+  display: grid;
+  grid-template-areas: "n" "name" "dates" "tag";
+  grid-template-rows: auto auto auto 1fr;   /* the tags line up across phases whose names wrap */
+  gap: 4px;
+  height: 100%;
+  padding-top: 14px;
+  border-top: 2px solid var(--hair-strong);
+  color: var(--ink);
+  text-decoration: none;
+}
+.glance .is-now a { border-top-color: var(--ink); }
+.glance-n { grid-area: n; font-size: var(--t-13); line-height: 1.5; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.glance-name { grid-area: name; font-family: var(--font-display); font-size: var(--t-26); line-height: 1.12; letter-spacing: -0.01em; }
+.glance-dates { grid-area: dates; }
+.nw { white-space: nowrap; }
+.glance-tag { grid-area: tag; margin-top: 8px; align-self: end; }
+.glance a:hover .glance-name { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.16em; }
+.glance .is-now .glance-tag { color: var(--ink); font-weight: 600; }
+@media (max-width: 1000px) { .glance { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 600px) {
+  .glance { grid-template-columns: minmax(0, 1fr); gap: 0; border-bottom: 1px solid var(--hair); }
+  .glance a {
+    grid-template-columns: 4.8em minmax(0, 1fr) auto;
+    grid-template-areas: "n name tag" "n dates tag";
+    grid-template-rows: auto auto;
+    align-items: baseline;
+    column-gap: 12px;
+    row-gap: 2px;
+    padding-block: 12px;
+    border-top-width: 1px;
+    border-top-color: var(--hair);
+    min-height: 44px;
+  }
+  .glance .is-now a { border-top: 2px solid var(--ink); }
+  .glance-name { font-size: 22px; }
+  .glance-tag { margin-top: 0; align-self: center; }
+}
+
+/* The document: a sticky table of contents in the margin column, the text in the rest. */
+.doc {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--gap);
+}
+.doc-rail { grid-column: 1 / span 3; padding-top: var(--section-pad); }
+.doc-body { grid-column: 4 / -1; min-width: 0; }
+.toc {
+  position: sticky;
+  top: calc(var(--bar-h) + 28px);
+  max-height: calc(100vh - var(--bar-h) - 44px);
+  overflow-y: auto;
+  padding-bottom: 24px;
+}
+.toc-title { font-size: var(--t-13); color: var(--ink-3); margin-bottom: 8px; }
+.toc a {
+  display: grid;
+  grid-template-columns: 2.3em minmax(0, 1fr);
+  align-items: baseline;
+  padding: 7px 0 7px 12px;
+  margin-left: -14px;
+  border-left: 2px solid transparent;
+  color: var(--ink-2);
+  font-size: var(--t-15);
+  line-height: 1.35;
+  text-decoration: none;
+}
+.toc-n { font-size: var(--t-13); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.toc a:hover { color: var(--ink); }
+.toc a:focus-visible { outline-offset: -2px; }
+.toc a[aria-current="location"] { color: var(--ink); font-weight: 600; border-left-color: var(--ink); }
+.toc-sub { margin: 0 0 6px 2.3em; }
+.toc-sub a { padding-block: 4px; font-size: var(--t-13); color: var(--ink-3); grid-template-columns: 1.5em minmax(0, 1fr); }
+@media (max-width: 900px) {
+  .doc-rail, .doc-body { grid-column: 1 / -1; }
+  .doc-rail { padding-top: 0; }
+  .toc { position: static; max-height: none; overflow: visible; padding-block: 0 28px; }
+  .toc a { margin-left: 0; padding-left: 0; border-left: 0; min-height: 44px; align-items: center; }
+  .toc a[aria-current="location"] { font-weight: 400; }
+  .toc-sub { display: none; }
+}
+
+.doc-section {
+  padding-block: var(--section-pad);
+  border-top: 1px solid var(--hair);
+  scroll-margin-top: 8px;
+}
+/* Inside the filter scope the sticky "What's needed from" bar sits under the top bar, so an
+   anchor there needs room for it (105px tall at 1440 with a name chosen, 95px at 390) plus a gap. html’s
+   scroll-padding-top already clears the top bar. Checked by loading #decisions, #for-gabriel and
+   #phase-1 at 390 and 1440 and measuring the heading against the bar. */
+.who-scope .doc-section, .who-scope .phase, .who-scope .dec-group { scroll-margin-top: 104px; }
+/* Focus moving backwards (Shift+Tab) must not land under the two sticky bars (round 2, H6). With
+   a name chosen, the filter bar measures 105px at 1440 and 768 (its count line wraps) and 95px
+   at 390, under the 61px top bar. The brief asked for 112px and 130px above the top bar; the
+   desktop value is 124px because the longer count line made the bar taller than when 112px was
+   measured. Re-checked by a Shift+Tab probe at 390 and 1440, with and without ?for=gabriel and
+   every phase open: 0 of 51 focus stops hidden. */
+.who-scope summary, #phases-toggle, .who-scope .others-toggle, .who-scope .mine-ask,
+.who-scope .need, .who-scope .dec { scroll-margin-top: calc(var(--bar-h) + 124px); }
+@media (max-width: 600px) {
+  .who-scope summary, #phases-toggle, .who-scope .others-toggle, .who-scope .mine-ask,
+  .who-scope .need, .who-scope .dec { scroll-margin-top: calc(var(--bar-h) + 130px); }
+}
+.doc-section.no-rule { border-top: 0; }
+.sec-n { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.sec-num {
+  display: flex; align-items: baseline; gap: 10px;
+  font-size: var(--t-15);
+  color: var(--ink-2);
+  margin-bottom: 14px;
+}
+.doc-section > .lead { margin-top: 20px; }
+.doc-section .h2 { max-width: 22ch; }
+
+/* 01 Where things stand */
+.standing { margin-top: 36px; border-bottom: 1px solid var(--hair); }
+.standing > div {
+  display: grid;
+  grid-template-columns: minmax(0, 12em) 8.5em minmax(0, 1fr);
+  gap: 6px var(--gap);
+  padding-block: 16px;
+  border-top: 1px solid var(--hair);
+  align-items: baseline;
+}
+.standing dt { font-weight: 600; }
+.standing .st-detail { color: var(--ink-2); max-width: 40em; }
+@media (max-width: 720px) {
+  .standing > div { grid-template-columns: minmax(0, 1fr) auto; }
+  .standing .st-detail { grid-column: 1 / -1; }
+}
+/* Waiting on a person: the diamond, the same shape as "Only with consent" on the front page. */
+.state-wait::before { border-radius: 2px; transform: rotate(45deg); width: 8px; height: 8px; }
+
+/* 02 The goal, in numbers */
+.figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 44px var(--gap);
+  margin-top: 40px;
+}
+.figure { display: grid; gap: 8px; align-content: start; padding-top: 16px; border-top: 2px solid var(--ink); }
+.fig-n {
+  display: flex; align-items: baseline; gap: 10px;
+  font-family: var(--font-display);
+  font-size: clamp(60px, 6vw, 88px);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+}
+.fig-n small { font-family: var(--font-text); font-size: var(--t-17); letter-spacing: -0.01em; color: var(--ink-2); }
+.fig-what { font-weight: 600; line-height: 1.35; }
+.fig-check { font-size: var(--t-15); color: var(--ink-2); }
+.fig-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 4px; font-size: var(--t-13); color: var(--ink-3); }
+@media (max-width: 1100px) { .figures { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .figures { grid-template-columns: minmax(0, 1fr); gap: 32px; } }
+
+/* The "What's needed from" filter: sticky over the phases and the decisions, and nowhere else. */
+.who-scope { position: relative; }
+.who {
+  position: sticky; top: var(--bar-h); z-index: 6;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+  padding-block: 12px;
+  background: var(--bar-bg);
+  -webkit-backdrop-filter: saturate(160%) blur(16px);
+  backdrop-filter: saturate(160%) blur(16px);
+  border-top: 1px solid var(--hair);
+  border-bottom: 1px solid var(--hair);
+}
+.who-label { font-size: var(--t-15); font-weight: 600; }
+.seg {
+  display: inline-flex; gap: 2px;
+  padding: 3px;
+  background: var(--sunk);
+  border: 1px solid var(--hair);
+  border-radius: 9px;
+}
+.seg label { position: relative; display: flex; }
+.seg input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.seg span {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: var(--t-15);
+  font-weight: 500;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.seg label:hover input:not(:checked) + span { color: var(--ink); }
+.seg input:checked + span { background: var(--ink); border-color: var(--ink); color: var(--ground); }
+.seg input:focus-visible + span { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.who-sum { font-size: var(--t-13); color: var(--ink-3); }
+@media (max-width: 900px) {
+  .who { margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); }
+}
+@media (max-width: 600px) {
+  .who { gap: 6px; padding-block: 8px; }
+  .who-label { display: none; }
+  .seg { display: flex; width: 100%; }
+  .seg label { flex: 1 1 0; min-width: 0; }
+  .seg span { width: 100%; padding: 0 4px; }
+  /* The count stays on screen at phone width (round 2, H9), on one line so the sticky bar
+     stays short; the full list, with every ask, sits just below it. */
+  .who-sum { width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+
+/* 03 The phases */
+.phase-tools { display: flex; justify-content: flex-end; margin-top: 28px; }
+.phases { margin-top: 12px; }
+/* The phases and the decisions end on the next section's rule, so no list closes on a
+   double line. */
+#phases, #decisions { padding-bottom: 0; }
+.dec-group:last-child .dec:last-child::after { display: none; }
+.phase { border-top: 1px solid var(--hair); scroll-margin-top: 96px; }
+.phase > summary { list-style: none; cursor: pointer; }
+.phase > summary::-webkit-details-marker { display: none; }
+.phase > summary:focus-visible { outline-offset: -2px; }
+.ph-sum {
+  display: grid;
+  grid-template-columns: clamp(44px, 6vw, 72px) minmax(0, 1fr) auto;
+  gap: 4px var(--gap);
+  padding-block: 24px;
+  align-items: start;
+}
+.ph-n { font-family: var(--font-display); font-size: clamp(30px, 3.2vw, 42px); line-height: 0.9; color: var(--ink-3); }
+.phase.is-now .ph-n { color: var(--ink); }
+.ph-head { display: grid; gap: 4px; min-width: 0; }
+.ph-name { font-family: var(--font-display); font-weight: 400; font-size: var(--t-26); line-height: 1.15; letter-spacing: -0.01em; }
+.ph-goal { color: var(--ink); max-width: 40em; margin-bottom: 24px; }
+.ph-gate { margin: -12px 0 24px; font-size: var(--t-15); color: var(--ink-2); max-width: 40em; }
+.ph-side { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.phase.is-now .ph-side .tag { color: var(--ink); font-weight: 600; }
+.ph-toggle::after { content: "+"; font-family: var(--font-raw); font-size: var(--t-17); color: var(--ink-3); }
+.phase[open] .ph-toggle::after { content: "\2212"; }
+.ph-count { font-size: var(--t-13); line-height: 1.3; color: var(--ink-3); white-space: nowrap; }
+.ph-count.has-asks { color: var(--ink); font-weight: 600; }
+.ph-body {
+  display: grid;
+  grid-template-columns: clamp(44px, 6vw, 72px) minmax(0, 1fr);
+  column-gap: var(--gap);
+  padding-bottom: 36px;
+}
+.ph-body > * { grid-column: 2; min-width: 0; }
+.ph-part + .ph-part { margin-top: 32px; }
+.ph-h { font-size: var(--t-15); font-weight: 600; margin-bottom: 8px; }
+@media (max-width: 640px) {
+  .ph-sum { grid-template-columns: 1.6em minmax(0, 1fr); }
+  .ph-side { grid-column: 2; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+  .ph-toggle { margin-left: auto; }
+  .ph-body > * { grid-column: 1 / -1; }
+}
+
+/* What a phase delivers: date, then the thing. */
+.deliv > li {
+  display: grid;
+  grid-template-columns: 9.5em minmax(0, 1fr);
+  gap: 2px var(--gap);
+  padding-block: 11px;
+  border-top: 1px solid var(--hair);
+}
+.deliv > li:last-child { border-bottom: 1px solid var(--hair); }
+.deliv .meta { padding-top: 0.1em; }
+.deliv p:not(.meta) { max-width: 40em; }
+@media (max-width: 560px) {
+  .deliv > li { grid-template-columns: minmax(0, 1fr); }
+  .deliv .meta:empty { display: none; }
+}
+
+/* What is needed, and from whom: owner, action, when. Rows bleed 12px into the gutter so
+   the highlight wash has room without moving the text. */
+.needs > li.need {
+  position: relative;
+  display: grid;
+  grid-template-columns: 9.5em minmax(0, 1fr) 9.5em;
+  gap: 2px var(--gap);
+  padding: 12px;
+  margin-inline: -12px;
+}
+/* The hairlines sit on the text edges, not on the bled edges, so they line up with every other
+   list on the page. */
+.needs > li.need::before, .dec::before,
+.needs > li.need:last-child::after, .dec:last-child::after {
+  content: "";
+  position: absolute; left: 12px; right: 12px; top: 0;
+  height: 1px;
+  background: var(--hair);
+}
+.needs > li.need:last-child::after, .dec:last-child::after { top: auto; bottom: 0; }
+.owner { font-size: var(--t-15); font-weight: 600; color: var(--ink-2); padding-top: 0.1em; }
+.need .when { padding-top: 0.1em; }
+@media (max-width: 760px) {
+  .needs > li.need { grid-template-columns: minmax(0, 1fr) auto; }
+  .need .act { grid-column: 1 / -1; grid-row: 2; }
+  .need .when { grid-column: 2; grid-row: 1; text-align: right; }
+}
+.ph-empty { padding-block: 12px; font-size: var(--t-15); color: var(--ink-3); border-top: 1px solid var(--hair); }
+
+/* Filter states, shared by phase actions and decisions. */
+.is-mine { background: var(--sunk); box-shadow: inset 3px 0 0 var(--ink); }
+.is-mine .owner { color: var(--ink); }
+/* The account holder's rows, while nobody is named: shown to Gabriel and Serenity, counted for
+   neither. A dashed edge, so it reads as "maybe yours", not "yours". */
+.is-holder { box-shadow: inset 3px 0 0 transparent; background-image: linear-gradient(var(--ink) 50%, transparent 50%); background-size: 3px 8px; background-repeat: repeat-y; }
+.is-other, .is-other .owner, .is-other .dec-a, .is-other .dec-a strong, .is-other .dec-if { color: var(--ink-3); }
+.is-other .dec-q { font-weight: 500; }
+/* With a name chosen, everyone else's rows fold away behind one button per phase and per
+   decision group (round 2, G7). */
+.who-scope:not([data-for="everyone"]) .is-other { display: none; }
+.who-scope .show-others .is-other { display: grid; }
+.all-others:not(.show-others) > .dec-intro,
+.all-others:not(.show-others) > .dec-sub,
+.all-others:not(.show-others) > .dec-more { display: none; }
+.others-toggle { margin-top: 12px; gap: 12px; }
+.others-toggle .faq-toggle::after { content: "+"; font-family: var(--font-raw); font-weight: 400; color: var(--ink-3); }
+.others-toggle[aria-expanded="true"] .faq-toggle::after { content: "\2212"; }
+.dec-empty { margin-top: 8px; font-size: var(--t-15); color: var(--ink-3); }
+
+/* One person's asks, at the top of the phases and decisions. */
+.mine { padding-top: 32px; }
+.mine-title { font-family: var(--font-display); font-weight: 400; font-size: var(--t-26); line-height: 1.15; }
+.mine-lead { margin-top: 6px; font-size: var(--t-15); color: var(--ink-2); }
+.mine-group { margin-top: 24px; font-size: var(--t-15); font-weight: 600; color: var(--ink-2); }
+.mine-note { margin-top: 2px; font-size: var(--t-15); color: var(--ink-3); max-width: 40em; }
+.mine-list { margin-top: 8px; border-bottom: 1px solid var(--hair); }
+.mine-list > li {
+  display: grid;
+  grid-template-columns: 7em minmax(0, 1fr) minmax(0, 13em);
+  gap: 0 var(--gap);
+  align-items: baseline;
+  border-top: 1px solid var(--hair);
+}
+/* Each ask in a person's list is a link at least 44px tall, so it is a real touch target on a
+   phone (round 3, H8: they measured 29px). */
+.mine-ask { display: block; min-height: 44px; padding-block: 10px; color: var(--ink); text-decoration: none; }
+.mine-ask:hover { text-decoration: underline; text-decoration-thickness: 1px; }
+.mine-when { padding-block: 10px; }
+.mine-where { font-size: var(--t-13); text-align: right; padding-block: 10px; }
+.mine-safe { margin-top: -6px; padding-bottom: 10px; font-size: var(--t-15); color: var(--ink-3); max-width: 40em; }
+@media (max-width: 640px) {
+  .mine-list > li { grid-template-columns: minmax(0, 1fr) auto; }
+  .mine-ask-cell { grid-column: 1 / -1; grid-row: 2; }
+  .mine-where { grid-column: 2; grid-row: 1; }
+  .mine-ask { padding-top: 4px; }
+}
+/* The collapsed groups inside a person's list: their rows that need no reply, and rows for both
+   teachers. Same look as Serenity's collapsed group in the decisions. */
+.mine .dec-more { margin-top: 24px; }
+
+/* Serenity's questions that each have a safe setting: one collapsed group. */
+.dec-more { margin-top: 24px; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); }
+.dec-more > summary {
+  list-style: none; cursor: pointer;
+  display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+  min-height: 44px; padding-block: 12px;
+  font-size: var(--t-15); font-weight: 600; color: var(--ink-2);
+}
+.dec-more > summary::-webkit-details-marker { display: none; }
+.dec-more[open] .faq-toggle::after { content: "\2212"; }
+.dec-more-n { margin-left: 6px; font-weight: 400; }
+.dec-more .decs { margin-top: 0; }
+.mine-more .mine-list { margin-top: 0; border-bottom: 0; }
+
+.done { counter-reset: done; }
+.done > li {
+  counter-increment: done;
+  display: grid;
+  grid-template-columns: 1.8em minmax(0, 1fr);
+  padding-block: 6px;
+  max-width: 42em;
+}
+.done > li::before { content: counter(done); font-size: var(--t-15); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.not-here { margin-top: 28px; font-size: var(--t-15); color: var(--ink-3); max-width: 44em; }
+.not-here strong { color: var(--ink-2); }
+.ph-body .list { max-width: 44em; }
+
+/* 04 Decisions */
+.dec-group { margin-top: 56px; scroll-margin-top: 96px; }
+.dec-group-title { font-family: var(--font-display); font-weight: 400; font-size: var(--t-26); line-height: 1.15; }
+.dec-intro { margin-top: 8px; color: var(--ink-2); max-width: 40em; }
+.decs { margin-top: 16px; }
+.dec {
+  position: relative;
+  display: grid;
+  grid-template-columns: 7em minmax(0, 1fr);
+  gap: 4px var(--gap);
+  padding: 16px 12px;
+  margin-inline: -12px;
+}
+.dec-when { padding-top: 0.2em; }
+.dec-q { font-weight: 600; line-height: 1.4; max-width: 40em; }
+.dec-a { margin-top: 6px; color: var(--ink-2); max-width: 40em; }
+.dec-a strong { color: var(--ink); }
+.dec-sub { margin-top: 28px; font-size: var(--t-15); font-weight: 600; color: var(--ink-2); }
+.dec-info .dec-q { font-weight: 400; color: var(--ink-2); }
+.dec-if { margin-top: 6px; font-size: var(--t-15); color: var(--ink-3); max-width: 42em; }
+@media (max-width: 560px) { .dec { grid-template-columns: minmax(0, 1fr); } }
+
+/* 05 Never: the front page's .rules grid, plus a reason line. */
+.rules .why { margin-top: 8px; font-size: var(--t-15); color: var(--ink-3); }
+
+/* 06 If anything is wrong */
+.closing .h2 { font-size: clamp(36px, 4.6vw, 60px); max-width: 15ch; }
+.closing .lost-actions { margin-top: 28px; }
+
+@media print {
+  .bar, .who, .phase-tools, .toc, .glance, .skip-link, .mine, .others-toggle { display: none !important; }
+  .who-scope .is-other { display: grid !important; }
+  .doc-body { grid-column: 1 / -1; }
+}

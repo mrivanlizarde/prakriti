@@ -1,0 +1,26 @@
+// Prakriti web — Cloudflare Worker serving the public features/sign-in page and, later, the app.
+// The Worker runs first for EVERY path (run_worker_first: true) so security headers and any
+// future gate apply to the whole origin by construction, not by a path list.
+{
+  "name": "prakriti",
+  // Pinned: wrangler is logged in to six Cloudflare accounts (Ivan's and clients').
+  // therowan.studio lives in Ivan's. Without this a deploy could land in someone else's.
+  "account_id": "563eb5c6ada343f86eddc6d77364bbbd",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    // Only public/ is served. Never point this at "." (therowan.studio served .git and
+    // CLAUDE.md that way, twice).
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    // "none", not "single-page-application": SPA handling answers junk URLs with the
+    // homepage and a 200, a soft 404.
+    "not_found_handling": "none"
+  },
+  "routes": [{ "pattern": "prakriti.therowan.studio", "custom_domain": true }],
+  // The custom domain is the only door. A workers.dev or preview URL would be a second one.
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": true }
+}

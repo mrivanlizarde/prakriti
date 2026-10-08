@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roadmap · Prakriti</title>
+<meta name="description" content="The Prakriti roadmap for Gabriel and Serenity: podcast first, what gets built in what order, what is needed from whom, and the decisions that are yours.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F3F3F0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101113" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Sanskrit:ital@0;1&amp;display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/roadmap.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="bar">
+  <div class="wrap bar-inner">
+    <a class="brand" href="/"><span class="sr-only">Prakriti</span><span aria-hidden="true">prak<span class="dot">ṛ</span>ti</span></a>
+    <!-- Same order as the front page: until sign-in opens, Roadmap carries the filled button. -->
+    <nav class="nav" aria-label="Main">
+      <a class="nav-wide" href="/#how">How It Works</a>
+      <a class="nav-mid" href="/#privacy">Privacy</a>
+      <a href="/#sign-in">Sign In</a>
+      <a class="btn btn-primary" href="/roadmap" aria-current="page">Roadmap</a>
+    </nav>
+  </div>
+  <!-- Reading progress: a hairline under the bar, filled by assets/roadmap.js. -->
+  <div class="progress" aria-hidden="true"><span></span></div>
+</header>
+
+<main id="main">
+
+  <section class="wrap rm-hero" aria-labelledby="rm-title">
+    <p class="eyebrow">Roadmap <span class="meta">Updated Thu 8 Oct 2026</span></p>
+    <h1 class="rm-title" id="rm-title">Podcast first. Episode one is planned for Friday 23 October.</h1>
+    <!-- The 25 is proposed until Gabriel confirms it on Fri 9 Oct. If the count is in before
+         deploy, the counted number replaces 25 here, on the 25 tile below and in the front page's
+         second hero fact, the same day (round 3, conflict 2). -->
+    <p class="lead">Then a proposed 25 archive episodes by Friday 6 November, confirmed with Gabriel on Friday 9 October. Below, every step for Prakriti and what is needed from whom.</p>
+    <p class="rm-sub">Written for Gabriel and Serenity. Every date here is a plan; if one does not work for you, tell Ivan. What Prakriti is and how it works is on the <a href="/">front page</a>.</p>
+
+    <h2 class="sr-only">The six phases at a glance</h2>
+    <ol class="glance" role="list">
+      <li class="is-now"><a href="#phase-0"><span class="glance-n">Phase 0</span><span class="glance-name">Ground</span><span class="meta glance-dates"><span class="nw">Thu 8 Oct</span> to <span class="nw">Fri 16 Oct</span></span><span class="tag tag-now glance-tag">Now</span></a></li>
+      <li><a href="#phase-1"><span class="glance-n">Phase 1</span><span class="glance-name">First light</span><span class="meta glance-dates"><span class="nw">Mon 19 Oct</span> to <span class="nw">Fri 23 Oct</span></span><span class="tag tag-next glance-tag">Next</span></a></li>
+      <li><a href="#phase-2"><span class="glance-n">Phase 2</span><span class="glance-name">The archive</span><span class="meta glance-dates"><span class="nw">Mon 26 Oct</span> to <span class="nw">Fri 6 Nov</span></span><span class="tag tag-later glance-tag">Planned</span></a></li>
+      <li><a href="#phase-3"><span class="glance-n">Phase 3</span><span class="glance-name">The studio package</span><span class="meta glance-dates"><span class="nw">Mon 9 Nov</span> to <span class="nw">Mon 30 Nov</span></span><span class="tag tag-later glance-tag">Planned</span></a></li>
+      <li><a href="#phase-4"><span class="glance-n">Phase 4</span><span class="glance-name">The Library and voices</span><span class="meta glance-dates">From <span class="nw">Tue 1 Dec</span></span><span class="tag tag-later glance-tag">Planned</span></a></li>
+      <li><a href="#phase-5"><span class="glance-n">Phase 5</span><span class="glance-name">Later</span><span class="meta glance-dates">2027, not before <span class="nw">Mon 4 Jan</span></span><span class="tag tag-later glance-tag">Planned</span></a></li>
+    </ol>
+  </section>
+
+  <div class="wrap doc">
+
+    <nav class="doc-rail" aria-label="On this page">
+      <div class="toc">
+        <p class="toc-title">On this page</p>
+        <ol>
+          <li><a href="#today"><span class="toc-n">01</span><span>Where things stand</span></a></li>
+          <li><a href="#since"><span class="toc-n">02</span><span>For Gabriel: what changed</span></a></li>
+          <li><a href="#goal"><span class="toc-n">03</span><span>The goal, in numbers</span></a></li>
+          <li>
+            <a href="#phases"><span class="toc-n">04</span><span>The phases</span></a>
+            <ol class="toc-sub">
+              <li><a href="#phase-0"><span class="toc-n">0</span><span>Ground</span></a></li>
+              <li><a href="#phase-1"><span class="toc-n">1</span><span>First light</span></a></li>
+              <li><a href="#phase-2"><span class="toc-n">2</span><span>The archive</span></a></li>
+              <li><a href="#phase-3"><span class="toc-n">3</span><span>The studio package</span></a></li>
+              <li><a href="#phase-4"><span class="toc-n">4</span><span>The Library and voices</span></a></li>
+              <li><a href="#phase-5"><span class="toc-n">5</span><span>Later</span></a></li>
+            </ol>
+          </li>
+          <li><a href="#decisions"><span class="toc-n">05</span><span>Decisions for you</span></a></li>
+          <li><a href="#never"><span class="toc-n">06</span><span>What it will never do</span></a></li>
+          <li><a href="#wrong"><span class="toc-n">07</span><span>If anything is wrong</span></a></li>
+        </ol>
+      </div>
+    </nav>
+
+    <div class="doc-body">
+
+      <!-- 01 Where things stand -->
+      <section class="doc-section" id="today" aria-labelledby="today-title">
+        <p class="sec-num"><span class="sec-n">01</span>Where things stand</p>
+        <h2 class="h2" id="today-title">Where things stand on Thu 8 Oct.</h2>
+        <dl class="standing">
+          <div>
+            <dt>The plan</dt>
+            <dd class="st-state"><span class="state state-ready">Done</span></dd>
+            <dd class="st-detail">Research finished, and the full plan written: what gets built, in what order, and what is needed from whom. This page is the plain version of it.</dd>
+          </div>
+          <!-- At deploy: change to Done, Live since <date from date(1)> -->
+          <div>
+            <dt>Front page and roadmap</dt>
+            <dd class="st-state"><span class="state state-wait">Waiting on a person</span></dd>
+            <dd class="st-detail">Written; goes live on Ivan’s yes.</dd>
+          </div>
+          <div>
+            <dt>Prakriti on the Mac</dt>
+            <dd class="st-state"><span class="state state-source">Not started</span></dd>
+            <dd class="st-detail">The part that watches the folder and does the heavy work. It is built first in Phase 0, on Ivan’s MacBook Pro, which pauses when the lid is closed.</dd>
+          </div>
+          <div>
+            <dt>Sign-in and review</dt>
+            <dd class="st-state"><span class="state state-source">Not started</span></dd>
+            <dd class="st-detail">Ready by Mon 26 Oct, by invitation from Ivan. Until notifications on phones and Macs follow, after Fri 6 Nov, notices come by email.</dd>
+          </div>
+          <div>
+            <dt>Studio recordings</dt>
+            <dd class="st-state"><span class="state state-wait">Waiting on a person</span></dd>
+            <dd class="st-detail">Six sessions since Sun 6 Sep, about 5.4 hours in all. The most recent is the yin class of Wed 23 Sep. The Sun 6 Sep talk becomes the first episode.</dd>
+          </div>
+          <div>
+            <dt>The archive</dt>
+            <dd class="st-state"><span class="state state-wait">Waiting on a person</span></dd>
+            <dd class="st-detail">958 videos on the Yoga Mārga School channel, from Nov 2023 to May 2026, about 1,175 hours. About 694 complete videos are already on Ivan’s Mac. The full set needs a fresh Google Takeout from the account that owns the channel, planned for Wed 14 Oct. None of the archive is transcribed yet; only the studio sessions are. Transcription runs on the Mac whenever it is plugged in, day or night, once the files are on Ivan’s Mac or its archive drive.</dd>
+          </div>
+          <div>
+            <dt>Accounts</dt>
+            <dd class="st-state"><span class="state state-source">Not started</span></dd>
+            <dd class="st-detail">Cloud storage for finished files is not on yet, YouTube is not connected, and the podcast’s home is not chosen.</dd>
+          </div>
+          <div>
+            <dt>Published</dt>
+            <dd class="st-state"><span class="state state-source">Not started</span></dd>
+            <dd class="st-detail">Nothing has been published. Nothing will be without a named person’s yes on that exact piece.</dd>
+          </div>
+        </dl>
+        <!-- One mapping of marks for the whole page (round 2, H10): the filled dot means Done and
+             nothing else. -->
+        <p class="note key">Key: <span class="state state-ready">Done</span> <span class="state state-now">Now</span> <span class="state state-look">Next or proposed</span> <span class="state state-source">Planned or not started</span> <span class="state state-wait">Waiting on a person</span></p>
+      </section>
+
+      <!-- 02 For Gabriel: what changed. Moved out of the hero to sit below Where things stand, and
+           addressed to Gabriel by name, since the 7 Oct page was his (round 3, B10, S19). A line
+           with no reason given has none, rather than an invented one. -->
+      <section class="doc-section" id="since" aria-labelledby="since-title">
+        <p class="sec-num"><span class="sec-n">02</span>What changed</p>
+        <h2 class="h2" id="since-title">For Gabriel: what changed since the 7 Oct page.</h2>
+        <ol class="since-list" role="list">
+          <li><p class="since-what">The first episode is your studio talk of Sun 6 Sep, then archive episodes from the week of Mon 26 Oct.</p><p class="since-why">That talk is already on the Mac and has one voice; Serenity sees it first, because it mentions her.</p></li>
+          <li><p class="since-what">No separate trailer. Your recorded intro opens the first episode.</p></li>
+          <li><p class="since-what">Your intro is recorded in your own voice instead of made with ElevenLabs, so episodes need no AI label; Apple requires one for AI voices. An ElevenLabs version stays your option.</p></li>
+          <li><p class="since-what">Ivan does every upload. You never upload, post to the podcast or submit it.</p><p class="since-why">You said posting is where it stalls, so it is Ivan’s job now.</p></li>
+          <li><p class="since-what">The 25 are podcast episodes from teacher-only talks and stretches of them. YouTube follows after Fri 6 Nov, at up to two a day, and is not counted, because each video must show and sound teachers only. Serenity’s talks count once she says yes.</p></li>
+          <li><p class="since-what">The 72-hour target starts only once Prakriti runs on an always-on Mac, which is not chosen yet. It stops at Ready for your yes, so your time to approve is yours.</p></li>
+          <li><p class="since-what">Ivan asks Serenity’s questions directly, not through you.</p></li>
+          <li><p class="since-what">A weekly Yoga Marga call, as you asked; Ivan proposes times on Fri 9 Oct.</p></li>
+          <li><p class="since-what">Recordings are found in the shared folder, and anything else goes into that folder too.</p><p class="since-why">Prakriti uploads nothing raw. Recordings stay where they are saved today.</p></li>
+          <li><p class="since-what">The account that owns the channel connects YouTube once, through Google’s own screen. You and Ivan are added as channel managers for everything else.</p><p class="since-why">Managers cannot authorize an app.</p></li>
+          <li><p class="since-what">A teacher who wants an AI voice makes it themselves, in their own account.</p><p class="since-why">ElevenLabs lets a person clone only their own voice.</p></li>
+          <li><p class="since-what">None of the archive is transcribed yet. The Mac transcribes it whenever it is plugged in, once the files are there.</p><p class="since-why">Only the studio sessions have transcripts so far.</p></li>
+        </ol>
+      </section>
+
+      <!-- 03 The goal -->
+      <section class="doc-section" id="goal" aria-labelledby="goal-title">
+        <p class="sec-num"><span class="sec-n">03</span>The goal</p>
+        <h2 class="h2" id="goal-title">The goal, in numbers.</h2>
+        <p class="lead">Five numbers. Four are proposed, and any of them can change. The fifth is Serenity’s condition.</p>
+        <ul class="figures" role="list">
+          <li class="figure">
+            <p class="fig-n">25 <small>episodes</small></p>
+            <p class="fig-what">Archive episodes live by Fri 6 Nov, each a talk, or a stretch of one, where a teacher speaks alone.</p>
+            <p class="fig-check">Counted when the episode is on the podcast feed. YouTube follows after Fri 6 Nov and is not counted.</p>
+            <p class="fig-meta"><span class="tag tag-next">Proposed · count due Fri 9 Oct</span><span>For Gabriel</span></p>
+          </li>
+          <li class="figure">
+            <p class="fig-n">72 <small>hours</small></p>
+            <p class="fig-what">Ready for your yes, after a new studio recording ends.</p>
+            <p class="fig-check">The time you take to approve is yours and is not counted. The clock starts once Prakriti runs on an always-on Mac.</p>
+            <p class="fig-meta"><span class="tag tag-next">Proposed</span><span>For Gabriel</span></p>
+          </li>
+          <li class="figure">
+            <p class="fig-n">2 <small>minutes</small></p>
+            <p class="fig-what">Proposed: under 2 minutes of Gabriel’s time per piece, after Ivan’s listen.</p>
+            <p class="fig-check">Measured by the web app, from opening the review screen to the last approval. Your goal only if you say yes.</p>
+            <p class="fig-meta"><span class="tag tag-next">Proposed</span><span>For Gabriel</span></p>
+          </li>
+          <li class="figure">
+            <p class="fig-n">0 <small>student voices</small></p>
+            <p class="fig-what">No student voices and no student names in anything public.</p>
+            <p class="fig-check">Checked three ways: Ivan listens at the flagged moments of every piece, the final file is checked again, and Gabriel’s talks are released only after his sample talks, including archive talks recorded with students on the call, pass with not one second of a student.</p>
+            <p class="fig-meta"><span>Serenity’s condition</span></p>
+          </li>
+          <li class="figure">
+            <p class="fig-n">5 <small>minutes</small></p>
+            <p class="fig-what">Each review of Serenity’s is prepared so it can take about 5 minutes.</p>
+            <p class="fig-check">Take the time you need; nothing is published to meet a clock.</p>
+            <p class="fig-meta"><span class="tag tag-next">Proposed</span><span>For Serenity</span></p>
+          </li>
+        </ul>
+        <p class="note">The 25 come from teacher-only talks and self-contained stretches of them. Ivan sends the count on Fri 9 Oct, in two numbers: talks from sessions with no students present, and talks from sessions where students only listened, which wait on Serenity. If fewer qualify, the number is reset that day, not later: 10 by Fri 6 Nov, and 25 once Serenity’s talks are cleared. The 25 are counted on the podcast feed; YouTube follows after Fri 6 Nov, at up to two a day. Serenity’s pieces join only if and when she says yes.</p>
+      </section>
+
+      <!-- The filter applies to everything inside .who-scope: the phases and the decisions.
+           Rows carry data-who (whose ask: gabriel, serenity, ivan, or holder for whoever holds
+           the channel's Google account, until Mon 12 Oct names them), data-due (ISO date, when
+           there is one), data-ask (one key per ask, so an ask that appears as a phase row and
+           as a decision is counted once) and data-short (the ask in a few words, for the
+           person's own list). Rows marked data-info are notes, not asks, and are never counted.
+           assets/roadmap.js reads all of them. -->
+      <div class="who-scope" id="who-scope" data-for="everyone">
+
+        <div class="who" id="who" hidden>
+          <span class="who-label" aria-hidden="true">What’s needed from</span>
+          <div class="seg" role="radiogroup" aria-label="What’s needed from">
+            <label><input type="radio" name="who" value="everyone" checked><span>Everyone</span></label>
+            <label><input type="radio" name="who" value="gabriel"><span>Gabriel</span></label>
+            <label><input type="radio" name="who" value="serenity"><span>Serenity</span></label>
+            <label><input type="radio" name="who" value="ivan"><span>Ivan</span></label>
+          </div>
+          <p class="who-sum" id="who-sum" aria-live="polite"></p>
+        </div>
+
+        <!-- One person's asks, in date order, rendered here by assets/roadmap.js when a name is
+             chosen. Empty and hidden otherwise. -->
+        <section class="mine" id="mine" aria-labelledby="mine-title" hidden></section>
+
+        <!-- 04 The phases -->
+        <section class="doc-section no-rule" id="phases" aria-labelledby="phases-title">
+          <p class="sec-num"><span class="sec-n">04</span>The phases</p>
+          <h2 class="h2" id="phases-title">Six phases, podcast first.</h2>
+          <p class="lead">The engine is built once, and its outputs switch on one at a time. Each phase ends with a check anyone can look at.</p>
+
+          <p class="phase-tools"><button class="btn btn-quiet" type="button" id="phases-toggle" hidden>Open All Phases</button></p>
+
+          <div class="phases">
+
+            <!-- Phase 0 -->
+            <details class="phase is-now" id="phase-0" aria-labelledby="ph-name-0" open data-end="2026-10-16" data-end-label="Fri 16 Oct">
+              <summary>
+                <div class="ph-sum">
+                  <span class="ph-n" aria-hidden="true">0</span>
+                  <div class="ph-head">
+                    <h3 class="ph-name" id="ph-name-0"><span class="sr-only">Phase 0: </span>Ground</h3>
+                    <p class="meta ph-dates">Thu 8 Oct to Fri 16 Oct</p>
+                  </div>
+                  <div class="ph-side">
+                    <span class="tag tag-now">Now</span>
+                    <span class="ph-count" hidden></span>
+                    <span class="ph-toggle" aria-hidden="true"></span>
+                  </div>
+                </div>
+              </summary>
+              <div class="ph-body">
+                <p class="ph-goal">The front door goes up, every question that blocks the build is asked, and Prakriti starts noticing recordings.</p>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 0, </span>What it delivers</h4>
+                  <ul class="deliv" role="list">
+                    <li><p class="meta">Thu 8 Oct</p><p>The front page and this roadmap, written.</p></li>
+                    <li><p class="meta">Mon 12 Oct</p><p>Three short scripts of about 30 words each, for the intro, the outro and a 5‑second mid‑roll.</p></li>
+                    <li><p class="meta">From Mon 12 Oct</p><p>The complete videos already on Ivan’s Mac checked and listed. Private coaching calls are listed and left untouched.</p></li>
+                    <li><p class="meta">Wed 14 Oct<br>target</p><p>Prakriti, on Ivan’s Mac, notices a finished recording in the studio folder, waits until the file is complete, and checks that it has sound.</p></li>
+                    <li><p class="meta">Fri 16 Oct</p><p>One notification per recording that updates in place. You hear about a silent recording the same day the Mac that runs Prakriti sees it. Clips under a minute are filed quietly as tests.</p></li>
+                    <li><p class="meta">Fri 16 Oct</p><p>A list of all 958 archive videos, from the channel’s own records. Titles are kept private, since some may name students.</p></li>
+                  </ul>
+                </div>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 0, </span>What is needed, and from whom</h4>
+                  <p class="ph-empty" hidden></p>
+                  <ul class="needs" role="list">
+                    <li class="need" data-who="ivan" data-due="2026-10-09" data-ask="i-messages" data-short="Send each of you one message"><p class="owner">Ivan</p><p class="act">Send each of you one message: questions with suggested answers. For Gabriel: the count of talks that qualify, with and without sessions where students only listened; the show name and listener ask; and one line, reply “yes to the suggestions”. For Serenity: a first look at the archive and a request to meet.</p><p class="meta when">Fri 9 Oct</p></li>
+                    <li class="need" data-who="ivan" data-due="2026-10-09" data-ask="weekly-call" data-short="Propose a weekly Yoga Marga call"><p class="owner">Ivan</p><p class="act">Propose a weekly Yoga Marga call.</p><p class="meta when">Fri 9 Oct</p></li>
+                    <li class="need" data-who="ivan" data-due="2026-10-09" data-ask="i-transcripts" data-short="Move the old transcripts to Prakriti’s private store"><p class="owner">Ivan</p><p class="act">Move the old transcripts out of the shared folder into Prakriti’s private store.</p><p class="meta when">Fri 9 Oct</p></li>
+                    <li class="need" data-who="gabriel" data-due="2026-10-12" data-ask="g-first" data-short="Say yes, or not yet, to podcast first, the count and the 2 minutes"><p class="owner">Gabriel</p><p class="act">Say yes, or not yet, to podcast first starting with your Sun 6 Sep talk, to the count, and to the proposed 2 minutes.</p><p class="meta when">Mon 12 Oct, or at the studio visit if sooner</p></li>
+                    <li class="need" data-who="serenity" data-due="2026-10-12" data-ask="channel-owner" data-short="Confirm the account that owns the school’s channel"><p class="owner">Serenity</p><p class="act">Confirm you hold the school’s contact account that owns the YouTube channel, who else can sign in to it, and whether the channel is in the YouTube Partner Program. The school’s email runs on Google Workspace (checked from its public mail records).</p><p class="meta when">Mon 12 Oct</p></li>
+                    <li class="need" data-who="ivan" data-due="2026-10-12" data-ask="i-redcircle" data-short="Check whether RedCircle can forward listeners"><p class="owner">Ivan</p><p class="act">Check whether RedCircle can forward listeners to a new feed.</p><p class="meta when">Mon 12 Oct</p></li>
+                    <li class="need" data-who="ivan" data-due="2026-10-12" data-ask="i-listing" data-short="Check how long Apple Podcasts and Spotify take to list a new show"><p class="owner">Ivan</p><p class="act">Check how long Apple Podcasts and Spotify take to list a new show.</p><p class="meta when">Mon 12 Oct</p></li>
+                    <li class="need" data-who="holder" data-due="2026-10-14" data-ask="takeout" data-short="Request a fresh Google Takeout of the channel, with Ivan beside you"><p class="owner">The account holder</p><p class="act">Request a fresh Google Takeout of the channel. The parts download over one to three days on Ivan’s Mac, on power and a wired network, and Ivan sits beside you to sign in. Skipped if the files are already there. Not needed for the first episode.</p><p class="meta when">Wed 14 Oct</p></li>
+                    <li class="need" data-who="ivan serenity" data-due="2026-10-16" data-ask="meet" data-short="Meet Ivan: the first look, the passages that name you, three questions"><p class="owner">Ivan and Serenity</p><p class="act">Meet for 30 to 45 minutes: the first look at the archive, the passages of the Sun 6 Sep talk that name you, the draft show description, and three questions needed by Fri 16 Oct.</p><p class="meta when">Week of <span class="nw">Mon 12 Oct</span></p></li>
+                    <li class="need" data-who="gabriel" data-due="2026-10-15" data-ask="g-name" data-short="Name the show and the one listener ask"><p class="owner">Gabriel</p><p class="act">Name the show and the one thing a listener should do next. Ivan brings three suggested names and two suggested asks.</p><p class="meta when">The day before the studio visit</p></li>
+                    <li class="need" data-who="ivan" data-due="2026-10-16" data-ask="visit" data-short="Visit the studio with Gabriel"><p class="owner">Ivan</p><p class="act">Visit the studio with Gabriel: set each microphone and Zoom on separate tracks in a format that survives a crash, make a 2‑minute test, note the studio Mac and your Mac and iPhone versions, and turn the vertical recording back on for talks.</p><p class="meta when">Week of <span class="nw">Mon 12 Oct</span></p></li>
+                    <li class="need" data-who="gabriel" data-due="2026-10-16" data-ask="intro-rec" data-short="Record the intro, outro, mid‑roll and the two one-line takes"><p class="owner">Gabriel</p><p class="act">Record the intro, outro and 5‑second mid‑roll from three short scripts Ivan brings, with the show name and the listener ask as separate one-line takes, so either can change later.</p><p class="meta when">Same visit</p></li>
+                    <li class="need" data-who="gabriel" data-due="2026-10-16" data-ask="cf-sitting" data-short="Create Yoga Marga’s own Cloudflare account, with Ivan beside you"><p class="owner">Gabriel</p><p class="act">Say yes to the cost of the podcast’s web address, then create Yoga Marga’s own Cloudflare account on a Yoga Marga address and add Serenity and Ivan, with Ivan beside you. Without it, the first episode waits.</p><p class="meta when">Same visit</p></li>
+                    <li class="need" data-who="gabriel" data-due="2026-10-16" data-ask="income" data-short="Decide on the money statements in your Sun 6 Sep talk"><p class="owner">Gabriel</p><p class="act">Decide on the money statements in your Sun 6 Sep talk: two income claims about your own results, one of them the opening line, and one spoken offer near the end. Keep all with a note, cut all, or choose each. With no answer, all are cut, which removes the opening line; your recorded intro then carries the topic.</p><p class="meta when">Fri 16 Oct</p></li>
+                    <li class="need" data-who="ivan" data-due="2026-10-16" data-ask="i-art" data-short="Design the show art and write the show description"><p class="owner">Ivan</p><p class="act">Design the show art and write the show description.</p><p class="meta when">Fri 16 Oct</p></li>
+                    <li class="need" data-who="ivan" data-due="2026-10-16" data-ask="data-note-draft" data-short="Draft the one-page note on the data"><p class="owner">Ivan</p><p class="act">Draft a one-page note on who is responsible for the data.</p><p class="meta when">Fri 16 Oct</p></li>
+                    <li class="need" data-who="ivan" data-due="2026-10-16" data-ask="i-storage" data-short="Turn on cloud storage for finished files"><p class="owner">Ivan</p><p class="act">Turn on cloud storage for finished files. Every upload from the first episode on needs it.</p><p class="meta when">Fri 16 Oct</p></li>
+                    <li class="need" data-who="gabriel" data-ask="sound-check" data-short="A 10-second test recording before each session"><p class="owner">Gabriel</p><p class="act">Make a 10-second test recording before each session and play it back. Once Prakriti runs on an always-on Mac and sign-in is open, it also checks the test for sound and tells you.</p><p class="meta when">From now on</p></li>
+                  </ul>
+                </div>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 0, </span>Done when</h4>
+                  <ol class="done" role="list">
+                    <li>The front page and this roadmap read cleanly on a phone and a computer, in light and dark.</li>
+                    <li>A 2‑minute test recording dropped into the shared folder is noticed, waited for until it is complete, checked for sound, and shown as one notification that updates in place.</li>
+                    <li>A clip under a minute makes no notification at all.</li>
+                    <li>You hear about a silent file the same day the Mac sees it.</li>
+                    <li>A log line is written even when a check finds nothing.</li>
+                    <li>Quitting Prakriti in the middle of a recording, then reopening it, still picks the recording up.</li>
+                  </ol>
+                </div>
+                <p class="not-here"><strong>Not in this phase.</strong> No AI. Nothing published anywhere. Sign-in is not open yet.</p>
+              </div>
+            </details>
+
+            <!-- Phase 1 -->
+            <details class="phase" id="phase-1" aria-labelledby="ph-name-1">
+              <summary>
+                <div class="ph-sum">
+                  <span class="ph-n" aria-hidden="true">1</span>
+                  <div class="ph-head">
+                    <h3 class="ph-name" id="ph-name-1"><span class="sr-only">Phase 1: </span>First light</h3>
+                    <p class="meta ph-dates">Mon 19 Oct to Fri 23 Oct</p>
+                  </div>
+                  <div class="ph-side">
+                    <span class="tag tag-next">Next</span>
+                    <span class="ph-count" hidden></span>
+                    <span class="ph-toggle" aria-hidden="true"></span>
+                  </div>
+                </div>
+              </summary>
+              <div class="ph-body">
+                <p class="ph-goal">One studio talk becomes a live podcast episode, with Gabriel’s yes before it goes out.</p>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 1, </span>What it delivers</h4>
+                  <ul class="deliv" role="list">
+                    <li><p class="meta">Tue 20 Oct</p><p>The podcast feed ready.</p></li>
+                    <li><p class="meta">Wed 21 Oct<br>target</p><p>On the Mac, the Sun 6 Sep talk transcribed, voices checked, music checked, names muted, the sound set for podcast apps, your intro and outro joined, and titles, notes and the checklist drafted. Two versions: one with the passage that names Serenity and one without.</p></li>
+                    <li><p class="meta">Thu 22 Oct</p><p>Gabriel gets a private link to both versions.</p></li>
+                    <li><p class="meta">Fri 23 Oct</p><p>The first episode is live on the show’s feed, uploaded by Ivan, and submitted to Apple Podcasts and Spotify the same hour. It appears in their apps after their review.</p></li>
+                    <li><p class="meta">By Mon 26 Oct</p><p>Sign-in, the review screen and Pause All Publishing, built this week, ready before archive approvals open. Notices come by email until notifications on phones and Macs follow, after Fri 6 Nov.</p></li>
+                  </ul>
+                </div>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 1, </span>What is needed, and from whom</h4>
+                  <p class="ph-empty" hidden></p>
+                  <ul class="needs" role="list">
+                    <li class="need" data-who="ivan" data-due="2026-10-20" data-ask="i-feed" data-short="Have the podcast feed ready"><p class="owner">Ivan</p><p class="act">Have the podcast feed ready.</p><p class="meta when">Tue 20 Oct</p></li>
+                    <li class="need" data-who="serenity" data-due="2026-10-22" data-ask="s-ep1" data-short="Look at or listen to the finished first episode"><p class="owner">Serenity</p><p class="act">Look at or listen to the finished episode from a private link. You will have heard the passages that name you at our first meeting. If there is no reply by the end of Thu 22 Oct, the version without them goes out. If these days do not work, tell Ivan, and the version without them goes.</p><p class="meta when">Wed 21 to<br>Thu 22 Oct</p></li>
+                    <li class="need" data-who="gabriel" data-due="2026-10-22" data-ask="g-ep1" data-short="Say yes to both versions of the first episode"><p class="owner">Gabriel</p><p class="act">Say yes to both versions of the finished episode, by text or email. Serenity’s answer, or no answer, picks which one goes out.</p><p class="meta when">Thu 22 Oct</p></li>
+                    <li class="need" data-who="ivan" data-due="2026-10-23" data-ask="i-upload1" data-short="Upload the first episode, confirm it is live, submit the show"><p class="owner">Ivan</p><p class="act">Upload the first episode, confirm it is live, and submit the show to Apple Podcasts and Spotify within the hour.</p><p class="meta when">Fri 23 Oct</p></li>
+                  </ul>
+                </div>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 1, </span>Done when</h4>
+                  <ol class="done" role="list">
+                    <li>The first episode is live, confirmed by reading the feed itself.</li>
+                    <li>Its loudness, measured on the final file, is what podcast apps expect.</li>
+                    <li>The file plays to its last second.</li>
+                    <li>Ivan listened at the queued moments and the final file passed its privacy check.</li>
+                    <li>Gabriel’s yes is recorded against the exact files.</li>
+                    <li>On the Mac that runs Prakriti, the episode’s one notification moved from New Recording Found to Processing to Ready for Your Yes, updated in place.</li>
+                  </ol>
+                </div>
+                <p class="not-here"><strong>Not in this phase.</strong> No YouTube publishing. No archive episodes. Nothing with students in anything public. No video. Serenity’s voice is not labeled unless her written yes is in. Sign-in opens by Mon 26 Oct.</p>
+              </div>
+            </details>
+
+            <!-- Phase 2 -->
+            <details class="phase" id="phase-2" aria-labelledby="ph-name-2">
+              <summary>
+                <div class="ph-sum">
+                  <span class="ph-n" aria-hidden="true">2</span>
+                  <div class="ph-head">
+                    <h3 class="ph-name" id="ph-name-2"><span class="sr-only">Phase 2: </span>The archive</h3>
+                    <p class="meta ph-dates">Mon 26 Oct to Fri 6 Nov · archive work starts Mon 19 Oct</p>
+                  </div>
+                  <div class="ph-side">
+                    <span class="tag tag-later">Planned</span>
+                    <span class="ph-count" hidden></span>
+                    <span class="ph-toggle" aria-hidden="true"></span>
+                  </div>
+                </div>
+              </summary>
+              <div class="ph-body">
+                <p class="ph-goal">Every archive video is accounted for, the best teacher-only talks go out as podcast episodes, and Serenity, then Gabriel, has the assessment.</p>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 2, </span>What it delivers</h4>
+                  <ul class="deliv" role="list">
+                    <li><p class="meta">Mon 19 Oct</p><p>Archive files on Ivan’s Mac or its archive drive. Transcription runs whenever the Mac is plugged in, day or night, plus two booked nights.</p></li>
+                    <li><p class="meta"></p><p>Every video sorted: duplicates found by their sound, tests skipped, and each one marked as a talk, class, coaching call, guest session or practicum. Private coaching calls are set aside and never prepared for publishing. Music is checked in every file.</p></li>
+                    <li><p class="meta"></p><p>Out‑of‑date details flagged: old offers, closed programs and “enroll now”. Every archive piece says “Recorded in” with the month and year.</p></li>
+                    <li><p class="meta"></p><p>A strong stretch of a longer talk, even five minutes, can become its own episode. A stretch of a class counts as a class until Serenity decides otherwise.</p></li>
+                    <li><p class="meta">Thu 22 Oct<br>target</p><p>The fuller archive assessment for Serenity, from what the videos actually say; then to Gabriel, with a one-paragraph summary, no later than Mon 26 Oct.</p></li>
+                    <li><p class="meta">Mon 26 Oct<br>target</p><p>The shortlist, with how many shortlisted videos show and sound teachers only; approvals open.</p></li>
+                    <li><p class="meta"></p><p>Each approval session’s pieces arrive in one email that morning, never one notice per video.</p></li>
+                    <li><p class="meta"></p><p>Gabriel’s talks are released once his talk samples pass. Serenity’s pieces wait for her own sample, and classes and calls for theirs.</p></li>
+                    <li><p class="meta">Tue 27 or<br>Wed 28 Oct</p><p>The first approved archive episode goes out alone the morning after it is approved. A takedown is tested first on a separate test feed.</p></li>
+                    <li><p class="meta">Fri 30 Oct</p><p>18 live on the podcast feed.</p></li>
+                    <li><p class="meta">Sat 31 Oct to<br>Fri 6 Nov</p><p>One a day on the feed, making 25.</p></li>
+                    <li><p class="meta"></p><p>YouTube follows after Fri 6 Nov: an archive talk already on the channel gets a new title, description, chapters, thumbnail and captions, then goes public after one yes, at most two a day so the channel does not look like a dump of old uploads (yours to change). A video goes public only if its picture and sound are teachers only and no student is named in it; otherwise it becomes a redacted copy, or stays podcast only. Before any video goes public, its comments and any automatic dubbed tracks are checked.</p></li>
+                    <li><p class="meta"></p><p>VeraSales sessions get a private package; nothing is published.</p></li>
+                  </ul>
+                </div>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 2, </span>What is needed, and from whom</h4>
+                  <p class="ph-empty" hidden></p>
+                  <ul class="needs" role="list">
+                    <li class="need" data-who="ivan" data-due="2026-10-22" data-ask="i-assessment" data-short="Send the fuller archive assessment to Serenity, then to Gabriel"><p class="owner">Ivan</p><p class="act">Send the fuller archive assessment to Serenity, then to Gabriel.</p><p class="meta when">Thu 22 Oct target,<br>Mon 26 Oct latest</p></li>
+                    <li class="need" data-who="ivan" data-due="2026-10-23" data-ask="i-sample" data-short="Listen to the privacy sample of Gabriel’s talks"><p class="owner">Ivan</p><p class="act">Listen to the privacy sample of Gabriel’s talks, including archive talks recorded with students on the call.</p><p class="meta when">Thu 22 to<br>Fri 23 Oct</p></li>
+                    <li class="need" data-who="gabriel" data-due="2026-10-26" data-ask="g-assessment" data-short="Read the archive assessment"><p class="owner">Gabriel</p><p class="act">Read the archive assessment.</p><p class="meta when">By Mon 26 Oct</p></li>
+                    <li class="need" data-who="ivan" data-due="2026-10-26" data-ask="i-invites" data-short="Send sign-in invitations the morning sign-in opens"><p class="owner">Ivan</p><p class="act">Send sign-in invitations the morning sign-in opens.</p><p class="meta when">Mon 26 Oct</p></li>
+                    <li class="need" data-who="gabriel" data-due="2026-10-26" data-ask="g-invite" data-short="Accept your sign-in invitation"><p class="owner">Gabriel</p><p class="act">Accept your invitation. Notices come by email for now.</p><p class="meta when">Mon 26 Oct</p></li>
+                    <li class="need" data-who="serenity" data-due="2026-10-26" data-ask="s-invite" data-short="Accept your sign-in invitation"><p class="owner">Serenity</p><p class="act">Accept your invitation. Notices come by email for now.</p><p class="meta when">Mon 26 Oct</p></li>
+                    <li class="need" data-who="ivan" data-due="2026-10-26" data-ask="i-listen" data-short="Listen at the queued moments of every archive piece"><p class="owner">Ivan</p><p class="act">Listen at the queued moments of every archive piece before it reaches its approver. Each listen is logged, and the time it takes is measured on the Sun 6 Sep talk first.</p><p class="meta when">Mon 26 Oct to<br>Thu 5 Nov</p></li>
+                    <li class="need" data-who="gabriel" data-due="2026-10-26" data-ask="g-sessions" data-short="20-minute approval sessions, five of them"><p class="owner">Gabriel</p><p class="act">20-minute approval sessions on Mon 26, Tue 27 and Thu 29 Oct, then Tue 3 and Thu 5 Nov. One can be the weekly call.</p><p class="meta when">Mon 26 Oct to<br>Thu 5 Nov</p></li>
+                    <li class="need" data-who="gabriel" data-due="2026-10-29" data-ask="g-approve" data-short="Approve your pieces, the first 18 by Thu 29 Oct"><p class="owner">Gabriel</p><p class="act">Approve your pieces, the first 18 by Thu 29 Oct.</p><p class="meta when">From Mon 26 Oct</p></li>
+                    <li class="need" data-who="serenity" data-due="2026-10-26" data-ask="s-approve-own" data-short="Approve your own pieces, and the privacy receipts"><p class="owner">Serenity</p><p class="act">Approve your own pieces, and the privacy receipt of anything in which a voice other than the teachers’ was found.</p><p class="meta when">From Mon 26 Oct</p></li>
+                    <li class="need" data-who="serenity" data-due="2026-10-27" data-ask="s-meet2" data-short="Meet Ivan for 30 minutes for the rest of your questions"><p class="owner">Serenity</p><p class="act">Meet Ivan for 30 minutes after the fuller assessment, for the rest of your questions, needed by Fri 30 Oct.</p><p class="meta when">Tue 27 Oct</p></li>
+                    <li class="need" data-who="holder" data-due="2026-10-30" data-ask="consent-click" data-short="One sitting with Ivan: password, 2-Step Verification, dubbing, Google consent"><p class="owner">The account holder</p><p class="act">With Ivan beside you, in one sitting: change the account’s password, turn on 2‑Step Verification, set automatic dubbing to Publish manually, then give Prakriti’s Google consent once, after seeing a screenshot of the screen. Google’s screen will say the app could edit and delete videos; Prakriti’s code has no delete step, and you can withdraw access any time in your Google Account under third-party access. Ivan never needs the password. Prakriti’s YouTube tests run in the same sitting.</p><p class="meta when">Week of <span class="nw">Mon 26 Oct</span></p></li>
+                    <li class="need" data-who="ivan gabriel" data-due="2026-11-06" data-ask="always-on" data-short="Decide which always‑on Mac runs Prakriti"><p class="owner">Ivan and Gabriel</p><p class="act">Decide which always‑on Mac runs Prakriti.</p><p class="meta when">Fri 6 Nov</p></li>
+                  </ul>
+                </div>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 2, </span>Done when</h4>
+                  <ol class="done" role="list">
+                    <li>25 archive episodes live on the podcast feed by Fri 6 Nov, each confirmed by reading the feed.</li>
+                    <li>Every one of the 958 accounted for: kept, duplicate, test, set aside, or shortlisted.</li>
+                    <li>Gabriel’s talk samples pass: not one second of a student’s speech labeled as a teacher, and every student name muted. Serenity’s pieces wait for her own sample. Classes and calls stay private until their own samples pass.</li>
+                    <li>The archive assessment delivered to Serenity, then to Gabriel.</li>
+                    <li>The shortlist states how many archive videos can go to YouTube.</li>
+                    <li>Ivan’s listening time per piece is measured and written down.</li>
+                  </ol>
+                </div>
+                <p class="not-here"><strong>Not in this phase.</strong> No classes with students in public. No private calls, ever. No guest teachers in public. Nothing of Serenity’s without her yes. No shorts from the archive. No archive videos made public on YouTube; that follows after Fri 6 Nov.</p>
+              </div>
+            </details>
+
+            <!-- Phase 3 -->
+            <details class="phase" id="phase-3" aria-labelledby="ph-name-3">
+              <summary>
+                <div class="ph-sum">
+                  <span class="ph-n" aria-hidden="true">3</span>
+                  <div class="ph-head">
+                    <h3 class="ph-name" id="ph-name-3"><span class="sr-only">Phase 3: </span>The studio package</h3>
+                    <p class="meta ph-dates">Mon 9 Nov to Mon 30 Nov</p>
+                  </div>
+                  <div class="ph-side">
+                    <span class="tag tag-later">Planned</span>
+                    <span class="ph-count" hidden></span>
+                    <span class="ph-toggle" aria-hidden="true"></span>
+                  </div>
+                </div>
+              </summary>
+              <div class="ph-body">
+                <p class="ph-goal">Studio sessions get the full package, and the 72‑hour clock starts on an always‑on Mac.</p>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 3, </span>What it delivers</h4>
+                  <ul class="deliv" role="list">
+                    <li><p class="meta">From Mon 9 Nov</p><p>Archive talks on YouTube, at most two a day, starting with the videos the shortlist found teachers-only.</p></li>
+                    <li><p class="meta">Set by the Mac decision</p><p>Prakriti moves to the always‑on Mac, as a signed build. The 72‑hour clock starts that day.</p></li>
+                    <li><p class="meta">Fri 13 Nov<br>target</p><p>Edited video for studio talks, with three thumbnail options, chapters and captions. YouTube uploads go up private first, and public after a yes.</p></li>
+                    <li><p class="meta">Fri 20 Nov<br>target</p><p>Shorts, cut from the vertical recording, go to YouTube Shorts after a yes. Prakriti posts nothing to Instagram. If you want to share there yourself, the review screen gives you the file and caption.</p></li>
+                    <li><p class="meta"></p><p>Only if Gabriel wants it: a short intro for each episode, drafted by Prakriti, recorded a week at a time.</p></li>
+                    <li><p class="meta"></p><p>Only if Gabriel wants it: a weekly teleprompter script drafted from his own best moments, fact-checked before he records.</p></li>
+                    <li><p class="meta"></p><p>Find every piece a person appears or is named in, and withdraw it in one step. An export of everything to storage Yoga Marga controls.</p></li>
+                  </ul>
+                </div>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 3, </span>What is needed, and from whom</h4>
+                  <p class="ph-empty" hidden></p>
+                  <ul class="needs" role="list">
+                    <li class="need" data-who="ivan gabriel" data-due="2026-11-06" data-ask="always-on" data-short="Decide which always‑on Mac runs Prakriti"><p class="owner">Ivan and Gabriel</p><p class="act">Choose the always‑on Mac, set it up beside the RAID, and decide where the RAID lives.</p><p class="meta when">Fri 6 Nov</p></li>
+                    <li class="need" data-who="gabriel" data-ask="g-sunday" data-default data-short="Record the Sunday session each week"><p class="owner">Gabriel</p><p class="act">Record the Sunday session each week with your microphone on its own track. A Sunday talk where only you speak can become an episode. A Sunday call where students speak stays private under the student rule.</p><p class="meta when">Each week</p></li>
+                    <li class="need" data-who="ivan gabriel" data-ask="i-new-youtube" data-short="May new studio audio episodes also go to YouTube?"><p class="owner">Ivan and Gabriel</p><p class="act">Archive talks are already on YouTube, so this is only about new studio audio episodes: may they also go to YouTube?</p><p class="meta when">During this phase</p></li>
+                    <li class="need" data-who="serenity" data-ask="s-class-audio" data-default data-short="Only if you choose: audio-only class episodes"><p class="owner">Serenity</p><p class="act">Only if you choose: audio-only class episodes, once your rule is set and a lawyer has read the release.</p><p class="meta when">Your call</p></li>
+                  </ul>
+                </div>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 3, </span>Done when</h4>
+                  <ol class="done" role="list">
+                    <li>Three studio sessions in a row ready for a yes within 72 hours of the recording ending, with Prakriti on the always‑on Mac.</li>
+                    <li>The signed build passes Apple’s check on that Mac.</li>
+                    <li>Every file it makes plays to its last second.</li>
+                  </ol>
+                </div>
+                <p class="not-here"><strong>Not in this phase.</strong> No Library, voices or Spanish. No “publish unless stopped”. Prakriti posts nothing to Instagram or TikTok. No class in public unless Serenity’s rule and a lawyer’s read are both in.</p>
+              </div>
+            </details>
+
+            <!-- Phase 4 -->
+            <details class="phase" id="phase-4" aria-labelledby="ph-name-4">
+              <summary>
+                <div class="ph-sum">
+                  <span class="ph-n" aria-hidden="true">4</span>
+                  <div class="ph-head">
+                    <h3 class="ph-name" id="ph-name-4"><span class="sr-only">Phase 4: </span>The Library and voices</h3>
+                    <p class="meta ph-dates">From Tue 1 Dec</p>
+                  </div>
+                  <div class="ph-side">
+                    <span class="tag tag-later">Planned</span>
+                    <span class="ph-count" hidden></span>
+                    <span class="ph-toggle" aria-hidden="true"></span>
+                  </div>
+                </div>
+              </summary>
+              <div class="ph-body">
+                <p class="ph-goal">Each consenting teacher’s own words become a searchable library, and teachers who say yes get clean recordings of their own voice.</p>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 4, </span>What it delivers</h4>
+                  <ul class="deliv" role="list">
+                    <li><p class="meta">Tue 1 Dec</p><p>The Library starts with Gabriel’s material, if his consent is in.</p></li>
+                    <li><p class="meta">Fri 11 Dec<br>target</p><p>“Ask the archive” answers with only the teacher’s own words, and the second they were said.</p></li>
+                    <li><p class="meta">Fri 18 Dec<br>target</p><p>Gabriel’s voice recordings handed to him, if he said yes, for his own account. Spanish captions and show notes for each teacher who says yes, checked by a Spanish reader.</p></li>
+                    <li><p class="meta"></p><p>A private feed of full classes for enrolled students, if you both approve.</p></li>
+                  </ul>
+                </div>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 4, </span>What is needed, and from whom</h4>
+                  <p class="ph-empty" hidden></p>
+                  <ul class="needs" role="list">
+                    <li class="need" data-who="gabriel" data-due="2026-11-30" data-ask="g-ai" data-default data-short="Whether to make your own AI voice"><p class="owner">Gabriel</p><p class="act">Whether to make your own AI voice, in your own account, under the AI rule below.</p><p class="meta when">Mon 30 Nov</p></li>
+                    <li class="need" data-who="gabriel" data-due="2026-11-30" data-ask="g-library" data-default data-short="Yes or no to the Library using your material"><p class="owner">Gabriel</p><p class="act">Your yes, or no, to the Library using your material. Until you answer, nothing of yours enters the Library.</p><p class="meta when">Before Tue 1 Dec</p></li>
+                    <li class="need" data-who="serenity" data-ask="syllabi" data-default data-short="The three YTT syllabi, whenever ready"><p class="owner">Serenity</p><p class="act">The three YTT syllabi, whenever they are ready.</p><p class="meta when">Whenever ready</p></li>
+                    <li class="need" data-who="serenity" data-ask="s-library" data-default data-short="Yes or no to the Library using your material"><p class="owner">Serenity</p><p class="act">Your yes, or no, to the Library using your material. Until you answer, nothing of yours enters the Library.</p><p class="meta when">When you are ready</p></li>
+                    <li class="need" data-who="gabriel serenity" data-due="2026-11-30" data-ask="private-feed" data-short="Yes or no to a private feed of full classes"><p class="owner">Gabriel and Serenity</p><p class="act">Yes or no to a private feed of full classes for enrolled students.</p><p class="meta when">Mon 30 Nov</p></li>
+                  </ul>
+                </div>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 4, </span>Done when</h4>
+                  <ol class="done" role="list">
+                    <li>20 test questions answered with only the teacher’s own words and working timecodes.</li>
+                    <li>Gabriel’s voice set is at least 30 minutes, checked by listening to 10 random clips.</li>
+                    <li>No material of Serenity’s in any voice set without her signed consent on file.</li>
+                  </ol>
+                </div>
+                <p class="not-here"><strong>Not in this phase.</strong> No answer is ever written in a teacher’s voice; the Library quotes. No AI voice or face of anyone, except under the AI rule below. No Spanish audio or dubbing.</p>
+              </div>
+            </details>
+
+            <!-- Phase 5 -->
+            <details class="phase" id="phase-5" aria-labelledby="ph-name-5">
+              <summary>
+                <div class="ph-sum">
+                  <span class="ph-n" aria-hidden="true">5</span>
+                  <div class="ph-head">
+                    <h3 class="ph-name" id="ph-name-5"><span class="sr-only">Phase 5: </span>Later</h3>
+                    <p class="meta ph-dates">2027, not before Mon 4 Jan</p>
+                  </div>
+                  <div class="ph-side">
+                    <span class="tag tag-later">Planned</span>
+                    <span class="ph-count" hidden></span>
+                    <span class="ph-toggle" aria-hidden="true"></span>
+                  </div>
+                </div>
+              </summary>
+              <div class="ph-body">
+                <p class="ph-goal">Each item switches on alone, with its own yes and its own check.</p>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 5, </span>What it delivers, one item at a time</h4>
+                  <ul class="list" role="list">
+                    <li>A “publish unless stopped within a day” setting. Ivan decides whether it ever exists, after 20 clean approvals of one kind of piece; it applies to a teacher’s pieces only with that teacher’s own yes, and never to other voices.</li>
+                    <li>Posting to Instagram, TikTok, Facebook and LinkedIn through GoHighLevel, with a call to action for each kind of episode.</li>
+                    <li>VeraSales content published through the same engine, with its own approvals. Private packages for VeraSales sessions already exist from Phase 2.</li>
+                    <li>Learning from what performs, so the audience helps pick the clips.</li>
+                    <li>A member library, and a map of which parts of the YTT syllabi the archive covers.</li>
+                    <li>Testimonials and student notes, only with each student’s own written yes.</li>
+                    <li>Spanish audio, or an AI voice or avatar a teacher made themselves, under the AI rule below.</li>
+                  </ul>
+                </div>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 5, </span>What is needed, and from whom</h4>
+                  <p class="ph-empty" hidden></p>
+                  <ul class="needs" role="list">
+                    <li class="need" data-who="gabriel" data-due="2026-11-30" data-ask="ghl" data-default data-short="Check GoHighLevel’s Social Planner"><p class="owner">Gabriel</p><p class="act">Check whether Yoga Marga’s GoHighLevel plan includes the Social Planner, with YouTube connected and approvals.</p><p class="meta when">Mon 30 Nov</p></li>
+                    <li class="need" data-who="gabriel ivan" data-due="2026-11-30" data-ask="vera" data-default data-short="Yes or no to VeraSales content through the engine"><p class="owner">Gabriel and Ivan</p><p class="act">Yes or no to publishing VeraSales content through the same engine.</p><p class="meta when">Mon 30 Nov</p></li>
+                    <li class="need" data-who="ivan" data-due="2026-11-30" data-ask="pus" data-short="Decide whether “publish unless stopped” ever exists"><p class="owner">Ivan</p><p class="act">Decide whether “publish unless stopped” ever exists.</p><p class="meta when">Mon 30 Nov</p></li>
+                  </ul>
+                </div>
+                <div class="ph-part">
+                  <h4 class="ph-h"><span class="sr-only">Phase 5, </span>Done when</h4>
+                  <ol class="done" role="list">
+                    <li>Each item is switched on by itself, with its own check, one at a time.</li>
+                  </ol>
+                </div>
+              </div>
+            </details>
+
+          </div>
+        </section>
+
+        <!-- 05 Decisions -->
+        <section class="doc-section" id="decisions" aria-labelledby="decisions-title">
+          <p class="sec-num"><span class="sec-n">05</span>Decisions for you</p>
+          <h2 class="h2" id="decisions-title">The decisions that are yours.</h2>
+          <p class="lead">Each has a suggested answer, so a yes is enough, and the date it is needed by. Where it is known, it also says what happens if there is no answer by then. Ivan sends these to you on Fri 9 Oct as well.</p>
+
+          <div class="dec-group" id="for-gabriel">
+            <h3 class="dec-group-title">For Gabriel</h3>
+            <p class="dec-intro">Reply “yes to the suggestions” to accept every row below that has one, or name the ones you would change.</p>
+
+            <h4 class="dec-sub">Needs your answer</h4>
+            <ul class="decs" role="list">
+              <li class="dec" data-who="gabriel" data-due="2026-10-12" data-ask="g-first" data-short="Say yes, or not yet, to podcast first, the count and the 2 minutes"><p class="meta dec-when">Mon 12 Oct, or at the studio visit</p><div><p class="dec-q">Podcast first, as agreed. The first episode is your studio talk of Sun 6 Sep, because it is already on the Mac and has one voice; Serenity sees it first, because it mentions her. Archive episodes follow from the week of Mon 26 Oct. Yes?</p><p class="dec-a"><strong>Suggested:</strong> Yes.</p></div></li>
+              <li class="dec" data-who="gabriel" data-due="2026-10-12" data-ask="g-first" data-short="Say yes, or not yet, to podcast first, the count and the 2 minutes"><p class="meta dec-when">Mon 12 Oct, or at the studio visit</p><div><p class="dec-q">25 archive talks as podcast episodes by Fri 6 Nov, 72 hours once Prakriti runs on an always-on Mac, and a proposed under 2 minutes of your time per piece after Ivan’s listen. Still the numbers?</p><p class="dec-a"><strong>Suggested:</strong> Yes, if the count supports it. Ivan sends two counts with this question: talks from sessions with no students present, and with sessions where students only listened, which wait on Serenity. If fewer qualify: 10 by Fri 6 Nov, your own figure from 7 Oct, and 25 once Serenity’s talks are cleared.</p></div></li>
+              <li class="dec" data-who="gabriel" data-due="2026-10-15" data-ask="g-name" data-short="Name the show and the one listener ask"><p class="meta dec-when">The day before the studio visit</p><div><p class="dec-q">What is the show called, and what is the one thing a listener should do next?</p><p class="dec-a"><strong>Suggested:</strong> Ivan brings three names and two asks to choose from. Each is recorded as its own short take, so either can change later.</p><p class="dec-if">No answer: episodes go out with no ask.</p></div></li>
+              <li class="dec" data-who="gabriel" data-due="2026-10-16" data-ask="income" data-short="Decide on the money statements in your Sun 6 Sep talk"><p class="meta dec-when">Fri 16 Oct</p><div><p class="dec-q">The Sun 6 Sep talk has two income claims about your own results, one of them in its opening line, and one spoken offer near the end. Keep all with a note, cut all, or choose each?</p><p class="dec-a"><strong>Suggested:</strong> Cut them, or keep them with a plain note in your words.</p><p class="dec-if">No answer by Fri 16 Oct: all are cut, which removes the opening line; your recorded intro then carries the topic.</p></div></li>
+              <li class="dec" data-who="gabriel" data-due="2026-10-16" data-ask="g-show" data-short="Say yes to the podcast’s home and the cost of its address"><p class="meta dec-when">Fri 16 Oct</p><div><p class="dec-q">A new Yoga Marga show, which you name, on a web address Yoga Marga buys just for the podcast, in a new Cloudflare account on a Yoga Marga address, separate from VeraSales, with you as owner and Serenity and Ivan added?</p><p class="dec-a"><strong>Suggested:</strong> Yes. Your RedCircle show stays as it is, and Ivan checks whether RedCircle can send its listeners to the new show. The school’s website and email are never touched. Ivan sets everything up and does every upload; your part is one sitting at the studio visit.</p><p class="dec-if">No answer by Fri 16 Oct: the first episode waits until the show has its home.</p></div></li>
+              <li class="dec" data-who="gabriel" data-due="2026-10-16" data-ask="g-voice" data-short="Your written yes, or no, to a 2 to 3 minute voice clip"><p class="meta dec-when">Fri 16 Oct<br>requested</p><div><p class="dec-q">May Prakriti learn your voice from a 2 to 3 minute clip, kept only on the Mac that runs Prakriti, so it can tell you apart from students? Laws in some states treat a voice sample like a fingerprint, so this needs your written yes.</p><p class="dec-a"><strong>Suggested:</strong> Yes, in writing, by email from your own address.</p><p class="dec-if">If not: Ivan labels your talks by hand, which limits how many of the 25 can be ready.</p></div></li>
+            </ul>
+
+            <h4 class="dec-sub">Unless you say otherwise</h4>
+            <ul class="decs" role="list">
+              <li class="dec" data-who="gabriel" data-due="2026-10-16" data-ask="which-channel" data-default data-short="Say which channel holds the 958 recordings"><p class="meta dec-when">Fri 16 Oct</p><div><p class="dec-q">Which channel holds the 958 recordings, and does your personal channel hold Yoga Marga teaching?</p><p class="dec-a"><strong>Suggested:</strong> The school channel only, for the archive.</p><p class="dec-if">No answer by Fri 16 Oct: the suggestion stands.</p></div></li>
+              <li class="dec" data-who="gabriel" data-due="2026-10-16" data-ask="intro-rec" data-default data-short="Record the intro, outro, mid‑roll and the two one-line takes"><p class="meta dec-when">Fri 16 Oct</p><div><p class="dec-q">Record the intro, outro and mid‑roll during Ivan’s studio visit, from three scripts of about 30 words?</p><p class="dec-a"><strong>Suggested:</strong> Yes. With no AI voice, no AI label is needed on the episode. An ElevenLabs version stays your option, labeled as AI.</p></div></li>
+              <li class="dec" data-who="gabriel" data-due="2026-10-16" data-ask="release" data-default data-short="How the 25 are released"><p class="meta dec-when">Fri 16 Oct</p><div><p class="dec-q">How should the 25 be released?</p><p class="dec-a"><strong>Suggested:</strong> The first approved one goes out alone the next morning, 18 are live by Fri 30 Oct, then one a day to Fri 6 Nov. For 10: three by Fri 30 Oct, then one a day. On YouTube, after Fri 6 Nov, at most two archive videos a day, so the channel does not look like a dump of old uploads; the cap is yours to change.</p><p class="dec-if">No answer by Fri 16 Oct: the suggestion stands.</p></div></li>
+              <li class="dec" data-who="gabriel" data-due="2026-10-16" data-ask="g-approver" data-default data-short="Who may approve your solo talks"><p class="meta dec-when">Fri 16 Oct</p><div><p class="dec-q">Who may approve your solo talks: you only, or you or Ivan?</p><p class="dec-a"><strong>Suggested:</strong> Either of you, so a busy week never holds a release. Serenity’s pieces and anything with other voices stay with her.</p><p class="dec-if">No answer by Fri 16 Oct: you approve your own; Ivan does not.</p></div></li>
+              <li class="dec" data-who="gabriel" data-due="2026-10-16" data-ask="g-life" data-default data-short="Should passages about your own life need your yes?"><p class="meta dec-when">Fri 16 Oct</p><div><p class="dec-q">Should a passage about your own life (family, health, grief or money) need your yes, whoever’s piece it is? This is separate from the income claims, so one passage is never held twice.</p><p class="dec-a"><strong>Suggested:</strong> Yes.</p><p class="dec-if">Until you answer: such passages are held.</p></div></li>
+              <li class="dec" data-who="gabriel" data-due="2026-10-18" data-ask="g-sunday" data-default data-short="Record the Sunday session each week"><p class="meta dec-when">Sun 18 Oct</p><div><p class="dec-q">Record the Sunday session each week from Sun 18 Oct, with your microphone on its own track?</p><p class="dec-a"><strong>Suggested:</strong> Yes. A Sunday talk where only you speak can become an episode. A Sunday call where students speak stays private under the student rule.</p><p class="dec-if">No answer: the first episode does not wait for it.</p></div></li>
+              <li class="dec" data-who="gabriel" data-due="2026-10-30" data-ask="g-hooks" data-default data-short="Titles and hooks in your own words?"><p class="meta dec-when">Fri 30 Oct</p><div><p class="dec-q">Titles and hooks stay in your own words, with no engagement bait?</p><p class="dec-a"><strong>Suggested:</strong> Yes.</p><p class="dec-if">No answer by Fri 30 Oct: the suggestion stands.</p></div></li>
+              <li class="dec" data-who="gabriel" data-due="2026-11-06" data-ask="g-frames" data-default data-short="Real frames of you for YouTube thumbnails?"><p class="meta dec-when">Fri 6 Nov</p><div><p class="dec-q">Real frames of you for YouTube thumbnails, from Fri 6 Nov?</p><p class="dec-a"><strong>Suggested:</strong> Yes.</p><p class="dec-if">Until you answer: type-only thumbnails.</p></div></li>
+              <li class="dec" data-who="gabriel" data-due="2026-11-06" data-ask="g-states" data-default data-short="Which states and countries your students are in"><p class="meta dec-when">Fri 6 Nov</p><div><p class="dec-q">Where are your students and listeners: which states and countries?</p><p class="dec-a"><strong>Suggested:</strong> A short list is enough. It decides which privacy laws apply.</p></div></li>
+              <li class="dec" data-who="gabriel" data-due="2026-11-30" data-ask="g-library" data-default data-short="Yes or no to the Library using your material"><p class="meta dec-when">Mon 30 Nov</p><div><p class="dec-q">Your yes, or no, to the Library using your material.</p><p class="dec-a"><strong>Suggested:</strong> Your choice in Phase 4.</p><p class="dec-if">Until you answer: nothing of yours enters the Library.</p></div></li>
+              <li class="dec" data-who="gabriel" data-due="2026-11-30" data-ask="ghl" data-default data-short="Check GoHighLevel’s Social Planner"><p class="meta dec-when">Mon 30 Nov</p><div><p class="dec-q">Does Yoga Marga’s GoHighLevel plan include the Social Planner, with YouTube connected and approvals?</p><p class="dec-a"><strong>Suggested:</strong> Check before Phase 5.</p></div></li>
+              <li class="dec" data-who="gabriel" data-due="2026-11-30" data-ask="g-ai" data-default data-short="Whether to make your own AI voice"><p class="meta dec-when">Mon 30 Nov</p><div><p class="dec-q">Would you make your own AI voice, in your own account, later?</p><p class="dec-a"><strong>Suggested:</strong> Your choice, in Phase 4, under the AI rule in What it will never do. An intro in your own AI voice stays your option at any time, labeled as AI.</p></div></li>
+              <li class="dec" data-who="gabriel" data-due="2026-11-30" data-ask="vera" data-default data-short="Yes or no to VeraSales content through the engine"><p class="meta dec-when">Mon 30 Nov</p><div><p class="dec-q">VeraSales content through the same engine?</p><p class="dec-a"><strong>Suggested:</strong> Private packages now; publishing, with its own approvals, in Phase 5.</p></div></li>
+              <li class="dec" data-who="gabriel" data-ask="g-instagram" data-default data-short="Should Prakriti ever post to Instagram?"><p class="meta dec-when">Before Phase 5</p><div><p class="dec-q">Instagram: should Prakriti ever post there?</p><p class="dec-a"><strong>Suggested:</strong> Not before Phase 5, and nothing is asked of you there until then.</p></div></li>
+            </ul>
+
+            <h4 class="dec-sub">For information</h4>
+            <ul class="decs" role="list">
+              <li class="dec dec-info" data-who="gabriel" data-info><p class="meta dec-when">For information</p><div><p class="dec-q">One story about a student is cut from episode 1 under the student rule, unless Serenity answers otherwise first.</p></div></li>
+              <li class="dec dec-info" data-who="gabriel" data-info><p class="meta dec-when">For information</p><div><p class="dec-q">Short teacher-only stretches from archive classes: waiting on Serenity’s answer.</p></div></li>
+              <li class="dec dec-info" data-who="gabriel" data-info><p class="meta dec-when">For information</p><div><p class="dec-q">Yin classes recorded with your microphone on its own track can become audio episodes from Phase 3, under the student rule.</p></div></li>
+              <li class="dec dec-info" data-who="gabriel" data-info><p class="meta dec-when">For information</p><div><p class="dec-q">The Yoga Marga website redesign from the 7 Oct page is separate from Prakriti; Ivan asks about it on the weekly call.</p></div></li>
+            </ul>
+          </div>
+
+          <div class="dec-group" id="for-serenity">
+            <h3 class="dec-group-title">For Serenity</h3>
+            <p class="dec-intro">Your two conditions are students’ privacy and accuracy. On 24 Sep the plan for privacy was software that tells voices apart. Tried on 7 Oct on the recording of the Sun 20 Sep call, it labeled a student as a teacher, so it cannot carry that promise alone. For new studio recordings, each microphone records on its own track from Ivan’s studio visit. The first episode and every archive piece have one mixed microphone, so for them two things carry it: anything uncertain is cut, and Ivan listens at the moments Prakriti is least sure about, including the opening and closing minutes. That is a check, not a guarantee. Ivan would like to meet you twice: in the week of Mon 12 Oct, after you have seen his first look at the archive, and for 30 minutes on Tue 27 Oct, after the fuller assessment. Until you answer, the most private setting applies, and you can change any answer later.</p>
+
+            <h4 class="dec-sub">Needed by Mon 12 Oct</h4>
+            <ul class="decs" role="list">
+              <li class="dec" data-who="serenity" data-due="2026-10-12" data-ask="channel-owner" data-short="Confirm the account that owns the school’s channel"><p class="meta dec-when">Mon 12 Oct</p><div><p class="dec-q">Confirm you hold the school’s contact account that owns the YouTube channel, who else can sign in to it, and whether the channel is in the YouTube Partner Program. The school’s email runs on Google Workspace (checked from its public mail records).</p><p class="dec-a"><strong>Suggested:</strong> If it is yours, you add Gabriel and Ivan as channel managers, so studio steps never wait on one person.</p></div></li>
+            </ul>
+
+            <h4 class="dec-sub">Asked at our first meeting, needed by Fri 16 Oct</h4>
+            <ul class="decs" role="list">
+              <li class="dec" data-who="serenity" data-due="2026-10-16" data-ask="s-names" data-short="Muting students’ names, and a list of names to mute"><p class="meta dec-when">Fri 16 Oct</p><div><p class="dec-q">When you or Gabriel say a student’s name while teaching, should it be muted in anything public? And could you send a list of students’ names, so Prakriti can mute them?</p><p class="dec-a"><strong>Suggested:</strong> Yes, always, from a list kept only on the Mac that runs Prakriti. Until yours arrives, Prakriti builds one there from the archive’s own descriptions, only with your yes, and deletes it when yours arrives.</p><p class="dec-if">Until you answer: an archive piece from a session where students were present cannot be approved.</p></div></li>
+              <li class="dec" data-who="serenity" data-due="2026-10-16" data-ask="s-listened" data-short="Talks where students only listened"><p class="meta dec-when">Fri 16 Oct</p><div><p class="dec-q">May a talk where only you or Gabriel speak be used even if students listened on the call, once names are muted from your list and Ivan has listened?</p><p class="dec-a"><strong>Suggested:</strong> Yes, with your list.</p><p class="dec-if">Until you answer: nothing from a session where students were present goes public.</p></div></li>
+              <li class="dec" data-who="serenity" data-due="2026-10-16" data-ask="s-claude" data-short="May Claude, Sonny included, read the teachers’ words?"><p class="meta dec-when">Fri 16 Oct</p><div><p class="dec-q">Sonny, the assistant Ivan works with and who is writing your assessment, is Claude, by Anthropic. May Claude, Sonny included, read the teachers’ words alone, as text with every name replaced, to draft titles, notes and your assessment?</p><p class="dec-a"><strong>Suggested:</strong> Yes. Prakriti never uploads a raw recording or any removed audio.</p><p class="dec-if">If not: your assessment is built from counts on the Mac, and titles and notes for your pieces are drafted on the Mac or by Ivan; Gabriel’s are unaffected. Students’ words are never shown to it either way. Until you answer: none of your teaching goes to Claude, Sonny included.</p></div></li>
+            </ul>
+
+            <h4 class="dec-sub">Asked on Tue 27 Oct, needed by Fri 30 Oct</h4>
+            <ul class="decs" role="list">
+              <li class="dec" data-who="serenity" data-due="2026-10-30" data-ask="s-voices" data-short="Should anyone ever hear a student’s voice?"><p class="meta dec-when">Fri 30 Oct</p><div><p class="dec-q">In anything public, should anyone ever hear a student’s voice?</p><p class="dec-a"><strong>Suggested:</strong> No. Only your voice and Gabriel’s go public.</p><p class="dec-if">Until you answer: no student’s voice is in anything public.</p></div></li>
+              <li class="dec" data-who="serenity" data-due="2026-10-30" data-ask="s-retold" data-short="Stories you retell about a student"><p class="meta dec-when">Fri 30 Oct</p><div><p class="dec-q">If you retell something a student shared, should that part be cut, even though it is your voice?</p><p class="dec-a"><strong>Suggested:</strong> Cut it, and you see anything borderline first.</p><p class="dec-if">Until you answer: any story a teacher retells about a student is cut.</p></div></li>
+              <li class="dec" data-who="serenity" data-due="2026-10-30" data-ask="s-own" data-short="Your own archive talks as episodes and on YouTube"><p class="meta dec-when">Fri 30 Oct</p><div><p class="dec-q">May your own archive talks go out as podcast episodes, and on the school’s YouTube channel, each with your yes? Or would you rather they become fresh recordings?</p><p class="dec-a"><strong>Suggested:</strong> Podcast yes, piece by piece; YouTube once you have approved your first five.</p><p class="dec-if">Until you answer: none of your teaching is published.</p></div></li>
+            </ul>
+
+            <!-- Every other question for Serenity, collapsed: each has its most private setting until
+                 she answers, so none of them blocks anything, and each reads "Any time; the safe
+                 setting holds" unless it truly gates something (round 3, S12 and B9). The count in the
+                 summary is the number of rows below; assets/roadmap.js does not change it. -->
+            <details class="dec-more" aria-labelledby="dec-more-q">
+              <summary><span class="dec-more-q" id="dec-more-q">Each has a safe setting until you answer <span class="dec-more-n">(23)</span></span><span class="faq-toggle" aria-hidden="true"></span></summary>
+              <ul class="decs" role="list">
+              <li class="dec" data-who="serenity" data-due="2026-10-30" data-ask="s-checklist" data-default data-short="Is a short accuracy checklist enough for older recordings?"><p class="meta dec-when">Fri 30 Oct</p><div><p class="dec-q">For older recordings, is a short checklist of 5 to 10 facts per piece (dates, names, numbers, Sanskrit terms), plus “Recorded in” with the month and year, enough?</p><p class="dec-a"><strong>Suggested:</strong> Yes.</p><p class="dec-if">Until you answer: no older recording of yours is published.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-playlists" data-default data-short="May Prakriti touch the private playlist and test uploads?"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">May Prakriti touch the “Private Meetings” playlist and the untitled “Recording Testing” uploads?</p><p class="dec-a"><strong>Suggested:</strong> Private meetings are never opened. The untitled uploads are sorted on the Mac first.</p><p class="dec-if">Until you answer: the private meetings are never opened, and the untitled uploads are listed from their titles and dates only, never opened.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-copies" data-default data-short="What happens to the private-call copies on Ivan’s Mac"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">Some private calls are already on Ivan’s Mac, and a fresh export would copy them again. What should happen to those copies?</p><p class="dec-a"><strong>Suggested:</strong> Moved, unopened, to the encrypted archive drive the day it is attached, and deleted only with your yes once the fresh export exists.</p><p class="dec-if">Until you answer: they stay where they are, never opened.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-approve" data-default data-short="Do you approve every piece in your voice?"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">Do you want to approve every piece in your voice?</p><p class="dec-a"><strong>Suggested:</strong> Yes, every piece in your voice, for now. If you ever hand some over, you name the person and the kind of piece, and you can take it back.</p><p class="dec-if">Until you answer: you approve every piece in your voice.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-stretches" data-default data-short="May teacher-only stretches of archive classes become episodes?"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">May a stretch where only you or Gabriel speak, cut from an archive class, with no student heard, named, described or answered, become an episode after the privacy check and your receipt? Full classes stay private.</p><p class="dec-a"><strong>Suggested:</strong> Not yet. Only after the class samples pass with not one second of a student labeled as a teacher, and a lawyer has read the release; then with your receipt on each.</p><p class="dec-if">Until you answer: class stretches stay private.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-life" data-default data-short="Should passages about your own life need your yes?"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">Should a passage about your own life (family, health, grief or money) need your yes, whoever’s piece it is?</p><p class="dec-a"><strong>Suggested:</strong> Yes.</p><p class="dec-if">Until you answer: such a passage is held for you.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-hold" data-default data-short="How long a piece that names you waits for you"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">When a piece names you, how long should it wait for you to look?</p><p class="dec-a"><strong>Suggested:</strong> 48 hours. If you have not looked by then, the passage that names you is cut and the piece goes ahead.</p><p class="dec-if">Until you answer: 48 hours, then the passage that names you is cut.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-sessions" data-default data-short="Would two 20-minute sessions a week work?"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">If you have pieces waiting, would two 20-minute sessions a week, Tuesday and Thursday, work?</p><p class="dec-a"><strong>Suggested:</strong> Yes, from your first waiting piece.</p><p class="dec-if">Until you answer: nothing is booked for you.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-frames" data-default data-short="Real video frames of you for thumbnails?"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">Real video frames of you for thumbnails?</p><p class="dec-a"><strong>Suggested:</strong> Yes. AI-made pictures of you never happen, under the AI rule in What it will never do.</p><p class="dec-if">Until you answer: no frames of you; type-only thumbnails.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-minors" data-default data-short="Has anyone under 18 been in a class?"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">Has anyone under 18 been in a class?</p><p class="dec-a"><strong>Suggested:</strong> Anything with a minor stays private, and enrollment asks for age from now on.</p><p class="dec-if">Until you answer: every class stays private.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-guests" data-default data-short="Do guest teachers have an agreement about recordings?"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">Do guest teachers have any agreement about recordings, and who would ask them?</p><p class="dec-a"><strong>Suggested:</strong> Their recordings stay private until you have asked them.</p><p class="dec-if">Until you answer: guest teachers’ recordings stay private.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-hear" data-default data-short="How you want to check a piece"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">How do you want to check a piece: listening on your phone to the few teacher moments Prakriti is least sure about, the written list of what was removed, or both? Removed student audio never leaves the Mac.</p><p class="dec-a"><strong>Suggested:</strong> Both.</p><p class="dec-if">Until you answer: both.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-rule-scope" data-default data-short="Does your rule cover Gabriel’s classes and the Sunday calls?"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">Does your rule cover Gabriel’s classes and the Sunday calls too?</p><p class="dec-a"><strong>Suggested:</strong> Yes, one rule for every class and call.</p><p class="dec-if">Until you answer: every class and call stays private.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-class-audio" data-default data-short="Only if you choose: audio-only class episodes"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">Audio-only class episodes, once your rule is set and a lawyer has read the release?</p><p class="dec-a"><strong>Suggested:</strong> Your call, in Phase 3 at the earliest.</p><p class="dec-if">Until you answer: every class stays private.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-ai" data-default data-short="Would you ever want an AI version of your voice?"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">Would you ever want an AI version of your voice?</p><p class="dec-a"><strong>Suggested:</strong> Nothing for now. Your choice, under the AI rule in What it will never do.</p><p class="dec-if">Until you answer: no AI version of your voice.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-form" data-default data-short="What students agreed to, and the current form"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">What did students agree to about recordings when they enrolled? Could you send the current form?</p><p class="dec-a"><strong>Suggested:</strong> A new form with a separate box for each use, in English and Spanish, read by a lawyer first.</p><p class="dec-if">Until you answer: every class stays private.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-keep" data-default data-short="How long raw class recordings are kept"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">How long should raw class recordings with students be kept?</p><p class="dec-a"><strong>Suggested:</strong> For as long as they are useful to enrolled students, reviewed once a year.</p><p class="dec-if">Until you answer: from classes and calls, Prakriti keeps only the teachers’ words, and marks other voices by their times, never their words.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="syllabi" data-default data-short="The three YTT syllabi, whenever ready"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">Are “YTT V1, V2, V3” in Skool the three syllabi?</p><p class="dec-a"><strong>Suggested:</strong> Send them whenever they are ready. They let Prakriti show which parts of the training the archive already covers.</p><p class="dec-if">Until you answer: nothing waits on them.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-spanish" data-default data-short="Spanish captions and notes of your teaching?"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">Should your teaching have Spanish captions and show notes?</p><p class="dec-a"><strong>Suggested:</strong> Only with your yes, checked by a Spanish reader.</p><p class="dec-if">Until you answer: none of your teaching is in Spanish.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-yacep" data-default data-short="Continuing-education courses from the archive?"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">Should archive material become continuing-education courses for teachers registered with Yoga Alliance?</p><p class="dec-a"><strong>Suggested:</strong> Decide it together with the self-paced YTT.</p><p class="dec-if">Until you answer: no courses are made from the archive.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-voice" data-default data-short="May Prakriti learn your voice from a short clip?"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">May Prakriti learn your voice from a short clip, kept only on the Mac that runs Prakriti, never backed up or synced, so it can find your teaching in the archive?</p><p class="dec-a"><strong>Suggested:</strong> Yes, in writing, when you are ready. A plain-language permission you can withdraw any time; a lawyer-read version replaces it within four weeks of the lawyer starting. Deleted when you ask, or 3 years after last use, whichever comes first. Until then, a recording where you teach alone can be approved by listening at the moments Prakriti queues.</p><p class="dec-if">Until you answer, or if not: Prakriti cannot recognize your voice, so each recording of yours is checked by listening, or stays private.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-studio" data-default data-short="Would you like to record in the studio again?"><p class="meta dec-when">Any time; the safe setting holds</p><div><p class="dec-q">Would you like to record in the studio again?</p><p class="dec-a"><strong>Suggested:</strong> Your call. Separate tracks make your studio teaching the cleanest route to publishing it.</p><p class="dec-if">Until you answer: nothing is booked for you.</p></div></li>
+              <li class="dec" data-who="serenity" data-ask="s-library" data-default data-short="Yes or no to the Library using your material"><p class="meta dec-when">When you are ready</p><div><p class="dec-q">Your yes, or no, to the Library using your material?</p><p class="dec-a"><strong>Suggested:</strong> Your choice, when you are ready.</p><p class="dec-if">Until you answer: nothing of yours enters the Library.</p></div></li>
+              </ul>
+            </details>
+          </div>
+
+          <div class="dec-group" id="for-both">
+            <h3 class="dec-group-title">For you both</h3>
+            <ul class="decs" role="list">
+              <li class="dec" data-who="gabriel serenity" data-due="2026-10-23" data-ask="lawyer" data-short="A lawyer reads the class release and the voice permissions?"><p class="meta dec-when">Fri 23 Oct</p><div><p class="dec-q">A lawyer reads the class release and the voice permissions?</p><p class="dec-a"><strong>Suggested:</strong> Yes, by Fri 23 Oct. Each teacher may have their voice consent read by their own lawyer.</p></div></li>
+              <li class="dec" data-who="holder" data-due="2026-10-30" data-ask="consent-click" data-short="One sitting with Ivan: password, 2-Step Verification, dubbing, Google consent"><p class="meta dec-when">Week of <span class="nw">Mon 26 Oct</span></p><div><p class="dec-q">The account holder, with Ivan beside you, in one sitting: change the account’s password, turn on 2‑Step Verification, set automatic dubbing to Publish manually, then give Prakriti’s Google consent once, after seeing a screenshot of the screen?</p><p class="dec-a"><strong>Suggested:</strong> Yes. Google’s screen will say the app could edit and delete videos; Prakriti’s code has no delete step, and you can withdraw access any time in your Google Account under third-party access. Only the account that owns the channel can give this consent; managers cannot. Ivan never needs the password. Prakriti’s YouTube tests run in the same sitting.</p></div></li>
+              <li class="dec" data-who="gabriel serenity" data-due="2026-10-30" data-ask="removal" data-short="Who decides if a student asks to be removed"><p class="meta dec-when">Fri 30 Oct</p><div><p class="dec-q">If a student asks to be removed, who decides, and how fast?</p><p class="dec-a"><strong>Suggested:</strong> Any of the three of you takes it down at once, and you talk after. Every episode’s show notes and every YouTube description carry one line: Questions or a removal request, with an address you two choose.</p></div></li>
+              <li class="dec" data-who="gabriel serenity" data-due="2026-10-30" data-ask="class-note" data-short="A short spoken note at the start of each class?"><p class="meta dec-when">Fri 30 Oct</p><div><p class="dec-q">A short spoken note at the start of each recorded class from now on?</p><p class="dec-a"><strong>Suggested:</strong> Yes, once a lawyer has read it.</p></div></li>
+              <li class="dec" data-who="gabriel serenity" data-due="2026-10-30" data-ask="data-note" data-short="Agree Ivan’s one-page note on the data"><p class="meta dec-when">Fri 30 Oct</p><div><p class="dec-q">Agree Ivan’s one-page note: Yoga Marga School owns the data, and Ivan processes it for the school?</p><p class="dec-a"><strong>Suggested:</strong> Yes, except each teacher’s own voice data, which is theirs. Ivan drafts it by Fri 16 Oct.</p></div></li>
+              <li class="dec" data-who="gabriel serenity" data-due="2026-11-06" data-ask="ownership" data-short="Who owns the recordings, the pieces and the voice data"><p class="meta dec-when">Fri 6 Nov</p><div><p class="dec-q">Who owns the content, the Library and the voice data, now and if this work ever ends?</p><p class="dec-a"><strong>Suggested:</strong> Yoga Marga owns the recordings and the published pieces. Each teacher owns their own voice recordings, voice reference and Library of their own words, can withdraw them at any time, and takes them with them; Yoga Marga uses them only while that teacher’s consent stands. Yours to decide, with Ivan advising.</p></div></li>
+              <li class="dec" data-who="gabriel serenity" data-due="2026-11-06" data-ask="raid" data-short="Where the studio’s storage drive lives"><p class="meta dec-when">Fri 6 Nov</p><div><p class="dec-q">Where does the studio’s storage drive (the RAID) live, and who can reach it?</p><p class="dec-a"><strong>Suggested:</strong> One place, beside the always‑on Mac, decided together with which Mac that is.</p></div></li>
+              <li class="dec" data-who="gabriel serenity" data-due="2026-11-30" data-ask="spanish-forms" data-short="Do forms and replies need Spanish too?"><p class="meta dec-when">Mon 30 Nov</p><div><p class="dec-q">Do forms, disclaimers and replies need Spanish too?</p><p class="dec-a"><strong>Suggested:</strong> Yes.</p></div></li>
+              <li class="dec" data-who="gabriel serenity" data-due="2026-11-30" data-ask="private-feed" data-short="Yes or no to a private feed of full classes"><p class="meta dec-when">Mon 30 Nov</p><div><p class="dec-q">Should enrolled students get a private feed of full classes later?</p><p class="dec-a"><strong>Suggested:</strong> Yes, in Phase 4, with one feed link per student that can be switched off, only under the new class release; or keep full classes in Skool behind its login.</p></div></li>
+            </ul>
+          </div>
+
+          <div class="dec-group" id="for-ivan">
+            <h3 class="dec-group-title">Ivan’s to decide</h3>
+            <p class="dec-intro">Listed so you can see what Ivan still has to settle. If any of these should be yours, say so.</p>
+            <ul class="decs" role="list">
+              <li class="dec" data-who="ivan" data-due="2026-10-09" data-ask="i-mac" data-short="Which Mac runs Prakriti for now"><p class="meta dec-when">Fri 9 Oct</p><div><p class="dec-q">Which Mac runs Prakriti for now?</p><p class="dec-a"><strong>Suggested:</strong> Ivan’s MacBook Pro. It pauses when the lid is closed, and Prakriti says so plainly.</p></div></li>
+              <li class="dec" data-who="ivan" data-due="2026-10-12" data-ask="visit" data-short="Visit the studio with Gabriel"><p class="meta dec-when">Mon 12 Oct</p><div><p class="dec-q">Visit the studio in the week of Mon 12 Oct?</p><p class="dec-a"><strong>Suggested:</strong> Yes. Otherwise a 30‑minute screen share.</p></div></li>
+              <li class="dec" data-who="ivan" data-due="2026-10-12" data-ask="i-export" data-short="Where the archive export lands"><p class="meta dec-when">Mon 12 Oct</p><div><p class="dec-q">Where does the archive export land?</p><p class="dec-a"><strong>Suggested:</strong> An external drive of about 2 TB attached before the export lands; without one, unpacked one part at a time.</p></div></li>
+              <li class="dec" data-who="ivan" data-due="2026-10-16" data-ask="i-quiet" data-short="Quiet hours for notifications"><p class="meta dec-when">Fri 16 Oct</p><div><p class="dec-q">Quiet hours for notifications?</p><p class="dec-a"><strong>Suggested:</strong> 9:00 pm to 8:00 am in each person’s own time zone, held until morning.</p></div></li>
+              <li class="dec" data-who="ivan" data-due="2026-10-16" data-ask="i-slot" data-short="When a release goes out"><p class="meta dec-when">Fri 16 Oct</p><div><p class="dec-q">When does a release go out?</p><p class="dec-a"><strong>Suggested:</strong> Until Fri 6 Nov, Ivan publishes at a fixed morning hour, Pacific time; Prakriti’s own release slots follow after.</p></div></li>
+              <li class="dec" data-who="ivan" data-due="2026-10-23" data-ask="i-pause" data-short="Who can lift a pause or takedown"><p class="meta dec-when">Fri 23 Oct</p><div><p class="dec-q">Who can lift a pause or takedown?</p><p class="dec-a"><strong>Suggested:</strong> Only the person who made it, or with their OK in the log; anything taken down over a student or privacy concern is cleared only by Serenity.</p></div></li>
+              <li class="dec" data-who="ivan" data-due="2026-10-30" data-ask="i-summaries" data-short="When the daily summary and weekly note go out"><p class="meta dec-when">Fri 30 Oct</p><div><p class="dec-q">When do the daily archive summary and the weekly note go out?</p><p class="dec-a"><strong>Suggested:</strong> Daily at 5:00 pm Pacific. Weekly on Monday at 8:00 am Pacific.</p></div></li>
+              <li class="dec" data-who="ivan gabriel" data-due="2026-11-06" data-ask="always-on" data-short="Decide which always‑on Mac runs Prakriti"><p class="meta dec-when">Fri 6 Nov</p><div><p class="dec-q">Which always‑on Mac runs Prakriti before the 72‑hour target starts? Ivan and Gabriel decide it together.</p><p class="dec-a"><strong>Suggested:</strong> A Mac mini at the studio beside the RAID, or the studio Mac if it qualifies.</p></div></li>
+              <li class="dec" data-who="ivan" data-due="2026-11-30" data-ask="pus" data-short="Decide whether “publish unless stopped” ever exists"><p class="meta dec-when">Mon 30 Nov</p><div><p class="dec-q">Will “publish unless stopped” ever exist?</p><p class="dec-a"><strong>Suggested:</strong> Not before Mon 30 Nov, and only after 20 clean approvals of one kind of piece. It applies to a teacher’s pieces only with that teacher’s own yes, and never to anything with other voices.</p></div></li>
+              <li class="dec" data-who="ivan" data-due="2026-11-30" data-ask="i-copy" data-short="Where the second copy of the recordings lives"><p class="meta dec-when">Mon 30 Nov</p><div><p class="dec-q">Where does the second copy of the recordings live once they leave iCloud?</p><p class="dec-a"><strong>Suggested:</strong> Keep the iCloud copy until the RAID and one external copy both exist.</p></div></li>
+            </ul>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- 06 Never -->
+      <section class="doc-section" id="never" aria-labelledby="never-title">
+        <p class="sec-num"><span class="sec-n">06</span>Never</p>
+        <h2 class="h2" id="never-title">What Prakriti will never do.</h2>
+        <p class="lead">These hold in every phase, whatever is switched on. Each comes with its reason.</p>
+        <ul class="rules never" role="list">
+          <li>
+            <h3>Publish without a yes.</h3>
+            <p>Nothing becomes public without a named person’s yes, tied to exactly what will be published: the file and every word with it. Any change sends it back for review.</p>
+            <p class="why">A podcast episode cannot be fully recalled once apps have downloaded it.</p>
+          </li>
+          <li>
+            <h3>Put a publish button inside a notification.</h3>
+            <p>Opening a notification shows the review screen. Approving happens there.</p>
+            <p class="why">Approving work you have not seen defeats the review.</p>
+          </li>
+          <li>
+            <h3>Publish a student.</h3>
+            <p>For now, a class goes public only with every student removed, and only after Serenity sets her rule, a lawyer has read a new class release the students have agreed to, and she approves that piece’s privacy receipt. Whether a student who says yes in writing may ever be heard is Serenity’s rule to set.</p>
+            <p class="why">Students were told the recordings are for the private community.</p>
+          </li>
+          <li id="ai-rule">
+            <h3>Make an AI voice or face of anyone.</h3>
+            <p>A teacher may make their own, in their own account. With that teacher’s written yes, Prakriti prepares clean recordings for it and uses the result only for a script that teacher approved, always labeled as AI. Nothing of Serenity’s without her written yes.</p>
+            <p class="why">ElevenLabs lets each person clone only their own voice, and consent to a likeness has to be that person’s own, in writing.</p>
+          </li>
+          <li>
+            <h3>Write answers for a teacher.</h3>
+            <p>The Library quotes what was said, with the recording and the second. It never writes an answer for a teacher.</p>
+            <p class="why">A quote can be checked against the recording. A written answer cannot.</p>
+          </li>
+          <li>
+            <h3>Upload a raw recording.</h3>
+            <p>Prakriti adds no new copy of a full recording online. Only finished files go up, and only the teachers’ words, with names removed, go to the AI that drafts titles.</p>
+            <p class="why">Prakriti never uploads a raw recording or any removed audio.</p>
+          </li>
+          <li>
+            <h3>Delete an original on its own.</h3>
+            <p>Originals are deleted only by a person’s decision: a removal request, or the keep-for rule Serenity sets.</p>
+            <p class="why">An original is the only full record, so deleting one is a person’s choice, with a note of who decided.</p>
+          </li>
+          <li>
+            <h3>Open private coaching calls.</h3>
+            <p>Calls in the private playlist are never extracted, opened, transcribed or sent to any AI. A call found later is stopped and set aside.</p>
+            <p class="why">Those calls are private to the client.</p>
+          </li>
+          <li>
+            <h3>Reply to comments on its own.</h3>
+            <p>Replies can be drafted. A person sends them.</p>
+            <p class="why">Anything outward needs a yes.</p>
+          </li>
+          <li>
+            <h3>Fake footage or faces.</h3>
+            <p>No AI-made footage, and no altering a teacher’s face.</p>
+            <p class="why">What a viewer sees should be what was recorded.</p>
+          </li>
+          <li>
+            <h3>Make up a testimonial.</h3>
+            <p>No invented or AI-made reviews, ever. Real ones only with that student’s own written yes.</p>
+            <p class="why">They would be untrue, and the law forbids them.</p>
+          </li>
+        </ul>
+      </section>
+
+      <!-- 07 If anything is wrong -->
+      <section class="doc-section closing" id="wrong" aria-labelledby="wrong-title">
+        <p class="sec-num"><span class="sec-n">07</span>If anything is wrong</p>
+        <h2 class="h2" id="wrong-title">If anything here is wrong, tell Ivan.</h2>
+        <p class="lead">A date that does not work, a suggested answer you would change, a question that is missing, or a line that reads wrong. Tell Ivan, and this page is corrected.</p>
+        <p class="note">Some practical suggestions take effect on their date if nobody objects, and each one says so. Anything about consent, privacy or money waits for a yes. Last updated Thu 8 Oct 2026.</p>
+        <p class="lost-actions"><a class="btn btn-quiet" href="/">Back to the Front Page</a></p>
+      </section>
+
+    </div>
+  </div>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <a class="brand" href="/"><span class="sr-only">Prakriti</span><span aria-hidden="true">prak<span class="dot">ṛ</span>ti</span></a>
+    <nav class="footer-links" aria-label="Footer">
+      <a href="/">Front Page</a>
+      <a href="/#sign-in">Sign In</a>
+    </nav>
+    <p class="footer-credit">Made by The Rowan Studio</p>
+  </div>
+</footer>
+</body>
+</html>
