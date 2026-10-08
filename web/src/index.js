@@ -207,5 +207,14 @@ function secure(res, https) {
   h.set('X-Robots-Tag', 'noindex, nofollow');
   h.set('Cross-Origin-Opener-Policy', 'same-origin');
   h.set('Cross-Origin-Resource-Policy', 'same-origin');
+  // no-transform on every HTML page: therowan.studio has Cloudflare Web Analytics on automatic
+  // setup, which injects a beacon <script> from static.cloudflareinsights.com into HTML at the
+  // edge. The CSP blocks it (as it should), leaving a console error on every page (measured on
+  // the first live deploy, 8 Oct). A private, noindex product has no use for analytics, so the
+  // edge is told not to rewrite the page rather than the CSP being loosened.
+  if ((h.get('Content-Type') || '').includes('text/html')) {
+    const cc = h.get('Cache-Control');
+    if (!/no-transform/.test(cc || '')) h.set('Cache-Control', cc ? `${cc}, no-transform` : 'no-transform');
+  }
   return out;
 }

@@ -7,6 +7,8 @@ why. Weekdays computed with `date(1)`.
 
 ## 2026-10-08, Thu: feedback round 3
 
+- **Live, 8 Oct evening.** Deployed to prakriti.therowan.studio. Cloudflare Web Analytics (automatic setup on the therowan.studio zone) was injecting a beacon script that the CSP blocked on every page; HTML now carries `Cache-Control: no-transform` so the edge leaves pages alone, rather than loosening the CSP. Verified live: 200 on / and /roadmap, 404 on /.git/config, /wrangler.jsonc and junk paths, headers present, http redirects to https, no console errors.
+
 ### Why this round happened
 
 Round 2 asked whether the plan would run; round 3 asked whether it would run in the hours actually
