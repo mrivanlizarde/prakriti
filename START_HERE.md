@@ -177,8 +177,8 @@ over the staged tree, then the first commit, staging files by name, never `git a
 (4) a private remote; (5) the `wrangler dev` checks (warning 17); (6) deploy; (7) the live checks;
 (8) flip the roadmap status row "Front page and roadmap" to "Done, live since <date computed with
 `date(1)`>". If any step misses, the Fri 9 Oct messages go without links; they never wait for it. A
-project that ships before it has a remote tends never to get one (Sono Lino went live uncommitted). On
-Thu 8 Oct the repository has no commits and no remote.
+project that ships before it has a remote tends never to get one (Sono Lino went live uncommitted). Done
+Thu 8 Oct: private remote `mrivanlizarde/prakriti`, deployed and checked live the same evening.
 
 **Every deploy:**
 
