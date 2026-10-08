@@ -7,6 +7,8 @@ why. Weekdays computed with `date(1)`.
 
 ## 2026-10-08, Thu: feedback round 3
 
+- **Engine v0, 8 Oct evening.** Ivan had 10% of his usage left and asked for whatever gets Prakriti into use. Built `engine/prakriti.mjs` + a LaunchAgent: watch, readiness, sound check, Parakeet transcript with coverage check, mastered MP3, REPORT.md, three notifications. Tested on the silent 09-14 class (refused in 1 s after the stability wait) and the 09-13 talk (16 min in 36 s). Two mastering bugs found only by measuring the output: the limiter's default auto-level pushed peaks to +2.2 dBFS, and resampling after the limiter put them back over 0. Both fixed and commented in the code. Publishing stays manual; speaker labels and name muting are not in v0, and the report says so.
+
 - **Live, 8 Oct evening.** Deployed to prakriti.therowan.studio. Cloudflare Web Analytics (automatic setup on the therowan.studio zone) was injecting a beacon script that the CSP blocked on every page; HTML now carries `Cache-Control: no-transform` so the edge leaves pages alone, rather than loosening the CSP. Verified live: 200 on / and /roadmap, 404 on /.git/config, /wrangler.jsonc and junk paths, headers present, http redirects to https, no console errors.
 
 ### Why this round happened

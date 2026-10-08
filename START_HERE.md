@@ -113,6 +113,35 @@ tested as refusals), `scripts/backup.mjs`.
 
 ---
 
+## Engine v0: running now on Ivan's MacBook Pro (since Thu 8 Oct)
+
+The first slice of the engine, built the evening of 8 Oct so Prakriti could be used before the Swift
+engine exists: `engine/prakriti.mjs` (Node, no dependencies), run by the LaunchAgent
+`~/Library/LaunchAgents/studio.therowan.prakriti.plist` at login, kept alive.
+
+It watches the Studio Recordings folder and `~/Prakriti/Drop`, waits until each file is truly
+finished (iCloud download, size stable 60 s, opens, last seconds decode), files clips under 60 s as
+tests, refuses silent recordings with a "Needs a Decision" notification, then makes
+`episode.mp3` (mono, -16 LUFS, peak under -1 dBFS), `transcript.txt/.srt/.vtt` (Parakeet, with a
+coverage check) and `REPORT.md` in `~/Prakriti/Outputs/<recording>/`. Notifications: found,
+started, ready (macOS shows them as Script Editor). **It publishes nothing and does not yet label
+speakers or mute names:** read REPORT.md and listen before anything goes out.
+
+```bash
+cd ~/Code/prakriti/engine && node prakriti.mjs status
+```
+```bash
+cd ~/Code/prakriti/engine && node prakriti.mjs run "/path/to/a recording.mp4"
+```
+```bash
+tail -20 ~/Prakriti/log.txt
+```
+Stop it: `launchctl bootout gui/$(id -u)/studio.therowan.prakriti`. Start it again:
+`launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/studio.therowan.prakriti.plist`.
+
+Load-bearing: the limiter must keep `level=disabled`, and mono + sample rate stay **inside** the
+filter chain before it. Either mistake put the peak over 0 dBFS in testing on 8 Oct.
+
 ## Run the site locally and verify it
 
 Reading the HTML is not verification. Render it and look at the pixels.
