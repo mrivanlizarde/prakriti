@@ -123,7 +123,7 @@ Also on Fri 9 Oct, in any order: confirm the engine Mac (row 7) and move the 10-
 | **0. Ground** | Thu 8 Oct to Fri 16 Oct | Front door up, every blocking question asked, the cut line written, the engine's contract and process model written, an engine that notices a finished recording and checks its sound | A test recording is noticed, waited for, sound-checked and shown as one notification; after a reboot with the archive drive attached and nothing touched, the engine still reads every folder with no prompt |
 | **1. First light** | Mon 19 Oct to Fri 23 Oct | The first episode live by the shortest safe path: Gabriel's Sun 6 Sep studio talk, approved in two versions | The chosen version is live and confirmed by reading the feed, and the show is submitted to Apple Podcasts and Spotify within the hour |
 | **2. The archive** | Mon 26 Oct to Fri 6 Nov (archive transcription from Thu 22 Oct, once it passes on the Sun 6 Sep talk; sign-in and the review page ready by Mon 26 Oct) | The archive sorted, and the best teacher-only talks published as podcast episodes | The proposed 25, or the number reset on Fri 9 Oct, live on the podcast feed, each confirmed; the shortlist states how many archive videos can go to YouTube |
-| **Money gate** | Q-I5 and the terms raised on the weekly call in the week of Mon 19 Oct, due Fri 23 Oct; passed before Mon 9 Nov | Prakriti priced before lane 2 | A number named and agreed |
+| ~~Money gate~~ | Retired Sat 10 Oct by Ivan ("We don't need to price it") | None | None |
 | **Below the cut line** | From Mon 9 Nov | Archive talks on YouTube (at most two a day), Web Push, Prakriti's own release slots, and the rest listed after Phase 2 | Each with its own check |
 | **3. The studio package** | Mon 9 Nov to Mon 30 Nov | Edited video, thumbnails and shorts for studio sessions; the 72-hour clock starts on the always-on Mac | Three studio sessions in a row ready for a yes within 72 hours |
 | **4. The Library and voices** | From Tue 1 Dec | Each teacher's own words, searchable; voice datasets for teachers who say yes | 20 test questions answered with only the teacher's words and working timecodes |
@@ -279,7 +279,11 @@ and a Fri 30 Oct yes from Serenity would otherwise wait for a screen that lands 
 E3 and C13). Gabriel's Fri 9 Oct reply to podcast first explicitly covers public audio of his own
 talks and Claude on his own text.
 
-### The money gate
+### The money gate (retired Sat 10 Oct)
+
+> **Retired by Ivan on Sat 10 Oct 2026:** *"We don't need to price it."* Asked directly whether to build the
+> native app before pricing Prakriti with Gabriel, Ivan chose not to price it. Nothing in this plan waits on
+> Q-I5 any more. The text below is kept as history.
 
 **Prakriti is priced and agreed before lane 2 switches on** (D16, OPS-14). The price question, Q-I5,
 and the terms for the next stage are raised live on the weekly call in the week of Mon 19 Oct, and
@@ -720,7 +724,7 @@ shorts), and the 72-hour clock starts on an always-on Mac.
 
 | Date | Milestone | Owner |
 |---|---|---|
-| Mon 9 Nov | Money gate passed, or Phase 3 waits and lane 1 keeps running. Archive talks start on YouTube, at most two a day (below the cut line) | Ivan |
+| Mon 9 Nov | (Money gate retired Sat 10 Oct.) Archive talks start on YouTube, at most two a day (below the cut line) | Ivan |
 | Set by Q-I1 | Engine on the always-on Mac, as a notarized Developer ID build. **The 72-hour clock starts that day** | Ivan, Sonny |
 | Fri 13 Nov (target) | Edited video on for studio talks: edit, three thumbnails, chapters, captions, uploaded private first, then public after a yes | Sonny |
 | Fri 20 Nov (target) | Shorts on, cut from the vertical twin | Sonny |
