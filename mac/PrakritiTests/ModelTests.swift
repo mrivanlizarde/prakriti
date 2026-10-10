@@ -185,4 +185,86 @@ final class ModelTests: XCTestCase {
         XCTAssertEqual(messages.filter { $0.contains("Paused") }.count, 1, "pausing twice logs once")
         XCTAssertEqual(messages.filter { $0.contains("Resumed") }.count, 1)
     }
+
+    // MARK: Development refusals (engine v0 owns the live folders until the milestone 3 switch-over)
+
+    func testDevelopmentRefusesEngineFoldersAddedByHand() throws {
+        let model = freshModel()
+        _ = try PrakritiStore.seedIfEmpty(model.context, paths: model.paths, now: Fixtures.now)
+        let home = model.paths.home
+        let refused: [URL] = [
+            model.paths.studioRecordings,                                                  // the studio folder itself
+            model.paths.studioRecordings.appending(path: "2026-09-16", directoryHint: .isDirectory),  // a class day inside it
+            home.appending(path: "Prakriti/Drop", directoryHint: .isDirectory),            // engine v0's drop folder
+            home.appending(path: "Prakriti/Outputs", directoryHint: .isDirectory),         // engine v0's outputs
+            home.appending(path: "Prakriti", directoryHint: .isDirectory),                 // holds Drop and Outputs
+            home.appending(path: "Documents", directoryHint: .isDirectory),                // holds the studio folder
+            home.appending(path: "Documents/Design Work/Galindo x Lizarde", directoryHint: .isDirectory),
+            home.appending(path: "Downloads/SerenityAI", directoryHint: .isDirectory),     // the archive
+            home,                                                                          // holds all of them
+        ]
+        for folder in refused {
+            XCTAssertNil(model.addSource(at: folder), "development must refuse \(folder.path)")
+            XCTAssertNotNil(model.notice, "Ivan is told why for \(folder.path)")
+            model.notice = nil
+        }
+        // The same folder spelled in other cases is still refused (the Mac's disk ignores case).
+        XCTAssertNil(model.addSource(at: URL(fileURLWithPath: model.paths.studioRecordings.path.uppercased(), isDirectory: true)))
+        model.notice = nil
+
+        // Only the dev drop folder is a source, and every refusal left one line in Activity.
+        let sources = try model.context.fetch(FetchDescriptor<Source>())
+        XCTAssertEqual(sources.map(\.path), [home.appending(path: "Prakriti/Dev/Drop").path])
+        let refusals = try model.context.fetch(FetchDescriptor<LogEntry>()).filter { $0.message.hasPrefix("Did not add") }
+        XCTAssertEqual(refusals.count, refused.count + 1)
+        XCTAssertTrue(refusals.allSatisfy { $0.level == .attention })
+
+        // Folders of its own are fine: the dev folders, and anything else Ivan picks.
+        XCTAssertNotNil(model.addSource(at: home.appending(path: "Prakriti/Dev/Clips", directoryHint: .isDirectory)))
+        XCTAssertNotNil(model.addSource(at: home.appending(path: "Movies/Test clips", directoryHint: .isDirectory)))
+        XCTAssertNotNil(model.addSource(at: home.appending(path: "Documents/Other project", directoryHint: .isDirectory)),
+                        "a folder beside the studio folder's tree is fine")
+        XCTAssertNil(model.notice)
+    }
+
+    func testDevelopmentRefusesClassFilesAndArchiveFilesAddedByHand() throws {
+        let model = freshModel()
+        let home = model.paths.home
+        let studioClass = model.paths.studioRecordings.appending(path: "2026-09-16/2026-09-16 20-00-00.mp4")
+        let v0Drop = home.appending(path: "Prakriti/Drop/clip.mp4")
+        let archive = home.appending(path: "Downloads/SerenityAI/Takeout/YouTube/videos/call.mp4")
+        let clip = home.appending(path: "Prakriti/Dev/Drop/2026-09-13 clip 90s.mp4")
+
+        XCTAssertEqual(model.addRecordings([studioClass]).count, 0)
+        XCTAssertEqual(model.notice?.title, "2026-09-16 20-00-00.mp4 was not added")
+        XCTAssertTrue(model.notice?.message.contains("Studio Recordings") == true)
+        model.notice = nil
+
+        let added = model.addRecordings([v0Drop, archive, clip])
+        XCTAssertEqual(added.map(\.fileName), ["2026-09-13 clip 90s.mp4"], "only the file outside engine v0's folders and the archive")
+        XCTAssertEqual(model.notice?.title, "2 files were not added")
+        XCTAssertEqual(try model.context.fetchCount(FetchDescriptor<Recording>()), 1)
+    }
+
+    func testLiveModeDoesNotRefuseTheStudioFolder() {
+        let paths = AppPaths(mode: .live, home: URL(fileURLWithPath: "/Users/someone", isDirectory: true))
+        XCTAssertNil(paths.refusal(for: paths.studioRecordings, isFolder: true), "after the switch-over the studio folder is Prakriti's")
+        XCTAssertNil(paths.refusal(for: paths.drop, isFolder: true))
+    }
+
+    // MARK: Order
+
+    func testRecordingsFromOneSessionKeepOneOrder() {
+        let session = Fixtures.date(2026, 9, 13, 18, 25, 44)
+        let a = Recording(filePath: "/x/2026-09-13 clip 45s.mp4", recordedAt: session, foundAt: Fixtures.date(2026, 10, 10, 10, 31))
+        let b = Recording(filePath: "/x/2026-09-13 clip 90s.mp4", recordedAt: session, foundAt: Fixtures.date(2026, 10, 10, 11, 48))
+        let c = Recording(filePath: "/x/b.mp4", recordedAt: session, foundAt: Fixtures.date(2026, 10, 9, 16, 15))
+        let d = Recording(filePath: "/x/a.mp4", recordedAt: session, foundAt: Fixtures.date(2026, 10, 9, 16, 15))
+        let newer = Recording(filePath: "/x/z.mp4", recordedAt: Fixtures.date(2026, 9, 14, 20, 0, 9), foundAt: Fixtures.date(2026, 10, 9, 21, 4))
+        let expected = ["/x/z.mp4", "/x/2026-09-13 clip 90s.mp4", "/x/2026-09-13 clip 45s.mp4", "/x/a.mp4", "/x/b.mp4"]
+        // Every starting order gives the same list.
+        for start in [[a, b, c, d, newer], [newer, d, c, b, a], [c, a, newer, b, d], [d, newer, a, c, b]] {
+            XCTAssertEqual(start.sorted(by: Recording.newestFirst).map(\.filePath), expected)
+        }
+    }
 }

@@ -4,7 +4,8 @@ One dated entry per milestone of `docs/NEXT-PROMPT.md`, oldest first: what was b
 with its measured result, the decisions taken and why, and anything Ivan must do. A new session
 resumes from the last entry. Weekdays computed with `date(1)`.
 
-**Where it stands:** milestone 1 of 6 done. Next: milestone 2, the pipeline in Swift.
+**Where it stands:** milestone 1 of 6 done, and its fixes after the independent check (Sat 10 Oct)
+are in. Next: milestone 2, the pipeline in Swift.
 
 ---
 
@@ -78,7 +79,9 @@ Rendering is not the check; looking is. The first renders showed:
 - The selected sidebar row drew as a black bar, and the sidebar icons as faint grey: both
   materials and vibrancy, which a bitmap cannot reproduce. The test swaps the selection material
   for the system's selected-row color. The icons are now tinted with the accent color, which is
-  also macOS's default for sidebar icons.
+  also macOS's default for sidebar icons. **Superseded, and the cause of a real bug:** that tint
+  made the selected row's icon vanish in the real window. See "Milestone 1, fixes after the
+  independent check" below.
 - **Real problems in the app, fixed:** long paths wrapped across two right-aligned lines (now one
   line, home shown as `~`, middle truncated, full path on hover); every output's name appeared
   twice, as a section header and as its switch; two outputs repeated their description in a
@@ -154,3 +157,111 @@ and approving the login item that keeps the watcher running.
   Swift port measures its own output and reports it; the milestone asks for "about -16".
 - The rules to port unchanged are in `engine/prakriti.mjs`: readiness, the sound check, under 60
   seconds is a test, the coverage check, and the two mastering bugs in its comments.
+
+---
+
+## Milestone 1, fixes after the independent check. Sat 10 Oct 2026
+
+The independent verifier captured the real running window (`screencapture -l` works on this Mac
+without Screen Recording permission) and found one blocking problem the snapshots had hidden, plus
+five smaller ones. Each is fixed at its cause, and each fix was checked by a run, a measurement or
+a picture that was looked at.
+
+### What was wrong, and what changed
+
+1. **Blocking: the selected sidebar row lost its icon in the real window, light and dark.**
+   `MainView.swift` painted every sidebar icon with `.foregroundStyle(.tint)`, the accent color,
+   and macOS paints the selected row in that same accent color, so the "Today" sun disappeared.
+   The tint had been added to make the snapshot's grey icons look right: an app change made for a
+   capture artifact, which START_HERE warning 7 warns against.
+   - **App:** the explicit tint is gone. The sidebar colors its own icons: accent at rest, white on
+     the selected row. Measured in the real window: the selected row's icon is now 449 to 891
+     pixels of near-white on the accent fill, on every screen, light and dark (it was 0 and 1).
+   - **Snapshots draw the selection as the real window does.** The sidebar's list takes the focus
+     in a window that reports itself frontmost, the selected row is drawn emphasized (white icon
+     and label), and the highlight is filled with `controlAccentColor`, which is exactly what the
+     real window paints (measured: (35, 55, 198) in light, (68, 92, 236) in dark; the darker
+     `selectedContentBackgroundColor` the test used before is not what the window shows). Labels
+     and symbols that macOS colors only when it composites the screen (vibrancy) are drawn on top
+     with their blend mode, the symbols in the accent color, so the sidebar now matches the real one.
+   - **Snapshots check it.** `SnapshotTests` fails if the selected row's icon or label does not
+     stand out from the selection (fewer than 150 differing pixels in the icon slot or the label
+     slot). **Proved on the bug itself:** with the tint put back, all 32 renders failed, 0 to 5
+     pixels standing out; with it removed, all pass.
+   - **The milestone check now captures the real window.** `make look` (and the end of
+     `make check`) runs `mac/scripts/capture-window.swift`: it opens the real app on the sample
+     data (`--sample-data`, in memory, nothing saved, Ivan's store never opened) at each of the
+     seven screens in light and in dark, captures the window with `screencapture -l`, and checks
+     the selected row's icon and label by their pixels. **Proved on the bug:** the verifier's two
+     captures fail it (icon 0 and 1 pixels), and a build with the tint put back failed 10 of 14
+     (every screen where the selection is in the accent color; on Recordings and Activity the page
+     takes the focus and macOS draws the selection grey, where an accent icon shows).
+2. **Recordings drew in a different order from one look to the next** when recordings share a
+   session date (four fixtures share 13 Sep, 6:25:44 pm). Both lists now sort with
+   `Recording.newestFirst`: the session date, then when it was found, then the path. A test sorts
+   four starting orders and gets one list; the light and dark Recordings pictures now match.
+3. **The development guard covered only the first-launch setup.** Add Folder, Add File and the drop
+   zone accepted the Studio Recordings folder, `~/Prakriti/Drop` or a class file. Now, in
+   development, `AppPaths.refusal(for:isFolder:)` refuses anything inside the Studio Recordings
+   folder, inside `~/Prakriti` other than `~/Prakriti/Dev`, or inside the SerenityAI archive
+   (`~/Downloads/SerenityAI`, private calls), and any folder that holds one of them (watching
+   `~/Documents` would take in the studio folder). Paths are compared with symlinks resolved and
+   case ignored. A refusal leaves one Activity line and shows an alert with the reason in plain
+   words. Live mode refuses nothing here; the switch-over decides. Three tests cover it (nine
+   refused folders, a refused class file, archive and v0 drop files, and live mode), and the real
+   app shows the alert when asked to add the studio folder (captured, light and dark).
+4. **Tooltips drew at 11 pt** (measured: `NSFont.toolTipsFont(ofSize: 0)` is 11.0), under the
+   12 pt floor. There were three, not two: Pause All, Add File, and the full path on every path
+   row. All are gone. Pause All and Add File now show their names beside their symbols in the
+   toolbar; a long path takes a second line under its label, so it can be read in full. A rules
+   test fails on any `.help(` or `toolTip`. The alert's message, by contrast, measured 13 pt.
+5. **Light snapshots drew the title bar's sidebar button as an empty white circle.** Cause, found
+   in the layer tree: the glyph is an image layer with a `vibrantColorMatrix` filter, which a
+   bitmap capture skips, and its raw color in light is near-white. The test now draws that glyph
+   in the label color. Looked at: dark glyph on white in light, white in dark, as in the real window.
+6. **Outputs copy.** "Not built yet" is said once, as the section header, not again on each of the
+   five rows. The writing model's name comes from the settings (`qwen/qwen3.8-27b` reads
+   "Qwen3.8-27B", by `Format.modelName`, tested) instead of being typed into the view.
+
+### Checks run, with results
+
+| Check | Result |
+|---|---|
+| Build | `BUILD SUCCEEDED`, 0 compiler warnings (warnings fail the build) |
+| `make test` | **28 tests, 0 failures**: ModelTests 15, RulesTests 12, SnapshotTests 1 |
+| Snapshots, `make snapshots MILESTONE=m1-fix` | 32 PNGs in `screens/mac/m1-fix/`, every one looked at (as contact sheets, then close-ups of the sidebar beside the real window's) |
+| Real window, `make look MILESTONE=m1-fix` | **16 of 16 PASS**: 14 screens (selected-row icon 449 to 891 px, label 1,225 to 2,035 px; accent fill (36, 52, 196) light, (68, 92, 236) dark) and the refusal alert in light and dark. Pictures in `screens/mac/m1-fix/real/`, every one looked at |
+| Negative control, snapshots | Tint put back: **32 of 32 renders failed** the selected-row check (0 to 5 px). Pictures in `screens/mac/m1-negative/` |
+| Negative control, real window | Tint put back: **10 of 14 FAIL** (icon 0 to 4 px), the 4 grey-selection screens pass, as they should. The verifier's two captures also fail (0 and 1 px) |
+| `make check` | PASS: still running 15 s after its window closed; PASS: log line; then the real-window capture, all PASS |
+| Em dashes in `mac/` (app, tests, scripts, Makefile) | 0 |
+| Engine v0 | LaunchAgent `studio.therowan.prakriti` running; `~/Prakriti/log.txt` kept writing "sweep (timer): nothing new"; `~/Prakriti/Drop` empty and untouched. No class or archive file was opened: the refusal tests only build paths |
+
+### Decisions, each with its reason
+
+1. **Fix the app, then make both pictures honest, rather than pick one.** The snapshots stay
+   because they reach pages a launch cannot (a recording's page, the scrolled ends, the empty
+   state); the real-window capture is the ground truth for what only macOS draws.
+2. **Sample-data launch flags are one word each** (`--show=sources`, `--appearance=dark`,
+   `--add-folder=/path`). A value given as a separate word reads to macOS as a file to open, and
+   an app launched to open a file does not open its window: that cost several runs of "the window
+   did not appear". Appearance is set with `.preferredColorScheme`, because setting `NSApp.appearance`
+   before launch finished also stopped the window from opening.
+3. **The archive is refused in development too,** although the verifier named only the studio
+   folder and the drop folder. Reason: the build's do-nots forbid processing the archive, and from
+   milestone 2 a hand-added file can be run.
+4. **Alerts are allowed, tooltips are not.** Measured: an alert's message draws at 13 pt; a
+   tooltip at 11.
+
+### Known snapshot limits (not app bugs)
+
+Switches, selected segments and the window buttons draw grey because a test window is never truly
+frontmost (the knob's side shows the state: right is on). In light, sidebar labels come out dark
+grey where the real window's are black. The sidebar rows sit about 13 points lower than in the real window. The
+snapshot always shows the sidebar focused; on Recordings and Activity the real window gives the
+page the focus and draws the selection grey. `make look` shows the real thing.
+
+### For Ivan
+
+Nothing to click. `make look` and `make check` take the screen's focus for about a minute while
+they open the app sixteen times; leave the Mac alone while they run.

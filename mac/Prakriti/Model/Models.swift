@@ -129,6 +129,15 @@ final class Recording {
     var sessionDate: Date { recordedAt ?? foundAt }
 
     var latestRun: Run? { runs.max { $0.startedAt < $1.startedAt } }
+
+    /// Newest first: the date it was made, then when it was found, then its path. Several clips can
+    /// share one session's date (all cut from the same talk), and sorting on the date alone left
+    /// their order to chance, so the same list drew differently from one look to the next.
+    static func newestFirst(_ a: Recording, _ b: Recording) -> Bool {
+        if a.sessionDate != b.sessionDate { return a.sessionDate > b.sessionDate }
+        if a.foundAt != b.foundAt { return a.foundAt > b.foundAt }
+        return a.filePath < b.filePath
+    }
 }
 
 /// A start and end time inside a recording, in seconds.

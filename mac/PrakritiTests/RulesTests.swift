@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import XCTest
 @testable import Prakriti
@@ -131,6 +132,24 @@ final class RulesTests: XCTestCase {
                 XCTFail("Em dash in \(file.lastPathComponent) line \(number + 1): \(line)")
             }
         }
+    }
+
+    func testNoTooltips() throws {
+        // Tooltips draw at the system tooltip size, under Ivan's 12 pt floor. Measured 10 Oct.
+        XCTAssertLessThan(NSFont.toolTipsFont(ofSize: 0).pointSize, 12, "if tooltips ever reach 12 pt, this rule can go")
+        for file in appSourceFiles where file.pathExtension == "swift" {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for (number, line) in text.components(separatedBy: "\n").enumerated() where line.contains(".help(") || line.contains("toolTip") {
+                XCTFail("Tooltip in \(file.lastPathComponent) line \(number + 1): name the control in its label instead")
+            }
+        }
+    }
+
+    func testModelNamesReadAsPeopleSayThem() {
+        XCTAssertEqual(Format.modelName("qwen/qwen3.8-27b"), "Qwen3.8-27B")
+        XCTAssertEqual(Format.modelName("google/gemma-3-27b"), "Gemma-3-27B")
+        XCTAssertEqual(Format.modelName("mistral-small"), "Mistral-small")
+        XCTAssertEqual(Format.modelName(""), "")
     }
 
     func testNoProcessingEllipsisOrBannedWords() throws {

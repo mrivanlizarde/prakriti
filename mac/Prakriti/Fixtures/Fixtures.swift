@@ -143,11 +143,13 @@ enum Fixtures {
         run.recording = recording
     }
 
-    /// A model filled with fixtures, for snapshots and previews.
-    static func model(empty: Bool = false) -> AppModel {
-        let paths = AppPaths(mode: .live)
+    /// A model filled with fixtures, in memory only, for snapshots, previews and the real-window
+    /// capture. Snapshots draw it as the live app will look (`.live`); the real-window capture runs
+    /// it in this build's own mode, so the development refusals still apply.
+    static func model(empty: Bool = false, mode: AppMode = .live, log: AppLog = AppLog(directory: nil)) -> AppModel {
+        let paths = AppPaths(mode: mode)
         let model = AppModel(container: AppModel.inMemoryContainer(), paths: paths, settings: .ephemeral(),
-                             log: AppLog(directory: nil), now: { Fixtures.now })
+                             log: log, now: { Fixtures.now })
         if empty {
             for kind in OutputKind.allCases { model.context.insert(OutputSetting(kind: kind)) }
             try? model.context.save()

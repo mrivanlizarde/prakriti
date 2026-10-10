@@ -166,9 +166,8 @@ final class SnapshotTests: XCTestCase {
         if let titlebar {
             for control in views(in: titlebar, where: { $0.hasPrefix("_NSTheme") || $0 == "NSToolbarPlatterView" }) {
                 let rect = control.convert(control.bounds, to: frameView)
-                guard rect.maxX <= column.maxX, let piece = control.bitmapImageRepForCachingDisplay(in: control.bounds) else { continue }
-                control.cacheDisplay(in: control.bounds, to: piece)
-                if let image = piece.cgImage { ctx.draw(image, in: pixels(rect)) }
+                guard rect.maxX <= column.maxX else { continue }
+                if let image = try cacheWithVibrancy(control).cgImage { ctx.draw(image, in: pixels(rect)) }
             }
         }
         let out = NSBitmapImageRep(cgImage: try XCTUnwrap(ctx.makeImage()))
@@ -176,11 +175,105 @@ final class SnapshotTests: XCTestCase {
         return out
     }
 
+    /// Draws a view into a bitmap the way the screen shows it, as closely as a bitmap can. macOS
+    /// colors some layers only when it composites the screen (vibrancy), and a bitmap capture skips
+    /// that step: sidebar labels use a plus-darker or plus-lighter blend, and symbols use a vibrant
+    /// color matrix whose source is only a template. Skipped, labels came out grey, sidebar icons
+    /// grey or black, and in light the title bar's sidebar button was an empty white circle. So those
+    /// layers are left out of the plain capture and drawn on top: labels with their own blend mode,
+    /// sidebar symbols in the accent color and the title bar glyph in the label color, which is what
+    /// the frontmost real window shows (measured from scripts/capture-window.swift, 10 Oct).
+    private func cacheWithVibrancy(_ view: NSView) throws -> NSBitmapImageRep {
+        let vibrant = vibrantLayers(under: view.layer, appearance: view.effectiveAppearance)
+        let wasHidden = vibrant.map(\.layer.isHidden)
+        vibrant.forEach { $0.layer.isHidden = true }
+        let rep = try XCTUnwrap(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+        view.cacheDisplay(in: view.bounds, to: rep)
+        for (item, hidden) in zip(vibrant, wasHidden) { item.layer.isHidden = hidden }
+        guard !vibrant.isEmpty, let root = view.layer, let base = rep.cgImage else { return rep }
+
+        let scale = CGFloat(rep.pixelsWide) / view.bounds.width
+        let space = CGColorSpace(name: CGColorSpace.sRGB)!
+        let info = CGImageAlphaInfo.premultipliedLast.rawValue
+        let ctx = try XCTUnwrap(CGContext(data: nil, width: rep.pixelsWide, height: rep.pixelsHigh, bitsPerComponent: 8,
+                                          bytesPerRow: 0, space: space, bitmapInfo: info))
+        ctx.draw(base, in: CGRect(x: 0, y: 0, width: rep.pixelsWide, height: rep.pixelsHigh))
+        for item in vibrant where !item.layer.isHidden && item.layer.opacity > 0 {
+            let layer = item.layer
+            var rect = root.convert(layer.bounds, from: layer)
+            // The bitmap's origin is bottom left; a flipped layer tree counts from the top.
+            if root.contentsAreFlipped() || root.isGeometryFlipped { rect.origin.y = view.bounds.height - rect.maxY }
+            let w = Int((rect.width * scale).rounded(.up)), h = Int((rect.height * scale).rounded(.up))
+            guard w > 0, h > 0, let piece = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                                                     space: space, bitmapInfo: info) else { continue }
+            piece.scaleBy(x: scale, y: scale)
+            if layer.contentsAreFlipped() {
+                piece.translateBy(x: 0, y: rect.height)
+                piece.scaleBy(x: 1, y: -1)
+            }
+            piece.translateBy(x: -layer.bounds.minX, y: -layer.bounds.minY)
+            layer.render(in: piece)
+            if case .fill(let color) = item.effect {
+                piece.setBlendMode(.sourceIn)
+                piece.setFillColor(color)
+                piece.fill(CGRect(x: layer.bounds.minX, y: layer.bounds.minY, width: rect.width, height: rect.height))
+            }
+            guard let image = piece.makeImage() else { continue }
+            ctx.saveGState()
+            switch item.effect {
+            case .plusDarker: ctx.setBlendMode(.plusDarker)
+            case .plusLighter: ctx.setBlendMode(.plusLighter)
+            case .fill: ctx.setBlendMode(.normal)
+            }
+            ctx.setAlpha(CGFloat(layer.opacity))
+            ctx.draw(image, in: CGRect(x: rect.minX * scale, y: rect.minY * scale, width: CGFloat(w), height: CGFloat(h)))
+            ctx.restoreGState()
+        }
+        let out = NSBitmapImageRep(cgImage: try XCTUnwrap(ctx.makeImage()))
+        out.size = view.bounds.size
+        return out
+    }
+
+    private enum VibrancyEffect {
+        case plusDarker, plusLighter
+        /// The layer's shape, filled with one color.
+        case fill(CGColor)
+    }
+
+    /// Every layer under `root` that macOS colors at composite time, with how the test draws it.
+    private func vibrantLayers(under root: CALayer?, appearance: NSAppearance) -> [(layer: CALayer, effect: VibrancyEffect)] {
+        guard let root else { return [] }
+        var label = NSColor.labelColor.cgColor, accent = NSColor.controlAccentColor.cgColor
+        appearance.performAsCurrentDrawingAppearance {
+            label = NSColor.labelColor.usingColorSpace(.sRGB)?.cgColor ?? label
+            accent = NSColor.controlAccentColor.usingColorSpace(.sRGB)?.cgColor ?? accent
+        }
+        func isVibrantMatrix(_ filter: Any?) -> Bool {
+            guard let filter = filter as? NSObject, !(filter is NSString) else { return false }
+            return String(describing: filter).hasPrefix("vibrantColorMatrix")
+        }
+        var found: [(CALayer, VibrancyEffect)] = []
+        func walk(_ layer: CALayer) {
+            if let name = layer.compositingFilter as? String, name == "plusD" || name == "plusL" {
+                found.append((layer, name == "plusD" ? .plusDarker : .plusLighter))
+            } else if isVibrantMatrix(layer.compositingFilter) {
+                found.append((layer, .fill(accent)))
+            } else if (layer.filters ?? []).contains(where: isVibrantMatrix) {
+                found.append((layer, .fill(label)))
+            } else {
+                for sub in layer.sublayers ?? [] { walk(sub) }
+            }
+        }
+        walk(root)
+        return found
+    }
+
     private func renderStandaloneSidebar(model: AppModel, size: CGSize, appearance: NSAppearance) throws -> NSBitmapImageRep {
-        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
+        let window = FrontmostWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = appearance
         let host = NSHostingView(rootView: Sidebar(selection: .constant(model.selection))
+            .environment(\.controlActiveState, .key)
             .environment(model)
             .modelContainer(model.container))
         window.contentView = host
@@ -192,12 +285,31 @@ final class SnapshotTests: XCTestCase {
             RunLoop.main.run(until: Date().addingTimeInterval(0.05))
             host.layoutSubtreeIfNeeded()
         }
-        // The selected row's highlight is a material, which also draws as solid black in a bitmap.
-        // Swap it for a plain fill of the system's selected-row color.
-        var selectionColor = NSColor.unemphasizedSelectedContentBackgroundColor
-        appearance.performAsCurrentDrawingAppearance {
-            selectionColor = NSColor.unemphasizedSelectedContentBackgroundColor.usingColorSpace(.sRGB) ?? selectionColor
+        // The real window opens with the sidebar focused, so macOS draws its selection in the accent
+        // color with the row's icon and text in white. The test draws that same state: the window
+        // reports itself frontmost and the sidebar's list takes the focus, so SwiftUI draws the row
+        // emphasized. Reason: a grey stand-in selection once hid a real bug (an accent icon on the
+        // accent selection vanished in the app while every snapshot looked fine, 10 Oct).
+        if let list = views(in: host, where: { _ in true }).first(where: { $0 is NSTableView }) {
+            window.makeFirstResponder(list)
         }
+        NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
+        for row in views(in: host, where: { _ in true }).compactMap({ $0 as? NSTableRowView }) where row.isSelected {
+            row.isEmphasized = true
+        }
+        for _ in 0..<4 {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+            host.layoutSubtreeIfNeeded()
+        }
+        // The highlight itself is a material, which draws as solid black in a bitmap. Swap it for a
+        // plain fill of the accent color, which is what the frontmost real window paints: measured
+        // 10 Oct, its selection is (35, 55, 198) in light and (68, 92, 236) in dark, the accent color
+        // exactly, not the darker selectedContentBackgroundColor.
+        var selectionColor = NSColor.controlAccentColor
+        appearance.performAsCurrentDrawingAppearance {
+            selectionColor = NSColor.controlAccentColor.usingColorSpace(.sRGB) ?? selectionColor
+        }
+        var boxes: [NSBox] = []
         for effect in views(in: host, where: { $0 == "NSVisualEffectView" }) where effect.superview.map({ String(describing: type(of: $0)).contains("RowView") }) == true {
             let box = NSBox(frame: effect.frame)
             box.boxType = .custom
@@ -206,11 +318,38 @@ final class SnapshotTests: XCTestCase {
             box.fillColor = selectionColor
             effect.isHidden = true
             effect.superview?.addSubview(box, positioned: .below, relativeTo: nil)
+            boxes.append(box)
         }
         host.layoutSubtreeIfNeeded()
-        let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-        host.cacheDisplay(in: host.bounds, to: rep)
+        let rep = try cacheWithVibrancy(host)
+        for box in boxes {
+            assertSelectedRowIsReadable(rep, row: box.convert(box.bounds, to: host), fill: selectionColor, in: host)
+        }
         return rep
+    }
+
+    /// The check that would have caught the 10 Oct bug: on the selected row, the icon and the label
+    /// must stand out from the selection color. Counts the pixels in the row's icon slot (its first
+    /// 16%) and its label slot (20% to 60%) that differ clearly from the fill.
+    private func assertSelectedRowIsReadable(_ rep: NSBitmapImageRep, row: NSRect, fill: NSColor, in view: NSView) {
+        let scale = CGFloat(rep.pixelsWide) / view.bounds.width
+        guard let f = fill.usingColorSpace(.sRGB) else { return XCTFail("selection color has no sRGB form") }
+        func differing(fromX x0: CGFloat, toX x1: CGFloat) -> Int {
+            var n = 0
+            let top = view.isFlipped ? row.minY : view.bounds.height - row.maxY
+            for y in Int((top + row.height * 0.2) * scale)..<Int((top + row.height * 0.8) * scale) {
+                for x in Int(x0 * scale)..<Int(x1 * scale) {
+                    guard let c = rep.colorAt(x: x, y: y)?.usingColorSpace(.sRGB) else { continue }
+                    let d = abs(c.redComponent - f.redComponent) + abs(c.greenComponent - f.greenComponent) + abs(c.blueComponent - f.blueComponent)
+                    if d * 255 > 90 { n += 1 }
+                }
+            }
+            return n
+        }
+        let icon = differing(fromX: row.minX, toX: row.minX + row.width * 0.16)
+        let label = differing(fromX: row.minX + row.width * 0.2, toX: row.minX + row.width * 0.6)
+        XCTAssertGreaterThan(icon, 150, "The selected sidebar row's icon is invisible against the selection (\(icon) px stand out)")
+        XCTAssertGreaterThan(label, 150, "The selected sidebar row's label is invisible against the selection (\(label) px stand out)")
     }
 
     private func views(in view: NSView, where matches: (String) -> Bool) -> [NSView] {
@@ -240,4 +379,13 @@ final class SnapshotTests: XCTestCase {
         }
         return seen.count
     }
+}
+
+/// A window that reports itself frontmost, so the sidebar draws its selection the way the real,
+/// frontmost window does (accent fill, white icon and text). Test windows never really get focus.
+private final class FrontmostWindow: NSWindow {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+    override var isKeyWindow: Bool { true }
+    override var isMainWindow: Bool { true }
 }

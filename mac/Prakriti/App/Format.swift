@@ -80,6 +80,15 @@ enum Format {
         "\(n) " + (n == 1 ? singular : (plural ?? singular + "s"))
     }
 
+    /// A model id as people read it: "qwen/qwen3.8-27b" reads "Qwen3.8-27B". The publisher before
+    /// the slash is dropped, the first letter is capitalised, and a size like "27b" becomes "27B".
+    static func modelName(_ id: String) -> String {
+        let name = id.split(separator: "/").last.map(String.init) ?? id
+        guard !name.isEmpty else { return id }
+        let sized = name.replacing(/(\d)b\b/) { "\($0.1)B" }
+        return sized.prefix(1).uppercased() + sized.dropFirst()
+    }
+
     static func number(_ n: Int) -> String {
         n.formatted(.number.locale(locale))
     }

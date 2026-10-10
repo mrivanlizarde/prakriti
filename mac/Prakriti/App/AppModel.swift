@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import Observation
 import SwiftData
+import SwiftUI
 import UniformTypeIdentifiers
 
 /// The sidebar: what Ivan can open. Flat, one level, nothing critical at the bottom (HIG sidebars).
@@ -35,6 +36,13 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable, Sendable {
     }
 }
 
+/// A refusal Ivan should see: a short title and one plain reason.
+struct Notice: Identifiable, Equatable {
+    let id = UUID()
+    let title: String
+    let message: String
+}
+
 /// Opens one recording's page inside the main window.
 struct RecordingRoute: Hashable {
     let id: PersistentIdentifier
@@ -57,6 +65,9 @@ final class AppModel {
 
     /// True once the watcher runs (milestone 3). Until then the status line says so plainly.
     var isWatching = false
+
+    /// Something Ivan tried that was refused, shown by the main window as an alert.
+    var notice: Notice?
 
     /// The model the running app uses, so the app delegate and menu commands can reach it.
     static var current: AppModel?
@@ -85,6 +96,20 @@ final class AppModel {
             let model = AppModel(container: inMemoryContainer(), paths: AppPaths(mode: .development),
                                  settings: .ephemeral(), log: AppLog(directory: nil))
             current = model
+            return model
+        }
+        if let launch = CaptureLaunch.current {
+            // The real-window capture (scripts/capture-window.swift): sample data in memory, so
+            // nothing is saved, no folder is created and Ivan's store is never opened.
+            let paths = AppPaths(mode: AppMode.current)
+            let model = Fixtures.model(mode: paths.mode, log: AppLog(directory: paths.logs))
+            model.selection = launch.screen
+            current = model
+            model.log.write("Opened with sample data for a window capture, showing \(launch.screen.title). Nothing is saved.")
+            // Shows the refusal alert in the real window, through the same path Add Folder takes.
+            if let folder = launch.addFolder {
+                model.addSource(at: URL(fileURLWithPath: folder, isDirectory: true))
+            }
             return model
         }
         let paths = AppPaths(mode: AppMode.current)
@@ -159,9 +184,15 @@ final class AppModel {
     }
 
     /// Adds a watched folder with this mode's default outputs. Watching it starts with milestone 3.
+    /// In development, a folder engine v0 owns (or one that holds it) is refused and Ivan is told why.
     @discardableResult
     func addSource(at url: URL) -> Source? {
         let path = url.standardizedFileURL.path
+        if let reason = paths.refusal(for: url, isFolder: true) {
+            let name = url.lastPathComponent.trimmingCharacters(in: .whitespaces)
+            refuse(title: "\(name.isEmpty ? "This folder" : name) was not added", logged: paths.display(path), reason: reason)
+            return nil
+        }
         let existing = (try? context.fetch(FetchDescriptor<Source>())) ?? []
         if existing.contains(where: { $0.path == path }) { return nil }
         let source = Source(name: url.lastPathComponent, path: path, kind: .folder, mode: .askFirst, addedAt: now())
@@ -183,11 +214,17 @@ final class AppModel {
     }
 
     /// Adds recordings by hand (Add File, or a drop). They wait as Found until the pipeline runs them.
+    /// In development, a file inside a folder engine v0 owns, or in the archive, is refused.
     @discardableResult
     func addRecordings(_ urls: [URL]) -> [Recording] {
         let known = Set(((try? context.fetch(FetchDescriptor<Recording>())) ?? []).map(\.filePath))
         var added: [Recording] = []
+        var refused: [(name: String, reason: String)] = []
         for url in urls where Self.isMedia(url) && !known.contains(url.standardizedFileURL.path) {
+            if let reason = paths.refusal(for: url, isFolder: false) {
+                refused.append((url.lastPathComponent, reason))
+                continue
+            }
             let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
             let size = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
             let recording = Recording(filePath: url.standardizedFileURL.path, title: "", recordedAt: Self.dateInName(url.lastPathComponent),
@@ -196,7 +233,18 @@ final class AppModel {
             added.append(recording)
             record("Added \(url.lastPathComponent) by hand.")
         }
+        if let first = refused.first {
+            let one = refused.count == 1
+            refuse(title: one ? "\(first.name) was not added" : "\(refused.count) files were not added",
+                   logged: one ? first.name : refused.map(\.name).joined(separator: ", "), reason: first.reason)
+        }
         return added
+    }
+
+    /// Says no, plainly: one line in Activity, and an alert in the window.
+    private func refuse(title: String, logged: String, reason: String) {
+        record("Did not add \(logged). \(reason)", level: .attention)
+        notice = Notice(title: title, message: reason)
     }
 
     func defaultSettings() -> [OutputSetting] {
@@ -251,5 +299,31 @@ final class AppModel {
         parts.minute = match.5.flatMap { Int($0) } ?? 0
         parts.second = match.6.flatMap { Int($0) } ?? 0
         return Calendar.current.date(from: parts)
+    }
+}
+
+/// How the real-window capture opens the app: `--sample-data`, optionally `--show=<screen>`,
+/// `--appearance=light|dark` and `--add-folder=<path>` (tries to add that folder, as Add Folder
+/// does, so a refusal can be seen). Used only by scripts/capture-window.swift. Each flag is one word with
+/// its value after "=": a value passed as a separate word reads to macOS as a file to open, and an
+/// app launched to open a file does not open its window.
+struct CaptureLaunch {
+    let screen: SidebarItem
+    let colorScheme: ColorScheme?
+    let addFolder: String?
+
+    static var current: CaptureLaunch? {
+        let args = CommandLine.arguments
+        guard args.contains("--sample-data") else { return nil }
+        func value(_ flag: String) -> String? {
+            args.first { $0.hasPrefix(flag + "=") }.map { String($0.dropFirst(flag.count + 1)) }
+        }
+        let screen = value("--show").flatMap(SidebarItem.init(rawValue:)) ?? .today
+        let colorScheme: ColorScheme? = switch value("--appearance") {
+        case "light": .light
+        case "dark": .dark
+        default: nil
+        }
+        return CaptureLaunch(screen: screen, colorScheme: colorScheme, addFolder: value("--add-folder"))
     }
 }

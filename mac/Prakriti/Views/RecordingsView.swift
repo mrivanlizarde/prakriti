@@ -8,7 +8,7 @@ struct RecordingsView: View {
     @Query private var recordings: [Recording]
 
     var body: some View {
-        let sorted = recordings.sorted { $0.sessionDate > $1.sessionDate }
+        let sorted = recordings.sorted(by: Recording.newestFirst)
         Group {
             if sorted.isEmpty {
                 EmptyState(symbol: "rectangle.stack", title: "No recordings yet",
@@ -30,8 +30,10 @@ struct RecordingsView: View {
         .navigationTitle("Recordings")
         .toolbar {
             ToolbarItem {
-                Button("Add File…", systemImage: "plus") { model.chooseFiles() }
-                    .help("Add a recording from anywhere on this Mac")
+                Button { model.chooseFiles() } label: {
+                    Label("Add File…", systemImage: "plus")
+                        .labelStyle(.titleAndIcon)
+                }
             }
         }
     }

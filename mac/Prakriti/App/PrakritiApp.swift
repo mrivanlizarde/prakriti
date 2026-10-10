@@ -12,6 +12,9 @@ struct PrakritiApp: App {
             MainView()
                 .environment(model)
                 .modelContainer(model.container)
+                // Only the real-window capture sets this; otherwise the window follows the Mac.
+                // (Setting NSApp.appearance before launch finished stopped the window from opening.)
+                .preferredColorScheme(CaptureLaunch.current?.colorScheme)
         }
         .defaultSize(width: MainWindow.size.width, height: MainWindow.size.height)
         .windowResizability(.contentMinSize)

@@ -54,6 +54,54 @@ struct AppPaths: Sendable {
         return path == homePath ? "~" : (path.hasPrefix(homePath + "/") ? "~" + path.dropFirst(homePath.count) : path)
     }
 
+    /// The SerenityAI archive download: private 1:1 coaching calls and classes. Never worked on
+    /// while Prakriti is being built.
+    var archive: URL { home.appending(path: "Downloads/SerenityAI", directoryHint: .isDirectory) }
+
+    /// Folders development mode may not take in, each with the reason Ivan reads when he tries.
+    /// Engine v0 watches the Studio Recordings folder and ~/Prakriti/Drop and writes ~/Prakriti/Outputs
+    /// until the milestone 3 switch-over, and the classes live in the studio folder; the archive
+    /// holds private calls. ~/Prakriti/Dev is the one part of ~/Prakriti development may use.
+    private var developmentRefusals: [(folder: URL, name: String, reason: String)] {
+        [
+            (studioRecordings, "the Studio Recordings folder",
+             "The Studio Recordings folder stays with the old engine until Prakriti takes over from it, and it holds the classes. While Prakriti is being built, it only works on test files in the Dev folder inside ~/Prakriti."),
+            (root, "~/Prakriti",
+             "The old engine works in ~/Prakriti until Prakriti takes over from it. While Prakriti is being built, it only uses the Dev folder inside it."),
+            (archive, "the SerenityAI archive",
+             "The SerenityAI archive holds private calls and classes. Nothing in it is worked on while Prakriti is being built."),
+        ]
+    }
+
+    /// Why this file or folder may not be added, in plain words, or nil if it may. Development mode
+    /// refuses anything inside a folder engine v0 owns or the archive, and any folder that holds one
+    /// of them (watching ~/Documents would take in the studio folder). Live mode refuses nothing here.
+    func refusal(for url: URL, isFolder: Bool) -> String? {
+        guard mode == .development else { return nil }
+        let target = Self.comparable(url)
+        if Self.path(target, isInside: Self.comparable(workRoot)) { return nil }
+        for (folder, name, reason) in developmentRefusals {
+            let owned = Self.comparable(folder)
+            if Self.path(target, isInside: owned) { return reason }
+            if isFolder && Self.path(owned, isInside: target) {
+                return "This folder holds \(name). " + reason
+            }
+        }
+        return nil
+    }
+
+    /// A path for comparing: standardized, symlinks resolved, lowercased (the Mac's disk ignores
+    /// case), with no trailing slash. The studio folder's trailing space is kept: it is in the name.
+    private static func comparable(_ url: URL) -> String {
+        var path = url.standardizedFileURL.resolvingSymlinksInPath().path.lowercased()
+        while path.count > 1 && path.hasSuffix("/") { path.removeLast() }
+        return path
+    }
+
+    private static func path(_ path: String, isInside folder: String) -> Bool {
+        path == folder || path.hasPrefix(folder == "/" ? "/" : folder + "/")
+    }
+
     /// Folders the app creates at launch. Never the studio folder.
     var foldersToCreate: [URL] { [drop, outputs, approved, applicationSupport, logs] }
 

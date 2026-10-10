@@ -504,13 +504,21 @@ cd ~/Code/prakriti/mac && make check
 ```bash
 cd ~/Code/prakriti/mac && make run
 ```
+```bash
+cd ~/Code/prakriti/mac && make look MILESTONE=m1
+```
 
 `make test` runs every unit test (data, rules, copy and type checks, and the snapshot render).
 `make snapshots` writes every screen, light and dark, at the window's real size (1180 by 760) to
 `screens/mac/<milestone>/` (gitignored), plus an `-end` picture for any page taller than the
-window. `make check` builds, tests, then launches the app, lets it close its own window and
-proves it is still running 15 seconds later. **Then open every PNG and look at it.** Reading the
-code is not verification, and neither is a passing test.
+window, and fails if the selected sidebar row's icon or label cannot be seen. `make look` opens
+the **real** app on sample data (in memory, nothing saved) at each sidebar screen in light and
+dark, captures the real window with `screencapture -l` into `screens/mac/<milestone>/real/`,
+checks the selected sidebar row by its pixels, and checks that adding the Studio Recordings folder
+is refused with an alert. It takes the screen's focus for about a minute: leave the Mac alone.
+`make check` builds, tests, launches the app, lets it close its own window, proves it is still
+running 15 seconds later, then runs `make look`'s capture. **Then open every PNG and look at it.**
+Reading the code is not verification, and neither is a passing test.
 
 ### Where things live
 
@@ -519,6 +527,7 @@ code is not verification, and neither is a passing test.
 | Project definition (source of truth) | `mac/project.yml`; `make generate` rebuilds `Prakriti.xcodeproj`, and both are committed |
 | App code | `mac/Prakriti/App` (launch, paths, settings, log), `Model` (vocabulary, SwiftData models, store), `Views`, `Fixtures` |
 | Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `SnapshotTests` |
+| Real-window capture | `mac/scripts/capture-window.swift` (run by `make look` and `make check`); also `swift scripts/capture-window.swift --analyze <png>` to check any capture |
 | The built app | `mac/build/Build/Products/Debug/Prakriti.app` (gitignored) |
 | Store, development mode | `~/Library/Application Support/Prakriti/Development/Prakriti.store` |
 | Log, development mode | `~/Library/Logs/Prakriti/Development/<date>.log`, one line per event |
@@ -528,10 +537,14 @@ code is not verification, and neither is a passing test.
 ### Load-bearing warnings for the Mac app
 
 1. **`AppMode.current` stays `.development` until the milestone 3 switch-over.** In development the
-   app uses only `~/Prakriti/Dev` and its own store, and never adds the Studio Recordings folder (a
-   test enforces it). Reason: engine v0 owns Studio Recordings and `~/Prakriti/Drop` and is making
-   episode 1 for Fri 23 Oct; two watchers on one folder would process a recording twice and notify
-   twice. The switch-over retires v0's LaunchAgent the same day, and the log says so.
+   app uses only `~/Prakriti/Dev` and its own store, and refuses, with an alert and an Activity
+   line, any folder or file inside the Studio Recordings folder, inside `~/Prakriti` other than
+   `~/Prakriti/Dev`, or inside the SerenityAI archive, and any folder that holds one of them. This
+   covers the first-launch setup, Add Folder, Add File and the drop zone (`AppPaths.refusal`;
+   tests in `ModelTests`; the real app is checked by `make look`). Reason: engine v0 owns Studio
+   Recordings and `~/Prakriti/Drop` and is making episode 1 for Fri 23 Oct; two watchers on one
+   folder would process a recording twice and notify twice, and from milestone 2 a hand-added class
+   could be run. The switch-over retires v0's LaunchAgent the same day, and the log says so.
 2. **Automatic termination stays off** (`NSSupportsAutomaticTermination` false in Info.plist, and
    `disableAutomaticTermination` at launch). Reason: macOS quits a windowless app on its own, and
    the watcher must keep working with the window closed. `make check` proves it on every run.
@@ -544,22 +557,37 @@ code is not verification, and neither is a passing test.
    `appintentsmetadataprocessor ... warning` line in xcodebuild's output is the tool talking, not
    the compiler, and does not fail anything.
 5. **Every font comes from `AppFont`** (17 pt body, nothing under 12 pt), and a test fails on any
-   other font, any sidebar badge and any small control. Reason: macOS text styles are 10 to 13 pt,
-   and Ivan's floor is 12 with a 17 pt body.
+   other font, any sidebar badge, any small control and any tooltip (`.help`). Reason: macOS text
+   styles are 10 to 13 pt and tooltips draw at 11 (measured), and Ivan's floor is 12 with a 17 pt
+   body. Name a control in its label instead; an alert's message (13 pt) is fine.
 6. **No em dashes, no "Processing", no "we"** in any app string; a test reads the sources and fails
    on them. Reason: Ivan's standing rule, and SCOPE 8.3's copy rules.
-7. **The snapshots compose the sidebar.** Liquid Glass cannot be drawn into a bitmap (it comes out
-   solid white), so the test draws the window, paints the sidebar column with the system window
-   background, draws the same `Sidebar` view on top, and redraws the title bar buttons. Switches
-   and selected segments draw grey because a test window is never frontmost; the knob's side shows
-   the state (right is on). Reason: so nobody "fixes" the app for a capture artifact. Look at the
-   real window with `make run` once per milestone for the glass itself.
-8. **Tests never touch Ivan's data.** Under tests `AppModel.launch()` uses an in-memory store,
-   throwaway preferences and no log file. Reason: a test run must never write into the real store
-   or `~/Prakriti`.
-9. **SwiftData: every stored property has a default, and enums are stored as raw strings.**
-   Reason: additions then migrate on their own, and predicates over raw strings are the reliable
-   part of SwiftData. The first change that is not an addition brings a `VersionedSchema`.
+7. **The snapshots compose the sidebar, and the real window is the judge.** Liquid Glass cannot be
+   drawn into a bitmap (it comes out solid white), so the test draws the window, paints the sidebar
+   column with the system window background, draws the same `Sidebar` view on top (focused and
+   emphasized, its selection in the accent color, as the frontmost real window draws it), and
+   redraws the title bar buttons. Layers macOS colors only on screen (vibrancy) are redrawn by
+   hand. Switches and selected segments still draw grey (a test window is never truly frontmost;
+   the knob's side shows the state: right is on). Reason: **never change the app to make a
+   snapshot look right.** On 10 Oct the sidebar icons were tinted because the snapshot drew them
+   grey, and that tint made the selected row's icon vanish in the real window while every snapshot
+   looked fine. When a snapshot and the app disagree, run `make look` and believe the real window.
+8. **No `foregroundStyle` on sidebar icons.** The sidebar colors its own icons, accent at rest and
+   white on the selected row. Reason: an explicit `.tint` paints the selected row's icon in the
+   selection's own color, so it disappears (10 Oct). `SnapshotTests` and `make look` both fail if
+   it comes back; both were proved against the bug.
+9. **Capture launch flags are one word each:** `--sample-data --show=<screen> --appearance=<light|dark>
+   --add-folder=<path>`. Reason: a value given as its own word reads to macOS as a file to open,
+   and then the app does not open its window. Setting `NSApp.appearance` before launch finishes
+   does the same, so the capture uses `.preferredColorScheme`.
+10. **Tests and captures never touch Ivan's data.** Under tests `AppModel.launch()` uses an
+    in-memory store, throwaway preferences and no log file; under `--sample-data` it uses an
+    in-memory store of the sample recordings and throwaway preferences, and writes only to the
+    development log. Reason: a test or a
+    capture must never write into the real store or `~/Prakriti`.
+11. **SwiftData: every stored property has a default, and enums are stored as raw strings.**
+    Reason: additions then migrate on their own, and predicates over raw strings are the reliable
+    part of SwiftData. The first change that is not an addition brings a `VersionedSchema`.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

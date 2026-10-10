@@ -182,8 +182,9 @@ struct EmptyState: View {
     }
 }
 
-/// A file or folder: its label, then its path on one line (home shown as ~), with an optional
-/// Show in Finder button. Paths never wrap across lines.
+/// A file or folder: its label, then its path under it (home shown as ~), with an optional
+/// Show in Finder button. A long path takes a second line, left-aligned under the label, so it can
+/// be read in full without a tooltip (tooltips draw at 11 pt, under the 12 pt floor).
 struct PathRow: View {
     let label: String
     let path: String
@@ -203,10 +204,10 @@ struct PathRow: View {
                 Text(model.paths.display(path))
                     .font(AppFont.path)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .truncationMode(.middle)
+                    .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
-                    .help(path)
             }
         }
     }

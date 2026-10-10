@@ -24,6 +24,12 @@ struct MainView: View {
                 PauseButton()
             }
         }
+        .alert(model.notice?.title ?? "", isPresented: Binding(get: { model.notice != nil }, set: { if !$0 { model.notice = nil } }),
+               presenting: model.notice) { _ in
+            Button("OK") { model.notice = nil }
+        } message: { notice in
+            Text(notice.message)
+        }
     }
 
     @ViewBuilder
@@ -69,9 +75,11 @@ struct Sidebar: View {
                 Text(item.title)
                     .font(AppFont.body)
             } icon: {
+                // No foregroundStyle here. The sidebar colors its own icons: accent at rest, white
+                // on the selected row. An explicit .tint painted the selected row's icon in the
+                // same accent as the selection, so it vanished (caught on the real window, 10 Oct).
                 Image(systemName: item.symbol)
                     .font(AppFont.body)
-                    .foregroundStyle(.tint)
             }
             Spacer()
             if count > 0 {
@@ -87,7 +95,8 @@ struct Sidebar: View {
     }
 }
 
-/// Pause All, always one click away in the window's toolbar.
+/// Pause All, always one click away in the window's toolbar. It shows its name as well as its
+/// symbol, because a tooltip would draw at 11 pt, under the 12 pt floor.
 struct PauseButton: View {
     @Environment(AppModel.self) private var model
 
@@ -97,8 +106,8 @@ struct PauseButton: View {
             model.setPaused(!paused)
         } label: {
             Label(paused ? "Resume All" : "Pause All", systemImage: paused ? "play.fill" : "pause.fill")
+                .labelStyle(.titleAndIcon)
         }
-        .help(paused ? "Resume finding and processing recordings" : "Stop finding and processing recordings")
     }
 }
 

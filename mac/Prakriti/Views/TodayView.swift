@@ -21,8 +21,8 @@ struct TodayView: View {
     @Query(sort: \Source.addedAt) private var sources: [Source]
 
     var body: some View {
-        let needsYou = recordings.filter(\.status.needsYou).sorted { $0.sessionDate > $1.sessionDate }
-        let working = recordings.filter { $0.status == .working }
+        let needsYou = recordings.filter(\.status.needsYou).sorted(by: Recording.newestFirst)
+        let working = recordings.filter { $0.status == .working }.sorted(by: Recording.newestFirst)
         let summary = model.statusSummary(recordings: recordings, sources: sources)
 
         Form {

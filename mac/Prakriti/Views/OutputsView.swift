@@ -44,10 +44,11 @@ struct OutputsView: View {
         .navigationTitle("Outputs")
     }
 
+    /// Names the model chosen in Models, read from the settings, never written in by hand.
     private var writerLine: String {
         let provider = model.settings.provider[.writing] ?? .lmStudio
-        let model = provider == .lmStudio ? "Qwen3.8-27B in LM Studio" : provider.title
-        return "Written by \(model). Classes, and anything with Serenity in it, always stay on this Mac."
+        let writer = provider == .lmStudio ? Format.modelName(model.settings.lmStudioModel) + " in LM Studio" : provider.title
+        return "Written by \(writer). Classes, and anything with Serenity in it, always stay on this Mac."
     }
 }
 
@@ -158,7 +159,8 @@ struct FileChoiceRow: View {
     }
 }
 
-/// An output that is planned but not built: named, described in one line, and marked.
+/// An output that is planned but not built: named and described in one line. The section's
+/// header says "Not built yet" once, so the rows do not repeat it.
 struct NotBuiltRow: View {
     let kind: OutputKind
 
@@ -173,10 +175,7 @@ struct NotBuiltRow: View {
                 Text(kind.title).font(AppFont.body)
                 Text(kind.summary).font(AppFont.secondary).foregroundStyle(.secondary)
             }
-            Spacer(minLength: 12)
-            Text("Not built yet")
-                .font(AppFont.secondary)
-                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)

@@ -5,6 +5,29 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-10, Sat: Prakriti for Mac, milestone 1 fixes after the independent check
+
+- **The selected sidebar row lost its icon in the real window,** light and dark. The icons had been
+  tinted with the accent color to make a snapshot look right, and macOS paints the selection in
+  that same color. The tint is gone. Why it matters beyond one icon: the snapshot was changed to
+  draw a grey selection that hid the bug, so the fix is in three places. The app no longer colors
+  sidebar icons; the snapshots now draw the selection as the real window does and fail when its
+  icon or label cannot be seen; and `make look` (also the end of `make check`) captures the real
+  window on every screen, light and dark, and checks the row by its pixels. Both checks were proved
+  by putting the bug back: 32 of 32 snapshots and 10 of 14 real captures failed.
+- **Development now refuses engine v0's folders, the classes and the archive however they arrive**
+  (Add Folder, Add File, the drop zone), with an alert in plain words. Why: the guard covered only
+  the first launch, and from milestone 2 a hand-added class could be run, against the build's rule
+  on student privacy.
+- **Recordings keep one order** when several share a session date (date, then found, then path).
+  Why: the same list drew differently from one look to the next.
+- **No tooltips.** Measured at 11 pt, under Ivan's 12 pt floor. Pause All and Add File show their
+  names; long paths take a second line. A test fails on any tooltip.
+- **Smaller:** the title bar's sidebar button draws its glyph in light snapshots (a vibrancy filter
+  the bitmap skipped); "Not built yet" is said once on Outputs; the writing model's name comes from
+  Settings, not from text typed into the view.
+- Every check, measurement and decision is in `docs/BUILD-LOG.md`.
+
 ## 2026-10-10, Sat: Prakriti for Mac, milestone 1 (skeleton)
 
 - **The Mac app exists, signed, and does nothing dangerous yet.** `mac/` holds a SwiftUI app
