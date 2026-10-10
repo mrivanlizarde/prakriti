@@ -5,6 +5,32 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-10, Sat: Prakriti for Mac, milestone 3 (the watcher, notifications) and the switch-over
+
+- **Prakriti for Mac is now the live engine, and engine v0 is retired.** The app watches the Studio
+  Recordings folder and `~/Prakriti/Drop` with FSEvents (replayed from the last saved event after a
+  quit) and a look through every folder every 5 minutes, makes what each folder is set to make, or
+  checks and waits when it is set to "Ask me first", gives automatic work three tries, logs a line
+  for every look including "nothing new", and opens at login from `~/Applications`. Why now: the
+  build said to switch only once the app's own watcher passed, and it did, in both places: a 90 s
+  clip moved into the drop folder was found in 7 s and Ready for your yes 78 s later with no clicks,
+  before the switch-over in `~/Prakriti/Dev/Drop` and after it in `~/Prakriti/Drop`.
+- **Nothing engine v0 saw is made again.** The app read v0's `state.json` into its store before its
+  first look (11 files: 7 already there on 8 Oct, the 13 Sep and 6 Sep episodes, the silent 14 Sep
+  class), and its first look over the studio folder found nothing new. Why it matters: without it,
+  the classes of 16, 20 and 23 Sep would have been taken as new, and they may not be processed.
+  The vertical renditions v0 never listed are never listed here either; a test with that rule
+  removed made 13 recordings instead of 11.
+- **One notice per recording, updated in place,** written to SCOPE 8's copy rules and tested on every
+  variant: title case with the date, full sentences, no app name, no "we", no em dashes, and never a
+  file name, a title or a tool's error text, because a dropped file can be named after a student and
+  notices show on lock screens.
+- **Not working yet, and Ivan's to fix:** macOS reports notifications as turned off for Prakriti, so
+  every notice goes to the log only. Turn them on in System Settings, Notifications, Prakriti.
+  Until then a silent class shows in Today and Activity but not as a banner.
+- **The uncomfortable part:** v0 was restarted by launchd if it crashed; the app, as a login item, is
+  not, until the next login. Every check, measurement and decision is in `docs/BUILD-LOG.md`.
+
 ## 2026-10-10, Sat: Prakriti for Mac, milestone 2 (the pipeline in Swift)
 
 - **The app can make an episode now.** Engine v0's pipeline is ported into `mac/Prakriti/Engine`

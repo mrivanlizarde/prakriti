@@ -12,7 +12,9 @@ BIN="$APP/Contents/MacOS/Prakriti"
 pkill -f "$BIN" 2>/dev/null || true
 sleep 1
 BEFORE=$( [ -f "$LOG" ] && wc -l < "$LOG" || echo 0 )
-open "$APP" --args --check-keeps-running
+# -n and --development: a test copy in development mode, which runs beside the live Prakriti
+# (its own store, log and lock) rather than being refused as a second live copy.
+open -n "$APP" --args --check-keeps-running --development
 sleep 15
 
 if pgrep -f "$BIN" > /dev/null; then

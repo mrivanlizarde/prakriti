@@ -52,7 +52,7 @@ extension Recording {
         if let duration { parts.append(Format.length(duration) + ".") }
         switch status {
         case .found:
-            parts.append("Waiting to start.")
+            parts.append(statusReason ?? "Waiting to start.")
         case .working:
             parts.append((currentStep ?? "Working") + ".")
         case .readyForYourYes:

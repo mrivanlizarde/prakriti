@@ -41,9 +41,11 @@ enum MainWindow {
     static let minimumSize = CGSize(width: 900, height: 600)
 }
 
-/// Keeps Prakriti running when its window is closed: the watcher (milestone 3) must keep working.
+/// Keeps Prakriti running when its window is closed: the watcher must keep working.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var terminationSignal: DispatchSourceSignal?
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
     }
@@ -53,7 +55,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // must not be quit that way, so it opts out here as well as in Info.plist.
         ProcessInfo.processInfo.disableAutomaticTermination("Prakriti keeps working with its window closed.")
         guard let model = AppModel.current, !AppModel.isRunningTests else { return }
-        model.log.write("Finished launching. Menu bar item: \(model.settings.showInMenuBar ? "shown" : "hidden").")
+
+        // A second copy in the same mode: hand over to the one already running, and quit.
+        if model.isDuplicate {
+            let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
+                .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
+            others.first?.activate()
+            NSApp.terminate(nil)
+            return
+        }
+
+        // A plain `kill` (or `pkill`, as the install script and the checks use) quits cleanly, the
+        // same as Quit: the running tool is stopped and the log says so. Without this, SIGTERM
+        // ends the process on the spot.
+        signal(SIGTERM, SIG_IGN)
+        let source = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+        source.setEventHandler { NSApp.terminate(nil) }
+        source.resume()
+        terminationSignal = source
+
+        let atLogin = Self.launchedAsLoginItem
+        model.log.write("Finished launching\(atLogin ? " at login" : ""). Mode: \(model.paths.mode.rawValue). Menu bar item: \(model.settings.showInMenuBar ? "shown" : "hidden").")
+        if atLogin {
+            // Opened by macOS at login: the watcher starts, and no window jumps up on every login.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                NSApp.windows.filter { $0.isVisible && $0.styleMask.contains(.titled) }.forEach { $0.performClose(nil) }
+            }
+        }
 
         // A self-check used by the milestone checks: close the window, then prove the app is
         // still running by writing to the log a few seconds later.
@@ -70,8 +98,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    func applicationDidBecomeActive(_ notification: Notification) {
+        // Login Items can be switched off in System Settings with no notice to the app, so the
+        // state is read again whenever Prakriti comes to the front (research 02 §5).
+        guard let model = AppModel.current, !AppModel.isRunningTests, !model.isDuplicate else { return }
+        // Notifications can be turned on or off in System Settings while Prakriti runs.
+        Task { await model.notifier.refreshPermission(askIfNeeded: false) }
+        guard model.paths.mode == .live else { return }
+        let state = LoginItem.status
+        if model.loginItem != .notInstalled, state != model.loginItem {
+            model.loginItem = state
+            model.log.write("Login item is now: \(state).")
+        }
+    }
+
+    /// True when macOS opened Prakriti as a login item.
+    private static var launchedAsLoginItem: Bool {
+        guard let event = NSAppleEventManager.shared().currentAppleEvent else { return false }
+        return event.eventID == kAEOpenApplication
+            && event.paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue == keyAELaunchedAsLogInItem
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
-        guard !AppModel.isRunningTests else { return }
+        guard !AppModel.isRunningTests, AppModel.current?.isDuplicate != true else { return }
+        AppModel.current?.watcher.stop()
         // Stop the running tool rather than leave it working with no one to read its result. The
         // recording is marked Couldn't finish on the next launch.
         AppModel.current?.runner.stopAll()

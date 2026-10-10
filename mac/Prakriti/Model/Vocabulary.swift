@@ -181,7 +181,7 @@ enum SourceMode: String, Codable, CaseIterable, Sendable {
 }
 
 enum RunTrigger: String, Codable, CaseIterable, Sendable {
-    case launch, timer, fileEvent, byHand, makeAgain
+    case launch, timer, fileEvent, byHand, makeAgain, retry, wake, checkNow
 
     var title: String {
         switch self {
@@ -190,12 +190,35 @@ enum RunTrigger: String, Codable, CaseIterable, Sendable {
         case .fileEvent: "A file changed"
         case .byHand: "Added by hand"
         case .makeAgain: "Make again"
+        case .retry: "Trying again"
+        case .wake: "After the Mac woke"
+        case .checkNow: "Check Now"
+        }
+    }
+
+    /// Started by Prakriti on its own, not by Ivan. Only these get automatic retries and the
+    /// New Recording Found notice.
+    var isAutomatic: Bool {
+        switch self {
+        case .byHand, .makeAgain: false
+        default: true
         }
     }
 }
 
 enum RunOutcome: String, Codable, CaseIterable, Sendable {
-    case running, nothingNew, ready, needsADecision, couldntFinish, skippedTest, stopped
+    case running, nothingNew, ready, needsADecision, couldntFinish, skippedTest, stopped, checked
+}
+
+/// What Prakriti does with a found recording on its own. Stored on the recording, so a quit or a
+/// restart never loses the plan: the next check picks it up again.
+enum WorkIntent: String, Codable, CaseIterable, Sendable {
+    /// Nothing automatic: Ivan starts it (Make Outputs), or it is done.
+    case none
+    /// From an "Ask me first" folder: check it is complete and has sound, then wait for Ivan.
+    case check
+    /// From a "Make outputs automatically" folder: make everything chosen for it.
+    case make
 }
 
 enum StepState: String, Codable, CaseIterable, Sendable {
@@ -284,6 +307,40 @@ enum NotificationEvent: String, Codable, CaseIterable, Sendable {
         case .couldntFinish: "Couldn't Finish"
         }
     }
+
+    /// Found, Started and Ready share one identifier, so Notification Center holds one row per
+    /// recording that changes as it moves along. A decision and a problem get their own, in the
+    /// same thread, so neither silently replaces the other (SCOPE 8.1, 8.5).
+    var identifierSuffix: String {
+        switch self {
+        case .found, .started, .ready: "status"
+        case .needsADecision: "decision"
+        case .couldntFinish: "problem"
+        }
+    }
+
+    /// What a lock screen with previews hidden shows: the same words as the status on screen
+    /// (SCOPE 8.1 rule 10).
+    var hiddenPreview: String {
+        switch self {
+        case .found: RecordingStatus.found.title
+        case .started: RecordingStatus.working.title
+        case .ready: RecordingStatus.readyForYourYes.title
+        case .needsADecision: RecordingStatus.needsADecision.title
+        case .couldntFinish: RecordingStatus.couldntFinish.title
+        }
+    }
+
+    /// Found arrives without a sound and Started goes quietly to Notification Center; the three
+    /// that wait on Ivan make a sound. Never Time Sensitive (SCOPE 8.1 rule 8).
+    var playsSound: Bool {
+        switch self {
+        case .found, .started: false
+        case .ready, .needsADecision, .couldntFinish: true
+        }
+    }
+
+    var isPassive: Bool { self == .started }
 
     var soundLine: String {
         switch self {

@@ -38,6 +38,7 @@ struct MenuBarMenu: View {
 /// while working, filled when something waits, exclamation for a problem, pause when paused).
 struct MenuBarIcon: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
     @Query private var recordings: [Recording]
     @Query(sort: \Source.addedAt) private var sources: [Source]
 
@@ -45,5 +46,6 @@ struct MenuBarIcon: View {
         let summary = model.statusSummary(recordings: recordings, sources: sources)
         Image(systemName: summary.icon.rawValue)
             .accessibilityLabel("Prakriti: \(summary.line)")
+            .onAppear { model.openMainWindow = { openWindow(id: MainWindow.id) } }
     }
 }

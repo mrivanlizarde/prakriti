@@ -16,6 +16,10 @@ final class Source {
     var kindRaw: String = SourceKind.folder.rawValue
     var modeRaw: String = SourceMode.automatic.rawValue
     var addedAt: Date = Date.distantPast
+    /// When Prakriti first looked inside this folder. Whatever was already there at that moment is
+    /// listed and left alone (engine v0's "first start" rule), so adding a folder of old recordings
+    /// never starts work on all of them. Nil until the first look.
+    var baselinedAt: Date?
 
     @Relationship(deleteRule: .nullify, inverse: \Recording.source)
     var recordings: [Recording] = []
@@ -72,6 +76,13 @@ final class Recording {
     var kindRaw: String = RecordingKind.unknown.rawValue
     var hasSerenity: Bool = false
 
+    /// What Prakriti does next without Ivan (WorkIntent), and how many automatic tries in a row
+    /// stopped. Three stopped tries make it Couldn't finish, with one notice (engine v0's rule).
+    var intentRaw: String = WorkIntent.none.rawValue
+    var failedTries: Int = 0
+    /// Made or seen by engine v0 before the switch-over, read from ~/Prakriti/state.json.
+    var fromEngineV0: Bool = false
+
     // What the sound check measured on the original.
     var loudestDB: Double?
     var averageDB: Double?
@@ -125,6 +136,11 @@ final class Recording {
     var kind: RecordingKind {
         get { RecordingKind(rawValue: kindRaw) ?? .unknown }
         set { kindRaw = newValue.rawValue }
+    }
+
+    var intent: WorkIntent {
+        get { WorkIntent(rawValue: intentRaw) ?? .none }
+        set { intentRaw = newValue.rawValue }
     }
 
     var fileName: String { (filePath as NSString).lastPathComponent }

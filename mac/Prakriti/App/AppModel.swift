@@ -59,13 +59,27 @@ final class AppModel {
     @ObservationIgnored let now: () -> Date
     /// Runs recordings through the pipeline, one at a time.
     @ObservationIgnored let runner = PipelineRunner()
+    /// Watches the sources and feeds the runner.
+    let watcher = Watcher()
+    /// Posts the notices and asks for permission once.
+    let notifier = Notifier()
+    /// Whether Prakriti opens at login (SMAppService.mainApp).
+    var loginItem: LoginItemState = .unknown
+    /// Another copy holds this mode's lock: this one says so and quits (AppDelegate).
+    @ObservationIgnored var isDuplicate = false
+    /// engine v0's state.json could not be read at the switch-over, so nothing is watched.
+    @ObservationIgnored var importFailed = false
+    @ObservationIgnored private var lock: InstanceLock?
+    /// Opens the main window. Set by a view that is on screen (the menu bar icon or the window),
+    /// because SwiftUI only hands its openWindow action to views.
+    @ObservationIgnored var openMainWindow: (() -> Void)?
 
     var selection: SidebarItem? = .today {
         didSet { if oldValue != selection { path = [] } }
     }
     var path: [RecordingRoute] = []
 
-    /// True once the watcher runs (milestone 3). Until then the status line says so plainly.
+    /// True while the watcher runs. When false, the status line says so plainly.
     var isWatching = false
 
     /// Something Ivan tried that was refused, shown by the main window as an alert.
@@ -81,6 +95,8 @@ final class AppModel {
         self.log = log
         self.now = now
         runner.model = self
+        watcher.model = self
+        notifier.model = self
     }
 
     var context: ModelContext { container.mainContext }
@@ -104,8 +120,10 @@ final class AppModel {
         if let launch = CaptureLaunch.current {
             // The real-window capture (scripts/capture-window.swift): sample data in memory, so
             // nothing is saved, no folder is created and Ivan's store is never opened.
+            // Its lines go to the development log in every mode: after the switch-over a capture
+            // runs in live mode, and wrote its lines into Ivan's live log until this was fixed.
             let paths = AppPaths(mode: AppMode.current)
-            let model = Fixtures.model(mode: paths.mode, log: AppLog(directory: paths.logs))
+            let model = Fixtures.model(mode: paths.mode, log: AppLog(directory: AppPaths(mode: .development).logs))
             model.selection = launch.screen
             current = model
             model.log.write("Opened with sample data for a window capture, showing \(launch.screen.title). Nothing is saved.")
@@ -120,6 +138,14 @@ final class AppModel {
             try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         }
         let log = AppLog(directory: paths.logs)
+        // One watcher per mode: a second copy would process and notify every recording twice.
+        guard let lock = InstanceLock.acquire(at: paths.lockFile) else {
+            log.write("Another copy of Prakriti is already running in \(paths.mode.rawValue) mode, so this one (\(Bundle.main.bundlePath)) closes.")
+            let model = AppModel(container: inMemoryContainer(), paths: paths, settings: .ephemeral(), log: log)
+            model.isDuplicate = true
+            current = model
+            return model
+        }
         let container: ModelContainer
         do {
             container = try PrakritiStore.makeContainer(at: paths.store)
@@ -127,7 +153,8 @@ final class AppModel {
             log.write("Could not open the store at \(paths.store.path): \(error.localizedDescription). Using a temporary one for this session.")
             container = inMemoryContainer()
         }
-        let model = AppModel(container: container, paths: paths, settings: AppSettings(defaults: .standard), log: log)
+        let model = AppModel(container: container, paths: paths, settings: .forMode(paths.mode), log: log)
+        model.lock = lock
         current = model
         model.didLaunch()
         return model
@@ -147,15 +174,47 @@ final class AppModel {
         log.write("Prakriti \(version) opened. Mode: \(paths.mode.rawValue). Store: \(paths.store.path)")
         do {
             if try PrakritiStore.seedIfEmpty(context, paths: paths, now: now()) {
-                record("First start. Set up the default outputs and the drop folder at \(paths.drop.path).")
+                let folders = ((try? context.fetch(FetchDescriptor<Source>())) ?? []).map { paths.display($0.path) }
+                record("First start. Set up the default outputs and the folders to watch: \(folders.joined(separator: " and ")).")
             }
         } catch {
             record("Could not set up the defaults: \(error.localizedDescription)", level: .problem)
         }
+        importEngineV0IfNeeded()
         let sources = (try? context.fetch(FetchDescriptor<Source>())) ?? []
-        log.write("Sources: \(sources.map(\.path).joined(separator: " | ")). Watching: no (the watcher arrives in milestone 3; engine v0 still owns the live folders).")
+        log.write("Sources: \(sources.map { "\($0.name) (\($0.mode.rawValue))" }.joined(separator: " | ")).")
         recoverInterruptedWork()
         LaunchOptions.current.apply(to: self)
+        loginItem = paths.mode == .live ? LoginItem.ensureRegistered(log: log, home: paths.home) : .notInstalled
+        if paths.mode == .development { log.write("Login item: not registered in development mode.") }
+        notifier.setUp()
+        if importFailed {
+            log.write("Not watching: the old engine's list could not be read, and without it the studio folder would be made again.")
+        } else {
+            watcher.start()
+        }
+    }
+
+    /// The switch-over, once: engine v0's state.json goes into the store before the first look,
+    /// so nothing v0 saw is made again. Live mode only; development never reads it.
+    func importEngineV0IfNeeded() {
+        guard paths.mode == .live, settings.engineV0ImportedAt == nil else { return }
+        guard FileManager.default.fileExists(atPath: paths.engineV0State.path) else {
+            log.write("No engine v0 state at \(paths.engineV0State.path); nothing to take over.")
+            settings.engineV0ImportedAt = now()
+            return
+        }
+        do {
+            let state = try EngineV0Import.read(paths.engineV0State)
+            let summary = EngineV0Import.run(state, into: self)
+            settings.engineV0ImportedAt = now()
+            record(summary.line)
+        } catch {
+            // Not marked as done: the watcher must not start on the studio folder without v0's
+            // memory, so it waits, and the next launch tries again.
+            record("Could not read the old engine's list of files it had seen (\(error.localizedDescription)). Nothing is watched until it can be read.", level: .problem)
+            importFailed = true
+        }
     }
 
     /// A recording left as Working means Prakriti quit while it ran. It is marked Couldn't finish,
@@ -163,9 +222,24 @@ final class AppModel {
     func recoverInterruptedWork() {
         let all = (try? context.fetch(FetchDescriptor<Recording>())) ?? []
         for recording in all where recording.status == .working {
-            recording.status = .couldntFinish
             recording.currentStep = nil
-            recording.statusReason = "Prakriti quit before this finished. The original is untouched; try again from here."
+            if recording.intent != .none && recording.failedTries + 1 < PipelineRunner.maxTries {
+                // Work Prakriti started on its own starts again by itself, and the stop counts as
+                // a try, so a recording that stops Prakriti every time cannot loop forever.
+                recording.failedTries += 1
+                recording.status = .found
+                recording.statusReason = "Prakriti quit before this finished. It starts again at the first check; the original is untouched."
+            } else {
+                recording.status = .couldntFinish
+                recording.statusReason = "Prakriti quit before this finished. The original is untouched; try again from here."
+                if recording.intent != .none {
+                    recording.failedTries += 1
+                    recording.intent = .none
+                    var facts = NoticeFacts(recording)
+                    facts.tries = recording.failedTries
+                    notifier.post(.couldntFinish, facts)
+                }
+            }
             if let run = recording.latestRun, run.outcome == .running {
                 run.outcome = .stopped
                 run.endedAt = run.endedAt ?? now()
@@ -198,8 +272,26 @@ final class AppModel {
     func setPaused(_ paused: Bool) {
         guard settings.isPaused != paused else { return }
         settings.isPaused = paused
-        record(paused ? "Paused all work. A recording already being worked on finishes first." : "Resumed all work.")
-        if !paused { runner.resume() }
+        record(paused ? "Paused all work. A recording already being worked on finishes first; nothing new is looked for." : "Resumed all work.")
+        if !paused {
+            runner.resume()
+            if watcher.isRunning { Task { await watcher.sweep(.resume) } }
+        }
+    }
+
+    /// Check Now: look through every folder at once, rather than at the next regular check.
+    func checkNow() {
+        guard watcher.isRunning else { return }
+        Task { await watcher.sweep(.checkNow) }
+    }
+
+    /// Opens one recording's page, from a clicked notice.
+    func openRecording(id: UUID) {
+        let all = (try? context.fetch(FetchDescriptor<Recording>())) ?? []
+        guard let recording = all.first(where: { $0.id == id }) else { return }
+        openMainWindow?()
+        NSApp.activate()
+        open(recording)
     }
 
     /// Process File: adds the files (with the same refusals as Add File) and starts them now, one
@@ -220,8 +312,11 @@ final class AppModel {
         }
     }
 
-    /// Make Outputs (or Try Again) on a recording's page.
+    /// Make Outputs (or Try Again) on a recording's page. Ivan's own start: one try, everything
+    /// chosen for it, whatever the folder's setting.
     func makeOutputs(_ recording: Recording) {
+        recording.intent = .none
+        recording.failedTries = 0
         runner.enqueue(recording, trigger: recording.status == .found ? .byHand : .makeAgain)
     }
 
@@ -254,7 +349,9 @@ final class AppModel {
             context.insert(setting)
             setting.source = source
         }
-        record("Added the folder \(path).")
+        record("Added the folder \(path). It is set to Ask me first: what is already in it is listed and left alone.")
+        try? context.save()
+        watcher.sourcesChanged()
         return source
     }
 
@@ -262,6 +359,8 @@ final class AppModel {
         let path = source.path
         context.delete(source)
         record("Removed the folder \(path). Nothing in it was touched.")
+        try? context.save()
+        watcher.sourcesChanged()
     }
 
     /// Adds recordings by hand (Add File, or a drop). They wait as Found until the pipeline runs them.
@@ -354,11 +453,8 @@ final class AppModel {
 
     // MARK: Helpers
 
-    /// The file types engine v0 accepts.
-    static let mediaExtensions: Set<String> = ["mp4", "mov", "mkv", "m4a", "wav", "mp3", "aac", "m4v"]
-
     static func isMedia(_ url: URL) -> Bool {
-        mediaExtensions.contains(url.pathExtension.lowercased())
+        FolderScan.isMedia(url.lastPathComponent)
     }
 
     /// OBS names files "2026-09-13 18-25-44.mp4". Read that as the time the recording was made.
@@ -409,6 +505,9 @@ struct LaunchOptions {
     let processFiles: [String]
     let show: SidebarItem?
     let openLatest: Bool
+    /// `--forget=<path>`: removes that recording from the store (not the file). Used by the
+    /// milestone 3 check to take its test clip back out after the switch-over.
+    let forget: [String]
 
     static var current: LaunchOptions {
         let args = CommandLine.arguments
@@ -417,12 +516,22 @@ struct LaunchOptions {
         }
         return LaunchOptions(processFiles: values("--process-file"),
                              show: values("--show").first.flatMap(SidebarItem.init(rawValue:)),
-                             openLatest: values("--open").first == "latest")
+                             openLatest: values("--open").first == "latest",
+                             forget: values("--forget"))
     }
 
     @MainActor
     func apply(to model: AppModel) {
         if let show { model.selection = show }
+        for path in forget {
+            let standardized = URL(fileURLWithPath: path).standardizedFileURL.path
+            let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
+            for recording in all where recording.filePath == standardized {
+                model.context.delete(recording)
+                model.record("Forgot \(recording.fileName): a test recording, taken out of the list. Its file was not touched by this.")
+            }
+            try? model.context.save()
+        }
         if !processFiles.isEmpty {
             model.log.write("Launched with Process File for \(processFiles.count) file(s).")
             model.processFiles(processFiles.map { URL(fileURLWithPath: $0) })

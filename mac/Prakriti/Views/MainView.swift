@@ -4,6 +4,7 @@ import SwiftUI
 /// The main window: a sidebar and the screen it opens.
 struct MainView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         @Bindable var model = model
@@ -23,6 +24,9 @@ struct MainView: View {
             ToolbarItem(placement: .primaryAction) {
                 PauseButton()
             }
+        }
+        .onAppear {
+            if model.openMainWindow == nil { model.openMainWindow = { openWindow(id: MainWindow.id) } }
         }
         .alert(model.notice?.title ?? "", isPresented: Binding(get: { model.notice != nil }, set: { if !$0 { model.notice = nil } }),
                presenting: model.notice) { _ in

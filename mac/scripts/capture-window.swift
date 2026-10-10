@@ -258,7 +258,8 @@ for appearance in appearances {
 for appearance in appearances {
     let name = "08-refusal-\(appearance)"
     let studio = FileManager.default.homeDirectoryForCurrentUser.path + "/Documents/Design Work/Galindo x Lizarde/Studio Recordings "
-    run("/usr/bin/open", ["-n", app.path, "--args", "--sample-data", "--show=sources", "--appearance=" + appearance, "--add-folder=" + studio])
+    // --development: the refusal belongs to a test copy. The live Prakriti owns the studio folder.
+    run("/usr/bin/open", ["-n", app.path, "--args", "--sample-data", "--development", "--show=sources", "--appearance=" + appearance, "--add-folder=" + studio])
     var windows: [(CGWindowID, CGRect)] = []
     let deadline = Date().addingTimeInterval(15)
     while windows.count < 2 && Date() < deadline {

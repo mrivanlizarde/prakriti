@@ -14,15 +14,21 @@
 #                 ../screens/mac/$(MILESTONE)/real/, and check the selected sidebar row (takes the
 #                 screen's focus for about a minute; do not touch the Mac while it runs)
 # make check      build, test, launch, prove it keeps running with its window closed, then look
+# make install    build, then put the app in ~/Applications and open it there: the live watcher and
+#                 the copy that opens at login (quits the installed copy first, cleanly)
+# make drop       milestone 3's check in the real app: a fresh 90 s clip is moved into the drop
+#                 folder and must be found, made and logged with no clicks. MODE=development uses a
+#                 test copy on ~/Prakriti/Dev/Drop; MODE=live uses the installed copy on ~/Prakriti/Drop
 
 PROJECT   = Prakriti.xcodeproj
 SCHEME    = Prakriti
 DERIVED   = build
 APP       = $(DERIVED)/Build/Products/Debug/Prakriti.app
 MILESTONE ?= latest
+MODE      ?= development
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: generate build test snapshots accept run look check
+.PHONY: generate build test snapshots accept run look check install drop
 
 generate:
 	xcodegen generate
@@ -48,3 +54,9 @@ look: build
 check: build test
 	./scripts/check-launch.sh $(APP)
 	swift scripts/capture-window.swift $(APP) ../screens/mac/$(MILESTONE)/real
+
+install: build
+	./scripts/install.sh $(APP)
+
+drop:
+	./scripts/drop-in-app.sh $(MODE) ../screens/mac/$(MILESTONE)/real

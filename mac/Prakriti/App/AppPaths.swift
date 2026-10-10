@@ -7,8 +7,13 @@ enum AppMode: String, Sendable {
     case development
     case live
 
-    /// The one switch. Stays .development until milestone 3 passes.
-    static let current: AppMode = .development
+    /// The one switch: false until the milestone 3 switch-over, when engine v0 is retired.
+    static let switchedOver = true
+
+    /// Live once switched over. A copy opened with `--development` stays in development (its own
+    /// store, preferences, log and ~/Prakriti/Dev folders) and can run beside the live one, which
+    /// is how later milestones test without touching Ivan's recordings.
+    static let current: AppMode = (!switchedOver || CommandLine.arguments.contains("--development")) ? .development : .live
 }
 
 struct AppPaths: Sendable {
@@ -27,6 +32,10 @@ struct AppPaths: Sendable {
     var workRoot: URL { mode == .development ? root.appending(path: "Dev", directoryHint: .isDirectory) : root }
 
     var drop: URL { workRoot.appending(path: "Drop", directoryHint: .isDirectory) }
+    /// Engine v0's record of every file it saw, read once at the switch-over.
+    var engineV0State: URL { root.appending(path: "state.json") }
+    /// Where engine v0's LaunchAgent plist goes when it is retired.
+    var retired: URL { root.appending(path: "retired", directoryHint: .isDirectory) }
     var outputs: URL { workRoot.appending(path: "Outputs", directoryHint: .isDirectory) }
     var approved: URL { workRoot.appending(path: "Approved", directoryHint: .isDirectory) }
 
@@ -42,6 +51,8 @@ struct AppPaths: Sendable {
     }
 
     var store: URL { applicationSupport.appending(path: "Prakriti.store") }
+    /// Held while this mode's watcher runs, so a second copy in the same mode stops itself.
+    var lockFile: URL { applicationSupport.appending(path: "watcher.lock") }
 
     var logs: URL {
         let base = home.appending(path: "Library/Logs/Prakriti", directoryHint: .isDirectory)
@@ -59,26 +70,49 @@ struct AppPaths: Sendable {
     var archive: URL { home.appending(path: "Downloads/SerenityAI", directoryHint: .isDirectory) }
 
     /// Folders development mode may not take in, each with the reason Ivan reads when he tries.
-    /// Engine v0 watches the Studio Recordings folder and ~/Prakriti/Drop and writes ~/Prakriti/Outputs
-    /// until the milestone 3 switch-over, and the classes live in the studio folder; the archive
-    /// holds private calls. ~/Prakriti/Dev is the one part of ~/Prakriti development may use.
+    /// Before the switch-over engine v0 owns the Studio Recordings folder, ~/Prakriti/Drop and
+    /// ~/Prakriti/Outputs; after it, the live Prakriti does. Either way the classes live in the
+    /// studio folder. ~/Prakriti/Dev is the one part of ~/Prakriti development may use.
     private var developmentRefusals: [(folder: URL, name: String, reason: String)] {
-        [
+        let owner = AppMode.switchedOver ? "the live Prakriti" : "the old engine"
+        let until = AppMode.switchedOver ? "" : " until Prakriti takes over from it"
+        return [
             (studioRecordings, "the Studio Recordings folder",
-             "The Studio Recordings folder stays with the old engine until Prakriti takes over from it, and it holds the classes. While Prakriti is being built, it only works on test files in the Dev folder inside ~/Prakriti."),
+             "The Studio Recordings folder belongs to \(owner)\(until), and it holds the classes. A test copy of Prakriti only works on test files in the Dev folder inside ~/Prakriti."),
             (root, "~/Prakriti",
-             "The old engine works in ~/Prakriti until Prakriti takes over from it. While Prakriti is being built, it only uses the Dev folder inside it."),
-            (archive, "the SerenityAI archive",
-             "The SerenityAI archive holds private calls and classes. Nothing in it is worked on while Prakriti is being built."),
+             "\(owner.capitalizedFirst) works in ~/Prakriti\(until). A test copy of Prakriti only uses the Dev folder inside it."),
         ]
     }
 
-    /// Why this file or folder may not be added, in plain words, or nil if it may. Development mode
-    /// refuses anything inside a folder engine v0 owns or the archive, and any folder that holds one
-    /// of them (watching ~/Documents would take in the studio folder). Live mode refuses nothing here.
+    /// Refused in every mode. The archive holds private 1:1 coaching calls, which are never
+    /// processed (START_HERE warning 13); that does not change at the switch-over.
+    private var archiveRefusal: (folder: URL, name: String, reason: String) {
+        (archive, "the SerenityAI archive",
+         "The SerenityAI archive holds private calls and classes. Prakriti never works on it.")
+    }
+
+    /// Folders Prakriti writes into. Watching one would find its own episodes as new recordings.
+    private var ownFolders: [URL] { [outputs, approved] }
+
+    /// Why this file or folder may not be added, in plain words, or nil if it may.
+    /// - Every mode refuses the archive (and any folder that holds it), and refuses watching the
+    ///   folders Prakriti writes its finished files into.
+    /// - Development also refuses anything inside a folder the live engine owns, and any folder that
+    ///   holds one of them (watching ~/Documents would take in the studio folder).
     func refusal(for url: URL, isFolder: Bool) -> String? {
-        guard mode == .development else { return nil }
         let target = Self.comparable(url)
+        if isFolder {
+            for own in ownFolders {
+                let folder = Self.comparable(own)
+                if Self.path(target, isInside: folder) || Self.path(folder, isInside: target) {
+                    return "Prakriti writes its finished files into \(display(own.path)). Watching it would find its own episodes as new recordings."
+                }
+            }
+        }
+        let archiveFolder = Self.comparable(archive)
+        if Self.path(target, isInside: archiveFolder) { return archiveRefusal.reason }
+        if isFolder && Self.path(archiveFolder, isInside: target) { return "This folder holds \(archiveRefusal.name). " + archiveRefusal.reason }
+        guard mode == .development else { return nil }
         if Self.path(target, isInside: Self.comparable(workRoot)) { return nil }
         for (folder, name, reason) in developmentRefusals {
             let owned = Self.comparable(folder)

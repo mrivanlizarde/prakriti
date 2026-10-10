@@ -3,8 +3,9 @@ import Observation
 import SwiftData
 
 /// Runs recordings through the pipeline one at a time, as engine v0 does, and writes what happens
-/// onto the recording, its run, Activity and the log. The watcher (milestone 3) feeds the same
-/// queue; until then, Process File and a recording's Make Outputs button do.
+/// onto the recording, its run, Activity and the log. The watcher feeds the queue, and so do Process
+/// File and a recording's Make Outputs button. It posts the notices (Found, Started, Ready, Needs a
+/// decision, Couldn't finish) and gives automatic work three tries before Couldn't finish.
 @MainActor
 @Observable
 final class PipelineRunner {
@@ -22,6 +23,16 @@ final class PipelineRunner {
     @ObservationIgnored private var loop: Task<Void, Never>?
     @ObservationIgnored private var activeRecording: Recording?
     @ObservationIgnored private var activeRun: Run?
+    @ObservationIgnored private var activeTrigger: RunTrigger = .byHand
+    @ObservationIgnored private var activeOptions = PipelineOptions()
+
+    /// Automatic tries before Couldn't finish (engine v0: three).
+    static let maxTries = 3
+
+    /// Seconds of work per second of recording, after the 60 s readiness wait. Measured 10 Oct:
+    /// the 13 Sep talk took 36 s for 15:48 (0.038), the 6 Sep talk 124 s for 55:39 (0.037). Used
+    /// only for the "about N minutes" in Started.
+    static let workPerSecond = 0.04
 
     func isWaiting(_ recording: Recording) -> Bool { waitingIDs.contains(recording.id) }
     func isCurrent(_ recording: Recording) -> Bool { currentID == recording.id }
@@ -70,6 +81,7 @@ final class PipelineRunner {
     func options(for recording: Recording) -> PipelineOptions {
         var options = PipelineOptions()
         options.stableWait = stableWait
+        options.checksOnly = recording.intent == .check
         guard let model else { return options }
         let defaults = model.defaultSettings()
         let make = OutputResolver.outputsToMake(recording: recording, source: nil, defaults: defaults)
@@ -96,6 +108,14 @@ final class PipelineRunner {
         let label = Format.dayLabel(recording.sessionDate)
         let options = options(for: recording)
 
+        // Keep the Mac from idle sleep while this one runs, and released when it ends, so a crash can
+        // never pin the Mac awake (SCOPE 7.2). App Nap would otherwise slow a windowless Prakriti.
+        let activity = ProcessInfo.processInfo.beginActivity(options: [.userInitiated, .idleSystemSleepDisabled],
+                                                             reason: "Prakriti is working on a recording.")
+        defer { ProcessInfo.processInfo.endActivity(activity) }
+        activeTrigger = trigger
+        activeOptions = options
+
         let run = Run(startedAt: model.now(), trigger: trigger, steps: options.plannedSteps.map { RunStep(name: $0.title, state: .waiting) })
         model.context.insert(run)
         run.recording = recording
@@ -116,7 +136,8 @@ final class PipelineRunner {
             return refused
         }
 
-        model.record("Started \(recording.fileName) (\(trigger.title.lowercased())). Checking it is complete first.", run: run)
+        model.record("Started \(recording.fileName) (\(trigger.title.lowercased())). "
+                     + (options.checksOnly ? "Checking it is complete and has sound; nothing is made." : "Checking it is complete first."), run: run)
         let pipeline = Pipeline(tools: tools, options: options, log: model.log)
         let result = await pipeline.run(file: file, outputFolder: folder, label: label) { [weak self] progress in
             await self?.apply(progress)
@@ -132,6 +153,27 @@ final class PipelineRunner {
         if let duration = progress.duration { recording.duration = duration }
         recording.updatedAt = model.now()
         try? model.context.save()
+        switch progress.moment {
+        case .fileReady:
+            // Found, only for what Prakriti found itself: a file Ivan just chose needs no news.
+            // An "Ask me first" recording is announced once its checks pass.
+            if activeTrigger.isAutomatic && !activeOptions.checksOnly {
+                model.notifier.post(.found, facts(for: recording))
+            }
+        case .soundOK:
+            var facts = facts(for: recording)
+            facts.estimate = recording.duration.map { $0 * Self.workPerSecond }
+            model.notifier.post(.started, facts)
+        case nil:
+            break
+        }
+    }
+
+    private func facts(for recording: Recording) -> NoticeFacts {
+        var facts = NoticeFacts(recording)
+        facts.makesEpisode = activeOptions.makeEpisode
+        facts.makesTranscript = activeOptions.makeTranscript
+        return facts
     }
 
     private func finish(_ result: PipelineResult, recording: Recording, run: Run, label: String) {
@@ -154,11 +196,29 @@ final class PipelineRunner {
         recording.statusReason = result.reason
 
         let name = recording.fileName
+        let automatic = recording.intent != .none
+        if result.outcome != .failed && result.outcome != .stopped {
+            recording.intent = .none
+            recording.failedTries = 0
+        }
         switch result.outcome {
+        case .checked:
+            recording.status = .found
+            run.outcome = .checked
+            run.summary = "Checked. Waiting for your choice."
+            model.record("\(label) (\(name)) is complete and has sound. It waits for you: nothing is made until you choose Make Outputs.", run: run)
+            var facts = facts(for: recording)
+            facts.askFirst = true
+            model.notifier.post(.found, facts)
         case .ready:
             recording.status = .readyForYourYes
             run.outcome = .ready
             run.summary = "Ready for your yes."
+            var facts = facts(for: recording)
+            if result.coverageOK == false, let reaches = result.transcriptReaches, let duration = result.duration {
+                facts.coverageGap = duration - reaches
+            }
+            model.notifier.post(.ready, facts)
             var numbers: [String] = []
             if let out = result.output { numbers.append("\(Format.lufs(out.integratedLUFS)), peak \(Format.dbfs(out.truePeakDBFS))") }
             if let reaches = result.transcriptReaches, let duration = result.duration {
@@ -178,15 +238,47 @@ final class PipelineRunner {
             run.summary = "No usable sound."
             let loudest = result.hasAudio == false ? "no audio track" : "loudest point \(Pipeline.db(result.volume?.max ?? -.infinity))"
             model.record("\(label) (\(name)) has no usable sound (\(loudest)). Needs a decision. Nothing was made.", level: .attention, run: run)
+            var facts = facts(for: recording)
+            facts.noAudioTrack = result.hasAudio == false
+            model.notifier.post(.needsADecision, facts)
         case .failed:
-            recording.status = .couldntFinish
             run.outcome = .couldntFinish
             run.summary = result.reason
-            model.record("Couldn't finish \(name). \(result.reason) The original is untouched.", level: .problem, run: run)
-        case .stopped:
+            let stoppedIn = result.steps.first { $0.state == .failed }.flatMap { step in PipelineStep.allCases.first { $0.title == step.name } }
+            if automatic {
+                // Automatic work gets three tries, at the regular checks, before anyone is told
+                // (engine v0's rule; SCOPE 8.7: a passing failure a retry fixes says nothing).
+                recording.failedTries += 1
+                if recording.failedTries < Self.maxTries {
+                    recording.status = .found
+                    recording.statusReason = "Try \(recording.failedTries) of \(Self.maxTries) stopped. \(result.reason) Prakriti tries again at the next check, within 5 minutes."
+                    model.record("Couldn't finish \(name) (try \(recording.failedTries) of \(Self.maxTries)). \(result.reason) Trying again at the next check.",
+                                 level: .attention, run: run)
+                    break
+                }
+            }
+            let tries = automatic ? recording.failedTries : 1
             recording.status = .couldntFinish
+            recording.intent = .none
+            recording.statusReason = result.reason + (tries >= Self.maxTries ? " Tried three times." : "") + " The original is untouched."
+            model.record("Couldn't finish \(name)" + (tries >= Self.maxTries ? " after three tries" : "") + ". \(result.reason) The original is untouched.",
+                         level: .problem, run: run)
+            var facts = facts(for: recording)
+            facts.tries = tries
+            facts.stoppedWhile = stoppedIn?.doing
+            model.notifier.post(.couldntFinish, facts)
+        case .stopped:
             run.outcome = .stopped
             run.summary = result.reason
+            if automatic && recording.failedTries + 1 < Self.maxTries {
+                // Counted as a try, so a file that stops Prakriti every time cannot loop forever.
+                recording.failedTries += 1
+                recording.status = .found
+                recording.statusReason = "Stopped before it finished. It starts again at the next check; the original is untouched."
+            } else {
+                recording.status = .couldntFinish
+                recording.intent = .none
+            }
             model.record("Stopped \(name) before it finished. The original is untouched.", level: .attention, run: run)
         }
         try? model.context.save()

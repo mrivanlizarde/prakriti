@@ -163,6 +163,23 @@ enum Fixtures {
             populate(model.context, paths: paths)
         }
         model.isWatching = true
+        model.watcher.isRunning = true
+        model.watcher.lastCheck = Fixtures.now.addingTimeInterval(-120)
+        for source in (try? model.context.fetch(FetchDescriptor<Source>())) ?? [] {
+            model.watcher.states[source.id] = SourceWatchState(health: .ok, checkedAt: Fixtures.now.addingTimeInterval(-120),
+                                                               fileCount: source.recordings.count)
+        }
+        model.notifier.permission = .allowed
+        model.loginItem = .on
         return model
+    }
+
+    /// The state right after the switch-over, before Ivan has answered macOS's prompt for the
+    /// Documents folder: the studio folder cannot be read yet.
+    static func waitingForPermission(_ model: AppModel) {
+        for source in (try? model.context.fetch(FetchDescriptor<Source>())) ?? [] where source.kind == .folder {
+            model.watcher.states[source.id] = SourceWatchState(health: .waitingForPermission, checkedAt: Fixtures.now.addingTimeInterval(-120))
+        }
+        model.notifier.permission = .waitingForAnswer
     }
 }

@@ -4,10 +4,12 @@ import SwiftUI
 extension AppModel {
     func statusSummary(recordings: [Recording], sources: [Source]) -> StatusSummary {
         let working = recordings.first { $0.status == .working }
+        let blocked = sources.filter { watcher.states[$0.id]?.isBlocked == true }.map(\.name)
         return StatusSummary.make(
             isWatching: isWatching,
             isPaused: settings.isPaused,
             folderNames: sources.map(\.name),
+            blockedFolders: blocked,
             needsYou: recordings.filter(\.status.needsYou).count,
             problems: recordings.filter { $0.status == .couldntFinish }.count,
             working: working.map { (Format.dayLabel($0.sessionDate), $0.currentStep ?? "Working") })

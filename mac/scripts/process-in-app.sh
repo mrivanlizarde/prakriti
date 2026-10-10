@@ -19,7 +19,7 @@ pkill -f "$BIN" 2>/dev/null || true
 sleep 1
 BEFORE=$( [ -f "$LOG" ] && wc -l < "$LOG" || echo 0 )
 START=$(date +%s)
-open "$APP" --args "--process-file=$FILE" --show=recordings
+open -n "$APP" --args --development "--process-file=$FILE" --show=recordings
 echo "Opened Prakriti with Process File on $NAME. Waiting for the pipeline (the size must hold still 60 s first)."
 
 DONE=""
@@ -35,7 +35,7 @@ sleep 2
 swift scripts/capture-window.swift --window "$APP" "$OUT/m2-real-recordings.png"
 pkill -f "$BIN" || true
 sleep 2
-open "$APP" --args --show=recordings --open=latest
+open -n "$APP" --args --development --show=recordings --open=latest
 sleep 4
 swift scripts/capture-window.swift --window "$APP" "$OUT/m2-real-recording-page.png"
 pkill -f "$BIN" || true

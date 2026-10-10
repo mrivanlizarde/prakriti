@@ -81,7 +81,8 @@ final class RulesTests: XCTestCase {
 
     func testStatusLineSaysWhatIsHappening() {
         let notWatching = StatusSummary.make(isWatching: false, isPaused: false, folderNames: ["Test drop folder"], needsYou: 0, problems: 0, working: nil)
-        XCTAssertEqual(notWatching.line, "Not watching yet. The old engine still handles new recordings.")
+        XCTAssertEqual(notWatching.line, AppMode.switchedOver ? "Not watching. New recordings wait until Prakriti watches again."
+                                                              : "Not watching yet. The old engine still handles new recordings.")
         XCTAssertEqual(notWatching.icon, .notWatching)
 
         let paused = StatusSummary.make(isWatching: true, isPaused: true, folderNames: ["A"], needsYou: 3, problems: 1, working: ("Sun 6 Sep", "Transcript"))
@@ -104,6 +105,11 @@ final class RulesTests: XCTestCase {
         let idle = StatusSummary.make(isWatching: true, isPaused: false, folderNames: ["A", "B", "C"], needsYou: 0, problems: 0, working: nil)
         XCTAssertEqual(idle.line, "Watching 3 folders. Nothing waiting.")
         XCTAssertEqual(idle.icon, .idle)
+
+        let blocked = StatusSummary.make(isWatching: true, isPaused: false, folderNames: ["Studio Recordings", "Drop folder"],
+                                         blockedFolders: ["Studio Recordings"], needsYou: 0, problems: 0, working: nil)
+        XCTAssertEqual(blocked.line, "Watching Studio Recordings and Drop folder. Studio Recordings cannot be read yet: macOS needs your OK. See Sources.")
+        XCTAssertEqual(blocked.icon, .problem)
 
         XCTAssertEqual(Set([StatusSummary.Icon.idle, .notWatching, .working, .waitingForYou, .problem, .paused].map(\.rawValue)).count, 6,
                        "each menu bar state has its own shape")

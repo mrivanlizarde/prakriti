@@ -4,8 +4,9 @@ One dated entry per milestone of `docs/NEXT-PROMPT.md`, oldest first: what was b
 with its measured result, the decisions taken and why, and anything Ivan must do. A new session
 resumes from the last entry. Weekdays computed with `date(1)`.
 
-**Where it stands:** milestones 1 and 2 of 6 done (Sat 10 Oct). Next: milestone 3, the watcher and
-notifications, then the switch-over from engine v0.
+**Where it stands:** milestones 1, 2 and 3 of 6 done (Sat 10 Oct). **The switch-over happened:**
+engine v0 is retired and Prakriti for Mac, installed in `~/Applications`, is the only thing watching
+the studio folder and `~/Prakriti/Drop`. Next: milestone 4, outputs and settings.
 
 ---
 
@@ -447,3 +448,173 @@ seconds, most of it the 60-second check that the file has finished copying).
   new name for the "dropped and notified" check.
 - Reading the Studio Recordings folder from the real app will need Ivan's click on the Documents
   permission prompt at the switch-over (tests ran under xcodebuild, which already has access).
+
+---
+
+## Milestone 3: the watcher, notifications, and the switch-over from engine v0. Sat 10 Oct 2026
+
+### What was built
+
+- **The watcher** (`mac/Prakriti/App/Watcher.swift`, `Engine/EventStream.swift`, `Engine/FolderScan.swift`).
+  - FSEvents, file by file, over every source, with the newest event id saved after each batch
+    (with the disk's id) and passed back on launch, so changes made while Prakriti was closed are
+    replayed. Dropped or merged events, or a watched folder moving, trigger a full look.
+  - A full look through every folder at launch, on wake, every 5 minutes, after Check Now, after
+    Resume All and when a folder is added or removed. Events settle 5 s first (v0's wait), so a
+    burst of changes makes one look.
+  - The folder listing is engine v0's `candidates()`, rule for rule: hidden names skipped, three
+    folder levels deep, v0's media types, **never a `-vertical.` rendition** (v0 never listed them,
+    so its state.json does not know them), symbolic links skipped.
+  - Each folder is listed on its own background thread with a 20 s limit, so a folder parked on a
+    macOS permission prompt is reported ("Waiting for macOS to allow Prakriti into this folder")
+    while the other folders go on.
+  - **The first look at a folder lists what is already there and leaves it alone** (v0's "first
+    start" rule), so adding a folder of old recordings never starts work on all of them.
+  - Per source: "Make outputs automatically" makes everything chosen; **"Ask me first" checks only**
+    (complete, long enough, has sound), then waits for Make Outputs. A silent recording there is
+    still a Needs a decision the same day.
+  - **Automatic retries:** three tries, at the regular looks, before Couldn't finish and one notice.
+    A run stopped by a quit starts again by itself and counts as a try, so a file that stops
+    Prakriti every time cannot loop. Ivan's own Make Outputs and Try Again run once.
+  - **The heartbeat:** every regular look leaves a line in Activity and a Run, including "Checked 2
+    folders. Nothing new." A look set off by a file event that finds nothing leaves no line,
+    because OBS writing a recording sends events every few seconds.
+  - **Pause All** now stops looking as well as starting ("Paused, so no folder was checked"), and
+    Resume All looks at once.
+  - Sleep and wake are logged; waking starts a full look. Each run holds a no-idle-sleep activity
+    for its own length only.
+- **Notifications** (`App/Notices.swift`): one per recording, updated in place. New Recording Found
+  (active, no sound, after the file is complete and at least 60 s, v0's order), Started (passive,
+  after the sound check passes, with "about N minutes" from measured speed), Ready for Your Yes
+  (sound) share `rec-<file>-status`; Needs a Decision (`-decision`) and Couldn't Finish
+  (`-problem`) are their own, in the same thread. Hidden previews use the status words. The
+  builder is plain data and tested; the notifier asks for alert and sound once, never provisional,
+  never badge; a click opens that recording's page. Every notice is written to the log with what
+  macOS did with it. Settings shows the permission in plain words and re-reads it when Prakriti
+  comes to the front and at every heartbeat.
+- **Open at login:** `SMAppService.mainApp`, registered only by the copy in `~/Applications` (or
+  `/Applications`). Opened at login, Prakriti closes its window and keeps watching. Settings shows
+  the state, with a button to Login Items when it needs Ivan.
+- **One watcher per mode:** a `flock` lock in the mode's Application Support folder. A second copy
+  in the same mode logs why and quits; a development copy runs beside the live one.
+- **A plain `kill` is Quit** (SIGTERM handled), so the install script and the checks stop Prakriti
+  cleanly.
+- **The switch-over:** `AppMode.switchedOver` is true; `--development` opens a test copy with its
+  own store, preferences, log, lock and `~/Prakriti/Dev` folders. On its first live launch the app
+  seeded Studio Recordings and `~/Prakriti/Drop` (both automatic), read engine v0's
+  `~/Prakriti/state.json` into the store **before its first look** (`App/EngineV0Import.swift`;
+  paths only, plus the numbers in v0's REPORT.md tables), and started watching.
+- **Refusals in every mode:** the SerenityAI archive (private calls) and Prakriti's own Outputs and
+  Approved folders as sources (watching them would find its own episodes).
+- **Screens:** Sources has a Watching row with Check Now, and each folder says what its last look
+  found or why it cannot be read, with Open Privacy Settings when macOS is the reason. Settings
+  has Open at login and the notification permission. The status line and the menu bar icon put a
+  folder that cannot be read ahead of work in progress.
+- **Scripts:** `make install` (`scripts/install.sh`), `make drop MODE=development|live`
+  (`scripts/drop-in-app.sh`, the acceptance in the real app), and `--forget=<path>` to take a test
+  recording back out of the list. The development checks (`check-launch.sh`, `process-in-app.sh`,
+  the refusal capture) now open a `-n --development` copy.
+
+### Checks run, with results
+
+| Check | Result |
+|---|---|
+| Build | `BUILD SUCCEEDED`, 0 compiler warnings (warnings fail the build) |
+| `make test` | **66 tests, 0 failures, 1 skipped by design** (`make accept` only): ModelTests 15, RulesTests 12, PipelineTests 15, NotificationTests 6, WatcherTests 16, SnapshotTests 1 |
+| Notification builder, all five events | 19 variants (each event, ask-first, coverage gap, no audio track, one, two and three tries, no length, no folder) pass the copy rules: title "Event: Sun 13 Sep" with a computed weekday and title case; full sentences of 3+ words ending in a period; no em or en dash, "!", app name, "we", "processing" or emoji. Exact words pinned for the 13 Sep talk and the 14 Sep class. A file named "Maria asks about her divorce.m4a" titled "Maria's question" reaches no notice. Found, Started and Ready share one identifier; decision and problem their own; one thread. Sounds: Found and Started silent, Started passive, the other three with sound |
+| Watcher, end to end on generated files | A 70 s tone dropped in is found, made and Ready with notices Found, Started, Ready on one identifier and no clicks (3.8 s); Ask me first checks, makes nothing, one Found notice; an 8 s clip is filed silently; 65 s of silence is Found then Needs a Decision; a broken file gets tries 1 and 2 with no notice, then Couldn't finish and one notice ("It stopped three times while checking the file is complete..."); an interrupted automatic run restarts and counts; a first look lists and starts nothing; the heartbeat logs "Checked 1 folder. Nothing new." with a Run; pause stops looking and resume catches up; a missing folder is reported, not fatal |
+| FSEvents, real | A file written into a watched folder arrives as an event; after the stream stops, a file written meanwhile is **replayed** from the saved id, with HistoryDone |
+| The switch-over, on engine v0's real state.json shape | Seeds both folders automatic; imports 11 (7 skipped, 2 Ready, the watcher test skipped because its files are gone, the silent class Needs a decision); the 13 Sep talk keeps -16.8 LUFS, -1.6 dBFS, 2,948 words, 15:47; the first look over the studio tree (with both vertical renditions and the .txt files) finds **nothing new**, starts nothing, posts nothing; read once only |
+| **Negative controls** | Copy rule broken on purpose ("we", "!"): 3 failures. The vertical rule removed: the scan test fails, and the switch-over test fails with **13 recordings instead of 11** (both vertical renditions would have been made). Both restored |
+| **Dev acceptance, real app, before the switch-over** (`make drop MODE=development`) | A fresh 90 s clip (90.12 s, `ffmpeg -c copy` from the 13 Sep talk) moved into `~/Prakriti/Dev/Drop` at 14:50:49: **found 14:50:56 (7 s), Ready for your yes 78 s after the move**, no clicks. Readiness 65.3 s (the real 60 s wait), Parakeet 1.5 s; -16.5 LUFS, peak -1.8 dBFS, 241 words, 1:29 of 1:30. Three notices handed to macOS on one identifier |
+| Event replay, real app | Relaunch replayed from event 340827176 (nothing missed); after the live cleanup, the relaunch **caught the one change made while closed** |
+| **Engine v0 retired** | v0 idle (last line 14:56:40 "sweep (timer): nothing new"). `launchctl bootout gui/501/studio.therowan.prakriti` exit 0 at 14:56:59; `launchctl print` now says `Could not find service "studio.therowan.prakriti"`; no `prakriti.mjs` process; plist moved to `~/Prakriti/retired/studio.therowan.prakriti.plist`; `~/Prakriti/log.txt` and `state.json` unchanged since |
+| First live launch, 14:57:06 | "Took over from the old engine: 11 files it had already seen were added as they were (7 existing, 3 ready, 1 silent)". Login item: **on (registered now)**. Studio Recordings: **listed 10 recordings, no permission prompt needed**. "Checked 2 folders. Nothing new." |
+| **Live acceptance, after the switch-over** (`make drop MODE=live`) | A fresh 90 s clip moved into `~/Prakriti/Drop` at 14:57:43: **found 14:57:50 (7 s), Ready 78 s after the move**, no clicks; same numbers as above. Then the clip and its outputs were removed and the recording forgotten (`--forget`); `~/Prakriti/Drop` empty, `~/Prakriti/Outputs` back to v0's two folders |
+| **Nothing v0 saw was made again** | In the live store, all 11 recordings from v0 have **0 runs** and no automatic intent; v0's 12 output files are identical in size and date before and after |
+| Live heartbeat | Launched 14:59:51; the regular look logged "Checked 2 folders. Nothing new." at **15:05:10** (5 min 19 s: macOS coalesces timers for a background app; the interval is a floor, not a promise) |
+| Only the app watches | `pgrep`: one `~/Applications/Prakriti.app` process, no node engine. A second live copy opened with `open -n` logged "Another copy of Prakriti is already running in live mode, so this one closes" and quit; the first kept running |
+| `make check MILESTONE=m3` | Tests pass; PASS still running 15 s after its window closed; real-window captures **16 of 16 PASS** (selected-row icon 449 to 891 px; the development refusal alert, now worded for the live owner, in light and dark) |
+| Snapshots | `screens/mac/m3/`: 42 PNGs (every screen light and dark with scrolled ends, plus Sources, Today and Settings in the "waiting for macOS" state). `real/`: the development app on Activity and Sources, the live app on Today, Activity and Sources, and the 16 `make look` captures. **Every one looked at** |
+| Em dashes | 0 in `mac/` (app, tests, scripts, Makefile) |
+
+### What the look-through and the runs caught and fixed
+
+- **A folder that cannot be read was hidden behind "Working on..."** on Today and the menu bar. It
+  now wins: it needs Ivan, and work in progress has its own section.
+- **The window-capture launches wrote into Ivan's live log** after the switch-over (14 lines between
+  15:02 and 15:03 on Sat 10 Oct, left in place). Sample-data launches now always log to the
+  development log, checked: a capture adds 0 lines to the live log.
+- **A refused notification was logged as "waiting"**: notices now say why they were not shown, and
+  a refusal is one Activity line Ivan can see.
+- **Notices claimed one-word sentences** ("Found.") when a recording had no folder; caught by the
+  copy-rule test, reworded.
+
+### Decisions, each with its reason
+
+1. **`SMAppService.mainApp`, as the build prompt set, not SCOPE 7.2's nested agent.** Reason: one
+   app, one identity, no second target this week. Cost, raised below as a trap: a crash is not
+   restarted until the next login (v0's LaunchAgent had KeepAlive).
+2. **The live copy lives in `~/Applications` (`make install`).** Reason: a login item records where
+   the app is, every build rewrites the build folder, and a build replaced the running development
+   copy's files during this milestone. Folder and notification permissions follow the signature,
+   which both copies share.
+3. **`AppMode.switchedOver` plus `--development`,** with separate store, preferences, log, lock and
+   folders. Reason: later milestones need a test copy that cannot pause the live watcher or move
+   its saved event id (preferences were shared until now).
+4. **The first look at any folder is a baseline;** seeded folders count as looked at, and v0's
+   state.json is the memory of what was there before. Reason: v0's rule, and adding a folder must
+   never start work on everything in it.
+5. **New Recording Found arrives when the file is complete and at least 60 s long** (v0's order),
+   not on first sight. Reason: before that, Prakriti cannot know it is not a test, and tests are
+   silent. SCOPE's queued variant ("two recordings are ahead of it") is not built.
+6. **Titles use the build prompt's event names** ("New Recording Found", "Started", "Needs a
+   Decision") rather than SCOPE 8.3's per-case titles ("Recording From", "No Sound"), so the
+   notice and its switch in Settings use the same words.
+7. **A notice never carries a file name, a title or a tool's error text.** Reason: a dropped file
+   can be named after a student, and notices show on lock screens and mirrored devices (PR-22).
+8. **Notification permission is asked at launch,** not after a folder choice with an explainer
+   (SCOPE 7.2). Reason: there is no setup flow yet; the explainer arrives with one.
+9. **One watcher per mode by `flock`.** Reason: two watchers on one folder make and notify everything
+   twice; a lock dies with its process, so a crash never leaves Prakriti locked out.
+10. **The import reads only paths and v0's report tables, and runs before the watcher starts;** if
+    it cannot be read, nothing is watched. Reason: without v0's memory the first look would take
+    the classes of 16, 20 and 23 Sep as new.
+11. **The studio folder and the drop folder are both "Make outputs automatically",** as v0 ran them.
+12. **Readiness is still v0's** (60 s steady, opens, tail decodes). SCOPE 7.3's fuller rule waits.
+
+### What does not work yet, or was not seen working
+
+- **No notice has reached Notification Center yet:** macOS reports notifications as turned off for
+  Prakriti (see For Ivan). The builder, the identifiers and macOS accepting each request are
+  proved; a banner on screen and a click opening the page are not.
+- Opening at login is registered (`on`) but has not been through a real login; the next login
+  should leave "Finished launching at login" in the log.
+- Sleep and wake are built but not tested by closing the lid. FSEvents on the studio folder itself
+  was not exercised by a new studio file (nothing may be written there); the 5-minute look covers
+  it either way, and FSEvents is proved on the drop folder.
+- A recording still being recorded in the studio folder holds the one-at-a-time line until it stops
+  growing, as in v0.
+- No crash restart (decision 1).
+
+### For Ivan
+
+1. **Turn notifications on for Prakriti** (blocked, needs Ivan). macOS reports them as turned off;
+   whether someone pressed Don't Allow or macOS recorded it when a test copy quit with the prompt
+   open is not knowable from the logs. System Settings, Notifications, Prakriti: Allow
+   notifications, Banners, Play sound. Or Prakriti, Settings, Notifications, Open Notification
+   Settings. Until then every notice is written to `~/Library/Logs/Prakriti/<date>.log` only, and
+   **a silent class would show up in Today and Activity but not as a banner.**
+2. Nothing to do for the Documents folder: the app read the studio folder with no prompt.
+3. Nothing to do for the login item: it is on. macOS may have shown a "Background Items Added"
+   notice; that one is informational.
+4. To go back to engine v0 for any reason: quit Prakriti first (two watchers would double
+   everything), then
+   `mv ~/Prakriti/retired/studio.therowan.prakriti.plist ~/Library/LaunchAgents/ && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/studio.therowan.prakriti.plist`.
+
+### Notes for milestone 4
+
+- **After any code change, `make install`,** or the live copy keeps running the old code while the
+  tests pass on the new.
+- Test in development: `open -n mac/build/Build/Products/Debug/Prakriti.app --args --development`.
+- The live store holds v0's 11 recordings: 2 Ready (13 Sep, 6 Sep), 1 Needs a decision (14 Sep).

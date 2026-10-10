@@ -72,10 +72,14 @@ struct PipelineOptions: Sendable {
     var makeEpisode = true
     var makeTranscript = true
     var makeReport = true
+    /// An "Ask me first" folder: check the file is complete and has sound, make nothing, and wait
+    /// for Ivan. A silent recording is still a Needs a decision the same day (the 14 Sep lesson).
+    var checksOnly = false
 
     /// The steps this run will take, in order. The checks always run.
     var plannedSteps: [PipelineStep] {
         var steps: [PipelineStep] = [.complete, .sound]
+        if checksOnly { return steps }
         if makeTranscript { steps += [.speechAudio, .transcript, .coverage] }
         if makeEpisode { steps += [.episode, .loudness] }
         if makeReport { steps.append(.report) }
@@ -96,6 +100,8 @@ struct PipelineResult: Sendable {
         case failed
         /// Stopped because Prakriti quit or the run was cancelled.
         case stopped
+        /// Checks only ("Ask me first"): complete and has sound, nothing made, waiting for Ivan.
+        case checked
     }
 
     var outcome: Outcome = .failed
@@ -124,6 +130,15 @@ struct PipelineProgress: Sendable {
     let steps: [RunStep]
     let current: PipelineStep?
     let duration: Double?
+    /// Set on the progress report where a notice belongs.
+    var moment: PipelineMoment?
+}
+
+/// The two points in a run where Ivan hears about it (engine v0's order): the file is complete
+/// and long enough not to be a test (New Recording Found), and the sound is good (Started).
+enum PipelineMoment: Sendable, Equatable {
+    case fileReady
+    case soundOK
 }
 
 /// The mastering chain, kept exactly as engine v0 runs it, because two bugs live in its details.
@@ -195,9 +210,9 @@ struct Pipeline: Sendable {
         var stepStarted = clock.now
 
         func index(_ step: PipelineStep) -> Int? { steps.firstIndex { $0.name == step.title } }
-        func emit() async {
+        func emit(_ moment: PipelineMoment? = nil) async {
             result.steps = steps
-            await progress(PipelineProgress(steps: steps, current: current, duration: result.duration))
+            await progress(PipelineProgress(steps: steps, current: current, duration: result.duration, moment: moment))
         }
         func begin(_ step: PipelineStep) async {
             current = step
@@ -249,6 +264,8 @@ struct Pipeline: Sendable {
                 return result
             }
 
+            await emit(.fileReady)
+
             // 3. Sound check: the whole audio track, fast (about 2 s per hour).
             await begin(.sound)
             var volume = Measure.Volume(max: -.infinity, mean: -.infinity)
@@ -271,6 +288,14 @@ struct Pipeline: Sendable {
                 return result
             }
             await finish(.sound, "Loudest point \(Self.db(volume.max)), average \(Self.db(volume.mean)).")
+            if options.checksOnly {
+                result.outcome = .checked
+                result.reason = "It is complete and has sound. Nothing is made until you choose Make Outputs."
+                result.seconds = total()
+                await emit()
+                return result
+            }
+            await emit(.soundOK)
 
             try FileManager.default.createDirectory(at: outputFolder, withIntermediateDirectories: true)
             result.outputFolder = outputFolder

@@ -27,6 +27,18 @@ struct SettingsView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                LabeledContent {
+                    if model.loginItem == .needsApproval || model.loginItem == .off {
+                        Button("Open Login Items…") { LoginItem.openSettings() }
+                    }
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Open at login").font(AppFont.body)
+                        Text(model.loginItem.line)
+                            .font(AppFont.secondary).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
             } header: {
                 SectionHeader("General")
             }
@@ -53,7 +65,7 @@ struct SettingsView: View {
                     }
                 }
                 HStack {
-                    RowNote("One notice per recording, updated as it moves along. Banner style and sound are set by macOS.")
+                    RowNote(permissionLine + " One notice per recording, updated as it moves along. Banner style and sound are set by macOS.")
                     Spacer(minLength: 12)
                     Button("Open Notification Settings…") { openNotificationSettings() }
                 }
@@ -92,6 +104,15 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .navigationTitle("Settings")
+    }
+
+    private var permissionLine: String {
+        switch model.notifier.permission {
+        case .allowed: "macOS allows Prakriti's notices."
+        case .denied: "Notices are turned off for Prakriti in System Settings, so they are only written to the log."
+        case .waitingForAnswer: "macOS is waiting for your answer to its notification prompt. Until then notices are only written to the log."
+        case .unknown: "Not checked yet."
+        }
     }
 
     private func openNotificationSettings() {

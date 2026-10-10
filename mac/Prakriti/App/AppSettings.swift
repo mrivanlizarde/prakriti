@@ -15,6 +15,9 @@ final class AppSettings {
         static let providerPrefix = "provider."
         static let lmStudioAddress = "lmStudioAddress"
         static let lmStudioModel = "lmStudioModel"
+        static let lastEventID = "lastEventID"
+        static let eventDevice = "eventDevice"
+        static let engineV0ImportedAt = "engineV0ImportedAt"
     }
 
     /// Stops finding and processing recordings until turned back on.
@@ -29,6 +32,13 @@ final class AppSettings {
     /// LM Studio runs on port 1235 on Ivan's Mac, not its default 1234 (checked 10 Oct).
     var lmStudioAddress: String { didSet { defaults.set(lmStudioAddress, forKey: Key.lmStudioAddress) } }
     var lmStudioModel: String { didSet { defaults.set(lmStudioModel, forKey: Key.lmStudioModel) } }
+
+    /// The newest file-system event already looked at, and the disk it belongs to: the watcher
+    /// replays from here on the next launch. Kept as text because UserDefaults has no 64-bit unsigned type.
+    var lastEventID: UInt64 { didSet { defaults.set(String(lastEventID), forKey: Key.lastEventID) } }
+    var eventDevice: String { didSet { defaults.set(eventDevice, forKey: Key.eventDevice) } }
+    /// When engine v0's state.json was taken in at the switch-over. Read once, never again.
+    var engineV0ImportedAt: Date? { didSet { defaults.set(engineV0ImportedAt, forKey: Key.engineV0ImportedAt) } }
 
     static let defaultLMStudioAddress = "http://localhost:1235/v1"
     static let defaultLMStudioModel = "qwen/qwen3.8-27b"
@@ -50,6 +60,19 @@ final class AppSettings {
         self.provider = provider
         lmStudioAddress = defaults.string(forKey: Key.lmStudioAddress) ?? Self.defaultLMStudioAddress
         lmStudioModel = defaults.string(forKey: Key.lmStudioModel) ?? Self.defaultLMStudioModel
+        lastEventID = defaults.string(forKey: Key.lastEventID).flatMap(UInt64.init) ?? 0
+        eventDevice = defaults.string(forKey: Key.eventDevice) ?? ""
+        engineV0ImportedAt = defaults.object(forKey: Key.engineV0ImportedAt) as? Date
+    }
+
+    /// Each mode keeps its own preferences. Reason: from the switch-over a development copy can run
+    /// beside the live one, and sharing one set would let it pause the live watcher or move its
+    /// saved event id. Live keeps the app's standard preferences (as milestones 1 and 2 used them).
+    static func forMode(_ mode: AppMode) -> AppSettings {
+        switch mode {
+        case .live: AppSettings(defaults: .standard)
+        case .development: AppSettings(defaults: UserDefaults(suiteName: "studio.therowan.prakriti.app.development") ?? .standard)
+        }
     }
 
     /// A throwaway set of preferences for tests and snapshots, so they never touch Ivan's.

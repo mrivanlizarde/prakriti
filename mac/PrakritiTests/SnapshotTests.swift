@@ -51,8 +51,21 @@ final class SnapshotTests: XCTestCase {
             written.append(name)
         }
 
+        // Sources and Today right after the switch-over, before Ivan answers macOS's prompt for the
+        // Documents folder: the studio folder cannot be read yet, and the app says so.
+        for (scheme, appearance) in appearances {
+            for item in [SidebarItem.sources, .today, .settings] {
+                let model = Fixtures.model()
+                Fixtures.waitingForPermission(model)
+                model.selection = item
+                let name = "10-\(item.rawValue)-waiting-for-permission-\(scheme)"
+                try renderer.render(model: model, appearance: appearance, name: name)
+                written.append(name)
+            }
+        }
+
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, SidebarItem.allCases.count * 2 + 6)
+        XCTAssertEqual(written.count, SidebarItem.allCases.count * 2 + 12)
     }
 }

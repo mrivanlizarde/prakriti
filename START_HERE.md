@@ -79,7 +79,7 @@ If something listed here does not exist yet, that work has not landed. Check `CH
 | `web/public/` | **The only folder served to the internet**: `index.html` (the front door), `roadmap.html`, `404.html`, `robots.txt`, `assets/`. Written Thu 8 Oct, not deployed | Anything placed here is public |
 | `scripts/shoot.mjs` | Renders pages to PNGs in headless Chrome and reports console errors, failed loads and sideways overflow | The verification step for anything visual. Caps a full-page capture at 16,000px (warning 26) |
 | `screens/` | Where screenshots land | Gitignored |
-| `mac/` | **Prakriti for Mac**, the native app (SwiftUI, SwiftData). Milestone 1 (skeleton) landed Sat 10 Oct: window, sidebar, menu bar menu, data layer, snapshot tests. No watcher or pipeline yet | Read "Prakriti for Mac" below, then `docs/BUILD-LOG.md` |
+| `mac/` | **Prakriti for Mac**, the native app (SwiftUI, SwiftData). Milestones 1 to 3 landed Sat 10 Oct: window and menu bar, the pipeline in Swift, the watcher and notifications. **Since Sat 10 Oct it is the live engine**, installed in `~/Applications`, opening at login | Read "Prakriti for Mac" below, then `docs/BUILD-LOG.md` |
 | `docs/BUILD-LOG.md` | One dated entry per milestone of the Mac app: what was built, every check with its measured result, decisions, and what Ivan must do | A new session resumes from its last entry |
 
 Later, from the Up Next template: `migrations/`, `test/`, `scripts/smoke.mjs` (production refusals
@@ -90,7 +90,7 @@ tested as refusals), `scripts/backup.mjs`.
 | Fact | Value | Status |
 |---|---|---|
 | Apple team ID | **LD587PB2H8** (07 l.509-511). K55TBYNKUC is the identifier of Ivan's Apple Development certificate; `research/02` l.751 calls it the team and is wrong | Measured |
-| Bundle IDs | Prakriti for Mac is `studio.therowan.prakriti.app` (set by the v1 build prompt, signed since Sat 10 Oct). `studio.therowan.prakriti` is the label of engine v0's LaunchAgent, so the app does not reuse it. The login-item identity for the watcher is decided in milestone 3 | App id in use; login item open until milestone 3 |
+| Bundle IDs | Prakriti for Mac is `studio.therowan.prakriti.app` (set by the v1 build prompt, signed since Sat 10 Oct), and it is also the login item (`SMAppService.mainApp`, registered by the copy in `~/Applications`, milestone 3). `studio.therowan.prakriti` was engine v0's LaunchAgent label, retired Sat 10 Oct | In use |
 | D1 database | `prakriti`, in Ivan's account, with migrations in `web/migrations/` beside `web/wrangler.jsonc` (Up Next keeps `migrations/` beside its config) | **Proposed, for Ivan to confirm** |
 | R2 access from `wrangler` | After R2 is enabled (Q-I2), run `cd ~/Code/prakriti/web && npx wrangler login` again, then check with `cd ~/Code/prakriti/web && npx wrangler r2 bucket list`. Reason: the current OAuth login shows no R2 scope (07 l.394) | To do, by Fri 16 Oct |
 | The archive drive (Q-I17) | When the encrypted drive is first unlocked, tick "Remember this password in my keychain". Reason: without it the drive stays locked after a reboot, and the Phase 0 reboot check (nothing touched, every folder read) fails | To do, when the drive arrives |
@@ -114,34 +114,26 @@ tested as refusals), `scripts/backup.mjs`.
 
 ---
 
-## Engine v0: running now on Ivan's MacBook Pro (since Thu 8 Oct)
+## Engine v0: retired Sat 10 Oct (it ran Thu 8 to Sat 10 Oct)
 
 The first slice of the engine, built the evening of 8 Oct so Prakriti could be used before the Swift
-engine exists: `engine/prakriti.mjs` (Node, no dependencies), run by the LaunchAgent
-`~/Library/LaunchAgents/studio.therowan.prakriti.plist` at login, kept alive.
+engine existed: `engine/prakriti.mjs` (Node, no dependencies), run by a LaunchAgent at login. It
+watched the Studio Recordings folder and `~/Prakriti/Drop` and made episode 1 (the Sun 6 Sep talk)
+and the 13 Sep talk into `~/Prakriti/Outputs/`. **Prakriti for Mac took over on Sat 10 Oct at
+14:57** (milestone 3): the LaunchAgent was booted out and its plist moved to
+`~/Prakriti/retired/studio.therowan.prakriti.plist`; v0's `~/Prakriti/state.json` and `log.txt`
+stay where they are as history, and the app read state.json once so nothing v0 saw is made again.
 
-It watches the Studio Recordings folder and `~/Prakriti/Drop`, waits until each file is truly
-finished (iCloud download, size stable 60 s, opens, last seconds decode), files clips under 60 s as
-tests, refuses silent recordings with a "Needs a Decision" notification, then makes
-`episode.mp3` (mono, -16 LUFS, peak under -1 dBFS), `transcript.txt/.srt/.vtt` (Parakeet, with a
-coverage check) and `REPORT.md` in `~/Prakriti/Outputs/<recording>/`. Notifications: found,
-started, ready (macOS shows them as Script Editor). **It publishes nothing and does not yet label
-speakers or mute names:** read REPORT.md and listen before anything goes out.
+The code stays in `engine/` because its comments hold the rules the app ported (readiness, the sound
+check, the coverage check, and the two mastering bugs: the limiter must keep `level=disabled`, and
+mono + sample rate stay **inside** the filter chain before it; either mistake put the peak over 0
+dBFS on 8 Oct).
+
+To go back to v0, **quit Prakriti first** (two watchers would make and notify everything twice):
 
 ```bash
-cd ~/Code/prakriti/engine && node prakriti.mjs status
+cd ~ && mv ~/Prakriti/retired/studio.therowan.prakriti.plist ~/Library/LaunchAgents/ && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/studio.therowan.prakriti.plist
 ```
-```bash
-cd ~/Code/prakriti/engine && node prakriti.mjs run "/path/to/a recording.mp4"
-```
-```bash
-tail -20 ~/Prakriti/log.txt
-```
-Stop it: `launchctl bootout gui/$(id -u)/studio.therowan.prakriti`. Start it again:
-`launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/studio.therowan.prakriti.plist`.
-
-Load-bearing: the limiter must keep `level=disabled`, and mono + sample rate stay **inside** the
-filter chain before it. Either mistake put the peak over 0 dBFS in testing on 8 Oct.
 
 ## Run the site locally and verify it
 
@@ -477,18 +469,23 @@ Each one states its reason, because a warning without a reason gets argued away.
 ## Prakriti for Mac (`mac/`)
 
 The native app that becomes Ivan's control room for Prakriti, built in six milestones from
-`docs/NEXT-PROMPT.md`. **Milestone 1 (skeleton) is done, Sat 10 Oct:** a signed SwiftUI app with a
-main window (sidebar: Today, Recordings, Sources, Outputs, Models, Activity, Settings), a menu bar
-menu (status, Open Prakriti, Pause All, Settings, Quit), a SwiftData store with Source, Recording,
-OutputSetting, Run and LogEntry, and tests that draw every screen to PNG. **Milestone 2 (the
-pipeline in Swift) is done, Sat 10 Oct:** engine v0's `processFile` ported rule for rule into
-`mac/Prakriti/Engine` (readiness, test clips, sound check, Parakeet transcript with the coverage
-check, two-pass mastering with v0's two bug fixes, the MP3 measured and its tail decoded,
-REPORT.md), run one recording at a time by `PipelineRunner`, started from **File > Process File…**
-or a recording's **Make Outputs** button. On the 13 Sep and 6 Sep talks its episode audio decodes
-bit for bit the same as engine v0's, and its transcripts are identical. **It does not watch anything yet:** engine v0 still owns the live folders
-until milestone 3, and in development the app only processes files under `~/Prakriti/Dev`.
-Progress, checks and decisions per milestone are in `docs/BUILD-LOG.md`.
+`docs/NEXT-PROMPT.md`. **Milestone 1 (skeleton), Sat 10 Oct:** a signed SwiftUI app with a main
+window (sidebar: Today, Recordings, Sources, Outputs, Models, Activity, Settings), a menu bar menu,
+a SwiftData store, and tests that draw every screen to PNG. **Milestone 2 (the pipeline), Sat 10
+Oct:** engine v0's `processFile` ported rule for rule into `mac/Prakriti/Engine`, run one recording
+at a time by `PipelineRunner`; on the 13 Sep and 6 Sep talks its episode audio decodes bit for bit
+the same as v0's. **Milestone 3 (the watcher and the switch-over), Sat 10 Oct:** FSEvents with saved
+event ids plus a look through every folder every 5 minutes, per folder "Make outputs automatically"
+or "Ask me first", three automatic tries, a heartbeat line in Activity for every look, Pause All,
+one notice per recording updated in place, opening at login. **Then engine v0 was retired:** the app
+read v0's state.json, took over the Studio Recordings folder and `~/Prakriti/Drop`, writes to
+`~/Prakriti/Outputs`, and is the only thing watching. Progress, checks and decisions per milestone
+are in `docs/BUILD-LOG.md`.
+
+**Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
+there); it watches the real folders and opens at login. Everything run from the build folder for
+testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
+folders, beside the live one.
 
 ### Build, run, test
 
@@ -519,6 +516,18 @@ cd ~/Code/prakriti/mac && make accept MILESTONE=m2
 ```bash
 cd ~/Code/prakriti/mac && ./scripts/process-in-app.sh "$HOME/Prakriti/Dev/Clips/2026-09-13 clip 90s.mp4" ../screens/mac/m2/real
 ```
+```bash
+cd ~/Code/prakriti/mac && make install
+```
+```bash
+cd ~/Code/prakriti/mac && make drop MODE=development MILESTONE=m3
+```
+```bash
+cd ~/Code/prakriti/mac && make drop MODE=live MILESTONE=m3
+```
+```bash
+tail -20 ~/Library/Logs/Prakriti/$(date +%Y-%m-%d).log
+```
 
 `make test` runs every unit test (data, rules, copy and type checks, and the snapshot render).
 `make snapshots` writes every screen, light and dark, at the window's real size (1180 by 760) to
@@ -538,7 +547,15 @@ runs too. It writes to `~/Prakriti/Dev/Outputs`, draws Recordings, Today, Activi
 recording's page from what was really measured into `screens/mac/<milestone>/`, and writes the
 numbers to `acceptance.txt` there. `scripts/process-in-app.sh` checks the **real app**: it opens
 Prakriti with Process File on one file (launch flag `--process-file=`), waits for the result in the
-log, and captures the real window on Recordings and on that recording's page. **Then open every
+log, and captures the real window on Recordings and on that recording's page. `make install`
+builds, quits the installed copy cleanly, replaces `~/Applications/Prakriti.app` whole and opens
+it: **run it after every code change**, or the live watcher keeps running the old code. `make drop`
+is milestone 3's check in the real app: it cuts a fresh 90 s clip from the 13 Sep talk into
+`~/Prakriti/Dev/Clips`, moves it into the drop folder (development: `~/Prakriti/Dev/Drop` with a
+`--development` copy; live: `~/Prakriti/Drop` with the installed copy), touches nothing else, and
+passes when the log shows it found, made and Ready for your yes, with each notice and what macOS
+did with it. After a live run, take the clip back out: quit, delete the clip and its folder in
+`~/Prakriti/Outputs`, and open the app with `--forget=<the clip's path>`. **Then open every
 PNG and look at it.** Reading the code is not verification, and neither is a passing test.
 
 ### Where things live
@@ -546,13 +563,18 @@ PNG and look at it.** Reading the code is not verification, and neither is a pas
 | What | Where |
 |---|---|
 | Project definition (source of truth) | `mac/project.yml`; `make generate` rebuilds `Prakriti.xcodeproj`, and both are committed |
-| App code | `mac/Prakriti/App` (launch, paths, settings, log, `PipelineRunner`), `Engine` (the pipeline: `Subprocess`, `Readiness`, `Measurements`, `Pipeline` with `Mastering`, `Report`), `Model` (vocabulary, SwiftData models, store), `Views`, `Fixtures` |
-| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share) |
+| App code | `mac/Prakriti/App` (launch, paths, settings, log, `PipelineRunner`, `Watcher`, `Notices`, `LoginItem` with the instance lock, `EngineV0Import`), `Engine` (the pipeline: `Subprocess`, `Readiness`, `Measurements`, `Pipeline` with `Mastering`, `Report`; the watcher's `FolderScan` and `EventStream`), `Model` (vocabulary, SwiftData models, store), `Views`, `Fixtures` |
+| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share) |
 | Real-window capture | `mac/scripts/capture-window.swift` (run by `make look` and `make check`); also `--analyze <png>` to check any capture, and `--window <app> <png>` to capture the running app as it is |
 | Real-app pipeline check | `mac/scripts/process-in-app.sh <file> <folder>` |
 | Outputs, development mode | `~/Prakriti/Dev/Outputs/<file name without extension>/`: `episode.mp3`, `transcript.txt/.srt/.vtt/.json`, `REPORT.md` (engine v0's layout) |
 | Test clips | `~/Prakriti/Dev/Drop/2026-09-13 clip 30s.mp4` (a test) and `~/Prakriti/Dev/Clips/2026-09-13 clip 90s.mp4` (a full run), cut with `ffmpeg -c copy` from the 13 Sep talk |
 | The built app | `mac/build/Build/Products/Debug/Prakriti.app` (gitignored) |
+| The live app | `~/Applications/Prakriti.app` (from `make install`), the login item |
+| Store, live | `~/Library/Application Support/Prakriti/Prakriti.store`; the watcher lock beside it (`watcher.lock`) |
+| Log, live | `~/Library/Logs/Prakriti/<date>.log`: every look, every step, every notice and what macOS did with it |
+| Outputs and drop folder, live | `~/Prakriti/Outputs/<file name without extension>/`, `~/Prakriti/Drop` |
+| Engine v0, retired | `engine/prakriti.mjs`; its plist in `~/Prakriti/retired/`; its `~/Prakriti/state.json` and `log.txt` kept as history |
 | Store, development mode | `~/Library/Application Support/Prakriti/Development/Prakriti.store` |
 | Log, development mode | `~/Library/Logs/Prakriti/Development/<date>.log`, one line per event |
 | Working folders, development mode | `~/Prakriti/Dev/Drop`, `~/Prakriti/Dev/Outputs`, `~/Prakriti/Dev/Approved` |
@@ -560,15 +582,14 @@ PNG and look at it.** Reading the code is not verification, and neither is a pas
 
 ### Load-bearing warnings for the Mac app
 
-1. **`AppMode.current` stays `.development` until the milestone 3 switch-over.** In development the
-   app uses only `~/Prakriti/Dev` and its own store, and refuses, with an alert and an Activity
-   line, any folder or file inside the Studio Recordings folder, inside `~/Prakriti` other than
-   `~/Prakriti/Dev`, or inside the SerenityAI archive, and any folder that holds one of them. This
-   covers the first-launch setup, Add Folder, Add File and the drop zone (`AppPaths.refusal`;
-   tests in `ModelTests`; the real app is checked by `make look`). Reason: engine v0 owns Studio
-   Recordings and `~/Prakriti/Drop` and is making episode 1 for Fri 23 Oct; two watchers on one
-   folder would process a recording twice and notify twice, and from milestone 2 a hand-added class
-   could be run. The switch-over retires v0's LaunchAgent the same day, and the log says so.
+1. **`AppMode.switchedOver` is true since Sat 10 Oct: the app is live, and every test copy opens
+   with `--development`.** A development copy uses only `~/Prakriti/Dev` and its own store,
+   preferences, log and lock, and refuses, with an alert and an Activity line, any folder or file
+   inside the Studio Recordings folder or inside `~/Prakriti` other than `~/Prakriti/Dev`, and any
+   folder that holds one of them (`AppPaths.refusal`; tests in `ModelTests`; the real app is checked
+   by `make look`). Every mode refuses the SerenityAI archive and watching Prakriti's own Outputs
+   and Approved folders. Reason: the live copy owns the studio folder and `~/Prakriti/Drop`; a test
+   copy watching them would make and notify every recording twice, and the folder holds classes.
 2. **Automatic termination stays off** (`NSSupportsAutomaticTermination` false in Info.plist, and
    `disableAutomaticTermination` at launch). Reason: macOS quits a windowless app on its own, and
    the watcher must keep working with the window closed. `make check` proves it on every run.
@@ -634,7 +655,42 @@ PNG and look at it.** Reading the code is not verification, and neither is a pas
     and only the three files it names (13 Sep talk, silent 14 Sep class, 6 Sep talk), read-only; it
     checks each original's size and date are unchanged afterwards. Everywhere else development mode
     refuses that folder (warning 1). Reason: the folder holds the classes, which may not be processed
-    (student privacy), and engine v0 owns it until the switch-over.
+    (student privacy), and the live Prakriti owns it.
+18. **Never list a `-vertical.` rendition, and keep the folder listing engine v0's**
+    (`FolderScan`: hidden names, three levels, v0's media types, no symbolic links). Reason: v0
+    never listed the vertical files, so its state.json does not know them; with the rule removed
+    on purpose, the switch-over test took in 13 recordings instead of 11, and the app would have
+    made the two vertical renditions of 6 Sep on its first look.
+19. **engine v0's state.json is read before the watcher's first look, once, and a failed read
+    stops the watcher.** Reason: it is the only record of what v0 saw; without it the first look
+    takes every studio file as new, including the classes of 16, 20 and 23 Sep, which may not be
+    processed (student privacy).
+20. **The first look at a folder lists what is there and starts nothing** (`Source.baselinedAt`);
+    seeded folders count as looked at. Reason: v0's first-start rule, and a folder of 958 archive
+    files added by hand must never start 958 runs.
+21. **The live copy is `~/Applications/Prakriti.app`; run `make install` after every code change.**
+    Reason: the login item records where the app lives, and a build rewrites the build folder in
+    place (it replaced a running copy's files on 10 Oct). Without `make install` the live watcher
+    keeps running old code while every test passes on the new.
+22. **One watcher per mode (`InstanceLock`, `flock` on `watcher.lock`); test copies open with
+    `open -n ... --args --development`.** Reason: a second live copy would find, make and notify
+    everything twice. A lock dies with its process, so a crash never locks Prakriti out. Proved: a
+    second live copy logged why and quit.
+23. **A notice never carries a file name, a recording's title or a tool's error text** (only the
+    date, lengths, the folder's name and fixed sentences; `NotificationTests` checks every variant).
+    Reason: a dropped file can be named after a student, and notices show on lock screens and
+    mirrored devices (SCOPE 8.1, PR-22).
+24. **Folders are listed off the main thread, one thread each, with a time limit, and nothing on the
+    main thread touches a path inside `~/Documents`** (the import compares paths only). Reason: the
+    first read of a protected folder waits until someone answers macOS's prompt; on the main thread
+    that freezes the app, and in one shared look it would stop the drop folder too.
+25. **SIGTERM is Quit** (the app handles it). Reason: the install script and every check stop
+    Prakriti with `pkill`; without the handler that kills it mid-run and skips the clean stop.
+26. **Window captures and sample data log to the development log in every mode.** Reason: after the
+    switch-over the captures ran in live mode and wrote 14 lines into Ivan's live log (10 Oct).
+27. **Automatic work gets three tries at the regular looks; an interrupted automatic run restarts by
+    itself and counts as a try.** Reason: v0's rule, a passing failure says nothing (SCOPE 8.7), and
+    a file that stops Prakriti every time must end as Couldn't finish, not loop.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 
@@ -659,7 +715,10 @@ part it names:
   plist with `KeepAlive` set to `{ SuccessfulExit = false }`, owning the watcher, the pipeline,
   notifications and the menu bar, and raising every permission prompt itself at setup. Reason:
   notification permission and folder access belong to one signed identity; split them and one half
-  silently loses its permission. And a plain `KeepAlive` would make Quit do nothing.
+  silently loses its permission. And a plain `KeepAlive` would make Quit do nothing. **Milestone 3
+  used `SMAppService.mainApp` instead** (the build prompt's choice: one app, one identity): it opens
+  at login, but **nothing restarts it after a crash** until the next login. The nested agent with
+  `KeepAlive = { SuccessfulExit = false }` is still the way to close that gap.
 - **The engine talks to the Worker only through the contract in SCOPE §6.4.** Its token works only on
   `/engine/*`, and it can never publish: the Worker opens every upload session and the engine only
   receives the session address. Claude's results come back through `/engine/editorial`, and every

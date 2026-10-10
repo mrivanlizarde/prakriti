@@ -19,9 +19,11 @@ enum PrakritiStore {
         return try ModelContainer(for: schema, configurations: [configuration])
     }
 
-    /// First launch: the default output choices, and the one folder this mode may use.
-    /// Development mode adds only ~/Prakriti/Dev/Drop. The live Studio Recordings folder is added
-    /// at the switch-over (milestone 3), never before: engine v0 owns it until then.
+    /// First launch: the default output choices, and the folders this mode watches.
+    /// Development adds only ~/Prakriti/Dev/Drop. Live (from the switch-over) adds the Studio
+    /// Recordings folder and ~/Prakriti/Drop, both making outputs automatically, as engine v0 did.
+    /// Each counts as looked at from this moment: engine v0's state.json, read next, is the memory
+    /// of what was there before, and anything else that arrives is new.
     @MainActor
     static func seedIfEmpty(_ context: ModelContext, paths: AppPaths, now: Date) throws -> Bool {
         let existing = try context.fetchCount(FetchDescriptor<OutputSetting>())
@@ -29,13 +31,20 @@ enum PrakritiStore {
         for kind in OutputKind.allCases {
             context.insert(OutputSetting(kind: kind))
         }
-        let drop = Source(name: paths.mode == .development ? "Test drop folder" : "Drop folder",
-                          path: paths.drop.path, kind: .dropFolder, mode: .automatic, addedAt: now)
-        context.insert(drop)
-        for kind in OutputKind.allCases {
-            let s = OutputSetting(kind: kind)
-            context.insert(s)
-            s.source = drop
+        var folders: [Source] = []
+        if paths.mode == .live {
+            folders.append(Source(name: "Studio Recordings", path: paths.studioRecordings.path, kind: .folder, mode: .automatic, addedAt: now))
+        }
+        folders.append(Source(name: paths.mode == .development ? "Test drop folder" : "Drop folder",
+                              path: paths.drop.path, kind: .dropFolder, mode: .automatic, addedAt: now.addingTimeInterval(1)))
+        for folder in folders {
+            folder.baselinedAt = now
+            context.insert(folder)
+            for kind in OutputKind.allCases {
+                let s = OutputSetting(kind: kind)
+                context.insert(s)
+                s.source = folder
+            }
         }
         try context.save()
         return true

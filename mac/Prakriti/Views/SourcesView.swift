@@ -13,10 +13,11 @@ struct SourcesView: View {
         Form {
             Section {
                 PageIntro(text: "Folders Prakriti watches for new recordings, and what it makes from each one. Prakriti only reads these folders; it never writes into them.")
+                WatchingRow()
             }
 
             ForEach(sources) { source in
-                SourceSection(source: source) {
+                SourceSection(source: source, state: model.watcher.states[source.id]) {
                     sourceToRemove = source
                 }
             }
@@ -51,16 +52,74 @@ struct SourcesView: View {
     private var removeTitle: String {
         "Stop watching \(sourceToRemove?.name ?? "this folder")?"
     }
+
+    /// System Settings at Privacy and Security, Files and Folders: where macOS keeps folder access.
+    static func openFilesAndFolders() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders") {
+            NSWorkspace.shared.open(url)
+        }
+    }
 }
 
-/// One watched folder: where it is, and what happens when a recording arrives.
+/// Whether Prakriti is watching, when it last looked, and Check Now.
+struct WatchingRow: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Label {
+                Text(line)
+                    .font(AppFont.body)
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: icon)
+                    .font(AppFont.body)
+            }
+            Spacer(minLength: 12)
+            Button("Check Now") { model.checkNow() }
+                .disabled(!model.watcher.isRunning || model.settings.isPaused)
+        }
+    }
+
+    private var icon: String {
+        model.settings.isPaused ? "pause.circle" : (model.isWatching ? "eye" : "eye.slash")
+    }
+
+    private var line: String {
+        if model.settings.isPaused { return "Paused. Nothing new is looked for until you resume." }
+        guard model.isWatching else { return "Not watching right now." }
+        let last = model.watcher.lastCheck.map { " Last checked at \(Format.clock($0))." } ?? ""
+        return "Watching for new recordings, and checking every folder every 5 minutes.\(last)"
+    }
+}
+
+/// One watched folder: where it is, what the last look found, and what happens when a recording arrives.
 struct SourceSection: View {
     @Bindable var source: Source
+    var state: SourceWatchState?
     let onRemove: () -> Void
 
     var body: some View {
         Section {
             PathRow(label: "Folder", path: source.path)
+            if let state {
+                Label {
+                    Text(state.line)
+                        .font(AppFont.secondary)
+                        .foregroundStyle(state.isBlocked ? .primary : .secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: state.isBlocked ? "exclamationmark.triangle" : "checkmark.circle")
+                        .font(AppFont.secondary)
+                        .foregroundStyle(state.isBlocked ? Color.orange : Color.green)
+                }
+                if state.health == .notAllowed || state.health == .waitingForPermission {
+                    HStack {
+                        Spacer()
+                        Button("Open Privacy Settings…") { SourcesView.openFilesAndFolders() }
+                    }
+                }
+            }
 
             Picker(selection: $source.modeRaw) {
                 ForEach(SourceMode.allCases, id: \.rawValue) { mode in

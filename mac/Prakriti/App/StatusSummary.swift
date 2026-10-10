@@ -18,19 +18,27 @@ struct StatusSummary: Equatable, Sendable {
     /// - Parameters:
     ///   - isWatching: the watcher is running (false until milestone 3 builds it).
     ///   - working: the label and current step of the recording being worked on, if any.
-    static func make(isWatching: Bool, isPaused: Bool, folderNames: [String], needsYou: Int,
+    static func make(isWatching: Bool, isPaused: Bool, folderNames: [String], blockedFolders: [String] = [], needsYou: Int,
                      problems: Int, working: (label: String, step: String)?) -> StatusSummary {
         if isPaused {
             return StatusSummary(line: "Paused. Nothing new is processed until you resume.", icon: .paused)
         }
-        // Work in progress is named even before the watcher exists: Process File runs the pipeline.
+        // A folder that cannot be read wins over work in progress: it needs Ivan, and new recordings
+        // there go unseen until he answers. Work in progress has its own section on Today.
+        if isWatching && !blockedFolders.isEmpty {
+            return StatusSummary(line: "Watching " + folderPhrase(folderNames) + ". " + folderPhrase(blockedFolders)
+                                 + " cannot be read yet: macOS needs your OK. See Sources.", icon: .problem)
+        }
+        // Work in progress is named even when not watching: Process File runs the pipeline.
         if let working {
             return StatusSummary(line: "Working on \(working.label): \(working.step.lowercasedFirst)", icon: .working)
         }
         if !isWatching {
-            return StatusSummary(line: "Not watching yet. The old engine still handles new recordings.", icon: .notWatching)
+            return StatusSummary(line: AppMode.switchedOver ? "Not watching. New recordings wait until Prakriti watches again."
+                                                            : "Not watching yet. The old engine still handles new recordings.", icon: .notWatching)
         }
         let watching = "Watching " + folderPhrase(folderNames) + "."
+
         if needsYou > 0 {
             let waiting = needsYou == 1 ? "1 recording needs you." : "\(needsYou) recordings need you."
             return StatusSummary(line: watching + " " + waiting, icon: problems > 0 ? .problem : .waitingForYou)
