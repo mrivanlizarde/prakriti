@@ -1,0 +1,167 @@
+import Foundation
+import XCTest
+@testable import Prakriti
+
+/// The standing rules, checked on every test run: paths, dates, the status line, no em dashes,
+/// and Ivan's type floor.
+@MainActor
+final class RulesTests: XCTestCase {
+    // MARK: Paths
+
+    func testDevelopmentStaysInsideItsOwnFolders() {
+        let home = URL(fileURLWithPath: "/Users/someone", isDirectory: true)
+        let dev = AppPaths(mode: .development, home: home)
+        XCTAssertEqual(dev.drop.path, "/Users/someone/Prakriti/Dev/Drop")
+        XCTAssertEqual(dev.outputs.path, "/Users/someone/Prakriti/Dev/Outputs")
+        XCTAssertEqual(dev.approved.path, "/Users/someone/Prakriti/Dev/Approved")
+        XCTAssertEqual(dev.store.path, "/Users/someone/Library/Application Support/Prakriti/Development/Prakriti.store")
+        XCTAssertEqual(dev.logs.path, "/Users/someone/Library/Logs/Prakriti/Development")
+
+        // Engine v0 watches ~/Prakriti/Drop (and three levels below it) and the studio folder.
+        // Nothing the app creates in development may sit inside either.
+        let v0Watched = [home.appending(path: "Prakriti/Drop").path + "/", dev.studioRecordings.path]
+        for folder in dev.foldersToCreate {
+            for watched in v0Watched {
+                XCTAssertFalse(folder.path.hasPrefix(watched), "\(folder.path) is inside a folder engine v0 watches")
+            }
+        }
+
+        let live = AppPaths(mode: .live, home: home)
+        XCTAssertEqual(live.drop.path, "/Users/someone/Prakriti/Drop")
+        XCTAssertEqual(live.outputs.path, "/Users/someone/Prakriti/Outputs")
+        XCTAssertEqual(live.store.path, "/Users/someone/Library/Application Support/Prakriti/Prakriti.store")
+    }
+
+    func testTheStudioFolderNameKeepsItsTrailingSpace() {
+        let paths = AppPaths(mode: .live, home: URL(fileURLWithPath: "/Users/someone", isDirectory: true))
+        XCTAssertTrue(paths.studioRecordings.path.hasSuffix("Studio Recordings "), "the folder's real name ends in a space")
+    }
+
+    func testOutputsNeverGoIntoTheSharedFolderOrDocuments() {
+        let home = URL(fileURLWithPath: "/Users/someone", isDirectory: true)
+        let paths = AppPaths(mode: .live, home: home)
+        XCTAssertFalse(paths.isSafeOutputLocation(paths.studioRecordings.appending(path: "2026-09-13/out")))
+        XCTAssertFalse(paths.isSafeOutputLocation(home.appending(path: "Documents/anything")))
+        XCTAssertFalse(paths.isSafeOutputLocation(home.appending(path: "Documents")))
+        XCTAssertTrue(paths.isSafeOutputLocation(paths.outputs.appending(path: "2026-09-13 18-25-44")))
+        XCTAssertTrue(paths.isSafeOutputLocation(paths.approved))
+        XCTAssertTrue(paths.isSafeOutputLocation(home.appending(path: "DocumentsArchive")), "a sibling that only starts with the same letters is fine")
+    }
+
+    // MARK: Dates and numbers
+
+    func testWeekdaysAreComputed() {
+        // Checked with date(1): date -j -f %Y-%m-%d 2026-09-13 +%a
+        XCTAssertEqual(Format.dayLabel(Fixtures.date(2026, 9, 6)), "Sun 6 Sep")
+        XCTAssertEqual(Format.dayLabel(Fixtures.date(2026, 9, 13)), "Sun 13 Sep")
+        XCTAssertEqual(Format.dayLabel(Fixtures.date(2026, 9, 14)), "Mon 14 Sep")
+        XCTAssertEqual(Format.dayLabel(Fixtures.date(2026, 10, 10)), "Sat 10 Oct")
+        XCTAssertEqual(Format.dayLabel(Fixtures.date(2026, 10, 23)), "Fri 23 Oct")
+        XCTAssertEqual(Format.longDay(Fixtures.date(2026, 10, 10)), "Saturday 10 October")
+        XCTAssertEqual(Format.clock(Fixtures.date(2026, 9, 13, 18, 25)), "6:25 pm")
+    }
+
+    func testLengthsAndTimecodes() {
+        XCTAssertEqual(Format.length(45), "45 s")
+        XCTAssertEqual(Format.length(90), "1 min 30 s")
+        XCTAssertEqual(Format.length(947.78), "15 min 48 s")
+        XCTAssertEqual(Format.length(3702.27), "1 hr 2 min")
+        XCTAssertEqual(Format.length(3600), "1 hr")
+        XCTAssertEqual(Format.timecode(947), "15:47")
+        XCTAssertEqual(Format.timecode(947.78), "15:48")
+        XCTAssertEqual(Format.timecode(3702.27), "1:01:42")
+        XCTAssertEqual(Format.lufs(-16.8), "-16.8 LUFS")
+        XCTAssertEqual(Format.size(730_464_600), "730 MB")
+        XCTAssertEqual(Format.size(2_858_813_029), "2.86 GB")
+        XCTAssertEqual(Format.number(2948), "2,948")
+    }
+
+    // MARK: The status line
+
+    func testStatusLineSaysWhatIsHappening() {
+        let notWatching = StatusSummary.make(isWatching: false, isPaused: false, folderNames: ["Test drop folder"], needsYou: 0, problems: 0, working: nil)
+        XCTAssertEqual(notWatching.line, "Not watching yet. The old engine still handles new recordings.")
+        XCTAssertEqual(notWatching.icon, .notWatching)
+
+        let paused = StatusSummary.make(isWatching: true, isPaused: true, folderNames: ["A"], needsYou: 3, problems: 1, working: ("Sun 6 Sep", "Transcript"))
+        XCTAssertEqual(paused.icon, .paused, "paused wins over everything")
+
+        let working = StatusSummary.make(isWatching: true, isPaused: false, folderNames: ["A"], needsYou: 1, problems: 0,
+                                         working: ("Sun 6 Sep", "Making the episode audio"))
+        XCTAssertEqual(working.line, "Working on Sun 6 Sep: making the episode audio")
+        XCTAssertFalse(working.line.localizedCaseInsensitiveContains("processing"))
+
+        let waiting = StatusSummary.make(isWatching: true, isPaused: false, folderNames: ["Studio Recordings", "Drop folder"],
+                                         needsYou: 2, problems: 0, working: nil)
+        XCTAssertEqual(waiting.line, "Watching Studio Recordings and Drop folder. 2 recordings need you.")
+        XCTAssertEqual(waiting.icon, .waitingForYou)
+
+        let problem = StatusSummary.make(isWatching: true, isPaused: false, folderNames: ["A"], needsYou: 1, problems: 1, working: nil)
+        XCTAssertEqual(problem.line, "Watching A. 1 recording needs you.")
+        XCTAssertEqual(problem.icon, .problem)
+
+        let idle = StatusSummary.make(isWatching: true, isPaused: false, folderNames: ["A", "B", "C"], needsYou: 0, problems: 0, working: nil)
+        XCTAssertEqual(idle.line, "Watching 3 folders. Nothing waiting.")
+        XCTAssertEqual(idle.icon, .idle)
+
+        XCTAssertEqual(Set([StatusSummary.Icon.idle, .notWatching, .working, .waitingForYou, .problem, .paused].map(\.rawValue)).count, 6,
+                       "each menu bar state has its own shape")
+    }
+
+    // MARK: Copy and type rules, read from the source files
+
+    private var appSourceFiles: [URL] {
+        let appFolder = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appending(path: "Prakriti")
+        let enumerator = FileManager.default.enumerator(at: appFolder, includingPropertiesForKeys: nil)
+        var files: [URL] = []
+        while let url = enumerator?.nextObject() as? URL {
+            if ["swift", "plist"].contains(url.pathExtension) { files.append(url) }
+        }
+        return files
+    }
+
+    func testTheSourcesAreFound() {
+        XCTAssertGreaterThan(appSourceFiles.count, 10, "the rule checks below must actually read the app's files")
+    }
+
+    func testNoEmDashesAnywhereInTheApp() throws {
+        for file in appSourceFiles {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for (number, line) in text.components(separatedBy: "\n").enumerated() where line.contains("\u{2014}") {
+                XCTFail("Em dash in \(file.lastPathComponent) line \(number + 1): \(line)")
+            }
+        }
+    }
+
+    func testNoProcessingEllipsisOrBannedWords() throws {
+        for file in appSourceFiles where file.pathExtension == "swift" {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for (number, line) in text.components(separatedBy: "\n").enumerated() {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("//") || trimmed.hasPrefix("///") { continue }
+                for banned in ["\"Processing", "Oops", "We're ", "we're "] where line.contains(banned) {
+                    XCTFail("\(banned) in \(file.lastPathComponent) line \(number + 1)")
+                }
+            }
+        }
+    }
+
+    func testEveryFontComesFromTheTypeScale() throws {
+        let builtInStyles = [".largeTitle", ".title", ".title2", ".title3", ".headline", ".subheadline", ".body",
+                             ".callout", ".footnote", ".caption", ".caption2"]
+        for file in appSourceFiles where file.pathExtension == "swift" && file.lastPathComponent != "AppFont.swift" {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for (number, line) in text.components(separatedBy: "\n").enumerated() {
+                let where_ = "\(file.lastPathComponent) line \(number + 1)"
+                XCTAssertFalse(line.contains(".system(size:"), "Font sizes live in AppFont only: \(where_)")
+                for style in builtInStyles where line.contains(".font(\(style))") || line.contains(".font(Font\(style))") {
+                    XCTFail("Built-in text style \(style) renders at or under 13 pt on macOS (some at 10 pt): \(where_)")
+                }
+                XCTAssertFalse(line.contains(".badge("), "Sidebar badges draw under 12 pt: \(where_)")
+                XCTAssertFalse(line.contains(".controlSize(.small)") || line.contains(".controlSize(.mini)"), "Small controls draw under 12 pt: \(where_)")
+            }
+        }
+        XCTAssertTrue(AppFont.sizes.allSatisfy { $0 >= 12 }, "nothing under 12 pt")
+        XCTAssertTrue(AppFont.sizes.contains(17), "body text is 17 pt")
+    }
+}

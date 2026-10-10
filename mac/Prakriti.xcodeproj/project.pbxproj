@@ -1,0 +1,570 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0112653D114621DBC8206C22 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CF97813ECEDF89E6ED6C748 /* AppModel.swift */; };
+		014FDAC71B35777994DD877A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 84EB80105A893767DA218622 /* Assets.xcassets */; };
+		0D82B5FE3D043BA747250A50 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B89A7A1A42CB779D54C10EE0 /* TodayView.swift */; };
+		0D93F0000F4260D7CFF3B35B /* Fixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250BA1E4E8EDBBC9B838297A /* Fixtures.swift */; };
+		0E716EB12074017DA2AB35CC /* OutputsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A269CC1F2D4BBFE262E5BA90 /* OutputsView.swift */; };
+		1410C0B2EFCF7361636DDDB3 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 705D48D94F11CB844152C820 /* SettingsView.swift */; };
+		1551F462C195AA198DB44AE7 /* PrakritiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4435B86F4B9C7556797CCCCD /* PrakritiApp.swift */; };
+		289F58A3A68DF9E1527479BC /* Format.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C61238139236A76B82D7753 /* Format.swift */; };
+		42DD06E5CA7ADBB151587D3B /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4B4C18B648FCFBE1B03B26D /* MainView.swift */; };
+		50A76C27B027BFB27384F1CA /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C4354E735A26062A2833575 /* AppSettings.swift */; };
+		54DA9ADD68160F4C1BE586BC /* AppFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEA1EF368580FE2944B6D349 /* AppFont.swift */; };
+		6A206774305681099521AC34 /* ModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6693F9D2429340D008E1FC5 /* ModelTests.swift */; };
+		78235AEEFBCD8288ACDF467D /* Vocabulary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 809FC75863D852F645F93C39 /* Vocabulary.swift */; };
+		820CDA973B8847220112D3C9 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5FC563BEFB88BBE1EB1FE86 /* Models.swift */; };
+		8699A0E36B33461A6CB6DEE3 /* RulesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A6A7E79725CCB565BAC276C /* RulesTests.swift */; };
+		8816E19E9812623B2262F055 /* MenuBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E6B656D810EDAE035A9D87E /* MenuBar.swift */; };
+		977C6DE3FF46B9FB5D126213 /* AppPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6166FDB4DDDDDD8C3B107FB /* AppPaths.swift */; };
+		9FF9888D16EC01C627F420F1 /* StatusSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B936588DA62077CEDD55E5E3 /* StatusSummary.swift */; };
+		AD5D8E7D4FD93F3725BA06DA /* SourcesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 961D44253D45FAE74CB154C3 /* SourcesView.swift */; };
+		BDDB0D67569B4C120A814AC4 /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB71801C498D7F40665B61DF /* Store.swift */; };
+		C4950470E2DBC3A73442A054 /* ModelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 143D9C40CC4FA1097B298C1F /* ModelsView.swift */; };
+		C887E460F39DA1DD5BAEFFE8 /* RecordingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CAA0390DFE4A8C32BAD4BB7 /* RecordingsView.swift */; };
+		D5130538FD8A48A610314956 /* AppLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B24A2199E1453B093345F4BD /* AppLog.swift */; };
+		DE80E4D8CEF4D7FA69FFFF0A /* ActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742755AA0728BF93E11990B3 /* ActivityView.swift */; };
+		E6DD135513678F6DD6A77ED6 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38591B326BC273909CFF1245 /* Components.swift */; };
+		FC0E1E303C00D522B27E6079 /* SnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C616334712817413327D90D /* SnapshotTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		2EE09E18B88C4776CDB01025 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D6D45B76CE846115020C4300 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5E7993E07987BA0B6F66922D;
+			remoteInfo = Prakriti;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0CAA0390DFE4A8C32BAD4BB7 /* RecordingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingsView.swift; sourceTree = "<group>"; };
+		143D9C40CC4FA1097B298C1F /* ModelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsView.swift; sourceTree = "<group>"; };
+		1843D2837E55C190251C0F31 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		1E6B656D810EDAE035A9D87E /* MenuBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBar.swift; sourceTree = "<group>"; };
+		250BA1E4E8EDBBC9B838297A /* Fixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fixtures.swift; sourceTree = "<group>"; };
+		35178DDDD2A2D7C0F9D2315B /* Prakriti.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Prakriti.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		38591B326BC273909CFF1245 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
+		3A6A7E79725CCB565BAC276C /* RulesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RulesTests.swift; sourceTree = "<group>"; };
+		40BC0BA8A9B4F2CD360C7393 /* Prakriti.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Prakriti.entitlements; sourceTree = "<group>"; };
+		4435B86F4B9C7556797CCCCD /* PrakritiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrakritiApp.swift; sourceTree = "<group>"; };
+		4C61238139236A76B82D7753 /* Format.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Format.swift; sourceTree = "<group>"; };
+		4C616334712817413327D90D /* SnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotTests.swift; sourceTree = "<group>"; };
+		5C4354E735A26062A2833575 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		5ED104941891ABFDA8395DB5 /* PrakritiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PrakritiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		705D48D94F11CB844152C820 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		742755AA0728BF93E11990B3 /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
+		809FC75863D852F645F93C39 /* Vocabulary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vocabulary.swift; sourceTree = "<group>"; };
+		84EB80105A893767DA218622 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		961D44253D45FAE74CB154C3 /* SourcesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourcesView.swift; sourceTree = "<group>"; };
+		9CF97813ECEDF89E6ED6C748 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		A269CC1F2D4BBFE262E5BA90 /* OutputsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputsView.swift; sourceTree = "<group>"; };
+		A6166FDB4DDDDDD8C3B107FB /* AppPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPaths.swift; sourceTree = "<group>"; };
+		B24A2199E1453B093345F4BD /* AppLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLog.swift; sourceTree = "<group>"; };
+		B89A7A1A42CB779D54C10EE0 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
+		B936588DA62077CEDD55E5E3 /* StatusSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusSummary.swift; sourceTree = "<group>"; };
+		C4B4C18B648FCFBE1B03B26D /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
+		DB71801C498D7F40665B61DF /* Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
+		E5FC563BEFB88BBE1EB1FE86 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		E6693F9D2429340D008E1FC5 /* ModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTests.swift; sourceTree = "<group>"; };
+		FEA1EF368580FE2944B6D349 /* AppFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFont.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		4EFF1DA51F0B34475A4A20BF /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				E5FC563BEFB88BBE1EB1FE86 /* Models.swift */,
+				DB71801C498D7F40665B61DF /* Store.swift */,
+				809FC75863D852F645F93C39 /* Vocabulary.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		5EE0FD1E242D19B5E0FC425D /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				742755AA0728BF93E11990B3 /* ActivityView.swift */,
+				FEA1EF368580FE2944B6D349 /* AppFont.swift */,
+				38591B326BC273909CFF1245 /* Components.swift */,
+				C4B4C18B648FCFBE1B03B26D /* MainView.swift */,
+				1E6B656D810EDAE035A9D87E /* MenuBar.swift */,
+				143D9C40CC4FA1097B298C1F /* ModelsView.swift */,
+				A269CC1F2D4BBFE262E5BA90 /* OutputsView.swift */,
+				0CAA0390DFE4A8C32BAD4BB7 /* RecordingsView.swift */,
+				705D48D94F11CB844152C820 /* SettingsView.swift */,
+				961D44253D45FAE74CB154C3 /* SourcesView.swift */,
+				B89A7A1A42CB779D54C10EE0 /* TodayView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		68F75E9BB366E3337F3F20E7 /* PrakritiTests */ = {
+			isa = PBXGroup;
+			children = (
+				E6693F9D2429340D008E1FC5 /* ModelTests.swift */,
+				3A6A7E79725CCB565BAC276C /* RulesTests.swift */,
+				4C616334712817413327D90D /* SnapshotTests.swift */,
+			);
+			path = PrakritiTests;
+			sourceTree = "<group>";
+		};
+		7F8EC6A177ABF88E9D2EADBC /* Fixtures */ = {
+			isa = PBXGroup;
+			children = (
+				250BA1E4E8EDBBC9B838297A /* Fixtures.swift */,
+			);
+			path = Fixtures;
+			sourceTree = "<group>";
+		};
+		8412859C72547B21C43BA9CD /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				35178DDDD2A2D7C0F9D2315B /* Prakriti.app */,
+				5ED104941891ABFDA8395DB5 /* PrakritiTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A941A32A139DA180AE54AA52 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				84EB80105A893767DA218622 /* Assets.xcassets */,
+				1843D2837E55C190251C0F31 /* Info.plist */,
+				40BC0BA8A9B4F2CD360C7393 /* Prakriti.entitlements */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		AEFF4B38F161CD564153A6F5 = {
+			isa = PBXGroup;
+			children = (
+				E1EDCCFC6B12504A7372AAB1 /* Prakriti */,
+				68F75E9BB366E3337F3F20E7 /* PrakritiTests */,
+				8412859C72547B21C43BA9CD /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		DF4FFD3D50C828A0DCC1D324 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				B24A2199E1453B093345F4BD /* AppLog.swift */,
+				9CF97813ECEDF89E6ED6C748 /* AppModel.swift */,
+				A6166FDB4DDDDDD8C3B107FB /* AppPaths.swift */,
+				5C4354E735A26062A2833575 /* AppSettings.swift */,
+				4C61238139236A76B82D7753 /* Format.swift */,
+				4435B86F4B9C7556797CCCCD /* PrakritiApp.swift */,
+				B936588DA62077CEDD55E5E3 /* StatusSummary.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		E1EDCCFC6B12504A7372AAB1 /* Prakriti */ = {
+			isa = PBXGroup;
+			children = (
+				DF4FFD3D50C828A0DCC1D324 /* App */,
+				7F8EC6A177ABF88E9D2EADBC /* Fixtures */,
+				4EFF1DA51F0B34475A4A20BF /* Model */,
+				A941A32A139DA180AE54AA52 /* Resources */,
+				5EE0FD1E242D19B5E0FC425D /* Views */,
+			);
+			path = Prakriti;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5E7993E07987BA0B6F66922D /* Prakriti */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D65DC72AA9FD7BFF81E538C3 /* Build configuration list for PBXNativeTarget "Prakriti" */;
+			buildPhases = (
+				82231162E97DC479EF2CE34D /* Sources */,
+				090A4834F9873550C2C57FB3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Prakriti;
+			packageProductDependencies = (
+			);
+			productName = Prakriti;
+			productReference = 35178DDDD2A2D7C0F9D2315B /* Prakriti.app */;
+			productType = "com.apple.product-type.application";
+		};
+		9D32DDEDDD8B560A822A01E3 /* PrakritiTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F443B5449E5D78508E9B12B2 /* Build configuration list for PBXNativeTarget "PrakritiTests" */;
+			buildPhases = (
+				097F7E4AFB19ECA6588A48FB /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				47FD371F7CFD2C489DEE6F0D /* PBXTargetDependency */,
+			);
+			name = PrakritiTests;
+			packageProductDependencies = (
+			);
+			productName = PrakritiTests;
+			productReference = 5ED104941891ABFDA8395DB5 /* PrakritiTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D6D45B76CE846115020C4300 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					5E7993E07987BA0B6F66922D = {
+						DevelopmentTeam = LD587PB2H8;
+						ProvisioningStyle = Manual;
+					};
+					9D32DDEDDD8B560A822A01E3 = {
+						DevelopmentTeam = LD587PB2H8;
+						ProvisioningStyle = Manual;
+					};
+				};
+			};
+			buildConfigurationList = 5F3310B5B47CDD6363622BC1 /* Build configuration list for PBXProject "Prakriti" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = AEFF4B38F161CD564153A6F5;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 8412859C72547B21C43BA9CD /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				5E7993E07987BA0B6F66922D /* Prakriti */,
+				9D32DDEDDD8B560A822A01E3 /* PrakritiTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		090A4834F9873550C2C57FB3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				014FDAC71B35777994DD877A /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		097F7E4AFB19ECA6588A48FB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6A206774305681099521AC34 /* ModelTests.swift in Sources */,
+				8699A0E36B33461A6CB6DEE3 /* RulesTests.swift in Sources */,
+				FC0E1E303C00D522B27E6079 /* SnapshotTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		82231162E97DC479EF2CE34D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DE80E4D8CEF4D7FA69FFFF0A /* ActivityView.swift in Sources */,
+				54DA9ADD68160F4C1BE586BC /* AppFont.swift in Sources */,
+				D5130538FD8A48A610314956 /* AppLog.swift in Sources */,
+				0112653D114621DBC8206C22 /* AppModel.swift in Sources */,
+				977C6DE3FF46B9FB5D126213 /* AppPaths.swift in Sources */,
+				50A76C27B027BFB27384F1CA /* AppSettings.swift in Sources */,
+				E6DD135513678F6DD6A77ED6 /* Components.swift in Sources */,
+				0D93F0000F4260D7CFF3B35B /* Fixtures.swift in Sources */,
+				289F58A3A68DF9E1527479BC /* Format.swift in Sources */,
+				42DD06E5CA7ADBB151587D3B /* MainView.swift in Sources */,
+				8816E19E9812623B2262F055 /* MenuBar.swift in Sources */,
+				820CDA973B8847220112D3C9 /* Models.swift in Sources */,
+				C4950470E2DBC3A73442A054 /* ModelsView.swift in Sources */,
+				0E716EB12074017DA2AB35CC /* OutputsView.swift in Sources */,
+				1551F462C195AA198DB44AE7 /* PrakritiApp.swift in Sources */,
+				C887E460F39DA1DD5BAEFFE8 /* RecordingsView.swift in Sources */,
+				1410C0B2EFCF7361636DDDB3 /* SettingsView.swift in Sources */,
+				AD5D8E7D4FD93F3725BA06DA /* SourcesView.swift in Sources */,
+				9FF9888D16EC01C627F420F1 /* StatusSummary.swift in Sources */,
+				BDDB0D67569B4C120A814AC4 /* Store.swift in Sources */,
+				0D82B5FE3D043BA747250A50 /* TodayView.swift in Sources */,
+				78235AEEFBCD8288ACDF467D /* Vocabulary.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		47FD371F7CFD2C489DEE6F0D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5E7993E07987BA0B6F66922D /* Prakriti */;
+			targetProxy = 2EE09E18B88C4776CDB01025 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		2ED7F4B940F8C0AF98BA5A6E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = LD587PB2H8;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		ABF7FE2DCF7AEF2CE2B1970B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Prakriti/Resources/Prakriti.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				INFOPLIST_FILE = Prakriti/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = studio.therowan.prakriti.app;
+				PRODUCT_NAME = Prakriti;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		B353DC54691143A293DDEDED /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Prakriti/Resources/Prakriti.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				INFOPLIST_FILE = Prakriti/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = studio.therowan.prakriti.app;
+				PRODUCT_NAME = Prakriti;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		B54D0806DE204CABB220D15B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = studio.therowan.prakriti.app.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Prakriti.app/Contents/MacOS/Prakriti";
+			};
+			name = Release;
+		};
+		B6B2C6B9AAEE5771AA481ECD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = LD587PB2H8;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		EE07B6B54AC692DE5F88B66E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = studio.therowan.prakriti.app.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Prakriti.app/Contents/MacOS/Prakriti";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		5F3310B5B47CDD6363622BC1 /* Build configuration list for PBXProject "Prakriti" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B6B2C6B9AAEE5771AA481ECD /* Debug */,
+				2ED7F4B940F8C0AF98BA5A6E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D65DC72AA9FD7BFF81E538C3 /* Build configuration list for PBXNativeTarget "Prakriti" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				ABF7FE2DCF7AEF2CE2B1970B /* Debug */,
+				B353DC54691143A293DDEDED /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F443B5449E5D78508E9B12B2 /* Build configuration list for PBXNativeTarget "PrakritiTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EE07B6B54AC692DE5F88B66E /* Debug */,
+				B54D0806DE204CABB220D15B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D6D45B76CE846115020C4300 /* Project object */;
+}

@@ -1,0 +1,86 @@
+# Prakriti for Mac. This file is the source of truth for the Xcode project.
+# After changing it, regenerate:  cd ~/Code/prakriti/mac && xcodegen generate
+# The generated Prakriti.xcodeproj is committed too, so a fresh clone builds without xcodegen.
+
+name: Prakriti
+options:
+  bundleIdPrefix: studio.therowan.prakriti
+  deploymentTarget:
+    macOS: "27.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+  defaultConfig: Debug
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "27.0"
+    # Signed with Ivan's Apple Development certificate from the first build. macOS ties folder
+    # permission to the code signature; an ad-hoc build gets a new identity on every rebuild and
+    # silently loses the permission while System Settings still shows it ticked (SCOPE 7.17).
+    DEVELOPMENT_TEAM: LD587PB2H8
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "Apple Development"
+    PROVISIONING_PROFILE_SPECIFIER: ""
+    ENABLE_HARDENED_RUNTIME: YES
+    # A warning is a failed build. "Builds clean" is the milestone check, so the compiler enforces it.
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+    GCC_TREAT_WARNINGS_AS_ERRORS: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEAD_CODE_STRIPPING: YES
+    SWIFT_EMIT_LOC_STRINGS: NO
+
+targets:
+  Prakriti:
+    type: application
+    platform: macOS
+    sources:
+      - path: Prakriti
+    settings:
+      base:
+        PRODUCT_NAME: Prakriti
+        PRODUCT_BUNDLE_IDENTIFIER: studio.therowan.prakriti.app
+        MARKETING_VERSION: "0.1"
+        CURRENT_PROJECT_VERSION: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # No App Sandbox: Prakriti runs ffmpeg and Parakeet and reads Ivan's folders directly.
+        ENABLE_APP_SANDBOX: NO
+        CODE_SIGN_ENTITLEMENTS: Prakriti/Resources/Prakriti.entitlements
+    info:
+      path: Prakriti/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Prakriti
+        CFBundleName: Prakriti
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.productivity
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        NSHumanReadableCopyright: "The Rowan Studio"
+        # macOS may quit an app with no open windows on its own. Prakriti must keep running with
+        # its window closed, so automatic and sudden termination are both off.
+        NSSupportsAutomaticTermination: false
+        NSSupportsSuddenTermination: false
+        NSDocumentsFolderUsageDescription: "Prakriti reads new recordings in the folders you choose so it can prepare them for review."
+        NSDesktopFolderUsageDescription: "Prakriti reads new recordings in the folders you choose so it can prepare them for review."
+        NSDownloadsFolderUsageDescription: "Prakriti reads new recordings in the folders you choose so it can prepare them for review."
+        NSNetworkVolumesUsageDescription: "Prakriti reads new recordings on the studio drive so it can prepare them for review."
+        NSRemovableVolumesUsageDescription: "Prakriti reads new recordings on the archive drive so it can prepare them for review."
+    scheme:
+      testTargets:
+        - PrakritiTests
+      gatherCoverageData: false
+
+  PrakritiTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: PrakritiTests
+    dependencies:
+      - target: Prakriti
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: studio.therowan.prakriti.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Prakriti.app/Contents/MacOS/Prakriti"
+        BUNDLE_LOADER: "$(TEST_HOST)"

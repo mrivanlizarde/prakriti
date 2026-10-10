@@ -5,6 +5,30 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-10, Sat: Prakriti for Mac, milestone 1 (skeleton)
+
+- **The Mac app exists, signed, and does nothing dangerous yet.** `mac/` holds a SwiftUI app
+  (`studio.therowan.prakriti.app`, macOS 27, no sandbox, Apple Development certificate, hardened
+  runtime) with the main window Ivan asked for (Today, Recordings, Sources, Outputs, Models,
+  Activity, Settings), a menu bar menu, and a SwiftData store for sources, recordings, output
+  settings, runs and log lines. Why a skeleton first: every later milestone (pipeline, watcher,
+  notifications, models) lands into these screens and this store, so their shape and their rules
+  (17 pt body, no em dashes, the status words of SCOPE 9.2, the privacy lock) are fixed once, with
+  tests, before any real work flows through them.
+- **It runs in development mode on purpose.** It only knows `~/Prakriti/Dev` and its own store,
+  and its status line says "Not watching yet. The old engine still handles new recordings."
+  Why: engine v0 is making episode 1 for Fri 23 Oct; nothing may compete with it until the
+  milestone 3 switch-over.
+- **It keeps running with its window closed,** proven by a self-check launch (`make check`).
+  Why: macOS quits windowless apps on its own unless they opt out, and the watcher will live here.
+- **Every screen is drawn to PNG by a test, in light and dark, and was looked at.** Liquid Glass
+  draws as solid white in a bitmap, so the test composes the real sidebar view over the system
+  background (START_HERE, warning 7 for the Mac app). The look-through caught real problems
+  before they shipped: paths wrapping across two lines, a duplicated heading on every output,
+  a stepper value stranded mid-row, an empty state repeating its headline, and "1 hr 1 min"
+  for a 61:42 recording (now "1 hr 2 min").
+- Decisions, every check with its result, and what Ivan needs to do are in `docs/BUILD-LOG.md`.
+
 ## 2026-10-08, Thu: feedback round 3
 
 - **Engine v0, 8 Oct evening.** Ivan had 10% of his usage left and asked for whatever gets Prakriti into use. Built `engine/prakriti.mjs` + a LaunchAgent: watch, readiness, sound check, Parakeet transcript with coverage check, mastered MP3, REPORT.md, three notifications. Tested on the silent 09-14 class (refused in 1 s after the stability wait) and the 09-13 talk (16 min in 36 s). Two mastering bugs found only by measuring the output: the limiter's default auto-level pushed peaks to +2.2 dBFS, and resampling after the limiter put them back over 0. Both fixed and commented in the code. Publishing stays manual; speaker labels and name muting are not in v0, and the report says so.

@@ -79,7 +79,8 @@ If something listed here does not exist yet, that work has not landed. Check `CH
 | `web/public/` | **The only folder served to the internet**: `index.html` (the front door), `roadmap.html`, `404.html`, `robots.txt`, `assets/`. Written Thu 8 Oct, not deployed | Anything placed here is public |
 | `scripts/shoot.mjs` | Renders pages to PNGs in headless Chrome and reports console errors, failed loads and sideways overflow | The verification step for anything visual. Caps a full-page capture at 16,000px (warning 26) |
 | `screens/` | Where screenshots land | Gitignored |
-| `mac/` | **Not created yet.** The Swift engine: watcher, pipeline, menu bar, notifications | Phase 0 work; see "When the engine exists" below |
+| `mac/` | **Prakriti for Mac**, the native app (SwiftUI, SwiftData). Milestone 1 (skeleton) landed Sat 10 Oct: window, sidebar, menu bar menu, data layer, snapshot tests. No watcher or pipeline yet | Read "Prakriti for Mac" below, then `docs/BUILD-LOG.md` |
+| `docs/BUILD-LOG.md` | One dated entry per milestone of the Mac app: what was built, every check with its measured result, decisions, and what Ivan must do | A new session resumes from its last entry |
 
 Later, from the Up Next template: `migrations/`, `test/`, `scripts/smoke.mjs` (production refusals
 tested as refusals), `scripts/backup.mjs`.
@@ -89,7 +90,7 @@ tested as refusals), `scripts/backup.mjs`.
 | Fact | Value | Status |
 |---|---|---|
 | Apple team ID | **LD587PB2H8** (07 l.509-511). K55TBYNKUC is the identifier of Ivan's Apple Development certificate; `research/02` l.751 calls it the team and is wrong | Measured |
-| Bundle IDs | `studio.therowan.prakriti` (the outer app) and `studio.therowan.prakriti.engine` (the nested login item); the agent plist `Contents/Library/LaunchAgents/studio.therowan.prakriti.engine.plist` | **Proposed, for Ivan to confirm** before the first signed build |
+| Bundle IDs | Prakriti for Mac is `studio.therowan.prakriti.app` (set by the v1 build prompt, signed since Sat 10 Oct). `studio.therowan.prakriti` is the label of engine v0's LaunchAgent, so the app does not reuse it. The login-item identity for the watcher is decided in milestone 3 | App id in use; login item open until milestone 3 |
 | D1 database | `prakriti`, in Ivan's account, with migrations in `web/migrations/` beside `web/wrangler.jsonc` (Up Next keeps `migrations/` beside its config) | **Proposed, for Ivan to confirm** |
 | R2 access from `wrangler` | After R2 is enabled (Q-I2), run `cd ~/Code/prakriti/web && npx wrangler login` again, then check with `cd ~/Code/prakriti/web && npx wrangler r2 bucket list`. Reason: the current OAuth login shows no R2 scope (07 l.394) | To do, by Fri 16 Oct |
 | The archive drive (Q-I17) | When the encrypted drive is first unlocked, tick "Remember this password in my keychain". Reason: without it the drive stays locked after a reboot, and the Phase 0 reboot check (nothing touched, every folder read) fails | To do, when the drive arrives |
@@ -473,9 +474,97 @@ Each one states its reason, because a warning without a reason gets argued away.
 
 ---
 
-## When the engine exists (`mac/`)
+## Prakriti for Mac (`mac/`)
 
-This section grows when `mac/` lands. The warnings that will apply from its first line:
+The native app that becomes Ivan's control room for Prakriti, built in six milestones from
+`docs/NEXT-PROMPT.md`. **Milestone 1 (skeleton) is done, Sat 10 Oct:** a signed SwiftUI app with a
+main window (sidebar: Today, Recordings, Sources, Outputs, Models, Activity, Settings), a menu bar
+menu (status, Open Prakriti, Pause All, Settings, Quit), a SwiftData store with Source, Recording,
+OutputSetting, Run and LogEntry, and tests that draw every screen to PNG. **It does not watch or
+process anything yet:** engine v0 still does all the real work until milestone 3. Progress, checks
+and decisions per milestone are in `docs/BUILD-LOG.md`.
+
+### Build, run, test
+
+Needs Xcode 27 and, only to change the project, `brew install xcodegen`. Every command runs from
+`mac/`:
+
+```bash
+cd ~/Code/prakriti/mac && make build
+```
+```bash
+cd ~/Code/prakriti/mac && make test
+```
+```bash
+cd ~/Code/prakriti/mac && make snapshots MILESTONE=m1
+```
+```bash
+cd ~/Code/prakriti/mac && make check
+```
+```bash
+cd ~/Code/prakriti/mac && make run
+```
+
+`make test` runs every unit test (data, rules, copy and type checks, and the snapshot render).
+`make snapshots` writes every screen, light and dark, at the window's real size (1180 by 760) to
+`screens/mac/<milestone>/` (gitignored), plus an `-end` picture for any page taller than the
+window. `make check` builds, tests, then launches the app, lets it close its own window and
+proves it is still running 15 seconds later. **Then open every PNG and look at it.** Reading the
+code is not verification, and neither is a passing test.
+
+### Where things live
+
+| What | Where |
+|---|---|
+| Project definition (source of truth) | `mac/project.yml`; `make generate` rebuilds `Prakriti.xcodeproj`, and both are committed |
+| App code | `mac/Prakriti/App` (launch, paths, settings, log), `Model` (vocabulary, SwiftData models, store), `Views`, `Fixtures` |
+| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `SnapshotTests` |
+| The built app | `mac/build/Build/Products/Debug/Prakriti.app` (gitignored) |
+| Store, development mode | `~/Library/Application Support/Prakriti/Development/Prakriti.store` |
+| Log, development mode | `~/Library/Logs/Prakriti/Development/<date>.log`, one line per event |
+| Working folders, development mode | `~/Prakriti/Dev/Drop`, `~/Prakriti/Dev/Outputs`, `~/Prakriti/Dev/Approved` |
+| App icon | Drawn by `mac/scripts/make_icon.swift` from the front door's mark (an ultramarine dot on stone) |
+
+### Load-bearing warnings for the Mac app
+
+1. **`AppMode.current` stays `.development` until the milestone 3 switch-over.** In development the
+   app uses only `~/Prakriti/Dev` and its own store, and never adds the Studio Recordings folder (a
+   test enforces it). Reason: engine v0 owns Studio Recordings and `~/Prakriti/Drop` and is making
+   episode 1 for Fri 23 Oct; two watchers on one folder would process a recording twice and notify
+   twice. The switch-over retires v0's LaunchAgent the same day, and the log says so.
+2. **Automatic termination stays off** (`NSSupportsAutomaticTermination` false in Info.plist, and
+   `disableAutomaticTermination` at launch). Reason: macOS quits a windowless app on its own, and
+   the watcher must keep working with the window closed. `make check` proves it on every run.
+3. **Signed with the Apple Development certificate, team LD587PB2H8, hardened runtime, no
+   sandbox,** set in `project.yml`. Reason: macOS ties folder permission to the signature, and an
+   ad-hoc build loses it silently (SCOPE 7.17). No sandbox because the app runs ffmpeg and Parakeet
+   and reads Ivan's folders.
+4. **A compiler warning fails the build** (`SWIFT_TREAT_WARNINGS_AS_ERRORS`). Reason: "builds
+   clean" is a milestone gate, and an ignored warning becomes noise nobody reads. The one
+   `appintentsmetadataprocessor ... warning` line in xcodebuild's output is the tool talking, not
+   the compiler, and does not fail anything.
+5. **Every font comes from `AppFont`** (17 pt body, nothing under 12 pt), and a test fails on any
+   other font, any sidebar badge and any small control. Reason: macOS text styles are 10 to 13 pt,
+   and Ivan's floor is 12 with a 17 pt body.
+6. **No em dashes, no "Processing", no "we"** in any app string; a test reads the sources and fails
+   on them. Reason: Ivan's standing rule, and SCOPE 8.3's copy rules.
+7. **The snapshots compose the sidebar.** Liquid Glass cannot be drawn into a bitmap (it comes out
+   solid white), so the test draws the window, paints the sidebar column with the system window
+   background, draws the same `Sidebar` view on top, and redraws the title bar buttons. Switches
+   and selected segments draw grey because a test window is never frontmost; the knob's side shows
+   the state (right is on). Reason: so nobody "fixes" the app for a capture artifact. Look at the
+   real window with `make run` once per milestone for the glass itself.
+8. **Tests never touch Ivan's data.** Under tests `AppModel.launch()` uses an in-memory store,
+   throwaway preferences and no log file. Reason: a test run must never write into the real store
+   or `~/Prakriti`.
+9. **SwiftData: every stored property has a default, and enums are stored as raw strings.**
+   Reason: additions then migrate on their own, and predicates over raw strings are the reliable
+   part of SwiftData. The first change that is not an addition brings a `VersionedSchema`.
+
+## The engine's standing warnings (from SCOPE, for the parts still to come)
+
+These came from the scope before `mac/` existed. Each applies from the milestone that builds the
+part it names:
 
 - **Sign every build with a stable certificate from the first one** (Ivan's Apple Development
   certificate on his Mac; Developer ID, notarized and stapled, anywhere else). macOS ties folder
