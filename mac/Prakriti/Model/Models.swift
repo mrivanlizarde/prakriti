@@ -72,11 +72,18 @@ final class Recording {
     var kindRaw: String = RecordingKind.unknown.rawValue
     var hasSerenity: Bool = false
 
+    // What the sound check measured on the original.
+    var loudestDB: Double?
+    var averageDB: Double?
+    var inputLUFS: Double?
+
     // What the checks measured on the finished files.
     var loudnessLUFS: Double?
     var truePeakDBFS: Double?
     var transcriptReaches: Double?
     var wordCount: Int?
+    /// The transcript reaches within two minutes of the end (the coverage check).
+    var coverageOK: Bool?
 
     // Edits for "Make again" (milestone 5).
     var trimStart: Double?

@@ -48,6 +48,10 @@ enum Fixtures {
                                recordedAt: date(2026, 9, 13, 18, 25, 44), foundAt: date(2026, 10, 9, 16, 15),
                                duration: 947.78, sizeBytes: 730_464_600, status: .readyForYourYes, kind: .talk)
         talk13.statusReason = "Episode audio and transcript are ready. Speakers are not checked yet."
+        talk13.loudestDB = -3.4
+        talk13.averageDB = -30
+        talk13.inputLUFS = -26.67
+        talk13.coverageOK = true
         talk13.loudnessLUFS = -16.8
         talk13.truePeakDBFS = -1.6
         talk13.transcriptReaches = 947
@@ -69,7 +73,9 @@ enum Fixtures {
         let class14 = Recording(filePath: studioFolder + "/2026-09-14/2026-09-14 20-00-09.mp4", title: "Class",
                                 recordedAt: date(2026, 9, 14, 20, 0, 9), foundAt: date(2026, 10, 9, 21, 4),
                                 duration: 3702.27, sizeBytes: 2_858_813_029, status: .needsADecision, kind: .lesson)
-        class14.statusReason = "No sound. The audio track is silent for all 62 minutes, so nothing was made. Choose whether to keep it as b-roll."
+        class14.statusReason = "No usable sound: the loudest point is -91 dB. Nothing was made from it."
+        class14.loudestDB = -91
+        class14.averageDB = -91
         context.insert(class14)
         class14.source = studio
         addRun(context, to: class14, start: date(2026, 10, 9, 21, 4), trigger: .fileEvent, outcome: .needsADecision,

@@ -57,6 +57,8 @@ final class AppModel {
     @ObservationIgnored let log: AppLog
     let settings: AppSettings
     @ObservationIgnored let now: () -> Date
+    /// Runs recordings through the pipeline, one at a time.
+    @ObservationIgnored let runner = PipelineRunner()
 
     var selection: SidebarItem? = .today {
         didSet { if oldValue != selection { path = [] } }
@@ -78,6 +80,7 @@ final class AppModel {
         self.settings = settings
         self.log = log
         self.now = now
+        runner.model = self
     }
 
     var context: ModelContext { container.mainContext }
@@ -151,6 +154,30 @@ final class AppModel {
         }
         let sources = (try? context.fetch(FetchDescriptor<Source>())) ?? []
         log.write("Sources: \(sources.map(\.path).joined(separator: " | ")). Watching: no (the watcher arrives in milestone 3; engine v0 still owns the live folders).")
+        recoverInterruptedWork()
+        LaunchOptions.current.apply(to: self)
+    }
+
+    /// A recording left as Working means Prakriti quit while it ran. It is marked Couldn't finish,
+    /// with its page offering Try Again, rather than left looking busy forever.
+    func recoverInterruptedWork() {
+        let all = (try? context.fetch(FetchDescriptor<Recording>())) ?? []
+        for recording in all where recording.status == .working {
+            recording.status = .couldntFinish
+            recording.currentStep = nil
+            recording.statusReason = "Prakriti quit before this finished. The original is untouched; try again from here."
+            if let run = recording.latestRun, run.outcome == .running {
+                run.outcome = .stopped
+                run.endedAt = run.endedAt ?? now()
+                run.steps = run.steps.map { step in
+                    var step = step
+                    if step.state == .running { step.state = .failed; step.detail = "Stopped when Prakriti quit." }
+                    if step.state == .waiting { step.state = .skipped }
+                    return step
+                }
+            }
+            record("\(recording.fileName) was stopped when Prakriti quit. Nothing was lost; it can be tried again.", level: .attention)
+        }
     }
 
     // MARK: Activity
@@ -171,7 +198,31 @@ final class AppModel {
     func setPaused(_ paused: Bool) {
         guard settings.isPaused != paused else { return }
         settings.isPaused = paused
-        record(paused ? "Paused all work." : "Resumed all work.")
+        record(paused ? "Paused all work. A recording already being worked on finishes first." : "Resumed all work.")
+        if !paused { runner.resume() }
+    }
+
+    /// Process File: adds the files (with the same refusals as Add File) and starts them now, one
+    /// at a time. A file Prakriti already knows is started again rather than added twice.
+    func processFiles(_ urls: [URL]) {
+        let added = addRecordings(urls)
+        let addedPaths = Set(added.map(\.filePath))
+        let all = (try? context.fetch(FetchDescriptor<Recording>())) ?? []
+        var toStart = added
+        for url in urls where Self.isMedia(url) {
+            let path = url.standardizedFileURL.path
+            guard !addedPaths.contains(path), paths.refusal(for: url, isFolder: false) == nil,
+                  let known = all.first(where: { $0.filePath == path }) else { continue }
+            toStart.append(known)
+        }
+        for recording in toStart where recording.status != .working {
+            runner.enqueue(recording, trigger: .byHand)
+        }
+    }
+
+    /// Make Outputs (or Try Again) on a recording's page.
+    func makeOutputs(_ recording: Recording) {
+        runner.enqueue(recording, trigger: recording.status == .found ? .byHand : .makeAgain)
     }
 
     func open(_ item: SidebarItem) {
@@ -230,6 +281,7 @@ final class AppModel {
             let recording = Recording(filePath: url.standardizedFileURL.path, title: "", recordedAt: Self.dateInName(url.lastPathComponent),
                                       foundAt: now(), sizeBytes: size, status: .found)
             context.insert(recording)
+            recording.source = source(containing: url)
             added.append(recording)
             record("Added \(url.lastPathComponent) by hand.")
         }
@@ -245,6 +297,14 @@ final class AppModel {
     private func refuse(title: String, logged: String, reason: String) {
         record("Did not add \(logged). \(reason)", level: .attention)
         notice = Notice(title: title, message: reason)
+    }
+
+    /// The watched folder a file sits in, if any, so its outputs follow that folder's choices.
+    func source(containing url: URL) -> Source? {
+        let path = url.standardizedFileURL.path
+        let sources = (try? context.fetch(FetchDescriptor<Source>())) ?? []
+        return sources.filter { path.hasPrefix($0.path.hasSuffix("/") ? $0.path : $0.path + "/") }
+            .max { $0.path.count < $1.path.count }
     }
 
     func defaultSettings() -> [OutputSetting] {
@@ -263,6 +323,19 @@ final class AppModel {
         panel.message = "Choose a folder for Prakriti to watch for new recordings."
         if panel.runModal() == .OK, let url = panel.url {
             addSource(at: url)
+        }
+    }
+
+    func chooseFilesToProcess() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowsMultipleSelection = true
+        panel.allowedContentTypes = [.movie, .audio]
+        panel.prompt = "Process"
+        panel.message = "Choose recordings to process now. The originals are never changed."
+        if panel.runModal() == .OK {
+            processFiles(panel.urls)
         }
     }
 
@@ -325,5 +398,38 @@ struct CaptureLaunch {
         default: nil
         }
         return CaptureLaunch(screen: screen, colorScheme: colorScheme, addFolder: value("--add-folder"))
+    }
+}
+
+/// Flags for a normal launch (Ivan's real store), used by the milestone checks to drive the real
+/// app without clicks: `--process-file=<path>` runs Process File on that file, `--show=<screen>`
+/// opens a sidebar screen, `--open=latest` opens the newest recording's page. One word per flag,
+/// for the same reason as CaptureLaunch.
+struct LaunchOptions {
+    let processFiles: [String]
+    let show: SidebarItem?
+    let openLatest: Bool
+
+    static var current: LaunchOptions {
+        let args = CommandLine.arguments
+        func values(_ flag: String) -> [String] {
+            args.filter { $0.hasPrefix(flag + "=") }.map { String($0.dropFirst(flag.count + 1)) }
+        }
+        return LaunchOptions(processFiles: values("--process-file"),
+                             show: values("--show").first.flatMap(SidebarItem.init(rawValue:)),
+                             openLatest: values("--open").first == "latest")
+    }
+
+    @MainActor
+    func apply(to model: AppModel) {
+        if let show { model.selection = show }
+        if !processFiles.isEmpty {
+            model.log.write("Launched with Process File for \(processFiles.count) file(s).")
+            model.processFiles(processFiles.map { URL(fileURLWithPath: $0) })
+        }
+        if openLatest {
+            let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
+            if let latest = all.max(by: { $0.foundAt < $1.foundAt }) { model.open(latest) }
+        }
     }
 }

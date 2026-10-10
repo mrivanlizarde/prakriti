@@ -480,9 +480,15 @@ The native app that becomes Ivan's control room for Prakriti, built in six miles
 `docs/NEXT-PROMPT.md`. **Milestone 1 (skeleton) is done, Sat 10 Oct:** a signed SwiftUI app with a
 main window (sidebar: Today, Recordings, Sources, Outputs, Models, Activity, Settings), a menu bar
 menu (status, Open Prakriti, Pause All, Settings, Quit), a SwiftData store with Source, Recording,
-OutputSetting, Run and LogEntry, and tests that draw every screen to PNG. **It does not watch or
-process anything yet:** engine v0 still does all the real work until milestone 3. Progress, checks
-and decisions per milestone are in `docs/BUILD-LOG.md`.
+OutputSetting, Run and LogEntry, and tests that draw every screen to PNG. **Milestone 2 (the
+pipeline in Swift) is done, Sat 10 Oct:** engine v0's `processFile` ported rule for rule into
+`mac/Prakriti/Engine` (readiness, test clips, sound check, Parakeet transcript with the coverage
+check, two-pass mastering with v0's two bug fixes, the MP3 measured and its tail decoded,
+REPORT.md), run one recording at a time by `PipelineRunner`, started from **File > Process File…**
+or a recording's **Make Outputs** button. On the 13 Sep and 6 Sep talks its episode audio decodes
+bit for bit the same as engine v0's, and its transcripts are identical. **It does not watch anything yet:** engine v0 still owns the live folders
+until milestone 3, and in development the app only processes files under `~/Prakriti/Dev`.
+Progress, checks and decisions per milestone are in `docs/BUILD-LOG.md`.
 
 ### Build, run, test
 
@@ -507,6 +513,12 @@ cd ~/Code/prakriti/mac && make run
 ```bash
 cd ~/Code/prakriti/mac && make look MILESTONE=m1
 ```
+```bash
+cd ~/Code/prakriti/mac && make accept MILESTONE=m2
+```
+```bash
+cd ~/Code/prakriti/mac && ./scripts/process-in-app.sh "$HOME/Prakriti/Dev/Clips/2026-09-13 clip 90s.mp4" ../screens/mac/m2/real
+```
 
 `make test` runs every unit test (data, rules, copy and type checks, and the snapshot render).
 `make snapshots` writes every screen, light and dark, at the window's real size (1180 by 760) to
@@ -517,17 +529,29 @@ dark, captures the real window with `screencapture -l` into `screens/mac/<milest
 checks the selected sidebar row by its pixels, and checks that adding the Studio Recordings folder
 is refused with an alert. It takes the screen's focus for about a minute: leave the Mac alone.
 `make check` builds, tests, launches the app, lets it close its own window, proves it is still
-running 15 seconds later, then runs `make look`'s capture. **Then open every PNG and look at it.**
-Reading the code is not verification, and neither is a passing test.
+running 15 seconds later, then runs `make look`'s capture. `make accept` is milestone 2's check on
+**real recordings** through the app's own pipeline and runner (about 4 to 5 minutes): the 13 Sep talk
+must come out between -17 and -15 LUFS with its true peak at or under -1.0 dBFS, a transcript
+reaching within 120 s of the end and a REPORT.md; the silent 14 Sep class must be Needs a decision
+with nothing made; the 30 s clip in `~/Prakriti/Dev/Drop` must be filed as a test; the 6 Sep talk
+runs too. It writes to `~/Prakriti/Dev/Outputs`, draws Recordings, Today, Activity and each
+recording's page from what was really measured into `screens/mac/<milestone>/`, and writes the
+numbers to `acceptance.txt` there. `scripts/process-in-app.sh` checks the **real app**: it opens
+Prakriti with Process File on one file (launch flag `--process-file=`), waits for the result in the
+log, and captures the real window on Recordings and on that recording's page. **Then open every
+PNG and look at it.** Reading the code is not verification, and neither is a passing test.
 
 ### Where things live
 
 | What | Where |
 |---|---|
 | Project definition (source of truth) | `mac/project.yml`; `make generate` rebuilds `Prakriti.xcodeproj`, and both are committed |
-| App code | `mac/Prakriti/App` (launch, paths, settings, log), `Model` (vocabulary, SwiftData models, store), `Views`, `Fixtures` |
-| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `SnapshotTests` |
-| Real-window capture | `mac/scripts/capture-window.swift` (run by `make look` and `make check`); also `swift scripts/capture-window.swift --analyze <png>` to check any capture |
+| App code | `mac/Prakriti/App` (launch, paths, settings, log, `PipelineRunner`), `Engine` (the pipeline: `Subprocess`, `Readiness`, `Measurements`, `Pipeline` with `Mastering`, `Report`), `Model` (vocabulary, SwiftData models, store), `Views`, `Fixtures` |
+| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share) |
+| Real-window capture | `mac/scripts/capture-window.swift` (run by `make look` and `make check`); also `--analyze <png>` to check any capture, and `--window <app> <png>` to capture the running app as it is |
+| Real-app pipeline check | `mac/scripts/process-in-app.sh <file> <folder>` |
+| Outputs, development mode | `~/Prakriti/Dev/Outputs/<file name without extension>/`: `episode.mp3`, `transcript.txt/.srt/.vtt/.json`, `REPORT.md` (engine v0's layout) |
+| Test clips | `~/Prakriti/Dev/Drop/2026-09-13 clip 30s.mp4` (a test) and `~/Prakriti/Dev/Clips/2026-09-13 clip 90s.mp4` (a full run), cut with `ffmpeg -c copy` from the 13 Sep talk |
 | The built app | `mac/build/Build/Products/Debug/Prakriti.app` (gitignored) |
 | Store, development mode | `~/Library/Application Support/Prakriti/Development/Prakriti.store` |
 | Log, development mode | `~/Library/Logs/Prakriti/Development/<date>.log`, one line per event |
@@ -588,6 +612,29 @@ Reading the code is not verification, and neither is a passing test.
 11. **SwiftData: every stored property has a default, and enums are stored as raw strings.**
     Reason: additions then migrate on their own, and predicates over raw strings are the reliable
     part of SwiftData. The first change that is not an addition brings a `VersionedSchema`.
+12. **The mastering chain is engine v0's, checked string for string** (`Mastering`,
+    `PipelineTests.testMasteringChainIsEngineV0s`). The limiter keeps `level=disabled`, and mono and
+    the 48 kHz sample rate stay inside the filter chain before it. Reason: either mistake put the
+    peak over 0 dBFS in v0's testing on 8 Oct (+2.2 dBFS, then over 0 again). The only addition is
+    `print_format=json` on the second pass, so the report can say whether loudnorm stayed linear.
+13. **Every tool is called by absolute path, and every child gets `/opt/homebrew/bin` first on its
+    PATH** (`ToolPaths`, `Subprocess`). Reason: a login item starts with a bare PATH (the agency
+    backup failed 66 nights on it), and Parakeet reads audio by calling `ffmpeg` by name.
+14. **Every tool has a time limit (ten minutes plus the recording's length) and is stopped when
+    Prakriti quits;** a recording left Working is marked Couldn't finish on the next launch with Try
+    Again. Reason: one recording runs at a time, so a hung tool would otherwise hold every later
+    recording forever, silently.
+15. **The size must hold still 60 s in the app.** Only tests shorten it (`PipelineRunner.stableWait`).
+    Reason: OBS creates the file when recording starts and writes it for the whole session; a
+    shorter wait in the app would process a recording that is still being made.
+16. **A test clip or a silent recording makes nothing:** no output folder at all. The tests check
+    the folder does not exist, and `make accept` clears its own output folders first so an old run
+    cannot hide a new mistake. Reason: v0's rule, and a silent file once went unnoticed for 24 days.
+17. **The acceptance test is the only code that reads the Studio Recordings folder in development,**
+    and only the three files it names (13 Sep talk, silent 14 Sep class, 6 Sep talk), read-only; it
+    checks each original's size and date are unchanged afterwards. Everywhere else development mode
+    refuses that folder (warning 1). Reason: the folder holds the classes, which may not be processed
+    (student privacy), and engine v0 owns it until the switch-over.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

@@ -72,11 +72,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         guard !AppModel.isRunningTests else { return }
+        // Stop the running tool rather than leave it working with no one to read its result. The
+        // recording is marked Couldn't finish on the next launch.
+        AppModel.current?.runner.stopAll()
         AppModel.current?.log.write("Quit.")
     }
 }
 
-/// The menu bar commands: Add File, Add Folder, Pause All, and Settings in the main window.
+/// The menu bar commands: Process File, Add File, Add Folder, Pause All, and Settings in the main window.
 struct AppCommands: Commands {
     let model: AppModel
     @Environment(\.openWindow) private var openWindow
@@ -90,6 +93,8 @@ struct AppCommands: Commands {
             .keyboardShortcut(",", modifiers: .command)
         }
         CommandGroup(replacing: .newItem) {
+            Button("Process File…") { model.chooseFilesToProcess() }
+                .keyboardShortcut("p", modifiers: [.command, .shift])
             Button("Add File…") { model.chooseFiles() }
                 .keyboardShortcut("o", modifiers: .command)
             Button("Add Folder…") { model.chooseFolder() }

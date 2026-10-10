@@ -5,6 +5,26 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-10, Sat: Prakriti for Mac, milestone 2 (the pipeline in Swift)
+
+- **The app can make an episode now.** Engine v0's pipeline is ported into `mac/Prakriti/Engine`
+  rule for rule (readiness, under 60 s is a test, sound check first, Parakeet with the coverage
+  check, two-pass mastering with v0's two bug fixes, the MP3 measured and its tail decoded,
+  REPORT.md) and run one at a time from File > Process File… or a recording's Make Outputs button.
+  Why a port first: the watcher (milestone 3) needs a pipeline it can trust before engine v0 is
+  retired, and the proof is that both talks' episode audio decodes **bit for bit identical** to
+  v0's, with identical transcripts.
+- **Acceptance on real recordings, `make accept`:** the 13 Sep talk at -16.8 LUFS, peak -1.6 dBFS,
+  transcript to 15:47 of 15:48, REPORT.md; the silent 14 Sep class refused as Needs a decision with
+  nothing made; a 30 s clip filed as a test; the 6 Sep talk at -16.7 LUFS. The real app processed a
+  90 s clip with no clicks in 69 s.
+- **Found while porting, and raised rather than fixed:** loudnorm has never stayed linear on these
+  talks; it silently levels them moment to moment (SCOPE finding E23), including episode 1. The
+  report now says so in plain words, Ivan should listen to episode 1 for it before Fri 23 Oct, and
+  the fix belongs in milestone 4 with the loudness settings. Why not now: the milestone asked for a
+  faithful port, and a mastering change a week before episode 1 deserves its own check by ear.
+- Every check, measurement and decision is in `docs/BUILD-LOG.md`.
+
 ## 2026-10-10, Sat: Prakriti for Mac, milestone 1 fixes after the independent check
 
 - **The selected sidebar row lost its icon in the real window,** light and dark. The icons had been

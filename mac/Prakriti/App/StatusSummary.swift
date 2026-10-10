@@ -23,11 +23,12 @@ struct StatusSummary: Equatable, Sendable {
         if isPaused {
             return StatusSummary(line: "Paused. Nothing new is processed until you resume.", icon: .paused)
         }
-        if !isWatching {
-            return StatusSummary(line: "Not watching yet. The old engine still handles new recordings.", icon: .notWatching)
-        }
+        // Work in progress is named even before the watcher exists: Process File runs the pipeline.
         if let working {
             return StatusSummary(line: "Working on \(working.label): \(working.step.lowercasedFirst)", icon: .working)
+        }
+        if !isWatching {
+            return StatusSummary(line: "Not watching yet. The old engine still handles new recordings.", icon: .notWatching)
         }
         let watching = "Watching " + folderPhrase(folderNames) + "."
         if needsYou > 0 {

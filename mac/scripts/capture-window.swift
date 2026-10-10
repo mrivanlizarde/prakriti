@@ -8,6 +8,7 @@
 //   cd ~/Code/prakriti/mac && make look
 //   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift build/Build/Products/Debug/Prakriti.app ../screens/mac/latest/real
 //   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --analyze some-capture.png
+//   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --window build/Build/Products/Debug/Prakriti.app out.png
 //
 // The app opens with --sample-data: the same sample recordings as the snapshots, in memory only,
 // so nothing is saved and Ivan's store is never opened. Each launch takes the screen's focus for a
@@ -167,6 +168,28 @@ func mainWindowID(pid: pid_t) -> (CGWindowID, CGRect)? {
 // MARK: Main
 
 var args = Array(CommandLine.arguments.dropFirst())
+// Captures the window of an app that is already running, as it is (Ivan's real store, not sample
+// data): used by scripts/process-in-app.sh after the real app has processed a file.
+if args.first == "--window", args.count == 3 {
+    let app = URL(fileURLWithPath: args[1]).standardizedFileURL
+    let png = URL(fileURLWithPath: args[2]).standardizedFileURL
+    try? FileManager.default.createDirectory(at: png.deletingLastPathComponent(), withIntermediateDirectories: true)
+    var found: (CGWindowID, CGRect)?
+    var pid: pid_t = 0
+    let deadline = Date().addingTimeInterval(15)
+    while found == nil && Date() < deadline {
+        if let first = pids(of: app).first { pid = first; found = mainWindowID(pid: pid) }
+        if found == nil { Thread.sleep(forTimeInterval: 0.3) }
+    }
+    guard let (windowID, _) = found else { print("FAIL  no Prakriti window to capture"); exit(1) }
+    NSRunningApplication(processIdentifier: pid)?.activate()
+    Thread.sleep(forTimeInterval: 2.0)
+    let (status, text) = run("/usr/sbin/screencapture", ["-x", "-o", "-l", String(windowID), png.path])
+    guard status == 0 else { print("FAIL  screencapture said \(text)"); exit(1) }
+    let size = NSImageRep(contentsOf: png).map { "\($0.pixelsWide)x\($0.pixelsHigh) px" } ?? "unreadable"
+    print("      saved \(png.path), \(size)")
+    exit(0)
+}
 if args.first == "--analyze" {
     let ok = args.dropFirst().map { describe(($0 as NSString).lastPathComponent, analyze(URL(fileURLWithPath: $0))) }
     exit(ok.allSatisfy { $0 } ? 0 : 1)

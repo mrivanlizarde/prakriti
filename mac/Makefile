@@ -5,6 +5,10 @@
 # make build      build the app (signed, warnings fail the build)
 # make test       run every unit test (includes the snapshot render)
 # make snapshots  render every screen, light and dark, to ../screens/mac/$(MILESTONE)/
+# make accept     milestone 2's acceptance on REAL recordings through the app's pipeline: the 13 Sep
+#                 talk, the silent 14 Sep class, a 30 s clip, the 6 Sep talk. Writes episodes to
+#                 ~/Prakriti/Dev/Outputs and pictures plus acceptance.txt to ../screens/mac/$(MILESTONE)/
+#                 (takes about 4 to 5 minutes)
 # make run        build, then open the app
 # make look       open the REAL app on sample data, capture every screen light and dark to
 #                 ../screens/mac/$(MILESTONE)/real/, and check the selected sidebar row (takes the
@@ -18,7 +22,7 @@ APP       = $(DERIVED)/Build/Products/Debug/Prakriti.app
 MILESTONE ?= latest
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: generate build test snapshots run look check
+.PHONY: generate build test snapshots accept run look check
 
 generate:
 	xcodegen generate
@@ -31,6 +35,9 @@ test:
 
 snapshots:
 	TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/SnapshotTests
+
+accept:
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=1 TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/PipelineAcceptanceTests
 
 run: build
 	open $(APP)
