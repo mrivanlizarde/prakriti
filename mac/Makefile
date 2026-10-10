@@ -9,6 +9,14 @@
 #                 talk, the silent 14 Sep class, a 30 s clip, the 6 Sep talk. Writes episodes to
 #                 ~/Prakriti/Dev/Outputs and pictures plus acceptance.txt to ../screens/mac/$(MILESTONE)/
 #                 (takes about 4 to 5 minutes)
+# make accept-outputs  milestone 4's acceptance on the REAL 13 Sep talk: the standard choices, the
+#                 Outputs screen's loudness changed to -19 and made again, the transcript turned off
+#                 on the recording's page and made again, then everything off (must equal engine v0
+#                 bit for bit). Writes to ~/Prakriti/Dev/Outputs and acceptance-outputs.txt plus
+#                 pictures to ../screens/mac/$(MILESTONE)/ (takes about 3 minutes)
+# make migrate-check  copy the live store (sqlite3 .backup, a consistent snapshot; the live store
+#                 is only read) into build/store-copy and open the COPY with this build's models.
+#                 Run it before `make install` whenever the models change
 # make run        build, then open the app
 # make look       open the REAL app on sample data, capture every screen light and dark to
 #                 ../screens/mac/$(MILESTONE)/real/, and check the selected sidebar row (takes the
@@ -28,7 +36,7 @@ MILESTONE ?= latest
 MODE      ?= development
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: generate build test snapshots accept run look check install drop
+.PHONY: generate build test snapshots accept accept-outputs migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -44,6 +52,16 @@ snapshots:
 
 accept:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=1 TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/PipelineAcceptanceTests
+
+accept-outputs:
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=outputs TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/OutputsAcceptanceTests
+
+STORE_COPY = $(CURDIR)/$(DERIVED)/store-copy/Prakriti.store
+
+migrate-check:
+	rm -rf $(DERIVED)/store-copy && mkdir -p $(DERIVED)/store-copy
+	/usr/bin/sqlite3 "$(HOME)/Library/Application Support/Prakriti/Prakriti.store" ".backup '$(STORE_COPY)'"
+	TEST_RUNNER_PRAKRITI_STORE_COPY=$(STORE_COPY) $(XCB) test -only-testing:PrakritiTests/StoreMigrationTests
 
 run: build
 	open $(APP)

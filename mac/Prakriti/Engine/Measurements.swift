@@ -90,6 +90,34 @@ enum Measure {
         return Loudness(integratedLUFS: i, truePeakDBFS: peak)
     }
 
+    // MARK: Silence (silencedetect)
+
+    struct Silence: Equatable, Sendable {
+        let start: Double
+        /// Nil when the silence runs to the end and ffmpeg printed no end for it.
+        let end: Double?
+    }
+
+    /// `ffmpeg ... -af silencedetect=noise=-50dB:d=1 -f null -` prints "silence_start: 0" and
+    /// "silence_end: 1.675542 | silence_duration: 1.675542" on stderr, in order. ffmpeg 9 also prints
+    /// an end for a silence that runs to the end of the file (checked 10 Oct on a generated file).
+    static func silences(stderr: String) -> [Silence] {
+        var found: [Silence] = []
+        var open: Double?
+        for match in stderr.matches(of: /silence_(start|end): (-?[0-9.]+)/) {
+            guard let value = Double(match.output.2) else { continue }
+            if match.output.1 == "start" {
+                if let start = open { found.append(Silence(start: start, end: nil)) }
+                open = value
+            } else if let start = open {
+                found.append(Silence(start: start, end: value))
+                open = nil
+            }
+        }
+        if let start = open { found.append(Silence(start: start, end: nil)) }
+        return found
+    }
+
     // MARK: Transcript coverage
 
     /// The end of the last cue in an .srt, in whole seconds (engine v0 drops the milliseconds).

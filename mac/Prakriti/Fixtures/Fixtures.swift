@@ -48,25 +48,37 @@ enum Fixtures {
                                recordedAt: date(2026, 9, 13, 18, 25, 44), foundAt: date(2026, 10, 9, 16, 15),
                                duration: 947.78, sizeBytes: 730_464_600, status: .readyForYourYes, kind: .talk)
         talk13.statusReason = "Episode audio and transcript are ready. Speakers are not checked yet."
+        // Measured by the milestone 4 acceptance on 10 Oct, with the standard choices.
         talk13.loudestDB = -3.4
         talk13.averageDB = -30
         talk13.inputLUFS = -26.67
         talk13.coverageOK = true
         talk13.loudnessLUFS = -16.8
-        talk13.truePeakDBFS = -1.6
+        talk13.truePeakDBFS = -1.7
+        talk13.episodeDuration = 946.6
+        talk13.silenceTrimmedStart = 1.18
+        talk13.silenceTrimmedEnd = 0
         talk13.transcriptReaches = 947
         talk13.wordCount = 2948
+        talk13.wordListFixes = 15
         talk13.outputFolder = outputs + "/2026-09-13 18-25-44"
+        talk13.madeFiles = ["REPORT.md", "episode.mp3", "transcript.json", "transcript.md", "transcript.srt", "transcript.txt", "transcript.vtt"]
         context.insert(talk13)
         talk13.source = studio
         addRun(context, to: talk13, start: date(2026, 10, 9, 16, 15, 11), trigger: .fileEvent, outcome: .ready,
                summary: "Ready for your yes.", steps: [
-                RunStep(name: "Checked the file is complete", state: .done, seconds: 60, detail: "Opens, its size held steady, and its last seconds play."),
-                RunStep(name: "Sound check", state: .done, seconds: 1, detail: "Loudest point -3.4 dB."),
-                RunStep(name: "Transcript", state: .done, seconds: 21, detail: "2,948 words."),
-                RunStep(name: "Coverage check", state: .done, seconds: 1, detail: "Reaches 15:47 of 15:48."),
-                RunStep(name: "Episode audio", state: .done, seconds: 13, detail: "-16.8 LUFS, peak -1.6 dBFS."),
-                RunStep(name: "Report", state: .done, seconds: 1, detail: nil),
+                RunStep(name: "Checked the file is complete", state: .done, seconds: 60.2, detail: "Opens, its size held steady for 60 s, and its last seconds play."),
+                RunStep(name: "Sound check", state: .done, seconds: 0.6, detail: "Loudest point -3.4 dB, average -30 dB."),
+                RunStep(name: "Audio for the transcript", state: .done, seconds: 0.5, detail: "Mono, 16 kHz."),
+                RunStep(name: "Transcript", state: .done, seconds: 10.5, detail: "2,948 words."),
+                RunStep(name: "Coverage check", state: .done, seconds: 0.0, detail: "Reaches 15:47 of 15:48."),
+                RunStep(name: "Word list", state: .done, seconds: 0.0,
+                        detail: "15 fixes: Iyengar (2), Krishnamacharya (5), Pattabhi Jois (1), Yoga Marga (6), Samkhya (1)."),
+                RunStep(name: "Silence at the start and end", state: .done, seconds: 0.6, detail: "Trimmed 1.2 s at the start; none at the end."),
+                RunStep(name: "Episode audio", state: .done, seconds: 22.2,
+                        detail: "Mono MP3, 128 kbps, from -26.67 LUFS. Loudness leveled moment to moment, not evenly, so it is worth a listen."),
+                RunStep(name: "Loudness check", state: .done, seconds: 1.8, detail: "-16.8 LUFS, peak -1.7 dBFS. Plays to its end (15:47)."),
+                RunStep(name: "Report", state: .done, seconds: 0.0, detail: "Written to REPORT.md, beside the episode."),
                ])
 
         // Mon 14 Sep: the class recorded without sound. Refused, nothing made.

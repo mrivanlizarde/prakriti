@@ -117,7 +117,13 @@ final class PipelineTests: XCTestCase {
 
     func testPlannedStepsFollowTheOutputs() {
         var options = PipelineOptions()
-        XCTAssertEqual(options.plannedSteps, [.complete, .sound, .speechAudio, .transcript, .coverage, .episode, .loudness, .report])
+        XCTAssertEqual(options.plannedSteps, [.complete, .sound, .speechAudio, .transcript, .coverage, .episode, .loudness, .report],
+                       "PipelineOptions() is engine v0's run")
+        options.applyLexicon = true
+        options.trimSilence = true
+        XCTAssertEqual(options.plannedSteps, [.complete, .sound, .speechAudio, .transcript, .coverage, .wordList, .trim, .episode, .loudness, .report])
+        options.applyLexicon = false
+        options.trimSilence = false
         options.makeTranscript = false
         XCTAssertEqual(options.plannedSteps, [.complete, .sound, .episode, .loudness, .report])
         options.makeEpisode = false

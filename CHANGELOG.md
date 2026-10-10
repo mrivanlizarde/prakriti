@@ -5,6 +5,31 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-10, Sat: Prakriti for Mac, milestone 4 (outputs and settings)
+
+- **Every output's settings now change what is made, proved on the 13 Sep talk.** Loudness target
+  -16 measured -16.8 LUFS; changed to -19 on the Outputs screen and made again, it measured -19.1
+  LUFS on two meters. Turned the transcript off on the recording's page and made it again: no
+  transcript file was left. Why it mattered: until now trim, intro, outro, stereo, the .md transcript
+  and the word list were switches that did nothing.
+- **Fixed a trap found on the way: the Outputs screen never reached a watched folder.** Each folder
+  kept its own frozen copy of every setting from the day it was added, and that copy won, so the
+  loudness on the Outputs screen showed one number while the studio folder's episodes were made at
+  another. Now a folder chooses only which outputs it makes; how they are made comes from the
+  Outputs screen, or from a recording's own choices.
+- **The Yoga Marga word list fixes known mis-hearings on this Mac,** and keeps Parakeet's words as
+  heard in `transcript.json`. On the 13 Sep talk it made 15 fixes ("Yoga Marka", "Krishna Macharya",
+  "Patabi Joyce", "Ayengar" and lowercase "yoga marga"), each listed with its time in REPORT.md so a
+  wrong fix can be found. Why: Sanskrit and the school's own name are what speech recognition gets
+  wrong, and a transcript that misspells the brand cannot go out.
+- **Making again is safe.** A make happens in a hidden staging folder and replaces the old files only
+  when it has finished; a remake that stops leaves the last good episode untouched, and only
+  Prakriti's own files are ever replaced. With the new settings off, the 13 Sep episode is still
+  engine v0's, bit for bit.
+- **Silence is trimmed at the start and end by default** (1.2 s on the 13 Sep talk), conservatively,
+  so no word is clipped. Titles, show notes and chapters are shown as waiting for the writing model.
+- Every check, measurement and decision is in `docs/BUILD-LOG.md`.
+
 ## 2026-10-10, Sat: Prakriti for Mac, milestone 3 (the watcher, notifications) and the switch-over
 
 - **Prakriti for Mac is now the live engine, and engine v0 is retired.** The app watches the Studio

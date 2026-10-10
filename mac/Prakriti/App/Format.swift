@@ -89,6 +89,44 @@ enum Format {
         return sized.prefix(1).uppercased() + sized.dropFirst()
     }
 
+    /// ", 1.2 s of silence trimmed": after an episode's length, when the trim took any.
+    static func trimmed(start: Double?, end: Double?) -> String {
+        let total = (start ?? 0) + (end ?? 0)
+        return total < 0.05 ? "" : String(format: ", %.1f s of silence trimmed", total)
+    }
+
+    /// "episode.mp3, REPORT.md, transcript (.txt, .srt, .md, .json)": the files a make left, the
+    /// transcript's formats grouped so the line stays short.
+    static func madeFiles(_ names: [String]) -> String {
+        let transcript = names.filter { $0.hasPrefix("transcript.") }
+        let order = ["txt", "srt", "vtt", "md", "json"]
+        let formats = transcript.map { String($0.dropFirst("transcript.".count)) }
+            .sorted { (order.firstIndex(of: $0) ?? 99) < (order.firstIndex(of: $1) ?? 99) }
+        var parts = names.filter { !$0.hasPrefix("transcript.") }.sorted { $0.lowercased() < $1.lowercased() }
+        if !formats.isEmpty { parts.append("transcript (" + formats.map { "." + $0 }.joined(separator: ", ") + ")") }
+        return parts.joined(separator: ", ")
+    }
+
+    /// "-16 LUFS, silence trimmed, mono, no intro or outro"
+    static func episodeSettings(_ setting: OutputSetting) -> String {
+        var parts = [loudnessTarget(setting.loudnessTarget)]
+        parts.append(setting.trimSilence ? "silence trimmed" : "silence kept")
+        parts.append(setting.channels.title.lowercased())
+        switch (setting.introPath != nil, setting.outroPath != nil) {
+        case (true, true): parts.append("intro and outro")
+        case (true, false): parts.append("intro")
+        case (false, true): parts.append("outro")
+        case (false, false): parts.append("no intro or outro")
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    /// ".txt, .srt, .vtt, .md, word list on"
+    static func transcriptSettings(_ setting: OutputSetting) -> String {
+        let formats = TranscriptFormat.allCases.filter(setting.transcriptFormats.contains).map { "." + $0.rawValue }
+        return (formats + [setting.applyLexicon ? "word list on" : "word list off"]).joined(separator: ", ")
+    }
+
     static func number(_ n: Int) -> String {
         n.formatted(.number.locale(locale))
     }

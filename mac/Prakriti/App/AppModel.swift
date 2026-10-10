@@ -320,6 +320,49 @@ final class AppModel {
         runner.enqueue(recording, trigger: recording.status == .found ? .byHand : .makeAgain)
     }
 
+    // MARK: One recording's own outputs
+
+    /// Gives a recording its own output choices, starting from the ones it uses now: its folder's
+    /// switches and the Outputs screen's settings. From then on, changes on Sources and Outputs no
+    /// longer reach it, and its page says so.
+    func giveOwnOutputs(_ recording: Recording) {
+        guard !recording.hasOwnOutputs else { return }
+        let defaults = defaultSettings()
+        for kind in OutputKind.allCases {
+            let base = OutputResolver.details(for: kind, recording: nil, defaults: defaults)?.copy() ?? OutputSetting(kind: kind)
+            let own = OutputSetting(kind: kind, isOn: OutputResolver.choice(for: kind, recording: nil, source: recording.source, defaults: defaults)?.isOn ?? false)
+            own.loudnessTarget = base.loudnessTarget
+            own.peakCeiling = base.peakCeiling
+            own.trimSilence = base.trimSilence
+            own.introPath = base.introPath
+            own.outroPath = base.outroPath
+            own.channelsRaw = base.channelsRaw
+            own.transcriptFormatsRaw = base.transcriptFormatsRaw
+            own.applyLexicon = base.applyLexicon
+            context.insert(own)
+            own.recording = recording
+        }
+        record("\(Format.dayLabel(recording.sessionDate)) (\(recording.fileName)) now has its own output choices.")
+        try? context.save()
+    }
+
+    /// Turns one output on or off for one recording, giving it its own choices first.
+    func setOutput(_ kind: OutputKind, on: Bool, for recording: Recording) {
+        guard kind.isAvailable else { return }
+        giveOwnOutputs(recording)
+        recording.outputSettings.first { $0.kind == kind }?.isOn = on
+        record("\(kind.title) turned \(on ? "on" : "off") for \(Format.dayLabel(recording.sessionDate)) (\(recording.fileName)). It applies the next time it is made.")
+        try? context.save()
+    }
+
+    /// Drops a recording's own choices: it follows its folder and the Outputs screen again.
+    func useStandardOutputs(_ recording: Recording) {
+        guard recording.hasOwnOutputs else { return }
+        for setting in recording.outputSettings { context.delete(setting) }
+        record("\(Format.dayLabel(recording.sessionDate)) (\(recording.fileName)) follows \(recording.source.map { "the \($0.name) folder" } ?? "the standard choices") again.")
+        try? context.save()
+    }
+
     func open(_ item: SidebarItem) {
         selection = item
     }
@@ -499,12 +542,15 @@ struct CaptureLaunch {
 
 /// Flags for a normal launch (Ivan's real store), used by the milestone checks to drive the real
 /// app without clicks: `--process-file=<path>` runs Process File on that file, `--show=<screen>`
-/// opens a sidebar screen, `--open=latest` opens the newest recording's page. One word per flag,
+/// opens a sidebar screen, `--open=latest` opens the newest recording's page and `--open=<path>`
+/// that file's page. One word per flag,
 /// for the same reason as CaptureLaunch.
 struct LaunchOptions {
     let processFiles: [String]
     let show: SidebarItem?
     let openLatest: Bool
+    /// `--open=<path>`: opens that recording's page (milestone 4's check of the real window).
+    let openPath: String?
     /// `--forget=<path>`: removes that recording from the store (not the file). Used by the
     /// milestone 3 check to take its test clip back out after the switch-over.
     let forget: [String]
@@ -517,6 +563,7 @@ struct LaunchOptions {
         return LaunchOptions(processFiles: values("--process-file"),
                              show: values("--show").first.flatMap(SidebarItem.init(rawValue:)),
                              openLatest: values("--open").first == "latest",
+                             openPath: values("--open").first.flatMap { $0 == "latest" ? nil : $0 },
                              forget: values("--forget"))
     }
 
@@ -535,6 +582,11 @@ struct LaunchOptions {
         if !processFiles.isEmpty {
             model.log.write("Launched with Process File for \(processFiles.count) file(s).")
             model.processFiles(processFiles.map { URL(fileURLWithPath: $0) })
+        }
+        if let openPath {
+            let standardized = URL(fileURLWithPath: openPath).standardizedFileURL.path
+            let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
+            if let recording = all.first(where: { $0.filePath == standardized }) { model.open(recording) }
         }
         if openLatest {
             let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []

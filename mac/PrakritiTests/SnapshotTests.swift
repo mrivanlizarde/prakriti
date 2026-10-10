@@ -42,6 +42,20 @@ final class SnapshotTests: XCTestCase {
             }
         }
 
+        // The 13 Sep talk with its own choices: the transcript turned off and its loudness at -19,
+        // as milestone 4's acceptance made it.
+        for (scheme, appearance) in appearances {
+            let model = Fixtures.model()
+            let recordings = try model.context.fetch(FetchDescriptor<Recording>())
+            let recording = try XCTUnwrap(recordings.first { $0.title == "Talk with Gabriel" && $0.status == .readyForYourYes })
+            model.setOutput(.transcript, on: false, for: recording)
+            recording.outputSettings.first { $0.kind == .podcastEpisode }?.loudnessTarget = -19
+            model.open(recording)
+            let name = "08-recording-own-choices-\(scheme)"
+            try renderer.render(model: model, appearance: appearance, name: name)
+            written.append(name)
+        }
+
         // Today with nothing waiting, and nothing set up.
         for (scheme, appearance) in appearances {
             let model = Fixtures.model(empty: true)
@@ -66,6 +80,6 @@ final class SnapshotTests: XCTestCase {
 
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, SidebarItem.allCases.count * 2 + 12)
+        XCTAssertEqual(written.count, SidebarItem.allCases.count * 2 + 14)
     }
 }

@@ -39,11 +39,13 @@ struct RecordingsView: View {
     }
 }
 
-/// One recording's page: its status, what to do next, the steps with their timings, and what was
-/// measured and made. The player, transcript, trim, cuts, Make Again and Approve arrive in milestone 5.
+/// One recording's page: its status, what to do next, the steps with their timings, what was
+/// measured and made, and which outputs it makes (its folder's choices, or its own), with Make
+/// Again. The player, transcript, trim, cuts and Approve arrive in milestone 5.
 struct RecordingDetailView: View {
     @Bindable var recording: Recording
     @Environment(AppModel.self) private var model
+    @State private var confirmMakeAgain = false
 
     var body: some View {
         Form {
@@ -117,6 +119,9 @@ struct RecordingDetailView: View {
                     if let lufs = recording.loudnessLUFS {
                         let peak = recording.truePeakDBFS.map { ", peak " + Format.dbfs($0) } ?? ""
                         ValueRow(label: "Episode audio", value: Format.lufs(lufs) + peak)
+                        if let length = recording.episodeDuration {
+                            ValueRow(label: "Episode length", value: Format.timecode(length) + Format.trimmed(start: recording.silenceTrimmedStart, end: recording.silenceTrimmedEnd))
+                        }
                     }
                     if let words = recording.wordCount {
                         let verb = recording.coverageOK == false ? ", stops at " : ", reaches "
@@ -124,6 +129,12 @@ struct RecordingDetailView: View {
                             verb + Format.timecode(reaches) + (recording.duration.map { " of " + Format.timecode($0) } ?? "")
                         } ?? ""
                         ValueRow(label: "Transcript", value: Format.number(words) + " words" + reach)
+                        if let fixes = recording.wordListFixes {
+                            ValueRow(label: "Word list", value: fixes == 0 ? "No known mis-hearings found" : Format.count(fixes, "fix", "fixes") + ", listed in the report")
+                        }
+                    }
+                    if let made = madeLine {
+                        ValueRow(label: "Made", value: made)
                     }
                     if let folder = recording.outputFolder {
                         PathRow(label: "Files", path: folder)
@@ -141,6 +152,28 @@ struct RecordingDetailView: View {
                 }
             }
 
+            // A silent recording or a test clip is never made, so it has no outputs to choose.
+            if recording.status != .needsADecision && recording.status != .skipped {
+                RecordingOutputsSection(recording: recording, confirmMakeAgain: $confirmMakeAgain)
+            }
+            if recording.hasOwnOutputs && recording.status != .needsADecision && recording.status != .skipped {
+                // Only the settings of what this recording makes are shown.
+                if let podcast = recording.outputSettings.first(where: { $0.kind == .podcastEpisode && $0.isOn }) {
+                    Section {
+                        PodcastSettingsRows(setting: podcast)
+                    } header: {
+                        SectionHeader("Episode settings for this recording")
+                    }
+                }
+                if let transcript = recording.outputSettings.first(where: { $0.kind == .transcript && $0.isOn }) {
+                    Section {
+                        TranscriptSettingsRows(setting: transcript, wordListIsBelow: false)
+                    } header: {
+                        SectionHeader("Transcript settings for this recording")
+                    }
+                }
+            }
+
             Section {
                 PathRow(label: "Original file", path: recording.filePath)
                 if recording.sizeBytes > 0 {
@@ -153,6 +186,22 @@ struct RecordingDetailView: View {
         }
         .formStyle(.grouped)
         .navigationTitle(Format.dayLabel(recording.sessionDate))
+        .confirmationDialog("Make this recording again?", isPresented: $confirmMakeAgain) {
+            Button("Make Again") { model.makeOutputs(recording) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("It is made again with the choices on this page. The files made before are replaced once the new ones are ready, and the original recording is not changed.")
+        }
+    }
+
+    /// "episode.mp3, REPORT.md, transcript (.txt, .srt, .vtt, .md, .json)": what the last finished
+    /// make left. A recording made by engine v0 has no list, so its folder is read.
+    private var madeLine: String? {
+        var names = recording.madeFiles
+        if names.isEmpty, let folder = recording.outputFolder {
+            names = Pipeline.madeFiles(in: URL(fileURLWithPath: folder)).filter(Pipeline.madeNames.contains)
+        }
+        return names.isEmpty ? nil : Format.madeFiles(names)
     }
 
     /// "Transcript, coverage check and report": the first name as written, the rest lowercased.
@@ -194,6 +243,65 @@ struct RecordingDetailView: View {
         return model.settings.isPaused
             ? "Waiting to start. Pause All is on; it starts when you resume."
             : "Waiting to start. Another recording is being worked on first."
+    }
+}
+
+/// Which outputs this recording makes: its folder's choices, or its own once one is changed here.
+/// Make Again sits here, below the choices it uses.
+struct RecordingOutputsSection: View {
+    @Bindable var recording: Recording
+    @Binding var confirmMakeAgain: Bool
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let defaults = model.defaultSettings()
+        Section {
+            RowNote(followLine)
+            ForEach(OutputKind.built, id: \.self) { kind in
+                OutputToggle(kind: kind, isOn: Binding(
+                    get: { OutputResolver.isOn(kind, recording: recording, source: nil, defaults: defaults) },
+                    set: { model.setOutput(kind, on: $0, for: recording) }))
+            }
+            if !recording.hasOwnOutputs {
+                if OutputResolver.isOn(.podcastEpisode, recording: recording, source: nil, defaults: defaults),
+                   let podcast = OutputResolver.details(for: .podcastEpisode, recording: recording, defaults: defaults) {
+                    ValueRow(label: "Episode settings", value: Format.episodeSettings(podcast))
+                }
+                if OutputResolver.isOn(.transcript, recording: recording, source: nil, defaults: defaults),
+                   let transcript = OutputResolver.details(for: .transcript, recording: recording, defaults: defaults) {
+                    ValueRow(label: "Transcript settings", value: Format.transcriptSettings(transcript))
+                }
+            }
+            HStack(spacing: 12) {
+                if recording.hasOwnOutputs {
+                    Button(recording.source == nil ? "Use the Standard Choices" : "Use the Folder's Choices") { model.useStandardOutputs(recording) }
+                } else {
+                    Button("Change Settings for This Recording") { model.giveOwnOutputs(recording) }
+                }
+                Spacer()
+                if canMakeAgain {
+                    Button("Make Again…") { confirmMakeAgain = true }
+                        .buttonStyle(.borderedProminent)
+                }
+            }
+        } header: {
+            SectionHeader("Outputs for this recording")
+        }
+    }
+
+    private var followLine: String {
+        if recording.hasOwnOutputs {
+            return "This recording has its own choices. Changes on Sources and Outputs do not reach it."
+        }
+        if let source = recording.source {
+            return "Made as the \(source.name) folder is set, with the settings on the Outputs screen. Change a switch to give this recording its own choices."
+        }
+        return "Made with the standard choices on the Outputs screen. Change a switch to give this recording its own choices."
+    }
+
+    /// A finished recording can be made again with changed choices. One waiting or working cannot.
+    private var canMakeAgain: Bool {
+        recording.status == .readyForYourYes && !model.runner.isWaiting(recording) && !model.runner.isCurrent(recording)
     }
 }
 

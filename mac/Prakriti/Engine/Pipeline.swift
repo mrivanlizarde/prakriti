@@ -15,11 +15,20 @@ import Foundation
 // - Mastering keeps v0's two bug fixes (see Mastering below), then the MP3 is measured, and its
 //   tail decoded, rather than trusted.
 // - Outputs never go into the shared iCloud folder (the runner checks the folder it passes in).
+//
+// Milestone 4 added the outputs' settings, each made only when chosen: the silence trim, an intro
+// and outro, mono or stereo, the transcript's formats and the Yoga Marga word list. Two rules came
+// with them:
+// - A make happens in a staging folder and replaces the recording's files only once it has
+//   finished. A remake that stops halfway leaves the last good files as they were, and a remake
+//   with the transcript turned off leaves no transcript behind (milestone 4's acceptance).
+// - With the trim and the intro and outro off, the chain is still engine v0's string for string
+//   (PipelineTests), so PipelineOptions() still makes v0's episode bit for bit.
 
 /// The steps, in order. `title` is what the recording page lists; `doing` is what the status line
 /// says while it runs ("Working on Sun 13 Sep: making the episode audio"). Never "Processing".
 enum PipelineStep: String, CaseIterable, Sendable {
-    case complete, sound, speechAudio, transcript, coverage, episode, loudness, report
+    case complete, sound, speechAudio, transcript, coverage, wordList, trim, episode, loudness, report
 
     var title: String {
         switch self {
@@ -28,6 +37,8 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .speechAudio: "Audio for the transcript"
         case .transcript: "Transcript"
         case .coverage: "Coverage check"
+        case .wordList: "Word list"
+        case .trim: "Silence at the start and end"
         case .episode: "Episode audio"
         case .loudness: "Loudness check"
         case .report: "Report"
@@ -41,6 +52,8 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .speechAudio: "Preparing the audio for the transcript"
         case .transcript: "Writing the transcript"
         case .coverage: "Checking the transcript reaches the end"
+        case .wordList: "Applying the Yoga Marga word list"
+        case .trim: "Finding the silence at the start and end"
         case .episode: "Making the episode audio"
         case .loudness: "Measuring the episode audio"
         case .report: "Writing the report"
@@ -76,12 +89,30 @@ struct PipelineOptions: Sendable {
     /// for Ivan. A silent recording is still a Needs a decision the same day (the 14 Sep lesson).
     var checksOnly = false
 
+    // The episode's settings. The defaults are engine v0's (no trim, mono, no intro or outro), so
+    // PipelineOptions() still makes v0's episode bit for bit; the app passes the Outputs screen's.
+    var trimSilence = false
+    /// Full paths of the intro and outro audio, or nil.
+    var introPath: String?
+    var outroPath: String?
+    var channels: AudioChannels = .mono
+
+    // The transcript's settings. The defaults are engine v0's three formats, with no word list.
+    var transcriptFormats: Set<TranscriptFormat> = [.txt, .srt, .vtt]
+    var applyLexicon = false
+
     /// The steps this run will take, in order. The checks always run.
     var plannedSteps: [PipelineStep] {
         var steps: [PipelineStep] = [.complete, .sound]
         if checksOnly { return steps }
-        if makeTranscript { steps += [.speechAudio, .transcript, .coverage] }
-        if makeEpisode { steps += [.episode, .loudness] }
+        if makeTranscript {
+            steps += [.speechAudio, .transcript, .coverage]
+            if applyLexicon { steps.append(.wordList) }
+        }
+        if makeEpisode {
+            if trimSilence { steps.append(.trim) }
+            steps += [.episode, .loudness]
+        }
         if makeReport { steps.append(.report) }
         return steps
     }
@@ -120,9 +151,21 @@ struct PipelineResult: Sendable {
     var transcriptReaches: Double?
     var wordCount: Int?
     var coverageOK: Bool?
-    /// Set only when something was made in it.
+    /// The part of the recording the episode keeps, once the silence at its start and end is
+    /// trimmed. Nil when nothing was trimmed.
+    var kept: Mastering.Span?
+    /// Seconds of silence trimmed from the start and the end (0 when the trim found none).
+    var trimmedStart: Double?
+    var trimmedEnd: Double?
+    var introDuration: Double?
+    var outroDuration: Double?
+    /// The word list's fixes, each with its time in the original recording.
+    var corrections: [Lexicon.Correction] = []
+    /// Set only when a make finished and its files are in it.
     var outputFolder: URL?
     var files: [String] = []
+    /// Files an earlier make left that this one replaced or removed (a transcript turned off).
+    var replaced: [String] = []
     var seconds: Double = 0
 }
 
@@ -169,15 +212,116 @@ enum Mastering {
     /// The limiter's linear ceiling for a dB ceiling: -1.5 dB is 0.84.
     static func limiterLevel(ceiling: Double) -> Double { pow(10, peakTarget(ceiling: ceiling) / 20) }
 
-    static func firstPass(target: Double, ceiling: Double) -> String {
-        "aformat=channel_layouts=mono,aresample=48000,loudnorm=I=\(number(target)):TP=\(number(peakTarget(ceiling: ceiling))):LRA=11:print_format=json"
+    /// Mono (v0) or stereo, and 48 kHz, set inside the chain so both come before the limiter (bug 2).
+    static func format(_ channels: AudioChannels) -> String {
+        "aformat=channel_layouts=\(channels.rawValue),aresample=48000"
     }
 
-    static func secondPass(target: Double, ceiling: Double, measured m: Measure.LoudnormPass) -> String {
-        "aformat=channel_layouts=mono,aresample=48000,loudnorm=I=\(number(target + limiterAllowance)):TP=\(number(peakTarget(ceiling: ceiling))):LRA=11:"
+    static func firstPassLoudness(target: Double, ceiling: Double) -> String {
+        "loudnorm=I=\(number(target)):TP=\(number(peakTarget(ceiling: ceiling))):LRA=11:print_format=json"
+    }
+
+    static func secondPassLoudness(target: Double, ceiling: Double, measured m: Measure.LoudnormPass) -> String {
+        "loudnorm=I=\(number(target + limiterAllowance)):TP=\(number(peakTarget(ceiling: ceiling))):LRA=11:"
             + "measured_I=\(m.inputI):measured_TP=\(m.inputTP):measured_LRA=\(m.inputLRA):measured_thresh=\(m.inputThresh):"
             + "offset=\(m.targetOffset):linear=true:print_format=json,"
             + "alimiter=limit=\(number(limiterLevel(ceiling: ceiling))):level=disabled:attack=5:release=50"
+    }
+
+    static func firstPass(target: Double, ceiling: Double, channels: AudioChannels = .mono) -> String {
+        format(channels) + "," + firstPassLoudness(target: target, ceiling: ceiling)
+    }
+
+    static func secondPass(target: Double, ceiling: Double, measured m: Measure.LoudnormPass, channels: AudioChannels = .mono) -> String {
+        format(channels) + "," + secondPassLoudness(target: target, ceiling: ceiling, measured: m)
+    }
+
+    /// A stretch of the recording, in seconds from its start.
+    struct Span: Equatable, Sendable {
+        let start: Double
+        let end: Double
+        var length: Double { end - start }
+    }
+
+    /// An intro or outro, and the gain that brings it to the talk's own loudness before the whole
+    /// episode is leveled, so music recorded hot does not come out louder than the talk.
+    struct Piece: Equatable, Sendable {
+        let path: String
+        let gainDB: Double
+    }
+
+    /// What the episode is made of: the recording (all of it, or the part kept after the trim), in
+    /// mono or stereo, with an intro before it and an outro after it, joined end to end.
+    struct Program: Equatable, Sendable {
+        var kept: Span?
+        var channels: AudioChannels = .mono
+        var intro: Piece?
+        var outro: Piece?
+    }
+
+    /// "1.183": trim points to the millisecond.
+    static func time(_ seconds: Double) -> String { String(format: "%.3f", seconds) }
+
+    /// The ffmpeg inputs and filters for one pass over the program, ending in `loudness` (a pass's
+    /// loudnorm, or loudnorm and the limiter). Without an intro or outro this is engine v0's single
+    /// `-af` chain, with the trim put first when there is one; with them, a filter graph joins the
+    /// pieces (each in the same layout and rate) before the same loudness filters.
+    static func pass(file: String, program: Program, loudness: String) -> [String] {
+        let format = format(program.channels)
+        let trim = program.kept.map { "atrim=start=\(time($0.start)):end=\(time($0.end)),asetpts=PTS-STARTPTS," } ?? ""
+        guard program.intro != nil || program.outro != nil else {
+            return ["-i", file, "-vn", "-af", trim + format + "," + loudness]
+        }
+        var inputs: [String] = []
+        var graph: [String] = []
+        var labels: [String] = []
+        func add(_ path: String, _ chain: String, _ label: String) {
+            graph.append("[\(labels.count):a]\(chain)[\(label)]")
+            inputs += ["-i", path]
+            labels.append("[\(label)]")
+        }
+        if let intro = program.intro { add(intro.path, "\(format),volume=\(number(intro.gainDB))dB", "intro") }
+        add(file, trim + format, "talk")
+        if let outro = program.outro { add(outro.path, "\(format),volume=\(number(outro.gainDB))dB", "outro") }
+        graph.append(labels.joined() + "concat=n=\(labels.count):v=0:a=1,\(loudness)[episode]")
+        return inputs + ["-filter_complex", graph.joined(separator: ";"), "-map", "[episode]"]
+    }
+}
+
+/// Trimming the silence at the start and end of a recording. Conservative on purpose: only sound
+/// under -50 dB for at least a second counts, and half a second is kept before the first sound and
+/// after the last, so no word is clipped. Measured 10 Oct: the 13 Sep talk opens with 1.7 s under
+/// -60 dB and runs to its last second; the 6 Sep talk opens with 3.4 s under -50 dB.
+enum SilenceTrim {
+    static let threshold = -50
+    static let minimum = 1.0
+    static let pad = 0.5
+    /// A silence counts as the start's when it begins in the first 50 ms, and as the end's when it
+    /// reaches within half a second of the end (a video's audio can stop a little before its
+    /// picture does).
+    static let startEdge = 0.05
+    static let endEdge = 0.5
+
+    static var filter: String { "aformat=channel_layouts=mono,silencedetect=noise=\(threshold)dB:d=\(Mastering.number(minimum))" }
+
+    /// The part to keep, or nil when there is nothing to trim.
+    static func kept(_ silences: [Measure.Silence], duration: Double) -> Mastering.Span? {
+        var start = 0.0, end = duration
+        if let lead = silences.first, lead.start <= startEdge, let leadEnd = lead.end {
+            start = max(0, leadEnd - pad)
+        }
+        if let trail = silences.last, (trail.end ?? duration) >= duration - endEdge, trail.start > start {
+            end = min(duration, trail.start + pad)
+        }
+        guard start > 0.01 || end < duration - 0.01, end - start >= 1 else { return nil }
+        return Mastering.Span(start: start, end: end)
+    }
+
+    /// "Trimmed 1.2 s at the start; none at the end."
+    static func line(start: Double, end: Double) -> String {
+        func amount(_ s: Double) -> String { s < 0.05 ? "none" : String(format: "%.1f s", s) }
+        if start < 0.05 && end < 0.05 { return "No silence to trim at either end." }
+        return "Trimmed \(amount(start)) at the start; \(amount(end)) at the end."
     }
 }
 
@@ -297,12 +441,16 @@ struct Pipeline: Sendable {
             }
             await emit(.soundOK)
 
-            try FileManager.default.createDirectory(at: outputFolder, withIntermediateDirectories: true)
-            result.outputFolder = outputFolder
-            let speech = outputFolder.appending(path: "speech.wav")
-            defer { try? FileManager.default.removeItem(at: speech) }
+            // Everything is made in a staging folder beside the outputs, and moves into the
+            // recording's folder only when the whole make has finished. Reason: a remake that
+            // stops halfway must leave the last good episode and transcript as they were.
+            let staging = Self.stagingFolder(for: outputFolder)
+            try? FileManager.default.removeItem(at: staging) // a make stopped by a quit leaves its unfinished files here
+            try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: staging) }
+            let speech = staging.appending(path: "speech.wav")
 
-            // 4. Mono 16 kHz audio, then the transcript (Parakeet), then the coverage check.
+            // 4. Mono 16 kHz audio, then the transcript (Parakeet), the coverage check, the word list.
             if options.makeTranscript {
                 await begin(.speechAudio)
                 _ = try await tool(.speechAudio, tools.ffmpeg, ["-y", "-v", "error", "-i", file.path, "-vn", "-ac", "1", "-ar", "16000", speech.path],
@@ -310,11 +458,13 @@ struct Pipeline: Sendable {
                 await finish(.speechAudio, "Mono, 16 kHz.")
 
                 await begin(.transcript)
-                _ = try await tool(.transcript, tools.parakeet, [speech.path, "--output-dir", outputFolder.path, "--output-format", "all",
+                _ = try await tool(.transcript, tools.parakeet, [speech.path, "--output-dir", staging.path, "--output-format", "all",
                                                                  "--output-template", "transcript"],
                                    captureStdout: false, duration: ready.duration)
-                guard let srt = try? String(contentsOf: outputFolder.appending(path: "transcript.srt"), encoding: .utf8),
-                      let text = try? String(contentsOf: outputFolder.appending(path: "transcript.txt"), encoding: .utf8) else {
+                try? FileManager.default.removeItem(at: speech)
+                let srtFile = staging.appending(path: TranscriptFiles.fileName(.srt))
+                guard var srt = try? String(contentsOf: srtFile, encoding: .utf8),
+                      let text = try? String(contentsOf: staging.appending(path: TranscriptFiles.fileName(.txt)), encoding: .utf8) else {
                     throw PipelineFailure(step: .transcript, reason: "Parakeet finished but wrote no transcript.")
                 }
                 let words = Measure.wordCount(text)
@@ -329,26 +479,71 @@ struct Pipeline: Sendable {
                 await finish(.coverage, result.coverageOK == true
                              ? "Reaches \(Format.timecode(reaches)) of \(Format.timecode(ready.duration))."
                              : "Stops at \(Format.timecode(reaches)) of \(Format.timecode(ready.duration)). The last \(Format.length(gap)) has no words.")
+
+                if options.applyLexicon {
+                    await begin(.wordList)
+                    let fixed = try Self.applyWordList(in: staging)
+                    srt = fixed.srt
+                    result.corrections = fixed.corrections
+                    let fixes = Lexicon.summary(result.corrections)
+                    await finish(.wordList, result.corrections.isEmpty ? "No known mis-hearings found."
+                                 : "\(Format.count(result.corrections.count, "fix", "fixes")): "
+                                    + fixes.map { "\($0.written) (\($0.items.count))" }.joined(separator: ", ") + ".")
+                }
+                try keepChosenFormats(in: staging, srt: srt, label: label, fileName: file.lastPathComponent)
             }
 
-            // 5. The episode audio: two-pass loudness, mono MP3 128k (Apple Podcasts spec).
+            // 5. The episode audio: the silence trim, two-pass loudness, the MP3 (Apple Podcasts spec).
             if options.makeEpisode {
-                let mp3 = outputFolder.appending(path: "episode.mp3")
-                await begin(.episode)
-                let first = try await tool(.episode, tools.ffmpeg, ["-hide_banner", "-nostats", "-i", file.path, "-vn", "-af",
-                                                                    Mastering.firstPass(target: options.loudnessTarget, ceiling: options.peakCeiling),
-                                                                    "-f", "null", "-"], duration: ready.duration)
-                guard let measured = Measure.loudnorm(stderr: first.stderr) else {
-                    throw PipelineFailure(step: .episode, reason: "The loudness could not be measured, so no episode audio was made.",
-                                          detail: Subprocess.tail(first.stderr))
+                let mp3 = staging.appending(path: "episode.mp3")
+                var program = Mastering.Program(kept: nil, channels: options.channels)
+                if options.trimSilence {
+                    await begin(.trim)
+                    let scan = try await tool(.trim, tools.ffmpeg, ["-hide_banner", "-nostats", "-i", file.path, "-vn", "-af", SilenceTrim.filter, "-f", "null", "-"],
+                                              duration: ready.duration)
+                    program.kept = SilenceTrim.kept(Measure.silences(stderr: scan.stderr), duration: ready.duration)
+                    result.kept = program.kept
+                    result.trimmedStart = program.kept?.start ?? 0
+                    result.trimmedEnd = program.kept.map { max(0, ready.duration - $0.end) } ?? 0
+                    await finish(.trim, SilenceTrim.line(start: result.trimmedStart ?? 0, end: result.trimmedEnd ?? 0))
                 }
-                result.inputLUFS = measured.inputLUFS
-                let second = try await tool(.episode, tools.ffmpeg, ["-y", "-hide_banner", "-nostats", "-i", file.path, "-vn", "-af",
-                                                                     Mastering.secondPass(target: options.loudnessTarget, ceiling: options.peakCeiling, measured: measured),
-                                                                     "-ar", "48000", "-c:a", "libmp3lame", "-b:a", "128k", mp3.path],
+
+                await begin(.episode)
+                // The intro and outro are checked first, so a missing file stops before minutes of work.
+                let intro = try await piece(options.introPath, role: "intro", duration: ready.duration)
+                let outro = try await piece(options.outroPath, role: "outro", duration: ready.duration)
+                let target = options.loudnessTarget, ceiling = options.peakCeiling
+                let talkPass = try await tool(.episode, tools.ffmpeg, ["-hide_banner", "-nostats"]
+                                              + Mastering.pass(file: file.path, program: program, loudness: Mastering.firstPassLoudness(target: target, ceiling: ceiling))
+                                              + ["-f", "null", "-"], duration: ready.duration)
+                guard let talk = Measure.loudnorm(stderr: talkPass.stderr), let talkLUFS = talk.inputLUFS else {
+                    throw PipelineFailure(step: .episode, reason: "The loudness could not be measured, so no episode audio was made.",
+                                          detail: Subprocess.tail(talkPass.stderr))
+                }
+                result.inputLUFS = talk.inputLUFS
+                var measured = talk
+                if intro != nil || outro != nil {
+                    program.intro = intro.map { Mastering.Piece(path: $0.path, gainDB: Self.matchingGain(talk: talkLUFS, piece: $0.lufs)) }
+                    program.outro = outro.map { Mastering.Piece(path: $0.path, gainDB: Self.matchingGain(talk: talkLUFS, piece: $0.lufs)) }
+                    result.introDuration = intro?.duration
+                    result.outroDuration = outro?.duration
+                    let whole = try await tool(.episode, tools.ffmpeg, ["-hide_banner", "-nostats"]
+                                               + Mastering.pass(file: file.path, program: program, loudness: Mastering.firstPassLoudness(target: target, ceiling: ceiling))
+                                               + ["-f", "null", "-"], duration: ready.duration)
+                    guard let wholePass = Measure.loudnorm(stderr: whole.stderr) else {
+                        throw PipelineFailure(step: .episode, reason: "The loudness of the episode with its intro and outro could not be measured, so no episode audio was made.",
+                                              detail: Subprocess.tail(whole.stderr))
+                    }
+                    measured = wholePass
+                }
+                let second = try await tool(.episode, tools.ffmpeg, ["-y", "-hide_banner", "-nostats"]
+                                            + Mastering.pass(file: file.path, program: program,
+                                                             loudness: Mastering.secondPassLoudness(target: target, ceiling: ceiling, measured: measured))
+                                            + ["-ar", "48000", "-c:a", "libmp3lame", "-b:a", "128k", mp3.path],
                                             captureStdout: false, duration: ready.duration)
                 result.normalizationType = Measure.loudnorm(stderr: second.stderr)?.normalizationType
-                await finish(.episode, "Mono MP3, 128 kbps, from \(measured.inputI) LUFS. " + Self.levelingLine(result.normalizationType))
+                await finish(.episode, "\(options.channels.title) MP3, 128 kbps, from \(talk.inputI) LUFS. "
+                             + Self.piecesLine(intro: intro, outro: outro) + Self.levelingLine(result.normalizationType))
 
                 // 6. Measure what was made, rather than trust it, and decode its tail.
                 await begin(.loudness)
@@ -365,32 +560,40 @@ struct Pipeline: Sendable {
                                            duration: ready.duration)
                 let made = Measure.probe(json: probe.stdout)?.duration
                 result.episodeDuration = made
-                guard let made, abs(made - ready.duration) <= 1.0 else {
-                    throw PipelineFailure(step: .loudness, reason: "The episode audio is not the length of the recording, so it cannot be trusted.",
-                                          detail: "episode \(made.map { String($0) } ?? "unreadable") s, recording \(ready.duration) s")
+                // The intro, the talk (or the part kept after the trim) and the outro, end to end.
+                let expected = (intro?.duration ?? 0) + (program.kept?.length ?? ready.duration) + (outro?.duration ?? 0)
+                guard let made, abs(made - expected) <= 1.0 else {
+                    throw PipelineFailure(step: .loudness, reason: "The episode audio is not the length it should be, so it cannot be trusted.",
+                                          detail: "episode \(made.map { String($0) } ?? "unreadable") s, expected \(expected) s (recording \(ready.duration) s)")
                 }
                 await finish(.loudness, "\(Format.lufs(loudness.integratedLUFS)), peak \(Format.dbfs(loudness.truePeakDBFS)). Plays to its end (\(Format.timecode(made))).")
             }
 
             // 7. The report Ivan reads before he listens.
+            result.outcome = .ready
             if options.makeReport {
                 await begin(.report)
                 result.seconds = total()
-                result.outcome = .ready
-                try? FileManager.default.removeItem(at: speech)
-                result.files = Self.madeFiles(in: outputFolder)
+                result.files = (Self.madeFiles(in: staging) + ["REPORT.md"]).sorted()
                 let markdown = Report.markdown(file: file, label: label, result: result, options: options, steps: steps, madeAt: Date())
                 do {
-                    try markdown.write(to: outputFolder.appending(path: "REPORT.md"), atomically: true, encoding: .utf8)
+                    try markdown.write(to: staging.appending(path: "REPORT.md"), atomically: true, encoding: .utf8)
                 } catch {
                     throw PipelineFailure(step: .report, reason: "The report could not be written.", detail: error.localizedDescription)
                 }
                 await finish(.report, "Written to REPORT.md, beside the episode.")
             }
 
-            try? FileManager.default.removeItem(at: speech)
-            result.files = Self.madeFiles(in: outputFolder)
-            result.outcome = .ready
+            // 8. Only now do the new files take the place of the old ones.
+            let placed: (files: [String], replaced: [String])
+            do {
+                placed = try Self.place(staging, into: outputFolder)
+            } catch {
+                throw PipelineFailure(step: options.plannedSteps.last ?? .sound, reason: "The files were made but could not be moved into their folder.", detail: error.localizedDescription)
+            }
+            result.files = placed.files
+            result.replaced = placed.replaced
+            result.outputFolder = placed.files.isEmpty && !FileManager.default.fileExists(atPath: outputFolder.path) ? nil : outputFolder
             result.reason = readyReason(result)
             result.seconds = total()
             await emit()
@@ -417,7 +620,9 @@ struct Pipeline: Sendable {
             result.reason = "Stopped: \(error.localizedDescription)"
             log?.write("\(name): failed. \(error)")
         }
-        result.files = result.outputFolder.map(Self.madeFiles(in:)) ?? []
+        // Nothing new was placed: an earlier make's files, if any, are as they were.
+        result.outputFolder = nil
+        result.files = []
         result.seconds = total()
         await emit()
         return result
@@ -477,6 +682,127 @@ struct Pipeline: Sendable {
     static func db(_ value: Double) -> String {
         guard value.isFinite else { return "silent (no signal)" }
         return value == value.rounded() ? String(format: "%.0f dB", value) : String(format: "%.1f dB", value)
+    }
+
+    // MARK: The transcript's files
+
+    /// Applies the word list to the .txt, .srt and .vtt Parakeet wrote (never the .json, which keeps
+    /// the words as heard). Returns the corrected .srt and the fixes, timed from the .srt.
+    static func applyWordList(in folder: URL) throws -> (srt: String, corrections: [Lexicon.Correction]) {
+        var srt = ""
+        var corrections: [Lexicon.Correction] = []
+        for format in [TranscriptFormat.txt, .srt, .vtt] {
+            let url = folder.appending(path: TranscriptFiles.fileName(format))
+            guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            let fixed = format == .txt ? Lexicon.apply(text) : Lexicon.applyToSubtitles(text)
+            if format == .srt {
+                srt = fixed.text
+                corrections = fixed.corrections
+            }
+            guard fixed.text != text else { continue }
+            do {
+                try fixed.text.write(to: url, atomically: true, encoding: .utf8)
+            } catch {
+                throw PipelineFailure(step: .wordList, reason: "The word list could not be applied to the transcript.", detail: error.localizedDescription)
+            }
+        }
+        return (srt, corrections)
+    }
+
+    /// Writes the .md when it is chosen and removes the formats that are not. transcript.json stays.
+    private func keepChosenFormats(in folder: URL, srt: String, label: String, fileName: String) throws {
+        let formats = options.transcriptFormats
+        if formats.contains(.md) {
+            let markdown = TranscriptFiles.markdown(cues: TranscriptFiles.cues(srt: srt), label: label, fileName: fileName,
+                                                    wordListApplied: options.applyLexicon)
+            do {
+                try markdown.write(to: folder.appending(path: TranscriptFiles.fileName(.md)), atomically: true, encoding: .utf8)
+            } catch {
+                throw PipelineFailure(step: .transcript, reason: "The formatted transcript (.md) could not be written.", detail: error.localizedDescription)
+            }
+        }
+        for format in [TranscriptFormat.txt, .srt, .vtt] where !formats.contains(format) {
+            try? FileManager.default.removeItem(at: folder.appending(path: TranscriptFiles.fileName(format)))
+        }
+    }
+
+    // MARK: The intro and outro
+
+    struct MeasuredPiece: Sendable {
+        let path: String
+        let lufs: Double
+        let duration: Double
+    }
+
+    /// Checks an intro or outro is there and has sound, and measures its loudness and length.
+    private func piece(_ path: String?, role: String, duration: Double) async throws -> MeasuredPiece? {
+        guard let path, !path.isEmpty else { return nil }
+        let name = (path as NSString).lastPathComponent
+        guard FileManager.default.fileExists(atPath: path) else {
+            throw PipelineFailure(step: .episode, reason: "The \(role) chosen on the Outputs screen (\(name)) is not there any more, so no episode audio was made. Choose it again, or remove it.")
+        }
+        let probe = try await tool(.episode, tools.ffprobe, ["-v", "error", "-show_entries", "format=duration:stream=codec_type", "-of", "json", path],
+                                   duration: duration)
+        guard let info = Measure.probe(json: probe.stdout), info.hasAudio else {
+            throw PipelineFailure(step: .episode, reason: "The \(role) (\(name)) does not open as audio, so no episode audio was made.")
+        }
+        let pass = try await tool(.episode, tools.ffmpeg, ["-hide_banner", "-nostats", "-i", path, "-vn", "-af",
+                                                           Mastering.firstPass(target: options.loudnessTarget, ceiling: options.peakCeiling, channels: options.channels),
+                                                           "-f", "null", "-"], duration: duration)
+        guard let lufs = Measure.loudnorm(stderr: pass.stderr)?.inputLUFS, lufs.isFinite, lufs > -70 else {
+            throw PipelineFailure(step: .episode, reason: "The \(role) (\(name)) has no usable sound, so no episode audio was made.")
+        }
+        return MeasuredPiece(path: path, lufs: lufs, duration: info.duration)
+    }
+
+    /// The gain that brings an intro or outro to the talk's loudness, within 30 dB either way.
+    static func matchingGain(talk: Double, piece: Double) -> Double {
+        min(30, max(-30, talk - piece))
+    }
+
+    /// "Intro 5.0 s and outro 8.0 s added. "
+    static func piecesLine(intro: MeasuredPiece?, outro: MeasuredPiece?) -> String {
+        func seconds(_ piece: MeasuredPiece) -> String { String(format: "%.1f s", piece.duration) }
+        switch (intro, outro) {
+        case let (intro?, outro?): return "Intro \(seconds(intro)) and outro \(seconds(outro)) added. "
+        case let (intro?, nil): return "Intro \(seconds(intro)) added. "
+        case let (nil, outro?): return "Outro \(seconds(outro)) added. "
+        case (nil, nil): return ""
+        }
+    }
+
+    // MARK: Staging and placing
+
+    /// Every file a make can leave. Only these are ever replaced or removed from a recording's
+    /// folder; anything else Ivan keeps there is left alone.
+    static let madeNames: Set<String> = Set(["episode.mp3", "REPORT.md", "speech.wav", TranscriptFiles.asHeard]
+                                            + TranscriptFormat.allCases.map(TranscriptFiles.fileName))
+
+    /// A hidden folder beside the recording's own, in the same Outputs folder (so a move is a rename).
+    static func stagingFolder(for outputFolder: URL) -> URL {
+        outputFolder.deletingLastPathComponent().appending(path: ".making " + outputFolder.lastPathComponent, directoryHint: .isDirectory)
+    }
+
+    /// Moves a finished make into the recording's folder. A file made again replaces the old one; a
+    /// file an earlier make left that this one did not make (a transcript turned off) is removed.
+    /// Returns the files now there from this make, and the names it replaced or removed.
+    static func place(_ staging: URL, into folder: URL) throws -> (files: [String], replaced: [String]) {
+        let fm = FileManager.default
+        let new = madeFiles(in: staging)
+        let old = madeFiles(in: folder).filter(madeNames.contains)
+        if !new.isEmpty { try fm.createDirectory(at: folder, withIntermediateDirectories: true) }
+        for name in new {
+            let destination = folder.appending(path: name)
+            if fm.fileExists(atPath: destination.path) {
+                _ = try fm.replaceItemAt(destination, withItemAt: staging.appending(path: name))
+            } else {
+                try fm.moveItem(at: staging.appending(path: name), to: destination)
+            }
+        }
+        for name in old where !new.contains(name) {
+            try fm.removeItem(at: folder.appending(path: name))
+        }
+        return (new, old)
     }
 
     static func madeFiles(in folder: URL) -> [String] {

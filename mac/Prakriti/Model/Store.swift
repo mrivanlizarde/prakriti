@@ -51,18 +51,37 @@ enum PrakritiStore {
     }
 }
 
-/// Which setting applies to a recording: its own, else its folder's, else the default.
+/// Which choices apply to a recording.
+///
+/// - **Whether** an output is made: the recording's own switch (set on its page), else its folder's
+///   (Sources), else the default (Outputs, for files added by hand).
+/// - **How** it is made (loudness, trim, intro and outro, channels, formats, the word list): the
+///   recording's own settings, else the Outputs screen's. A folder chooses only which outputs it
+///   makes. Reason: each folder holds a copy of every setting from the day it was added, and until
+///   10 Oct those copies won, so a loudness changed on the Outputs screen never reached a watched
+///   folder's recordings (the screen showed one number and the episode was made at another).
 enum OutputResolver {
-    static func setting(for kind: OutputKind, recording: Recording?, source: Source?, defaults: [OutputSetting]) -> OutputSetting? {
+    /// The setting whose switch decides whether `kind` is made.
+    static func choice(for kind: OutputKind, recording: Recording?, source: Source?, defaults: [OutputSetting]) -> OutputSetting? {
         if let own = recording?.outputSettings.first(where: { $0.kind == kind }) { return own }
         if let folder = (source ?? recording?.source)?.outputSettings.first(where: { $0.kind == kind }) { return folder }
         return defaults.first { $0.kind == kind && $0.source == nil && $0.recording == nil }
     }
 
-    /// The outputs that would be made for this recording right now. Not-built outputs are never
-    /// made, whatever a stored switch says.
+    /// The setting `kind` is made with: the recording's own, else the Outputs screen's.
+    static func details(for kind: OutputKind, recording: Recording?, defaults: [OutputSetting]) -> OutputSetting? {
+        if let own = recording?.outputSettings.first(where: { $0.kind == kind }) { return own }
+        return defaults.first { $0.kind == kind && $0.source == nil && $0.recording == nil }
+    }
+
+    static func isOn(_ kind: OutputKind, recording: Recording?, source: Source?, defaults: [OutputSetting]) -> Bool {
+        kind.isAvailable && choice(for: kind, recording: recording, source: source, defaults: defaults)?.isOn == true
+    }
+
+    /// The outputs that would be made for this recording right now. An output that cannot be made
+    /// yet (not built, or waiting for its model) is never made, whatever a stored switch says.
     static func outputsToMake(recording: Recording?, source: Source?, defaults: [OutputSetting]) -> [OutputKind] {
-        OutputKind.built.filter { setting(for: $0, recording: recording, source: source, defaults: defaults)?.isOn == true }
+        OutputKind.available.filter { isOn($0, recording: recording, source: source, defaults: defaults) }
     }
 }
 

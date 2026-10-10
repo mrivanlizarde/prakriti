@@ -35,7 +35,7 @@ sleep 2
 swift scripts/capture-window.swift --window "$APP" "$OUT/m2-real-recordings.png"
 pkill -f "$BIN" || true
 sleep 2
-open -n "$APP" --args --development --show=recordings --open=latest
+open -n "$APP" --args --development --show=recordings "--open=$FILE"
 sleep 4
 swift scripts/capture-window.swift --window "$APP" "$OUT/m2-real-recording-page.png"
 pkill -f "$BIN" || true

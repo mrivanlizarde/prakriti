@@ -67,17 +67,33 @@ final class SnapshotRenderer {
             let inSidebar = sidebarView.map { scroll.isDescendant(of: $0) } ?? false
             return !inSidebar && document.frame.height > scroll.contentView.bounds.height + 20
         }
+        // A page more than two windows tall also gets a picture of each screenful between the top
+        // and the end ("-p2", "-p3"), because on 10 Oct a recording's page put its Results and its
+        // own outputs between the two pictures, where nobody looked.
         if !scrollers.isEmpty {
-            for scroll in scrollers {
-                guard let document = scroll.documentView else { continue }
-                let end = document.isFlipped ? document.frame.height - scroll.contentView.bounds.height : 0
-                scroll.contentView.scroll(to: NSPoint(x: 0, y: end))
-                scroll.reflectScrolledClipView(scroll.contentView)
+            func scrollAll(_ fraction: (NSScrollView, CGFloat) -> CGFloat) {
+                for scroll in scrollers {
+                    guard let document = scroll.documentView else { continue }
+                    let end = document.frame.height - scroll.contentView.bounds.height
+                    let fromTop = min(end, fraction(scroll, end))
+                    scroll.contentView.scroll(to: NSPoint(x: 0, y: document.isFlipped ? fromTop : end - fromTop))
+                    scroll.reflectScrolledClipView(scroll.contentView)
+                }
+                for _ in 0..<6 {
+                    RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+                    host.layoutSubtreeIfNeeded()
+                }
             }
-            for _ in 0..<6 {
-                RunLoop.main.run(until: Date().addingTimeInterval(0.05))
-                host.layoutSubtreeIfNeeded()
+            let tallest = scrollers.compactMap { scroll -> CGFloat? in
+                guard let document = scroll.documentView else { return nil }
+                return (document.frame.height - scroll.contentView.bounds.height) / max(1, scroll.contentView.bounds.height - 60)
+            }.max() ?? 0
+            let middles = max(0, Int(tallest.rounded(.up)) - 1)
+            for page in 0..<middles {
+                scrollAll { scroll, _ in CGFloat(page + 1) * (scroll.contentView.bounds.height - 60) }
+                try save(composite(frameView: frameView, window: window, model: model), name: name + "-p\(page + 2)", size: size)
             }
+            scrollAll { _, end in end }
             try save(composite(frameView: frameView, window: window, model: model), name: name + "-end", size: size)
         }
     }

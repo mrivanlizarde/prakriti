@@ -4,9 +4,10 @@ One dated entry per milestone of `docs/NEXT-PROMPT.md`, oldest first: what was b
 with its measured result, the decisions taken and why, and anything Ivan must do. A new session
 resumes from the last entry. Weekdays computed with `date(1)`.
 
-**Where it stands:** milestones 1, 2 and 3 of 6 done (Sat 10 Oct). **The switch-over happened:**
-engine v0 is retired and Prakriti for Mac, installed in `~/Applications`, is the only thing watching
-the studio folder and `~/Prakriti/Drop`. Next: milestone 4, outputs and settings.
+**Where it stands:** milestones 1 to 4 of 6 done (Sat 10 Oct). **The switch-over happened:**
+engine v0 is retired and Prakriti for Mac, installed in `~/Applications` (milestone 4's build since
+16:13), is the only thing watching the studio folder and `~/Prakriti/Drop`. Next: milestone 5, the
+recording page (player, transcript, trim, cuts, Make Again with edits, Approve).
 
 ---
 
@@ -618,3 +619,197 @@ seconds, most of it the 60-second check that the file has finished copying).
   tests pass on the new.
 - Test in development: `open -n mac/build/Build/Products/Debug/Prakriti.app --args --development`.
 - The live store holds v0's 11 recordings: 2 Ready (13 Sep, 6 Sep), 1 Needs a decision (14 Sep).
+
+---
+
+## Milestone 4: outputs and settings. Sat 10 Oct 2026
+
+### What was built
+
+- **Every working output's settings now change what is made** (`mac/Prakriti/Engine/Pipeline.swift`):
+  - **Podcast episode:** the loudness target (both loudnorm passes and the limiter follow it), the
+    **silence trim** (new step "Silence at the start and end": `silencedetect` at -50 dB for at least
+    1 s on the mono mix, half a second kept before the first sound and after the last; `SilenceTrim`),
+    an **intro and outro** (each checked, measured, brought to the talk's own loudness, then joined to
+    the talk in one filter graph before the whole episode is leveled; `Mastering.Program`), and
+    **mono or stereo** (the layout set inside the chain, before the limiter, as v0's bug 2 demands;
+    128 kbps either way, decision 6). The loudness check now expects intro + kept talk + outro, within 1 s.
+  - **Transcript:** the chosen formats only (.txt, .srt, .vtt, and a new **.md**: paragraphs, each
+    with its time, `TranscriptFiles.markdown`); `transcript.json` is always kept while the transcript
+    is on, as Parakeet heard it. **The Yoga Marga word list** (`Engine/Lexicon.swift`, new step "Word
+    list") fixes known mis-hearings of the school's name ("yoga market", "Yoga Margot", "Yokamarga",
+    "Yakamarga", "Yogamarga", "Yoga Marka", "yoga marker", "Yoga Margo", and lowercase "yoga marga"),
+    "Pradayama", "Sampia", and three lineage names Parakeet got wrong in the 13 Sep talk
+    (Krishnamacharya, Pattabhi Jois, Iyengar). Whole words only; the .srt and .vtt keep every number
+    and timing line byte for byte; every fix is listed with its time in REPORT.md.
+  - **Checks and report:** REPORT.md gains the episode's length, the trim, the intro and outro, the
+    formats made, the word list's fixes as a table, and how far the episode's clock is shifted from
+    the transcript's.
+  - **Titles, show notes and chapters:** shown, with its switch off and greyed, as needing the
+    writing model ("Not made yet: it needs the writing model, which Prakriti does not use yet."),
+    whatever is stored (`OutputKind.isAvailable`). Wired in milestone 6.
+  - The five not-built outputs keep their one line each under "Not built yet".
+- **A make happens in a staging folder** (`.making <name>` beside the recording's folder) and moves
+  in only when it has finished (`Pipeline.place`). A file made again replaces the old one; a file an
+  earlier make left that this one did not make (a transcript turned off) is removed; any other file in
+  the folder is left alone. A stopped make leaves the last good files untouched.
+- **Which outputs, and how** (`OutputResolver`): a recording's own switch, else its folder's (Sources),
+  else the Outputs screen's (files added by hand) decides **whether**; the recording's own settings,
+  else the Outputs screen's, decide **how**. See "Found on the way" below for why.
+- **Screens:**
+  - **Outputs:** the episode's settings (loudness, trim, intro, outro, channels, each with one plain
+    line), the transcript's formats and word list switch, the word list itself (each word, what it is,
+    how it has been misheard), checks and report, titles (waiting for the model), not built yet, and
+    one closing line on what the switches here mean.
+  - **A recording's page:** a new "Outputs for this recording" section: the four switches (the
+    folder's choices until one is changed, then its own), a one-line summary of the episode and
+    transcript settings, "Change Settings for This Recording" or "Use the Folder's Choices", and
+    **Make Again…** (with a confirmation that says the files are replaced only once the new ones are
+    ready and the original is not changed). With its own choices, its episode and transcript settings
+    appear below, for the outputs it makes. Results gain the episode's length and trim, the word
+    list's fixes, and what was made. A silent recording or a test clip shows no output choices.
+  - **Sources:** each folder's switches, with titles shown as waiting for the model.
+- **Data:** `Recording` gains `episodeDuration`, `silenceTrimmedStart`, `silenceTrimmedEnd`,
+  `wordListFixes` and `madeFiles` (additions with defaults). A finished make writes all of them; a
+  stopped one changes none, because the last good files are still there.
+- **Scripts and checks:** `make accept-outputs` (`OutputsAcceptanceTests`), `make migrate-check`
+  (`StoreMigrationTests` on a `sqlite3 .backup` copy of the live store), `--open=<path>` to open one
+  recording's page in the real app, and snapshots of every screenful of a long page (`-p2`, `-p3`),
+  not just its top and end.
+
+### Checks run, with results
+
+| Check | Result |
+|---|---|
+| Build | `BUILD SUCCEEDED`, 0 compiler warnings (warnings fail the build) |
+| `make test` | **78 tests, 0 failures, 3 skipped by design** (the two acceptances and the migration check): ModelTests 16, RulesTests 12, PipelineTests 15, NotificationTests 6, WatcherTests 16, **OutputsTests 9**, SnapshotTests 1 |
+| **Acceptance 1: the transcript off, made again, leaves no transcript** (`make accept-outputs`, the 13 Sep talk) | After the transcript was turned off on the recording's page: **no `transcript.*` file in the folder**; the folder holds `REPORT.md` and `episode.mp3` only; Parakeet did not run (no Transcript step); REPORT.md has no Transcript row; Activity: "Made again: the earlier files were replaced, and transcript.json, transcript.md, transcript.srt, transcript.txt, transcript.vtt removed because they were not chosen this time." |
+| **Acceptance 2: -16 to -19 LUFS, made again** | **Target -16: -16.8 LUFS, true peak -1.7 dBFS (ebur128); -16.82 LUFS, -1.68 dBTP (loudnorm print mode).** Changed on the Outputs screen to -19 and made again: **-19.1 LUFS, true peak -1.7 dBFS (ebur128); -19.10 LUFS, -1.71 dBTP (loudnorm).** Both meters within 0.1 LU of -19. Run twice (15:45, and 16:04 on the final code), same numbers to the hundredth |
+| **Acceptance 3: the word list fixes a planted mis-hearing** | `OutputsTests.testTheWordListFixesPlantedMishearingsAndNoTiming`: an .srt planted with "yoga market", "Yoga Margot", "Yokamarga", "Pradayama", "Yoga Marka", "Krishna Macharya", "Patabi Joyce", "Ayengar", "samkhya": all 9 fixed, "Yoga Mārga School" and "yoga markets" left alone, every number and timing line byte for byte the same, a second pass fixes nothing. **Through the real tools:** `testTheWordListFixesWhatParakeetMishears` has the Mac's own voice (`say`) speak the mis-hearings; Parakeet wrote "Yoga Market School", "Pradayama", "Yoga Margot"; the .txt and .md read "Yoga Marga School", "Pranayama", "Yoga Marga"; `transcript.json` still says "Yoga Market" |
+| The word list on the real 13 Sep talk | **15 fixes**: Iyengar 2 (from "Ayengar", "Ayangar"), Krishnamacharya 5, Pattabhi Jois 1, Yoga Marga 6 ("Yoga Marka" at 2:53 and five lowercase), Samkhya 1. All 15 read in `acceptance-outputs.txt`; none wrong |
+| The trim on the real 13 Sep talk | 1.68 s under -50 dB at the start: **1.18 s trimmed**, nothing at the end (the talk runs to its last second); episode 15:47 of 15:48 |
+| **The settings change nothing when off** | Trim off, -16, mono, no intro or outro on the recording's page: the episode's decoded audio md5 is **69658a8cb8a954b92798c5e9f3ea5833, identical to engine v0's** episode in `~/Prakriti/Outputs` (read only) |
+| Trim, intro, outro, stereo, measured | `testTrimIntroOutroAndStereoChangeTheEpisode`, generated audio: 4 s silence + 70 s tone + 5 s silence, 3 s intro, 2 s outro 24 dB quieter, stereo, -19: trimmed 3.5 s and 4.5 s (within 0.1 s); **episode length within 0.5 s of 76 s = 3 + 71 + 2**; 2 channels; -19 within 1 LU; peak at or under -1; the intro and outro play within 3 dB of the talk's momentary loudness |
+| A stopped remake | A remake whose intro has gone: Couldn't finish with "The intro chosen on the Outputs screen (gone.wav) is not there any more...", **the previous episode byte for byte untouched**, no staging folder left |
+| A note Ivan keeps in the folder | Survives a remake (tested) |
+| Through the app | `testARecordingWithTheTranscriptTurnedOffIsMadeWithoutOne`: the Outputs screen's -19 reaches a recording; its own transcript switch off; made at -19 with no transcript; `madeFiles` = REPORT.md, episode.mp3 |
+| **The real app** (`scripts/process-in-app.sh`, development copy, the 90 s clip, no clicks) | Ready for your yes, made in 1 min 8 s (of which the 60 s readiness wait took 63.3 s): Word list "1 fix: Yoga Marga (1)", "No silence to trim at either end", -16.5 LUFS, peak -1.8 dBFS, `transcript.md` written, the old files replaced, no staging folder left. Its page captured in the real window (`real/m4-real-clip-90s-page.png`), looked at |
+| `make check MILESTONE=m4` | Tests pass; PASS still running 15 s after its window closed; real-window captures **16 of 16 PASS** (the Outputs screen in light and dark looked at: switches in the accent color, the new lines) |
+| **Live store migration, on a copy** (`make migrate-check`) | Opened with the new models: 11 recordings (2 ready: 13 Sep -16.8 LUFS, 6 Sep -16.7 LUFS), 2 folders, 27 output settings, 29 Activity lines; the new fields empty |
+| **Installed live** (`make install`, 16:13:37) | Quit cleanly, replaced, opened: "Mode: live. Store: ~/Library/Application Support/Prakriti/Prakriti.store" (no fallback), login item on, replayed 0 events, "Checked 2 folders. Nothing new." The live store read afterwards: 11 recordings, 2 ready, 27 output settings. engine v0's outputs in `~/Prakriti/Outputs` unchanged (dates 8 and 9 Oct) |
+| Snapshots | `screens/mac/m4/`: 54 sample-data pictures (every screen light and dark, every screenful of the long pages, the recording page with the folder's choices and with its own) and 18 from the acceptance (the 13 Sep page after runs 1 and 3, the Outputs screen at -19, light and dark, every screenful). `real/`: 19 real-window captures. **Every one looked at**, as contact sheets and full size |
+| Em dashes, en dashes, tooltips | 0 in `mac/` |
+
+The full text of the acceptance is `screens/mac/m4/acceptance-outputs.txt` (gitignored).
+
+### Found on the way: the Outputs screen never reached a watched folder
+
+Every folder got its own copy of every output setting on the day it was added, and the pipeline read
+the folder's copy before the Outputs screen's. Sources shows only on and off switches, so the folder's
+copy of the loudness, the trim or the intro could never be seen or changed, and **a loudness changed on
+the Outputs screen would have shown -19 while every studio episode went on being made at -16.** It
+would have looked like the setting did not work. Fixed at the cause: a folder decides only which
+outputs it makes, and the settings come from the Outputs screen or the recording's own (START_HERE,
+Mac warning 28). A test sets the folder's copy to -23 and the screen to -19, and the recording gets -19.
+
+### What the look-through caught and fixed
+
+- **The middle of long pages was never pictured.** A recording's page now runs three screens; the
+  snapshot took the top and the end, and the Results and the new Outputs section sat between them,
+  unseen. The renderer now saves every screenful (`-p2`, `-p3`).
+- **Settings looked live for an output turned off.** With the transcript off on the 13 Sep page, its
+  transcript settings still showed below. They now show only for outputs the recording makes.
+- **Greying out was wrong on the Outputs screen.** Its episode settings were greyed when its own
+  switch was off, but every folder that makes episodes uses them. They are never greyed now.
+- **A silent class offered output choices** it can never use. Hidden for silent recordings and tests.
+- **"Fixes the known mis-hearings below"** on a recording's page, where the list is not below: now
+  "listed on the Outputs screen".
+- "Its capitals are fixed too" read oddly under a name: now "Wrong capitals are fixed too."
+- A test expectation of mine was wrong, not the app: "%.3f" of 1.1815 is "1.181" in binary floating
+  point. The test now uses 1.18.
+
+### Decisions, each with its reason
+
+1. **Folders choose whether; the Outputs screen (or the recording) chooses how.** Reason: the trap
+   above; and Sources shows switches only, so a folder's hidden copy of the loudness was unreachable.
+2. **A recording's own choices are a full copy, made the moment one is changed, and its page says
+   "Changes on Sources and Outputs do not reach it", with "Use the Folder's Choices" to go back.**
+   Reason: half-inherited settings would be impossible to read on screen.
+3. **Staging, then replace only Prakriti's own file names.** Reason: a stopped remake must not cost
+   the last good episode, the transcript-off acceptance must leave nothing behind, and Ivan's own files
+   in the folder must survive.
+4. **Make Again on a finished recording asks once.** Reason: it replaces files (HIG: confirm the
+   destructive). Milestone 5 adds trim and cuts to the same button.
+5. **The mastering chain is not changed in this milestone, including its leveling.** Milestone 2 found
+   loudnorm falls back to riding the level ("dynamic") on every studio talk and said the fix belonged
+   here. Not done, on purpose: changing how episodes sound needs Ivan's ears, episode 1 (made by v0)
+   ships Fri 23 Oct, and the build asked for settings that change what is made, which they now do
+   with the chain otherwise untouched (proved bit for bit). It is raised for Ivan below.
+6. **Stereo is 128 kbps too.** Reason: the studio records one microphone into both channels, and
+   LAME's joint stereo spends almost nothing on a side channel that is silent, so 128 kbps stereo
+   sounds the same as the mono episode; 192 would only make the file bigger.
+7. **The intro and outro are brought to the talk's loudness, then joined end to end with no
+   crossfade.** Reason: SCOPE 7.11 asks each piece at the same loudness; a crossfade (SCOPE proposes
+   250 ms) could lay music over the first word, and an intro is normally made with its own fade.
+8. **Silence trim: -50 dB, at least 1 s, half a second kept.** Reason: measured on both real talks
+   (1.7 s and 3.4 s of near-silence at the start, none at the end); conservative so no word is clipped.
+   It is on by default, as the Outputs screen already showed it.
+9. **Transcript times stay on the original recording's clock.** Reason: the coverage check, the
+   player (milestone 5) and any caption work start from the original; REPORT.md states the shift
+   ("everything is 1.2 s earlier").
+10. **The word list fixes known variants only; it names three lineage teachers beyond the brief.**
+    Reason: they were plainly misheard in the 13 Sep talk ("Krishna Macharya" five times) and their
+    spellings are settled; phonetic matching of other words (SCOPE's second stage) needs word
+    confidences and is not built. "Yoga Marga school" keeps its small "s": "Yoga Mārga School" is the
+    channel's name, and whether Gabriel meant the channel is not for a word list to decide.
+11. **`transcript.json` is always kept while the transcript is on, whatever formats are chosen.**
+    Reason: it is the words as heard (SCOPE 7.7 keeps originals), and the recording page (milestone 5)
+    and the writing model (milestone 6) read its timings. At least one readable format stays chosen.
+12. **Titles, show notes and chapters cannot be turned on until milestone 6.** Reason: a switch that
+    does nothing is the problem this milestone fixed.
+13. **Installed live after the checks** (`make install`), after `make migrate-check` passed on a copy.
+    Reason: START_HERE warning 21, the live watcher otherwise runs the old code. From now, a new studio
+    recording is made with the trim, the word list and the .md transcript.
+
+### What does not work yet, or was not seen working
+
+- **The leveling is still moment to moment (dynamic), not even,** on every studio talk (decision 5).
+- An intro or outro has been proved on generated tones only; no real intro file exists yet.
+- Make Again cannot yet trim, cut or edit the title and notes (milestone 5); there is no player.
+- The word list cannot be edited in the app; corrections Ivan makes are not offered back (ACC-06).
+- Titles, show notes and chapters: milestone 6.
+- Notifications are still turned off in System Settings (milestone 3, For Ivan 1), so the new
+  Ready notice for a remade recording reaches the log only.
+
+### For Ivan
+
+1. **Turn notifications on for Prakriti** (still blocked on your click, from milestone 3): System
+   Settings, Notifications, Prakriti: Allow notifications, Banners, Play sound.
+2. **The uncomfortable one: episodes are leveled moment to moment, not evenly.** It has been true
+   since engine v0, it is true of episode 1, and this milestone did not change it (decision 5). Listen
+   to episode 1 (`~/Prakriti/Outputs/2026-09-06 18-06-33/episode.mp3`) for quiet passages swelling
+   and loud ones sitting down. If it sounds natural, nothing changes. If it pumps, say so and the
+   next milestone makes a compressor-first version (SCOPE 7.11) for you to compare by ear before
+   anything is switched.
+3. **Episode 1 is safe as it is.** It is v0's file and nothing remakes it unless you press Make Again.
+   If you do, it is made with today's choices (silence trimmed, word list on); to get v0's audio
+   exactly, give it its own choices with the trim off first. Gabriel's recorded intro (README: it
+   opens episode 1) can now be chosen as that recording's intro.
+4. **Glance at the word list** (Outputs screen) for spellings Gabriel would write differently,
+   especially the three lineage names (Krishnamacharya, Pattabhi Jois, Iyengar).
+
+To see it:
+
+```bash
+cd ~/Code/prakriti/mac && open ~/Applications/Prakriti.app
+```
+
+### Notes for milestone 5
+
+- Make Again exists on a finished recording's page (`RecordingOutputsSection`, `AppModel.makeOutputs`);
+  trim, cuts, title and notes belong beside it. `Recording.trimStart`, `trimEnd` and `cuts` exist and
+  are unused; the episode's program (`Mastering.Program`) is where cut ranges join the trim.
+- Transcript times are on the original's clock; `transcript.json` has word timings as heard, and the
+  corrected words are in the .srt.
+- `make accept-outputs` and `make migrate-check` are the patterns for milestone 5's acceptance and
+  for any model change before `make install`.

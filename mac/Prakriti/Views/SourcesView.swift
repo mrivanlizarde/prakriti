@@ -159,14 +159,30 @@ struct OutputSwitch: View {
     var detail: String?
 
     var body: some View {
-        Toggle(isOn: $setting.isOn) {
+        OutputToggle(kind: setting.kind, isOn: $setting.isOn, detail: detail)
+    }
+}
+
+/// The switch itself. An output that cannot be made yet (titles, until the writing model is
+/// connected) shows off and greyed, whatever is stored, so the screen never claims it is made.
+struct OutputToggle: View {
+    let kind: OutputKind
+    @Binding var isOn: Bool
+    var detail: String?
+
+    var body: some View {
+        Toggle(isOn: Binding(get: { isOn && kind.isAvailable }, set: { isOn = $0 })) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(setting.kind.title).font(AppFont.body)
-                Text(detail ?? setting.kind.summary).font(AppFont.secondary).foregroundStyle(.secondary)
+                Text(kind.title).font(AppFont.body)
+                Text(detail ?? line).font(AppFont.secondary).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .disabled(!setting.kind.isBuilt)
+        .disabled(!kind.isAvailable)
+    }
+
+    private var line: String {
+        kind.isAvailable || !kind.isBuilt ? kind.summary : "Not made yet: it needs the writing model, which Prakriti does not use yet."
     }
 }
 

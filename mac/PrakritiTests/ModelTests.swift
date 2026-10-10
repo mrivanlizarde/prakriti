@@ -39,7 +39,7 @@ final class ModelTests: XCTestCase {
         XCTAssertEqual(OutputKind.notBuilt.count, 5)
     }
 
-    func testOutputResolutionGoesRecordingThenSourceThenDefault() throws {
+    func testOutputResolution() throws {
         let model = freshModel()
         _ = try PrakritiStore.seedIfEmpty(model.context, paths: model.paths, now: Fixtures.now)
         let drop = try XCTUnwrap(try model.context.fetch(FetchDescriptor<Source>()).first)
@@ -47,26 +47,77 @@ final class ModelTests: XCTestCase {
         model.context.insert(recording)
         recording.source = drop
         let defaults = model.defaultSettings()
+        func make() -> [OutputKind] { OutputResolver.outputsToMake(recording: recording, source: nil, defaults: defaults) }
 
-        // Default only.
-        XCTAssertEqual(OutputResolver.outputsToMake(recording: recording, source: nil, defaults: defaults),
-                       [.podcastEpisode, .transcript, .checksAndReport])
+        // The folder's switches, as seeded.
+        XCTAssertEqual(make(), [.podcastEpisode, .transcript, .checksAndReport])
 
-        // The folder turns titles on.
+        // The folder turns titles on: they wait for the writing model (milestone 6), so not made.
         drop.setting(for: .titlesNotesChapters)?.isOn = true
-        XCTAssertTrue(OutputResolver.outputsToMake(recording: recording, source: nil, defaults: defaults).contains(.titlesNotesChapters))
+        XCTAssertFalse(make().contains(.titlesNotesChapters))
+        XCTAssertFalse(OutputResolver.isOn(.titlesNotesChapters, recording: recording, source: nil, defaults: defaults))
 
-        // The recording turns the transcript off and sets its own loudness.
-        let own = OutputSetting(kind: .transcript, isOn: false)
+        // The folder turns the transcript off.
+        drop.setting(for: .transcript)?.isOn = false
+        XCTAssertEqual(make(), [.podcastEpisode, .checksAndReport])
+
+        // How an output is made comes from the Outputs screen, never from the folder's own copy.
+        // Until 10 Oct the folder's copy won, so a loudness changed on Outputs never reached it.
+        drop.setting(for: .podcastEpisode)?.loudnessTarget = -23
+        defaults.first { $0.kind == .podcastEpisode }?.loudnessTarget = -19
+        XCTAssertEqual(OutputResolver.details(for: .podcastEpisode, recording: recording, defaults: defaults)?.loudnessTarget, -19)
+
+        // The recording's own choices win over both.
+        let own = OutputSetting(kind: .transcript, isOn: true)
         model.context.insert(own)
         own.recording = recording
         let podcast = OutputSetting(kind: .podcastEpisode, isOn: true)
-        podcast.loudnessTarget = -19
+        podcast.loudnessTarget = -14
         model.context.insert(podcast)
         podcast.recording = recording
-        XCTAssertEqual(OutputResolver.outputsToMake(recording: recording, source: nil, defaults: defaults),
-                       [.podcastEpisode, .checksAndReport, .titlesNotesChapters])
-        XCTAssertEqual(OutputResolver.setting(for: .podcastEpisode, recording: recording, source: nil, defaults: defaults)?.loudnessTarget, -19)
+        XCTAssertEqual(make(), [.podcastEpisode, .transcript, .checksAndReport])
+        XCTAssertEqual(OutputResolver.details(for: .podcastEpisode, recording: recording, defaults: defaults)?.loudnessTarget, -14)
+    }
+
+    func testARecordingsOwnChoices() throws {
+        let model = freshModel()
+        _ = try PrakritiStore.seedIfEmpty(model.context, paths: model.paths, now: Fixtures.now)
+        let drop = try XCTUnwrap(try model.context.fetch(FetchDescriptor<Source>()).first)
+        let recording = Recording(filePath: "/tmp/2026-09-13 a.mp4", recordedAt: Fixtures.date(2026, 9, 13))
+        model.context.insert(recording)
+        recording.source = drop
+        drop.setting(for: .transcript)?.isOn = false
+        let defaults = model.defaultSettings()
+        let standard = try XCTUnwrap(defaults.first { $0.kind == .podcastEpisode })
+        standard.loudnessTarget = -19
+        func make() -> [OutputKind] { OutputResolver.outputsToMake(recording: recording, source: nil, defaults: defaults) }
+        XCTAssertEqual(make(), [.podcastEpisode, .checksAndReport])
+
+        // Turning one switch on the recording's page gives it its own choices, starting from the
+        // folder's switches and the Outputs screen's settings.
+        model.setOutput(.transcript, on: true, for: recording)
+        XCTAssertTrue(recording.hasOwnOutputs)
+        XCTAssertEqual(recording.outputSettings.count, OutputKind.allCases.count)
+        XCTAssertEqual(make(), [.podcastEpisode, .transcript, .checksAndReport])
+        XCTAssertEqual(OutputResolver.details(for: .podcastEpisode, recording: recording, defaults: defaults)?.loudnessTarget, -19)
+
+        // From then on the Outputs screen no longer reaches it (its page says so).
+        standard.loudnessTarget = -12
+        XCTAssertEqual(OutputResolver.details(for: .podcastEpisode, recording: recording, defaults: defaults)?.loudnessTarget, -19)
+
+        // Titles cannot be turned on before the writing model.
+        model.setOutput(.titlesNotesChapters, on: true, for: recording)
+        XCTAssertFalse(make().contains(.titlesNotesChapters))
+
+        // Back to the folder's choices.
+        model.useStandardOutputs(recording)
+        XCTAssertFalse(recording.hasOwnOutputs)
+        XCTAssertEqual(make(), [.podcastEpisode, .checksAndReport])
+        XCTAssertEqual(try model.context.fetchCount(FetchDescriptor<OutputSetting>()), OutputKind.allCases.count * 2, "the own settings are deleted")
+
+        let lines = try model.context.fetch(FetchDescriptor<LogEntry>()).map(\.message)
+        XCTAssertTrue(lines.contains("Sun 13 Sep (2026-09-13 a.mp4) now has its own output choices."), "\(lines)")
+        XCTAssertTrue(lines.contains("Transcript turned on for Sun 13 Sep (2026-09-13 a.mp4). It applies the next time it is made."), "\(lines)")
     }
 
     func testPrivacyLockForcesALocalModel() {

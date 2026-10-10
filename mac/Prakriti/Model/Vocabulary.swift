@@ -131,6 +131,16 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
         }
     }
 
+    /// Can be made today. Titles, show notes and chapters are built into the plan and the screens
+    /// but need the writing model (milestone 6), so until then they are never made and their switch
+    /// is shown off and greyed, whatever is stored.
+    var isAvailable: Bool {
+        switch self {
+        case .podcastEpisode, .transcript, .checksAndReport: true
+        default: false
+        }
+    }
+
     /// On for a new folder unless Ivan changes it. Titles wait for the writing model, which holds
     /// about 33 GB of memory while it runs, so they start off.
     var isOnByDefault: Bool {
@@ -141,6 +151,7 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
     }
 
     static var built: [OutputKind] { allCases.filter(\.isBuilt) }
+    static var available: [OutputKind] { allCases.filter(\.isAvailable) }
     static var notBuilt: [OutputKind] { allCases.filter { !$0.isBuilt } }
 }
 

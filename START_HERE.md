@@ -479,8 +479,12 @@ event ids plus a look through every folder every 5 minutes, per folder "Make out
 or "Ask me first", three automatic tries, a heartbeat line in Activity for every look, Pause All,
 one notice per recording updated in place, opening at login. **Then engine v0 was retired:** the app
 read v0's state.json, took over the Studio Recordings folder and `~/Prakriti/Drop`, writes to
-`~/Prakriti/Outputs`, and is the only thing watching. Progress, checks and decisions per milestone
-are in `docs/BUILD-LOG.md`.
+`~/Prakriti/Outputs`, and is the only thing watching. **Milestone 4 (outputs and settings), Sat 10
+Oct:** every output's settings now change what is made: the loudness target, the silence trim, an
+intro and outro, mono or stereo, the transcript's formats (.txt, .srt, .vtt, .md) and the Yoga Marga
+word list; each folder chooses which outputs it makes, and each recording can have its own choices
+and be made again. Titles, show notes and chapters wait for the writing model (milestone 6).
+Progress, checks and decisions per milestone are in `docs/BUILD-LOG.md`.
 
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
@@ -515,6 +519,12 @@ cd ~/Code/prakriti/mac && make accept MILESTONE=m2
 ```
 ```bash
 cd ~/Code/prakriti/mac && ./scripts/process-in-app.sh "$HOME/Prakriti/Dev/Clips/2026-09-13 clip 90s.mp4" ../screens/mac/m2/real
+```
+```bash
+cd ~/Code/prakriti/mac && make accept-outputs MILESTONE=m4
+```
+```bash
+cd ~/Code/prakriti/mac && make migrate-check
 ```
 ```bash
 cd ~/Code/prakriti/mac && make install
@@ -555,8 +565,17 @@ is milestone 3's check in the real app: it cuts a fresh 90 s clip from the 13 Se
 `--development` copy; live: `~/Prakriti/Drop` with the installed copy), touches nothing else, and
 passes when the log shows it found, made and Ready for your yes, with each notice and what macOS
 did with it. After a live run, take the clip back out: quit, delete the clip and its folder in
-`~/Prakriti/Outputs`, and open the app with `--forget=<the clip's path>`. **Then open every
-PNG and look at it.** Reading the code is not verification, and neither is a passing test.
+`~/Prakriti/Outputs`, and open the app with `--forget=<the clip's path>`. `make accept-outputs` is
+milestone 4's check on the **real 13 Sep talk** (about 3.5 minutes): made with the standard choices
+(-16 LUFS), made again after the Outputs screen's loudness is changed to -19 (must measure within 1 LU
+of -19 on two meters), made again with the transcript turned off on the recording's page (no
+`transcript.*` file may be left), then made with the trim off at -16 (its decoded audio must equal
+engine v0's episode bit for bit). It writes `acceptance-outputs.txt` and pictures of each state to
+`screens/mac/<milestone>/`. `make migrate-check` copies the live store with `sqlite3 .backup` (the live
+store is only read) and opens the copy with this build's models: **run it before `make install`
+whenever a model changes.** `--open=<path>` opens one recording's page in the real app. **Then open
+every PNG and look at it,** including the `-p2`, `-p3` pictures of the screens between a long page's
+top and its end. Reading the code is not verification, and neither is a passing test.
 
 ### Where things live
 
@@ -564,10 +583,12 @@ PNG and look at it.** Reading the code is not verification, and neither is a pas
 |---|---|
 | Project definition (source of truth) | `mac/project.yml`; `make generate` rebuilds `Prakriti.xcodeproj`, and both are committed |
 | App code | `mac/Prakriti/App` (launch, paths, settings, log, `PipelineRunner`, `Watcher`, `Notices`, `LoginItem` with the instance lock, `EngineV0Import`), `Engine` (the pipeline: `Subprocess`, `Readiness`, `Measurements`, `Pipeline` with `Mastering`, `Report`; the watcher's `FolderScan` and `EventStream`), `Model` (vocabulary, SwiftData models, store), `Views`, `Fixtures` |
-| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share) |
+| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `StoreMigrationTests` (`make migrate-check` only), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share) |
 | Real-window capture | `mac/scripts/capture-window.swift` (run by `make look` and `make check`); also `--analyze <png>` to check any capture, and `--window <app> <png>` to capture the running app as it is |
 | Real-app pipeline check | `mac/scripts/process-in-app.sh <file> <folder>` |
-| Outputs, development mode | `~/Prakriti/Dev/Outputs/<file name without extension>/`: `episode.mp3`, `transcript.txt/.srt/.vtt/.json`, `REPORT.md` (engine v0's layout) |
+| Outputs, development mode | `~/Prakriti/Dev/Outputs/<file name without extension>/`: `episode.mp3`, `transcript.txt/.srt/.vtt/.md` (the chosen formats, with the word list applied), `transcript.json` (Parakeet's words as heard, with their times; never changed), `REPORT.md` (engine v0's layout). A make in progress lives in the hidden `.making <name>` folder beside it |
+| The Yoga Marga word list | `mac/Prakriti/Engine/Lexicon.swift` (each word as written, how it has been misheard, and what it is); shown on the Outputs screen |
+| Output settings | Which outputs: each folder's switches (Sources), else the Outputs screen's (files added by hand). How: the Outputs screen. A recording's own choices (its page) override both: `OutputResolver` in `Model/Store.swift` |
 | Test clips | `~/Prakriti/Dev/Drop/2026-09-13 clip 30s.mp4` (a test) and `~/Prakriti/Dev/Clips/2026-09-13 clip 90s.mp4` (a full run), cut with `ffmpeg -c copy` from the 13 Sep talk |
 | The built app | `mac/build/Build/Products/Debug/Prakriti.app` (gitignored) |
 | The live app | `~/Applications/Prakriti.app` (from `make install`), the login item |
@@ -634,7 +655,7 @@ PNG and look at it.** Reading the code is not verification, and neither is a pas
     Reason: additions then migrate on their own, and predicates over raw strings are the reliable
     part of SwiftData. The first change that is not an addition brings a `VersionedSchema`.
 12. **The mastering chain is engine v0's, checked string for string** (`Mastering`,
-    `PipelineTests.testMasteringChainIsEngineV0s`). The limiter keeps `level=disabled`, and mono and
+    `PipelineTests.testMasteringChainIsEngineV0s`; with the milestone 4 settings off, see 30). The limiter keeps `level=disabled`, and mono and
     the 48 kHz sample rate stay inside the filter chain before it. Reason: either mistake put the
     peak over 0 dBFS in v0's testing on 8 Oct (+2.2 dBFS, then over 0 again). The only addition is
     `print_format=json` on the second pass, so the report can say whether loudnorm stayed linear.
@@ -691,6 +712,37 @@ PNG and look at it.** Reading the code is not verification, and neither is a pas
 27. **Automatic work gets three tries at the regular looks; an interrupted automatic run restarts by
     itself and counts as a try.** Reason: v0's rule, a passing failure says nothing (SCOPE 8.7), and
     a file that stops Prakriti every time must end as Couldn't finish, not loop.
+28. **A folder decides only WHETHER an output is made; HOW it is made comes from the Outputs screen,
+    or from a recording's own settings** (`OutputResolver.choice` and `.details`). Reason: every folder
+    holds a copy of every setting from the day it was added, and until 10 Oct that copy won, so a
+    loudness changed on the Outputs screen silently never reached the studio folder's recordings.
+    For the same reason the settings on the Outputs screen are never greyed out by its switches.
+29. **A make happens in a hidden staging folder (`.making <name>`) and replaces the recording's files
+    only when it has finished; only Prakriti's own file names (`Pipeline.madeNames`) are ever replaced
+    or removed.** Reason: a remake that stops halfway must leave the last good episode as it was (a
+    test stops one on purpose), a remake with the transcript off must leave no transcript behind
+    (milestone 4's acceptance), and a note Ivan keeps in the folder must survive a remake (tested).
+30. **With the trim, intro and outro off, the mastering chain is engine v0's, string for string, and
+    `make accept-outputs` checks the 13 Sep episode's decoded audio equals v0's bit for bit.** Reason:
+    episode 1 was made by v0; the settings must change nothing when they are off. The intro and outro
+    are each brought to the talk's own loudness before the whole episode is leveled, inside one
+    filter graph, with the layout and 48 kHz set before the limiter (v0's bug 2).
+31. **`transcript.json` is Parakeet's words as heard and is never touched by the word list; the word
+    list matches whole words only, and every fix is listed with its time in REPORT.md.** Reason:
+    SCOPE 7.7 keeps the originals, and a wrong fix ("the yoga market" meant literally) must be
+    findable. The list fixes only known variants; phonetic matching is not built.
+32. **Titles, show notes and chapters cannot be made until the writing model is connected**
+    (`OutputKind.isAvailable`); their switch shows off and greyed whatever is stored. Reason: the
+    screen must never claim something is made that is not.
+33. **Run `make migrate-check` before `make install` whenever a model changes.** Reason: a store that
+    fails to open falls back to a temporary one, and the live watcher would run with no memory of what
+    it has made (it would make nothing new, but every recording and its numbers would vanish from the
+    window). Every stored property keeps a default, so additions migrate on their own; the check
+    proves it on a copy.
+34. **Silence is trimmed only under -50 dB for at least a second, keeping half a second before the
+    first sound and after the last.** Reason: measured 10 Oct, the studio talks open with 1.7 to 3.4 s
+    of near-silence and run to their last second; a looser rule would clip words. Transcript times
+    stay on the original recording's clock, and REPORT.md says how far the episode is shifted.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

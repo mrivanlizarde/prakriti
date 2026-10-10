@@ -76,8 +76,8 @@ final class PipelineRunner {
         return next
     }
 
-    /// The options for this recording: its outputs and loudness, read from its own settings, then
-    /// its folder's, then the defaults.
+    /// The options for this recording: which outputs, from its own switches, then its folder's,
+    /// then the defaults; and how each is made, from its own settings, else the Outputs screen's.
     func options(for recording: Recording) -> PipelineOptions {
         var options = PipelineOptions()
         options.stableWait = stableWait
@@ -88,9 +88,17 @@ final class PipelineRunner {
         options.makeEpisode = make.contains(.podcastEpisode)
         options.makeTranscript = make.contains(.transcript)
         options.makeReport = make.contains(.checksAndReport)
-        if let podcast = OutputResolver.setting(for: .podcastEpisode, recording: recording, source: nil, defaults: defaults) {
+        if let podcast = OutputResolver.details(for: .podcastEpisode, recording: recording, defaults: defaults) {
             options.loudnessTarget = podcast.loudnessTarget
             options.peakCeiling = podcast.peakCeiling
+            options.trimSilence = podcast.trimSilence
+            options.introPath = podcast.introPath
+            options.outroPath = podcast.outroPath
+            options.channels = podcast.channels
+        }
+        if let transcript = OutputResolver.details(for: .transcript, recording: recording, defaults: defaults) {
+            options.transcriptFormats = transcript.transcriptFormats
+            options.applyLexicon = transcript.applyLexicon
         }
         return options
     }
@@ -184,15 +192,27 @@ final class PipelineRunner {
         recording.updatedAt = model.now()
         if let duration = result.duration { recording.duration = duration }
         if result.sizeBytes > 0 { recording.sizeBytes = result.sizeBytes }
-        recording.loudestDB = result.volume.map(\.max).flatMap { $0.isFinite ? $0 : nil }
-        recording.averageDB = result.volume.map(\.mean).flatMap { $0.isFinite ? $0 : nil }
-        recording.inputLUFS = result.inputLUFS
-        recording.loudnessLUFS = result.output?.integratedLUFS
-        recording.truePeakDBFS = result.output?.truePeakDBFS
-        recording.transcriptReaches = result.transcriptReaches
-        recording.wordCount = result.wordCount
-        recording.coverageOK = result.coverageOK
-        recording.outputFolder = result.outputFolder?.path
+        if let volume = result.volume {
+            recording.loudestDB = volume.max.isFinite ? volume.max : nil
+            recording.averageDB = volume.mean.isFinite ? volume.mean : nil
+        }
+        // What was made is written only when a make finishes: until then the files of the last
+        // finished make are still in the folder, so their numbers stay. Something not made this
+        // time (a transcript turned off) has no numbers.
+        if result.outcome == .ready {
+            recording.inputLUFS = result.inputLUFS
+            recording.loudnessLUFS = result.output?.integratedLUFS
+            recording.truePeakDBFS = result.output?.truePeakDBFS
+            recording.episodeDuration = result.output == nil ? nil : result.episodeDuration
+            recording.silenceTrimmedStart = result.trimmedStart
+            recording.silenceTrimmedEnd = result.trimmedEnd
+            recording.transcriptReaches = result.transcriptReaches
+            recording.wordCount = result.wordCount
+            recording.coverageOK = result.coverageOK
+            recording.wordListFixes = activeOptions.makeTranscript && activeOptions.applyLexicon ? result.corrections.count : nil
+            recording.outputFolder = result.outputFolder?.path
+            recording.madeFiles = result.files
+        }
         recording.statusReason = result.reason
 
         let name = recording.fileName
@@ -224,8 +244,19 @@ final class PipelineRunner {
             if let reaches = result.transcriptReaches, let duration = result.duration {
                 numbers.append("transcript \(result.coverageOK == true ? "reaches" : "STOPS at") \(Format.timecode(reaches)) of \(Format.timecode(duration))")
             }
+            if activeOptions.makeTranscript && activeOptions.applyLexicon {
+                numbers.append("word list \(Format.count(result.corrections.count, "fix", "fixes"))")
+            }
+            if let start = result.trimmedStart, let end = result.trimmedEnd, start + end >= 0.05 {
+                numbers.append(String(format: "%.1f s of silence trimmed", start + end))
+            }
             model.record("\(label) (\(name)) is ready for your yes, made in \(Format.length(result.seconds))" + (numbers.isEmpty ? "." : ": " + numbers.joined(separator: ", ") + "."),
                          level: result.coverageOK == false ? .attention : .info, run: run)
+            if !result.replaced.isEmpty {
+                let gone = result.replaced.filter { !result.files.contains($0) }
+                model.record("Made again: the earlier files were replaced" + (gone.isEmpty ? "." : ", and \(gone.joined(separator: ", ")) removed because \(gone.count == 1 ? "it was" : "they were") not chosen this time."),
+                             run: run)
+            }
         case .test:
             recording.status = .skipped
             recording.kind = .test

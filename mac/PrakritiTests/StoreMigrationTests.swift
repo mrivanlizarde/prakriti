@@ -1,0 +1,38 @@
+import Foundation
+import SwiftData
+import XCTest
+@testable import Prakriti
+
+/// Opens a COPY of a real store with this build's schema, the check to run before `make install`
+/// whenever the models change. The live store is never opened here: the make target copies it first.
+///
+///   cd ~/Code/prakriti/mac && make migrate-check
+///
+/// Skipped unless PRAKRITI_STORE_COPY names the copied store.
+@MainActor
+final class StoreMigrationTests: XCTestCase {
+    func testACopyOfTheStoreOpensWithThisSchema() throws {
+        guard let path = ProcessInfo.processInfo.environment["PRAKRITI_STORE_COPY"], !path.isEmpty else {
+            throw XCTSkip("Needs a copy of a store. Run it with: cd ~/Code/prakriti/mac && make migrate-check")
+        }
+        let live = FileManager.default.homeDirectoryForCurrentUser.appending(path: "Library/Application Support/Prakriti/Prakriti.store").path
+        XCTAssertNotEqual(URL(fileURLWithPath: path).resolvingSymlinksInPath().path, live, "never the live store itself")
+        let container = try PrakritiStore.makeContainer(at: URL(fileURLWithPath: path))
+        let context = container.mainContext
+        let recordings = try context.fetch(FetchDescriptor<Recording>())
+        let sources = try context.fetch(FetchDescriptor<Source>())
+        let settings = try context.fetch(FetchDescriptor<OutputSetting>())
+        let lines = try context.fetchCount(FetchDescriptor<LogEntry>())
+        XCTAssertFalse(sources.isEmpty, "the copy has its folders")
+        XCTAssertFalse(settings.isEmpty, "the copy has its output settings")
+        // The fields milestone 4 added arrive empty, and nothing that was there is lost.
+        for recording in recordings {
+            XCTAssertNil(recording.episodeDuration)
+            XCTAssertEqual(recording.madeFiles, [])
+        }
+        let ready = recordings.filter { $0.status == .readyForYourYes }
+        print("Store copy opened: \(recordings.count) recordings (\(ready.count) ready: "
+              + ready.map { "\($0.fileName) \($0.loudnessLUFS.map { String($0) } ?? "?") LUFS" }.joined(separator: ", ")
+              + "), \(sources.count) folders (" + sources.map(\.name).joined(separator: ", ") + "), \(settings.count) output settings, \(lines) Activity lines")
+    }
+}

@@ -95,6 +95,14 @@ final class Recording {
     var wordCount: Int?
     /// The transcript reaches within two minutes of the end (the coverage check).
     var coverageOK: Bool?
+    /// The episode's own length, and the silence trimmed from the recording's start and end.
+    var episodeDuration: Double?
+    var silenceTrimmedStart: Double?
+    var silenceTrimmedEnd: Double?
+    /// How many known mis-hearings the Yoga Marga word list fixed.
+    var wordListFixes: Int?
+    /// The files the last finished make left in the output folder, by name.
+    var madeFiles: [String] = []
 
     // Edits for "Make again" (milestone 5).
     var trimStart: Double?
@@ -152,6 +160,9 @@ final class Recording {
     var sessionDate: Date { recordedAt ?? foundAt }
 
     var latestRun: Run? { runs.max { $0.startedAt < $1.startedAt } }
+
+    /// This recording has its own output choices, set on its page, rather than its folder's.
+    var hasOwnOutputs: Bool { !outputSettings.isEmpty }
 
     /// Newest first: the date it was made, then when it was found, then its path. Several clips can
     /// share one session's date (all cut from the same talk), and sorting on the date alone left
