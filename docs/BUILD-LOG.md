@@ -7,18 +7,21 @@ resumes from the last entry. Weekdays computed with `date(1)`.
 **Where it stands:** v1 reached its finish line on Sat 10 Oct: all six milestones passed on real
 recordings, and "Finish line" says what works, what does not, what Ivan must click, where the pictures
 of every screen are, and the three things to try first. **The same evening the podcast-ready episode
-was added** (the last section, "Podcast-ready episode"): the file to upload to a podcast host, with
-its tags, chapters, captions, a title, show notes and captions text and an upload checklist, on a new
-mastering chain that ends episode 1's volume riding. Passed on the 6 Sep and 13 Sep talks; installed
-live at 23:55, off for every folder until Ivan turns it on. **On Sun 11 Oct it gained its episode text
-and the recording page's Ready to upload section** (the last section, "Episode text and Ready to
-upload"): title and alternatives, one-line summary, show notes with chapters and a call to action,
-keywords, a caption and verbatim pull quote per platform, Ivan's copy rules enforced in Swift, a Copy
-button for each, and a class never made ready. Passed on the 13 Sep talk with Qwen3.8-27B; installed
-live at 03:02.
-Prakriti for Mac, installed in `~/Applications` (milestone 6's build since 20:20), is the only thing
-watching the studio folder and `~/Prakriti/Drop`. Titles, show notes and chapters can be written
-(Qwen3.8-27B in LM Studio by default) but are off for every folder until Ivan turns them on.
+was added** (the section "Podcast-ready episode"): the file to upload to a podcast host, with its
+tags, chapters, captions, a title, show notes and captions text and an upload checklist, on a new
+mastering chain that raises the whole episode by one amount (episode 1's loudness range 5.2 LU in
+v0's file, 4.7 in the new one; whether the riding Ivan heard is gone is for his ears). Passed on the
+6 Sep and 13 Sep talks. **On Sun 11 Oct it gained its episode text and the recording page's Ready to
+upload section** (the section "Episode text and Ready to upload"): title and alternatives, one-line
+summary, show notes with chapters and a call to action, keywords, a caption and verbatim pull quote
+per platform, Ivan's copy rules enforced in Swift, a Copy button for each, and a class never made
+ready. Passed on the 13 Sep talk with Qwen3.8-27B. **Both were re-checked by independent verifiers
+and passed; the handoff is the last section, "Podcast-ready episode: the handoff"**: what works, the
+one claim corrected, what is MISSING by design and how to set it, where episode 1's file is, and what
+episode 1 still needs before it is uploaded.
+Prakriti for Mac, installed in `~/Applications` (the build of `c91058b` since 03:02 Sun 11 Oct), is
+the only thing watching the studio folder and `~/Prakriti/Drop`. Titles, show notes and chapters, and
+the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
 
 ---
 
@@ -1611,7 +1614,8 @@ checked: any shift but 0 widens the spread), so the gain curve is the chain's, n
 ### What does not work yet, or was not seen working
 
 - **No person has listened to a podcast-ready file.** The numbers say the riding is gone; Ivan's ears
-  have not.
+  have not. (Corrected Sun 11 Oct: the independent check found the numbers do not say this. See
+  "Podcast-ready episode: the handoff".)
 - **The writing now takes longer** on the 13 Sep talk: 1,046 and 1,409 s for the request, against 585
   to 847 s in milestone 6; 8,092 and 11,330 thinking tokens against 4,580 to 7,117. The captions are the
   likely cause; two runs cannot say how much is them and how much is variance. Tags and summary on LM
@@ -1627,7 +1631,8 @@ checked: any shift but 0 widens the spread), so the gain curve is the chain's, n
 1. **Listen to episode 1's podcast-ready file against engine v0's**, at a quiet passage and at the
    start of a sentence after a pause: `~/Prakriti/Dev/Outputs/2026-09-06 18-06-33/Podcast-ready/2026-09-06.mp3`
    (made by the acceptance, development folder) and `~/Prakriti/Outputs/2026-09-06 18-06-33/episode.mp3`
-   (v0's, the one you said rides). The numbers say the riding is gone; your ears decide. Listen for
+   (v0's, the one you said rides). The numbers say the riding is gone; your ears decide. (Corrected Sun
+   11 Oct: they do not; see "Podcast-ready episode: the handoff".) Listen for
    the room between sentences too: it is steadier but about 3 dB louder (decision 4).
 2. **Set the show on the Outputs screen**, Podcast-ready episode: the show's name (Gabriel's to choose,
    SCOPE Q-G26), the host or author, and the artwork (square JPEG or PNG, 1400 to 3000 px, RGB, under
@@ -1856,3 +1861,154 @@ with the same copy rules, the same hashtag rule, and pull quotes that double as 
 line, since each comes with its time in the finished cut. The Ready to upload section becomes one per
 video, with the same Copy buttons and a checklist per platform. The class refusal becomes the stronger
 rule video needs: refused until the screen check (PRV-14) can say no student is in the picture.
+
+---
+
+## Podcast-ready episode: the handoff. Sun 11 Oct 2026
+
+Both halves of Ivan's request ("Podcast-ready episode", Sat 10 Oct, and "Episode text and Ready to
+upload", Sun 11 Oct, above) were checked again by independent verifiers, each from a fresh clone of
+the pushed commit, and parts of it once more by this session. **Both passed, with one exception: the
+claim that the new chain fixes episode 1's volume riding is not supported by the measurements**, so
+it is corrected below and in CHANGELOG and START_HERE. No code changed in this handoff. The code is
+`c91058b`, pushed; the live app is that code (installed 03:02:53, pid 2200, `codesign --verify --deep
+--strict` passes; the only file in `mac/` changed after the install is a test).
+
+### What works, with the measured evidence
+
+| What | Measured |
+|---|---|
+| Build and tests, fresh clone of `c91058b` | `BUILD SUCCEEDED`, 0 compiler warnings. `make test`: **136 tests, 0 failures, 8 skipped by design** (the seven acceptance methods and the migration check), 391 s. On `eba220e` before it: 125, 0 failures, 7 skipped; PodcastReadyTests 10 of 10 |
+| **Episode 1 (6 Sep), old against new, measured again by this session with ebur128** | engine v0's `episode.mp3` (live Outputs, read only): **-16.7 LUFS, loudness range 5.2 LU**, peak -1.2 dBFS. The podcast-ready MP3 (development): **-16.0 LUFS, loudness range 4.7 LU**, peak -1.2. loudnorm's meter on the new file (verifier): -16.02 LUFS, true peak -1.20 dBTP, its second pass **linear** (v0's chain: **dynamic**) |
+| 13 Sep, old against new (verifier) | v0 -16.8 LUFS, range 4.2 LU. New **-16.03 LUFS, true peak -1.78 dBTP, range 3.7 LU**, linear |
+| The file | 44.1 kHz, mono, 96 kbps MP3. Episode 1: 55:36, 40.0 MB. The last 5 s decode on both talks |
+| The tag, read by the verifier's own parser and by ffprobe | ID3v2.4: title, year 2026, genre Podcast, a real comment frame, a table of contents and its chapters (6 on episode 1, 3 on 13 Sep), the first at 0:00, every later one starting exactly on a caption. **No show name and no host written: nothing invented.** A 3-chapter test file (one non-ASCII title) read back the same by three readers, its audio decoding to the same samples before and after tagging |
+| Artwork check | The verifier's 14 generated images, deleted after: a 1400 px RGB JPEG, a 3000 px PNG and a PNG named .jpg pass; 1399 px, 3001 px, not square, alpha, grey, CMYK, 10 MB, 11.5 MB, HEIC, a text file named .jpg and a missing file each fail with their own reason |
+| Captions follow the edit | A 10 s trim moved episode 1's caption 101 by 7.143 s (10 s less the 2.857 s of silence trimmed); the verifier found those words in the trimmed audio 10 ms from the caption by cross-correlation. 13 Sep: 8.818 s, also 10 ms. A scratch test with an intro, an outro and a 4 s cut: later captions moved exactly 4.000 s, earlier ones stayed, the audio 37 ms from its caption, -16.06 LUFS, linear (not committed) |
+| The episode text, 13 Sep, Qwen3.8-27B (P2 verifier's own run) | Passed in 3,674 s: four titles (the pick and 3 alternatives), the one-line summary, show notes with the chapters, keywords, a caption each for Instagram, LinkedIn and X and Threads, 3 pull quotes found word for word. **Privacy lock held:** the talk mentions Serenity, so LM Studio wrote it although the writing was set to the Claude API. The model was loaded at 65,536 tokens and unloaded after |
+| Checklist | Both talks: **0 FAIL, 6 MISSING** (show name, episode title, host, artwork, show notes, speakers), 17 PASS on 6 Sep (made 10 Oct, before the episode text) and 18 on 13 Sep. Every line carries its measured value and what to do |
+| No em or en dashes | 0 in `mac/`, the docs, and every generated checklist, text file and caption file |
+| Nothing leaked or sent | The live `~/Prakriti/Outputs`, `Approved` and `Drop`: every file's SHA-256 the same before and after the verifier's runs. No network or upload code added. No class processed. `web/` and engine v0 untouched |
+
+### Corrected: the numbers do not say the riding is gone
+
+The 10 Oct entry, its CHANGELOG entry, START_HERE and the commit `eba220e` said the new chain fixes
+or ends episode 1's volume riding. The P1 verifier measured it with their own script, and the numbers
+(the builder's own included) do not show that:
+
+| | 6 Sep, v0 | 6 Sep, new | 13 Sep, v0 | 13 Sep, new |
+|---|---|---|---|---|
+| Seconds where the gain moved more than 2 dB within one second | 104 | 92 | 58 | **66** |
+| Spread of the gain over speech | 4.0 dB | 3.8 dB | 4.3 dB | **4.8 dB** |
+| Gain movement not explained by how loudly he speaks (standard deviation) | 1.02 dB | 0.85 dB | 0.88 dB | 0.83 dB |
+| Pauses lifted more than the voice | 2.2 dB | **5.0 dB** | 2.5 dB | **5.0 dB** |
+| Loudness range | 5.2 LU | 4.7 LU | 4.2 LU | 3.7 LU |
+
+What is true: the new file is raised by one amount for the whole episode (loudnorm stays linear, where
+v0's gave up and rode the level), and its loudness range is 0.5 LU lower on both talks, which is what
+the spec asked for. What is not shown: that the second-to-second rise and fall Ivan heard is gone. On
+episode 1 it moves a little less; on 13 Sep a little more; the compressor now does some of the moving
+that loudnorm did. And the room sound between sentences sits about 2.5 to 3 dB louder against his
+voice than in v0's files (decision 4 of 10 Oct: no expander). Only listening decides. The lines above
+that said otherwise now point here; the commit title cannot be changed.
+
+### MISSING by design, and how Ivan sets each
+
+| Checklist line | Why Prakriti leaves it | Where Ivan sets it |
+|---|---|---|
+| Show name | Gabriel's to choose (Q-G26, due the day before the studio visit). Prakriti never makes one up | Outputs screen, Podcast-ready episode, **Show name**. Then **Update Podcast-Ready Files** on the recording's page: the file becomes `<Show> - <Title>.mp3` and the tag carries the name |
+| Artwork | Prakriti never makes artwork | Outputs screen, **Show artwork**, Choose: square JPEG or PNG, 1400 to 3000 px, RGB, under 512 KB. The line under it says at once whether it passes |
+| Host or author | Not known | Outputs screen, **Host or author** |
+| Episode title | The writer drafts four; a draft is not ready | The recording's page: **Use This Title**, or type one |
+| Show notes | The same | The recording's page: **Use as Notes**, or write them. An optional call to action, in Ivan's words, is on the Outputs screen |
+| Speakers | Prakriti cannot tell voices apart | Only by listening. **This line is always MISSING** (`PodcastReady.swift`, the checklist), so the page and the checklist can never say "Ready to upload": with everything else set, the best they show is "Not ready to upload yet: 0 FAIL, 1 MISSING". That one is Ivan's to clear by ear |
+
+With Numbering set to episode numbers on the Outputs screen, each episode's number (typed on its page)
+becomes one more line until it is set.
+
+### Episode 1's podcast-ready file: where it is, and how Ivan makes it
+
+- **Live: not made.** `~/Prakriti/Outputs/2026-09-06 18-06-33/` holds only engine v0's files (listed at
+  about 04:20, Sun 11 Oct). That is by design: the tests write only to development, and the output is off for
+  every folder.
+- **To listen to now (development):** `~/Prakriti/Dev/Outputs/2026-09-06 18-06-33/Podcast-ready/2026-09-06.mp3`,
+  made 00:55 Sun 11 Oct by the P1 verifier's acceptance run. Its text file is still the 10 Oct
+  `Title, show notes and captions.txt`, from before the episode text existed.
+- **To make it in the live app:** Recordings, Sun 6 Sep; under About this recording mark it "Talk, one
+  teacher speaking"; under Outputs for this recording switch on Podcast-ready episode (and Titles, show
+  notes and chapters for the text, with LM Studio open and its server on); **Make Again**. The folder
+  appears at `~/Prakriti/Outputs/2026-09-06 18-06-33/Podcast-ready/`. Make Again also replaces v0's
+  `episode.mp3` with today's quick chain, so copy v0's file aside first:
+
+  ```bash
+  cd ~/Prakriti && cp "Outputs/2026-09-06 18-06-33/episode.mp3" "retired/2026-09-06 episode, engine v0.mp3"
+  ```
+
+- **How long:** the podcast-ready audio takes 2 to 3 minutes (124 to 159 s on 10 Oct). The writing has **not** been run on episode 1 since the
+  episode text was added. On 13 Sep (a third of its length) the P2 verifier's run took 58 min 17 s,
+  because the first try answered with nothing after 29 minutes (14,823 thinking tokens, no text) and
+  the second passed. Plan on an hour or more and keep the Mac awake.
+
+### Not the upload file yet: what episode 1 still needs
+
+The checklist checks the file, not what is said in it. PLAN.md (the week of Mon 19 Oct) still needs,
+before episode 1 is uploaded:
+
+1. Gabriel's answer on the two income claims and the spoken offer, by Fri 16 Oct (Q-G8). With no
+   answer all are cut, which removes the opening line.
+2. One story about a student cut under the student rule, unless Serenity answers otherwise first.
+3. Serenity hears the passages that name her, at her first meeting (episode 1 is approved in two
+   versions).
+4. Gabriel's recorded intro opens the episode (Q-G9, at the studio visit); it goes on the Outputs
+   screen as the intro.
+5. The show name and artwork above.
+
+So the file to upload is made **after** those cuts are on the recording's page and the intro is set:
+one Make Again with all of it, then Update Podcast-Ready Files for words only. A podcast-ready file
+made before then is for listening, not for upload.
+
+### For Ivan: what needs you
+
+- [ ] **Listen, old against new**, before Fri 23 Oct: `~/Prakriti/Outputs/2026-09-06 18-06-33/episode.mp3`
+  (v0's) and the development file above. At a quiet passage, at the start of a sentence after a
+  pause, and in the pauses themselves (the room sound). Say which is better, or whether either pumps.
+  If the room between sentences bothers you, the measured next step is a gentle expander on the
+  pauses (decision 4 of 10 Oct), tried on 13 Sep first.
+- [ ] **Get the show name and artwork from Gabriel** (Q-G26) and type them once on the Outputs screen,
+  with the host's name.
+- [ ] **Copy v0's episode aside** (the command above) before the first Make Again on episode 1.
+- [ ] **Read every draft before using it.** The quotes are proved to be the teacher's words; the claims
+  are not checked. The 13 Sep drafts name Serenity.
+- Nothing else is needed for the app to keep running.
+
+### The best pictures
+
+All under `~/Code/prakriti/screens/mac/` (on this Mac only). The first three were looked at in this
+session; the others by the builder or a verifier.
+
+| What | Picture |
+|---|---|
+| Outputs screen, Podcast-ready episode: show artwork, host, numbering, call to action, sound settings (show name at the top edge) | `episode-text/04-outputs-numbered-light-p2.png` |
+| Ready to upload on the real 13 Sep page: the status, the files with sizes, the measured sound | `episode-text/episode-text-13sep-ready-light-p6.png` |
+| Ready to upload, the Copy rows: title, one-line summary, show notes with chapters, Instagram caption, a pull quote | `episode-text/episode-text-13sep-ready-light-p7.png` |
+| The same, dark | `episode-text/episode-text-13sep-ready-dark-p6.png`, `-p7.png` |
+| A class: "Not made ready to upload", and why | `episode-text/episode-text-13sep-class-dark-p7.png` (looked at in this session) |
+| Episode 1's page from the 10 Oct acceptance | `podcast/podcast-2026-09-06-dark.png` and its pages |
+| Outputs in the real window | `podcast/real/04-outputs-dark.png` |
+| The acceptance reports | `podcast/acceptance-podcast-2026-09-06.txt`, `podcast/acceptance-podcast-2026-09-13.txt`, `episode-text/acceptance-episode-text.txt` |
+
+### Notes for the next build
+
+1. **The writing's thinking is creeping toward its cap.** `max_tokens` is 16,384 (LOCAL-MODEL.md);
+   milestone 6 spent 4,580 to 7,117 thinking tokens, the episode text 11,218 to 13,036, and the P2
+   verifier's empty first try 14,823. Episode 1 is three times longer and has not been written with
+   the episode text. Measure it once in development before Ivan relies on it; if a try runs out, raise
+   the budget or split the request.
+2. **Speakers can never pass.** Give Ivan a way to record "I listened: one teacher, no names said"
+   on the page (with the date), or the page never says Ready to upload.
+3. **A "content cleared" line** tied to each episode's conditions in PLAN.md (income claims, the student
+   story, Serenity's passages), so "ready" means cleared as well as well-made.
+4. The verifier's intro, outro and cut test passed in a scratch clone and is not committed; commit an
+   equivalent.
+5. If Ivan hears riding or the room in the pauses: an expander for the pauses, measured against v0 on
+   13 Sep first.

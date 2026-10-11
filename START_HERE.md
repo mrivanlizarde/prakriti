@@ -514,8 +514,11 @@ Progress, checks and decisions per milestone are in `docs/BUILD-LOG.md`.
 **Podcast-ready episode, Sat 10 Oct (after v1):** a new output, separate from the quick "Podcast
 episode" draft, that makes the file Ivan can upload to a podcast host as it is. Its own mastering
 chain (a 70 Hz high-pass, a gentle 1.5:1 compressor, the whole episode raised evenly to -16 LUFS,
-peaks limited to -1 dBTP or under, 44.1 kHz, mono 96 kbps) fixes the volume riding of every episode
-engine v0 made; Prakriti writes the ID3v2.4 tag itself (title, author, show, year, comment, genre
+peaks limited to -1 dBTP or under, 44.1 kHz, mono 96 kbps) keeps loudnorm linear where engine v0's
+fell back to riding the level, and lowers episode 1's loudness range from 5.2 to 4.7 LU. **It does not
+measurably end the second-to-second riding** (the independent check, Sun 11 Oct: 92 s of 2 dB jumps
+against v0's 104 on episode 1, 66 against 58 on 13 Sep, and the pauses about 2.5 to 3 dB louder
+against the voice); Ivan's ears decide, see "Podcast-ready episode: the handoff". Prakriti writes the ID3v2.4 tag itself (title, author, show, year, comment, genre
 Podcast, episode number, artwork, chapters); captions (.srt, .vtt) are timed to the finished file;
 `Episode text.txt` (and the same as `Episode text.md`) holds the words that go with it (below);
 `Upload checklist.txt` measures the file against Apple's published rules, line by line, PASS,
@@ -561,6 +564,30 @@ folders, beside the live one.
   `~/Prakriti/Approved/<recording name>/`, only when you press Approve. To have any file made, put it
   in `~/Prakriti/Drop`. Prakriti only reads the Studio Recordings folder and never writes into it.
   Every look and every step: `~/Library/Logs/Prakriti/<date>.log`, and the Activity screen.
+- **The upload folder.** `~/Prakriti/Outputs/<recording name>/Podcast-ready/` holds everything a
+  podcast host asks for: the MP3 (named `<Show> - <Title>.mp3` once both are set, by its date until
+  then), its captions (`.srt` for the host's transcript field, `.vtt` for the web), `Episode text.txt`
+  (and `.md`) with the title, one-line summary, show notes with chapters, keywords and a caption and
+  pull quote for Instagram, LinkedIn and X and Threads, and `Upload checklist.txt`, every line PASS,
+  MISSING or FAIL with what to do. It exists only for a recording with Podcast-ready episode switched on.
+  Prakriti never uploads; you do, by hand. To get one ready:
+  1. **Once, on the Outputs screen, Podcast-ready episode:** the show name, artwork, host or author,
+     numbering, and a call to action if you want one. These belong to the show and reach every episode.
+  2. **On the recording's page:** mark it "Talk, one teacher speaking"; set any trim and cuts; under
+     Outputs for this recording switch on Podcast-ready episode (and Titles, show notes and chapters,
+     with LM Studio open); press Make Again. With the writing on, allow an hour or more.
+  3. **Under Ready to upload:** read the drafts, press Use This Title and Use as Notes for the ones you
+     keep (or type your own), type the episode number if numbered, then Update Podcast-Ready Files
+     (under a minute; the sound is not made again).
+  4. **Listen** for any voice other than the teacher's and any name said. The Speakers line stays
+     MISSING whatever you do (Prakriti cannot check voices), so with everything else set the page says
+     "0 FAIL, 1 MISSING": that last one is your ear.
+  5. **Approve** copies the folder to `~/Prakriti/Approved/<recording name>/Podcast-ready/`, every file in
+     the receipt. Upload the MP3 from there, upload the `.srt` where the host takes a transcript, and paste
+     the title, notes and captions from the page's Copy buttons.
+  A class is never made ready. For episode 1, the cuts and the intro in `docs/BUILD-LOG.md`, "Podcast-ready
+  episode: the handoff", come first; and Make Again replaces engine v0's `episode.mp3`, so the handoff gives
+  the one command that copies it aside before you do.
 - **Pause it.** Pause All (the window's toolbar, the menu bar, or Settings). A recording already
   running finishes; nothing new is found or started until Resume All.
 - **Stop it.** Menu bar ring, Quit Prakriti (or Command-Q with the window in front). It stays stopped
@@ -571,7 +598,8 @@ folders, beside the live one.
 - **Engine v0 is retired** (Sat 10 Oct, 14:57). Prakriti for Mac is the only thing watching. Never
   run both: two watchers make and notify everything twice. Going back: "Engine v0: retired" above.
 - **What still needs you:** the checklist in `docs/BUILD-LOG.md`, "Finish line" (turning on
-  notifications first).
+  notifications first), and for the podcast, "Podcast-ready episode: the handoff", For Ivan (listen
+  to episode 1 old against new; the show name and artwork from Gabriel).
 
 ### Build, run, test
 

@@ -5,6 +5,29 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-11, Sun: the podcast-ready handoff, and one claim taken back
+
+- **`docs/BUILD-LOG.md` ends with "Podcast-ready episode: the handoff":** what the independent
+  verifiers measured on both halves (the audio of 10 Oct and the episode text of 11 Oct), what is
+  MISSING by design and where Ivan sets each, where episode 1's file is and how he makes it in the live
+  app, what episode 1 still needs before it is uploaded, and the best pictures. Why: both halves passed
+  their independent checks, and Ivan needs one place that says what to do next.
+- **"It fixes the volume riding" is taken back** (the 10 Oct entry below, START_HERE, the top of
+  BUILD-LOG). The independent check measured the gain second by second: on episode 1, 92 s of jumps
+  over 2 dB within a second against v0's 104; on 13 Sep, 66 against 58; and the pauses lifted about 5
+  dB more than the voice against about 2 dB in v0's files. What the new chain does do: one even raise
+  for the whole episode (loudnorm linear, v0's dynamic) and a loudness range 0.5 LU lower (episode 1:
+  5.2 to 4.7 LU). Why: a claim the numbers do not carry would tell Ivan he need not listen, and episode
+  1 ships Fri 23 Oct.
+- **START_HERE's Day to day now explains the upload folder:** where it is, what each file is for, the
+  five steps from setting the show to uploading by hand, and that the Speakers line always stays MISSING
+  until Ivan has listened. Why: the folder is the deliverable, and the page alone never says "Ready to
+  upload" (Speakers cannot pass), which would read as a fault without the explanation.
+- **Raised for the next build, not changed:** the writing's thinking now reaches 11,000 to 14,800
+  tokens against a 16,384 cap and has not been run on episode 1 with the episode text; Speakers needs a
+  way to pass on Ivan's word; the checklist does not know an episode's content conditions (income
+  claims, the student story, Serenity's passages). Why: each could stop episode 1 the week it ships.
+
 ## 2026-10-11, Sun: the episode text, and Ready to upload
 
 - **`Episode text.txt` (and the same as `Episode text.md`) in the Podcast-ready folder replaces
@@ -52,7 +75,8 @@ why. Weekdays computed with `date(1)`.
   (.srt and .vtt) timed to it, `Title, show notes and captions.txt` and `Upload checklist.txt`. The
   quick "Podcast episode" stays as the draft to listen to. Why: Ivan asked for edited audio as close
   as possible to uploadable, with the episode name, show notes and social captions beside it.
-- **It fixes the volume riding Ivan heard on episode 1.** Diagnosed with numbers first: engine v0's
+- **It fixes the volume riding Ivan heard on episode 1.** (Taken back Sun 11 Oct, see the entry above:
+  the chain raises the episode evenly, but the measurements do not show the riding gone.) Diagnosed with numbers first: engine v0's
   loudnorm pass falls back to "dynamic" on every studio talk, because the talk's peaks sit about 24
   dB over its loudness; on episode 1 the gain it applied moved over a 4 dB spread, jumped more than 2
   dB within a second for 104 s, and lifted the room tone in pauses unevenly. The new chain levels
