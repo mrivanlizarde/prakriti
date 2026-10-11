@@ -30,12 +30,30 @@ settings:
     DEAD_CODE_STRIPPING: YES
     SWIFT_EMIT_LOC_STRINGS: NO
 
+# Swift packages, each pinned to an exact version and fetched only after Ivan's yes (docs/v2/PLAN.md
+# section 11). swift-markdown 0.9.0 (21 Sep 2026) parses the Help articles (v2 part M2a); the exact
+# versions it brings with it (swift-cmark and others) are pinned in Package.resolved, committed.
+packages:
+  swift-markdown:
+    url: https://github.com/swiftlang/swift-markdown
+    exactVersion: 0.9.0
+
 targets:
   Prakriti:
     type: application
     platform: macOS
     sources:
       - path: Prakriti
+        excludes:
+          - Resources/Help
+      # The Help articles (v2 part M2a), copied into the app as one folder, Contents/Resources/Help,
+      # so the bundle holds exactly the files in mac/Prakriti/Resources/Help and nothing flattens.
+      - path: Prakriti/Resources/Help
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: swift-markdown
+        product: Markdown
     settings:
       base:
         PRODUCT_NAME: Prakriti

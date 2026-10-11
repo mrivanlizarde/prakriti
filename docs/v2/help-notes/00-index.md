@@ -1,44 +1,16 @@
----
-id: index
-title: Prakriti Help
-summary: Every Help article, in the order a new person needs them.
-keywords: [help, contents, index, table of contents]
-related: [01-welcome]
----
+# Builder notes: 00-index.md
 
-# Prakriti Help
+The team's notes for the in-app Help article `mac/Prakriti/Resources/Help/00-index.md` ("Prakriti Help").
+Moved out of the article in v2 part M2a so the app bundle holds user text only. Never shown in the app.
 
-## Get started
+## Status after v2 part M2a (Sun 11 Oct 2026)
 
-- [Welcome to Prakriti](01-welcome.md): what Prakriti does, in five steps, and what it never does.
-- [Capture the best video](02-capture-the-best-video.md): light, framing, camera, sound and room.
-- [Set up OBS for Prakriti](03-set-up-obs-for-prakriti.md): the settings, once, and a 10-second test.
+- The contents page Help opens on (`home`). Its section headings are the sidebar's section names.
+- `:::requires style` around Directing the Edit. When a part makes a new article visible, add its line here
+  in the same commit, inside the same capability block as the article's `requires`.
+- The "How these files work" and "House rules" notes below are superseded by `docs/v2/help/README.md`.
 
-## Use Prakriti
-
-- [Sources and watching](04-sources-and-watching.md): the folders Prakriti watches, and how to follow
-  its progress or pause it.
-- [Outputs](05-outputs.md): the podcast episode, podcast-ready episode, transcript, edited video,
-  shorts, thumbnails and the timeline for Final Cut Pro or DaVinci Resolve.
-- [Review and approve](06-reviewing-and-approving.md): watch it in the viewer, check it, change it,
-  approve it.
-- [People and privacy](07-people-and-privacy.md): who appears, Include, Blur or Remove, and what is
-  stored.
-- [Editorial direction](08-editorial-direction.md): presets, your own words, and moments from other
-  recordings.
-
-## Settings
-
-- [Models and API keys](09-models-and-api-keys.md): local models, Apple on-device, and OpenAI or
-  Anthropic keys for smaller Macs.
-
-## When something goes wrong
-
-- [If something isn't working](10-troubleshooting.md)
-
-<!-- builder-notes: everything below this line is for the team and is not shown in the app -->
-
-## Builder notes
+## Notes from the help track (Sat 10 Oct 2026)
 
 ### How these files work
 

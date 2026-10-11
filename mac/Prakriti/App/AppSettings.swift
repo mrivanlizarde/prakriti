@@ -21,6 +21,7 @@ final class AppSettings {
         static let lastEventID = "lastEventID"
         static let eventDevice = "eventDevice"
         static let engineV0ImportedAt = "engineV0ImportedAt"
+        static let helpLastArticle = "helpLastArticle"
     }
 
     /// Stops finding and processing recordings until turned back on.
@@ -47,6 +48,8 @@ final class AppSettings {
     var eventDevice: String { didSet { defaults.set(eventDevice, forKey: Key.eventDevice) } }
     /// When engine v0's state.json was taken in at the switch-over. Read once, never again.
     var engineV0ImportedAt: Date? { didSet { defaults.set(engineV0ImportedAt, forKey: Key.engineV0ImportedAt) } }
+    /// The Help article open last, so Help opens where Ivan left it (v2 part M2a).
+    var helpLastArticle: String? { didSet { defaults.set(helpLastArticle, forKey: Key.helpLastArticle) } }
 
     nonisolated static let defaultLMStudioAddress = "http://localhost:1235/v1"
     nonisolated static let defaultLMStudioModel = "qwen/qwen3.8-27b"
@@ -76,6 +79,7 @@ final class AppSettings {
         lastEventID = defaults.string(forKey: Key.lastEventID).flatMap(UInt64.init) ?? 0
         eventDevice = defaults.string(forKey: Key.eventDevice) ?? ""
         engineV0ImportedAt = defaults.object(forKey: Key.engineV0ImportedAt) as? Date
+        helpLastArticle = defaults.string(forKey: Key.helpLastArticle)
     }
 
     /// Each mode keeps its own preferences. Reason: from the switch-over a development copy can run

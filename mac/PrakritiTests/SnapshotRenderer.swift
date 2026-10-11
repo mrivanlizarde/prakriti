@@ -28,17 +28,39 @@ final class SnapshotRenderer {
     static let appearances: [(String, NSAppearance.Name)] = [("light", .aqua), ("dark", .darkAqua)]
 
     func render(model: AppModel, appearance: NSAppearance.Name, name: String) throws {
-        let size = MainWindow.size
+        try render(root: AnyView(MainView().environment(model).modelContainer(model.container)),
+                   sidebar: SidebarDrawing(view: AnyView(Sidebar(selection: .constant(model.selection))
+                                                            .environment(model)
+                                                            .modelContainer(model.container)),
+                                           rowsHaveIcons: true),
+                   size: MainWindow.size, title: "Prakriti", appearance: appearance, name: name)
+    }
+
+    /// The Help window (v2 part M2a) at its real size, open at whatever article or search `model.help` holds.
+    func renderHelp(model: AppModel, appearance: NSAppearance.Name, name: String) throws {
+        try render(root: AnyView(HelpWindow().environment(model)),
+                   sidebar: SidebarDrawing(view: AnyView(HelpSidebar(selection: .constant(model.help.selection),
+                                                                     library: model.help.library)),
+                                           rowsHaveIcons: false),
+                   size: HelpWindow.size, title: "Prakriti Help", appearance: appearance, name: name)
+    }
+
+    /// The window's sidebar, drawn again on its own over the glass column (see `composite`). Help's
+    /// rows are titles without icons, so only their labels are checked for contrast.
+    struct SidebarDrawing {
+        let view: AnyView
+        let rowsHaveIcons: Bool
+    }
+
+    private func render(root: AnyView, sidebar: SidebarDrawing, size: CGSize, title: String,
+                        appearance: NSAppearance.Name, name: String) throws {
         let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                               backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: appearance)
-        window.title = "Prakriti"
+        window.title = title
         window.toolbarStyle = .unified
-        let root = MainView()
-            .environment(model)
-            .modelContainer(model.container)
         let host = NSHostingView(rootView: root)
         host.sceneBridgingOptions = [.toolbars, .title]
         window.contentView = host
@@ -57,7 +79,7 @@ final class SnapshotRenderer {
         }
 
         let frameView = window.contentView?.superview ?? host
-        try save(composite(frameView: frameView, window: window, model: model), name: name, size: size)
+        try save(composite(frameView: frameView, window: window, sidebar: sidebar), name: name, size: size)
 
         // A page taller than the window gets a second picture, scrolled to its end, so nothing
         // below the fold goes unlooked-at.
@@ -94,10 +116,10 @@ final class SnapshotRenderer {
             let middles = max(0, Int(tallest.rounded(.up)) - 1)
             for page in 0..<middles {
                 scrollAll { scroll, _ in CGFloat(page + 1) * (scroll.contentView.bounds.height - 60) }
-                try save(composite(frameView: frameView, window: window, model: model), name: name + "-p\(page + 2)", size: size)
+                try save(composite(frameView: frameView, window: window, sidebar: sidebar), name: name + "-p\(page + 2)", size: size)
             }
             scrollAll { _, end in end }
-            try save(composite(frameView: frameView, window: window, model: model), name: name + "-end", size: size)
+            try save(composite(frameView: frameView, window: window, sidebar: sidebar), name: name + "-end", size: size)
         }
     }
 
@@ -114,7 +136,7 @@ final class SnapshotRenderer {
     /// sidebar column painted with the system window background, then the real sidebar view (the
     /// same SwiftUI rows, fonts and counts) drawn on top, then the title bar controls again. What
     /// the PNG cannot show is the glass material itself; open the app to see that.
-    private func composite(frameView: NSView, window: NSWindow, model: AppModel) throws -> NSBitmapImageRep {
+    private func composite(frameView: NSView, window: NSWindow, sidebar drawing: SidebarDrawing) throws -> NSBitmapImageRep {
         let bounds = frameView.bounds
         let base = try XCTUnwrap(frameView.bitmapImageRepForCachingDisplay(in: bounds))
         frameView.cacheDisplay(in: bounds, to: base)
@@ -140,7 +162,7 @@ final class SnapshotRenderer {
         // placed under the title bar.
         let titlebar = firstView(in: frameView, where: { $0 == "NSTitlebarContainerView" })
         let titlebarHeight = titlebar?.frame.height ?? 52
-        let rows = try renderStandaloneSidebar(model: model, size: CGSize(width: column.width, height: bounds.height - titlebarHeight),
+        let rows = try renderStandaloneSidebar(drawing, size: CGSize(width: column.width, height: bounds.height - titlebarHeight),
                                                appearance: window.effectiveAppearance)
         if let image = rows.cgImage {
             ctx.draw(image, in: pixels(CGRect(x: column.minX, y: 0, width: column.width, height: bounds.height - titlebarHeight)))
@@ -253,14 +275,12 @@ final class SnapshotRenderer {
         return found
     }
 
-    private func renderStandaloneSidebar(model: AppModel, size: CGSize, appearance: NSAppearance) throws -> NSBitmapImageRep {
+    private func renderStandaloneSidebar(_ drawing: SidebarDrawing, size: CGSize, appearance: NSAppearance) throws -> NSBitmapImageRep {
         let window = FrontmostWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = appearance
-        let host = NSHostingView(rootView: Sidebar(selection: .constant(model.selection))
-            .environment(\.controlActiveState, .key)
-            .environment(model)
-            .modelContainer(model.container))
+        let host = NSHostingView(rootView: drawing.view
+            .environment(\.controlActiveState, .key))
         window.contentView = host
         window.setContentSize(size)
         window.alphaValue = 0.01
@@ -308,7 +328,8 @@ final class SnapshotRenderer {
         host.layoutSubtreeIfNeeded()
         let rep = try cacheWithVibrancy(host)
         for box in boxes {
-            assertSelectedRowIsReadable(rep, row: box.convert(box.bounds, to: host), fill: selectionColor, in: host)
+            assertSelectedRowIsReadable(rep, row: box.convert(box.bounds, to: host), fill: selectionColor, in: host,
+                                        checksIcon: drawing.rowsHaveIcons)
         }
         return rep
     }
@@ -316,7 +337,7 @@ final class SnapshotRenderer {
     /// The check that would have caught the 10 Oct bug: on the selected row, the icon and the label
     /// must stand out from the selection color. Counts the pixels in the row's icon slot (its first
     /// 16%) and its label slot (20% to 60%) that differ clearly from the fill.
-    private func assertSelectedRowIsReadable(_ rep: NSBitmapImageRep, row: NSRect, fill: NSColor, in view: NSView) {
+    private func assertSelectedRowIsReadable(_ rep: NSBitmapImageRep, row: NSRect, fill: NSColor, in view: NSView, checksIcon: Bool) {
         let scale = CGFloat(rep.pixelsWide) / view.bounds.width
         guard let f = fill.usingColorSpace(.sRGB) else { return XCTFail("selection color has no sRGB form") }
         func differing(fromX x0: CGFloat, toX x1: CGFloat) -> Int {
@@ -331,10 +352,16 @@ final class SnapshotRenderer {
             }
             return n
         }
-        let icon = differing(fromX: row.minX, toX: row.minX + row.width * 0.16)
-        let label = differing(fromX: row.minX + row.width * 0.2, toX: row.minX + row.width * 0.6)
-        XCTAssertGreaterThan(icon, 150, "The selected sidebar row's icon is invisible against the selection (\(icon) px stand out)")
-        XCTAssertGreaterThan(label, 150, "The selected sidebar row's label is invisible against the selection (\(label) px stand out)")
+        if checksIcon {
+            let icon = differing(fromX: row.minX, toX: row.minX + row.width * 0.16)
+            let label = differing(fromX: row.minX + row.width * 0.2, toX: row.minX + row.width * 0.6)
+            XCTAssertGreaterThan(icon, 150, "The selected sidebar row's icon is invisible against the selection (\(icon) px stand out)")
+            XCTAssertGreaterThan(label, 150, "The selected sidebar row's label is invisible against the selection (\(label) px stand out)")
+        } else {
+            // A row of text only (Help): its words start at the row's left edge.
+            let label = differing(fromX: row.minX + 6, toX: row.minX + row.width * 0.6)
+            XCTAssertGreaterThan(label, 150, "The selected sidebar row's label is invisible against the selection (\(label) px stand out)")
+        }
     }
 
     private func views(in view: NSView, where matches: (String) -> Bool) -> [NSView] {

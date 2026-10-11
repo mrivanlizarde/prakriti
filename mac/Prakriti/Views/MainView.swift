@@ -27,6 +27,7 @@ struct MainView: View {
         }
         .onAppear {
             if model.openMainWindow == nil { model.openMainWindow = { openWindow(id: MainWindow.id) } }
+            if model.openHelpWindow == nil { model.openHelpWindow = { openWindow(id: HelpWindow.id) } }
         }
         .alert(model.notice?.title ?? "", isPresented: Binding(get: { model.notice != nil }, set: { if !$0 { model.notice = nil } }),
                presenting: model.notice) { _ in

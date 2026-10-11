@@ -49,7 +49,10 @@ struct MenuBarIcon: View {
         let working = summary.icon == .working
         Image(working ? model.ticker.frame : summary.icon.menuBarAsset)
             .accessibilityLabel("Prakriti: \(summary.line)")
-            .onAppear { model.openMainWindow = { openWindow(id: MainWindow.id) } }
+            .onAppear {
+                model.openMainWindow = { openWindow(id: MainWindow.id) }
+                model.openHelpWindow = { openWindow(id: HelpWindow.id) }
+            }
             .onChange(of: working, initial: true) { _, isWorking in model.ticker.setWorking(isWorking) }
             // Hidden from the menu bar (Settings): nothing to animate.
             .onDisappear { model.ticker.setWorking(false) }

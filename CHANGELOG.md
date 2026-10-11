@@ -5,6 +5,40 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-11, Sun: v2 part M2a, Help in the app
+
+- **Prakriti Help is a window in the app (Help, Prakriti Help, Command-?):** the articles by section in a
+  sidebar, each drawn at 17 pt with the app's own type scale, Back and Forward, search as you type, Related
+  links, and Show Me buttons that open the screen an article describes. Why: Ivan asked for documentation
+  in the help section (REQUEST item 2); a Help Book would open in another app, could not open a place in
+  Prakriti, and its index has been unreliable for years (design spec 5.6).
+- **The Help menu's own search field lists the articles,** beside the menu commands macOS finds, and
+  Show Log in Finder sits under Help. Why: that is where a Mac user types a question, and the log should
+  never need a typed path.
+- **Help describes only what is built.** Each article and each block inside one names the capability it
+  describes (`:::requires video`, or `:::unless video` for what is true until then); only `help` is on,
+  so the viewer, faces, the edited video, timelines, shorts, OpenAI and the rest are hidden until the part
+  that builds each switches it on. A test lists the feature names every part introduces and fails if one
+  shows early. Why: the help drafts were written for v2 and described features that do not exist yet; a
+  help page that promises a feature is the copy drifting from the build (PLAN R16).
+- **Every article was rewritten to describe today's app** (v1 with the podcast-ready episode): the
+  recording page's Listen, trim and cuts, Approve's real rules, the podcast-ready folder as built on 10 and
+  11 Oct, the v1 privacy lock as it is. "Welcome to Prakriti" became "What Prakriti does" and "People and
+  privacy" became "Privacy and students" until the features those names point at exist. Why: Ivan reads
+  Help to act on it, so every visible sentence has to be true today.
+- **The articles live in the app (`mac/Prakriti/Resources/Help/`), moved one by one; the builder notes
+  moved to `docs/v2/help-notes/`.** Why: the bundle should hold user text only, and a `*.md` glob would
+  have shipped the welcome panels' copy as an article.
+- **swift-markdown 0.9.0 (Apple's package), pinned exactly, with Ivan's yes,** parses the articles into
+  blocks the window draws itself; tables, images and HTML are refused by the test. **Smart punctuation is
+  off.** Why: the first snapshots showed it curling quotes the rest of the app writes straight, and it
+  would turn `--` into the dashes Ivan's rule forbids.
+- **No URL scheme is registered.** Show Me links are buttons inside Help, and an article's links only open
+  other articles. Why: a registered `prakriti://` scheme would let any web page drive the app.
+- **A debug switch, `--debug-help-search`, prints what the Help menu's search returns and quits,** so an
+  unattended check can read it. It is compiled only into Debug builds and refused by the installed copy.
+  Why: `make install` installs a Debug build, so `#if DEBUG` alone would have put it in the live app.
+
 ## 2026-10-11, Sun: v2 part M1, the new icons
 
 - **The Dock and Finder show "Recomposed": the ultramarine dot cut across its middle, the halves set

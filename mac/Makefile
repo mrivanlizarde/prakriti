@@ -5,7 +5,7 @@
 # make build      build the app (signed, warnings fail the build)
 # make test       run every unit test (includes the snapshot render)
 # make snapshots  render every screen, light and dark, to ../screens/mac/$(MILESTONE)/
-#                 (ONLY=recording draws just the recording pages, for a quick look)
+#                 (ONLY=recording draws just the recording pages, ONLY=help just the Help window)
 # make fixtures   build the shared test files of v2 (docs/v2/PLAN.md section 4) from the 13 Sep and
 #                 6 Sep talks and macOS `say` into ~/Prakriti/Dev/Fixtures, every time from scratch;
 #                 prints each file's SHA-256 and whether it is the SAME as the last run (about 15 s)
@@ -55,6 +55,12 @@
 #                 is only read) into build/store-copy and open the COPY with this build's models.
 #                 Run it before `make install` whenever the models change
 # make run        build, then open the app
+# make accept-help  v2 part M2a's check of Prakriti Help in the REAL app: the Help window opened on its own
+#                 with sample data at three articles and a search, light and dark, captured to
+#                 ../screens/mac/$(MILESTONE)/real/; then the Help menu's search handler run for OBS,
+#                 notifications and privacy (the debug switch --debug-help-search), each needing its
+#                 expected article first. Writes acceptance-help.txt (takes the screen's focus for about
+#                 half a minute)
 # make look       open the REAL app on sample data, capture every screen light and dark to
 #                 ../screens/mac/$(MILESTONE)/real/, and check the selected sidebar row (takes the
 #                 screen's focus for about a minute; do not touch the Mac while it runs)
@@ -74,7 +80,7 @@ MODE      ?= development
 ONLY      ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: generate build test snapshots fixtures accept regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text migrate-check run look check install drop
+.PHONY: generate build test snapshots fixtures accept regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-help migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -114,6 +120,9 @@ accept-podcast:
 
 accept-episode-text:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=episode-text TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/EpisodeTextAcceptanceTests
+
+accept-help: build
+	swift scripts/capture-window.swift --help $(APP) ../screens/mac/$(MILESTONE)/real
 
 STORE_COPY = $(CURDIR)/$(DERIVED)/store-copy/Prakriti.store
 

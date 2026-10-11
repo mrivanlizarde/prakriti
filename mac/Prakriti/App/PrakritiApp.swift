@@ -18,7 +18,21 @@ struct PrakritiApp: App {
         }
         .defaultSize(width: MainWindow.size.width, height: MainWindow.size.height)
         .windowResizability(.contentMinSize)
+        // A capture of Help alone (--sample-data --show=help) opens only the Help window.
+        .defaultLaunchBehavior(CaptureLaunch.current?.showsHelp == true ? .suppressed : .automatic)
         .commands { AppCommands(model: model) }
+
+        // Prakriti Help (v2 part M2a): opened from the Help menu, its search, or a capture.
+        Window("Prakriti Help", id: HelpWindow.id) {
+            HelpWindow()
+                .environment(model)
+                .preferredColorScheme(CaptureLaunch.current?.colorScheme)
+        }
+        .defaultSize(width: HelpWindow.size.width, height: HelpWindow.size.height)
+        .windowResizability(.contentMinSize)
+        .defaultLaunchBehavior(CaptureLaunch.current?.showsHelp == true ? .presented : .suppressed)
+        // Never reopened by itself at the next launch: Prakriti opens at login, and Help is asked for.
+        .restorationBehavior(.disabled)
 
         MenuBarExtra(isInserted: Binding(get: { model.settings.showInMenuBar },
                                          set: { model.settings.showInMenuBar = $0 })) {
@@ -73,6 +87,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         source.setEventHandler { NSApp.terminate(nil) }
         source.resume()
         terminationSignal = source
+
+        // The Help menu's search field lists Help articles beside the menu commands (v2 part M2a).
+        if let search = model.helpMenuSearch {
+            NSApp.registerUserInterfaceItemSearchHandler(search)
+        }
+        if !model.help.library.problems.isEmpty {
+            model.log.write("Help could not read \(model.help.library.problems.count) article(s): \(model.help.library.problems.joined(separator: "; "))")
+        }
 
         let atLogin = Self.launchedAsLoginItem
         model.log.write("Finished launching\(atLogin ? " at login" : ""). Mode: \(model.paths.mode.rawValue). Menu bar item: \(model.settings.showInMenuBar ? "shown" : "hidden").")
@@ -129,7 +151,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-/// The menu bar commands: Process File, Add File, Add Folder, Pause All, and Settings in the main window.
+/// The menu bar commands: Process File, Add File, Add Folder, Pause All, Settings in the main window,
+/// and the Help menu.
 struct AppCommands: Commands {
     let model: AppModel
     @Environment(\.openWindow) private var openWindow
@@ -153,6 +176,17 @@ struct AppCommands: Commands {
             Button(model.settings.isPaused ? "Resume All" : "Pause All") {
                 model.setPaused(!model.settings.isPaused)
             }
+        }
+        // The Help menu (v2 part M2a). macOS adds its own search field at the top, which also lists
+        // Help articles through HelpMenuSearch. Welcome to Prakriti joins these with the welcome window.
+        CommandGroup(replacing: .help) {
+            Button("Prakriti Help") {
+                openWindow(id: HelpWindow.id)
+                NSApp.activate()
+            }
+            .keyboardShortcut("?", modifiers: .command)
+            Divider()
+            Button("Show Log in Finder") { model.showLogInFinder() }
         }
     }
 }

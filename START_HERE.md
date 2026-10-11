@@ -554,6 +554,16 @@ as a black-and-clear template glyph, one shape per state: the mark when idle, th
 every 0.7 s while working (held still with Reduce Motion on), a dot when something waits, an
 exclamation mark for a problem, an outline when paused, a dashed outline when not watching. v1's
 drawn dot (`make_icon.swift`) and its icon set are gone. See `docs/BUILD-LOG.md`, "v2 part M1".
+**v2 part M2a (Help), Sun 11 Oct:** Prakriti Help is in the app: Help, Prakriti Help (Command-?) opens a
+window of the eleven articles by section, each drawn at 17 pt from its Markdown (Apple's swift-markdown
+0.9.0, pinned), with Back and Forward, search as you type, Related links, and **Show Me** buttons that open
+the screen an article describes. The Help menu's own search field lists the articles too, and Help, Show
+Log in Finder shows today's log. **Help shows only what is built:** every block of an article that
+describes a later part's feature (`:::requires video` and so on) is hidden until that part switches its
+capability on, and a test fails if a feature name of an unbuilt part is visible. The articles moved from
+`docs/v2/help/` to `mac/Prakriti/Resources/Help/`, their builder notes to `docs/v2/help-notes/`, and each
+was rewritten to describe v1 with the podcast-ready episode as it is today. See `docs/BUILD-LOG.md`, "v2
+part M2a".
 
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
@@ -600,6 +610,9 @@ folders, beside the live one.
   A class is never made ready. For episode 1, the cuts and the intro in `docs/BUILD-LOG.md`, "Podcast-ready
   episode: the handoff", come first; and Make Again replaces engine v0's `episode.mp3`, so the handoff gives
   the one command that copies it aside before you do.
+- **Help.** Help, Prakriti Help (Command-?) opens the Help window; typing in the Help menu's search field
+  finds an article too. Help, Show Log in Finder shows today's log. Help describes only what the app does
+  today.
 - **Pause it.** Pause All (the window's toolbar, the menu bar, or Settings). A recording already
   running finishes; nothing new is found or started until Resume All.
 - **Stop it.** The mark in the menu bar, Quit Prakriti (or Command-Q with the window in front). It stays stopped
@@ -671,6 +684,15 @@ cd ~/Code/prakriti/mac && make accept-podcast MILESTONE=podcast
 ```
 ```bash
 cd ~/Code/prakriti/mac && make accept-episode-text MILESTONE=episode-text
+```
+```bash
+cd ~/Code/prakriti/mac && make accept-help MILESTONE=v2-m2a
+```
+```bash
+cd ~/Code/prakriti/mac && make snapshots MILESTONE=v2-m2a ONLY=help
+```
+```bash
+cd ~/Code/prakriti/mac && build/Build/Products/Debug/Prakriti.app/Contents/MacOS/Prakriti --debug-help-search=OBS
 ```
 ```bash
 cd ~/Code/prakriti/mac && make migrate-check
@@ -751,7 +773,15 @@ to 5:30 cut on its page, made again, approved into `~/Prakriti/Dev/Approved`, th
 measured with ffprobe against the first episode (about 40 s shorter), the cut words checked gone from
 the approved transcript and by transcribing the approved episode again, then marked as a class and
 refused; it writes `acceptance-edits.txt` and pictures of each state. `make snapshots ONLY=recording`
-draws only the recording pages, for a quick look. `make accept-models` is milestone 6's check on the
+draws only the recording pages, for a quick look, and `ONLY=help` only the Help window: every article
+this build shows, light and dark, each screenful of a long one, and a search's results. `make
+accept-help` (v2 part M2a, about half a minute, takes the screen's focus) opens the **real** Help window
+on its own (`--sample-data --show=help`, at `--help-article=<id>` or `--help-search=<words>`) at three
+articles and a search in light and dark, captures each into `screens/mac/<milestone>/real/`, checks only
+the Help window opened, then runs the Help menu's search handler for OBS, notifications and privacy
+through the debug switch `--debug-help-search=<words>` (it prints the article ids and quits; Debug builds
+only, never read by the installed copy) and needs the expected article first in each; it writes
+`acceptance-help.txt`. `make accept-models` is milestone 6's check on the
 **real 13 Sep talk** with the **real models** (about 11 to 15 minutes, nearly all of it Qwen3.8-27B
 thinking; it needs LM Studio's server running at the Models screen's address with the model
 downloaded): writing is set to the Claude API on purpose, so the privacy lock must hand it to LM Studio
@@ -782,7 +812,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 |---|---|
 | Project definition (source of truth) | `mac/project.yml`; `make generate` rebuilds `Prakriti.xcodeproj`, and both are committed |
 | App code | `mac/Prakriti/App` (launch, paths, settings, log, `PipelineRunner`, `Watcher`, `Notices`, `LoginItem` with the instance lock, `EngineV0Import`, `StatusSummary` and the menu bar's `WorkingTicker`), `Engine` (the pipeline: `Subprocess`, `Readiness`, `Measurements`, `Pipeline` with `Mastering`, `Report`; the watcher's `FolderScan` and `EventStream`), `Model` (vocabulary, SwiftData models, store), `Views`, `Fixtures` |
-| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `RecordingPageTests` (milestone 5: edits, the episode's clock, typed times, the cut's words gone through Parakeet with the Mac's voice, six sentences of Parakeet's real misplaced tokens, what the report names, the page's player, Approve and its refusals), `EditsAcceptanceTests` (the 13 Sep talk trimmed, cut, made again and approved, `make accept-edits` only), `StoreMigrationTests` (`make migrate-check` only), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share) |
+| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `RecordingPageTests` (milestone 5: edits, the episode's clock, typed times, the cut's words gone through Parakeet with the Mac's voice, six sentences of Parakeet's real misplaced tokens, what the report names, the page's player, Approve and its refusals), `EditsAcceptanceTests` (the 13 Sep talk trimmed, cut, made again and approved, `make accept-edits` only), `StoreMigrationTests` (`make migrate-check` only), `HelpTests` (v2 part M2a: the articles, the capability blocks, links, the copy rules, what only Help may show, search, the Help menu's handler, Show Me), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share, the main window and the Help window) |
 | Real-window capture | `mac/scripts/capture-window.swift` (run by `make look` and `make check`); also `--analyze <png>` to check any capture, `--window <app> <png>` to capture the running app as it is, `--app-icon <app> <folder>` to draw the app's icon as Finder gets it at 512 and 32 px and measure its cut, and `--menu-bar <app> <seconds> <folder>` to read every Prakriti mark in the real menu bar over time (v2 part M1) |
 | Real-app pipeline check | `mac/scripts/process-in-app.sh <file> <folder>` |
 | The writing models (milestone 6) | `mac/Prakriti/Writing/`: `ModelClients.swift` (the request and reply, LM Studio with its load at 65,536 tokens, Ollama, the Claude API), `AppleOnDevice.swift` (Foundation Models, guided generation for tags and summaries), `Keychain.swift` (the Claude API key), `Writer.swift` (prompts, the privacy lock, tries, `WritingCheck`, `WrittenPackage` and `show-notes.md`); `App/ModelActions.swift` (test buttons, the key, Write Again, Use This Title); `Views/ModelsView.swift`, `Views/WritingSection.swift`; the pipeline step `.writing` and `PipelineRunner.write` (Write Again); tests `WritingTests` (in `make test`) and `ModelsAcceptanceTests` (`make accept-models`) |
@@ -806,6 +836,8 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | Log, development mode | `~/Library/Logs/Prakriti/Development/<date>.log`, one line per event |
 | Working folders, development mode | `~/Prakriti/Dev/Drop`, `~/Prakriti/Dev/Outputs`, `~/Prakriti/Dev/Approved` |
 | App icon | `mac/Prakriti/Resources/AppIcon.icon`, an Icon Composer document (two glass layers on stone; default, dark, clear and tinted), copied from the master `docs/v2/icons/source/Prakriti.icon`. `actool` compiles it into `Assets.car` and `AppIcon.icns`, and Info.plist gets `CFBundleIconName` by itself. Design, sources and previews: `docs/v2/icons/` (since v2 part M1; v1's `make_icon.swift` is retired) |
+| Prakriti Help (v2 part M2a) | The articles: `mac/Prakriti/Resources/Help/00-index.md` to `10-troubleshooting.md` (user text only, copied into the app as `Contents/Resources/Help`); their notes: `docs/v2/help-notes/`; how to write one: `docs/v2/help/README.md`. Code: `mac/Prakriti/Help/` (`Capabilities` (what is built), `HelpArticle` (front matter), `HelpLibrary` (loading, the `:::` pass, links, places), `HelpRenderer` (swift-markdown to blocks), `HelpSearch`, `HelpMenuSearch` (the Help menu's search field), `HelpModel` (the open article, Back and Forward, Show Me)), `Views/Help/` (`HelpWindow`, `HelpArticleView`), `App/DebugSwitches.swift` (`--debug-help-search`); the Help menu in `App/PrakritiApp.swift`; tests `HelpTests` and `SnapshotTests.testRenderHelp` |
+| Swift packages | `swift-markdown` 0.9.0 (21 Sep 2026, with `swift-cmark` 0.9.0), pinned in `mac/project.yml` and `mac/Prakriti.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, both committed (v2 part M2a) |
 | Menu bar mark | Seven template image sets in `Assets.xcassets` (`prakriti-menubar`, `-working-1`, `-working-2`, `-waiting`, `-problem`, `-paused`, `-not-watching`), copied from `docs/v2/icons/source/menubar/imagesets/`; which one each state draws is `StatusSummary.Icon.menuBarAsset`; the working frames are turned by `App/WorkingTicker.swift` |
 
 ### Load-bearing warnings for the Mac app
@@ -1181,6 +1213,38 @@ top and its end. Reading the code is not verification, and neither is a passing 
     build folder's date on the bundle (10 Oct), and macOS keeps an app's icon cached against that date,
     so after the first M1 install Finder's icon for `~/Applications/Prakriti.app` was still v1's dot
     while the bundle held the cut disc (measured 11 Oct); with a new date it read the cut disc.
+
+74. **Help shows only what the build does.** Each article, and each block inside one (`:::requires video`
+    ... `:::`, or `:::unless video` for what is true until then), names the capability it describes, and
+    `Capabilities.built` decides what is visible; a part switches its own capability on in the same commit
+    as its feature and rewrites the blocks it makes visible. `HelpTests.unbuiltNames` lists the feature
+    names each part introduces and fails if any is visible before its part is built (proved by breaking
+    it). Reason: the v2 help drafts described a viewer, faces and an edited video that did not exist, and
+    Help that promises a feature is the copy drifting from the build (PLAN R16).
+75. **The `:::` blocks are resolved in a text pass before swift-markdown parses anything, and swift-markdown
+    parses with smart punctuation off.** Blocks never nest; an unclosed block, a stray `:::` or an unknown
+    capability leaves the article out of Help and fails the test. Reason: swift-markdown does not know the
+    fence (its directives are `@Name { }`); and its smart punctuation curled every quote (measured on the
+    first Help snapshots) and turns `--` into an en dash and `---` into an em dash, which Ivan's rule forbids
+    anywhere Prakriti shows text.
+76. **The `prakriti://` and `prakriti-help://` links work only inside the Help window; the app registers no
+    URL scheme** (`CFBundleURLTypes` absent, tested). Show Me links are buttons, and a link in an article
+    opens only another article, never a web page. Reason: a registered scheme would let any web page or
+    app drive Prakriti.
+77. **Debug switches (`--debug-help-search`, and the later `--debug-playback-log` and `--debug-status-log`)
+    are compiled only into Debug builds and are never read by `~/Applications/Prakriti.app`**
+    (`DebugSwitches.isAllowed`, tested). Reason: `make install` installs the Debug build, so `#if DEBUG`
+    alone would put them in the live app, and a check's flag must never make the live watcher quit.
+78. **The Help articles are moved and copied by name, never by a `*.md` glob, and the app's Help folder must
+    hold exactly the eleven articles** (`HelpTests.testTheAppHoldsExactlyTheElevenArticles`). Builder notes
+    live in `docs/v2/help-notes/`, never in an article. Reason: a glob would have shipped
+    `welcome-panels.md` as a Help article, and notes in an article are text Ivan would see.
+
+79. **Drive or read a development copy's menus and buttons through Accessibility by process id
+    (`AXUIElementCreateApplication(pid)`), never through System Events.** System Events finds a process by
+    name, even when asked `whose unix id is`, and the live and development copies are both named Prakriti.
+    Reason: in v2 part M2a two "Prakriti Help" clicks meant for a development copy went to the live app
+    (two "Help isn't available" alerts there), and its menu was misread as the new build's.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

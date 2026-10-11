@@ -22,6 +22,8 @@ final class SnapshotTests: XCTestCase {
         // `make snapshots ONLY=recording` draws just the recording pages, for quick looks while
         // working on them; the full set is the milestone's check.
         let only = ProcessInfo.processInfo.environment["PRAKRITI_SNAPSHOT_ONLY"].flatMap { $0.isEmpty ? nil : $0 }
+        // ONLY=help draws only the Help window (testRenderHelp).
+        if only == "help" { return }
         for (index, item) in SidebarItem.allCases.enumerated() where only == nil {
             for (scheme, appearance) in appearances {
                 let model = Fixtures.model()
@@ -153,5 +155,37 @@ final class SnapshotTests: XCTestCase {
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
         XCTAssertEqual(written.count, SidebarItem.allCases.count * 2 + 26)
+    }
+
+    /// v2 part M2a: the Help window, open at every article this build shows, in light and dark, with a
+    /// picture of each screenful of a long article ("-p2", "-end"), and a search's results. Every one is
+    /// looked at: 17 pt body, nothing clipped (docs/v2/design-spec.md 5.8).
+    ///
+    ///   cd ~/Code/prakriti/mac && make snapshots MILESTONE=v2-m2a ONLY=help
+    func testRenderHelp() throws {
+        let only = ProcessInfo.processInfo.environment["PRAKRITI_SNAPSHOT_ONLY"].flatMap { $0.isEmpty ? nil : $0 }
+        guard only == nil || only == "help" else { return }
+        let renderer = try SnapshotRenderer(outputFolder: SnapshotRenderer.milestoneFolder())
+        let library = Fixtures.model().help.library
+        XCTAssertTrue(library.problems.isEmpty, "\(library.problems)")
+        var written: [String] = []
+        for (number, article) in library.visible.enumerated() {
+            for (scheme, appearance) in appearances {
+                let model = Fixtures.model()
+                XCTAssertTrue(model.help.open(article.id))
+                let name = String(format: "help-%02d-%@-%@", number, article.id, scheme)
+                try renderer.renderHelp(model: model, appearance: appearance, name: name)
+                written.append(name)
+            }
+        }
+        for (scheme, appearance) in appearances {
+            let model = Fixtures.model()
+            model.help.searchText = "notifications"
+            let name = "help-search-notifications-\(scheme)"
+            try renderer.renderHelp(model: model, appearance: appearance, name: name)
+            written.append(name)
+        }
+        print("Help snapshots written to \(renderer.outputFolder.path): \(written.count)")
+        XCTAssertEqual(written.count, library.visible.count * 2 + 2)
     }
 }

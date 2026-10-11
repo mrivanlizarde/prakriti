@@ -9,6 +9,7 @@
 //   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift build/Build/Products/Debug/Prakriti.app ../screens/mac/latest/real
 //   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --analyze some-capture.png
 //   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --window build/Build/Products/Debug/Prakriti.app out.png
+//   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --help build/Build/Products/Debug/Prakriti.app ../screens/mac/v2-m2a/real
 //
 // The app opens with --sample-data: the same sample recordings as the snapshots, in memory only,
 // so nothing is saved and Ivan's store is never opened. Each launch takes the screen's focus for a
@@ -405,6 +406,78 @@ if args.first == "--menu-bar", args.count == 4, let seconds = Double(args[2]) {
           : sawTurning ? "PASS  the working frames turned every 0.7 s, and every other state held still"
           : "PASS  every state held still (nothing was working during the capture)")
     exit(animatedRight ? 0 : 1)
+}
+// Prakriti Help (v2 part M2a): the REAL Help window, opened on its own with sample data
+// (`--sample-data --show=help`) at three articles and at a search, in light and dark, each captured with
+// `screencapture -l`; then the Help menu's own search handler, run through the debug switch
+// `--debug-help-search` for three words, must list the expected article first. Writes
+// acceptance-help.txt in the folder above the pictures. Help shows no recording, so no picture of anyone
+// is made.
+//   cd ~/Code/prakriti/mac && make accept-help MILESTONE=v2-m2a
+if args.first == "--help", args.count == 3 {
+    let app = URL(fileURLWithPath: args[1]).standardizedFileURL
+    let out = URL(fileURLWithPath: args[2]).standardizedFileURL
+    try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+    var report: [String] = ["Prakriti Help, real window and Help menu search (v2 part M2a)", "App: \(app.path)", ""]
+    var failures = 0
+    func say(_ line: String) { print(line); report.append(line) }
+    quitAll(app)
+    let pages: [(name: String, flags: [String])] = [
+        ("sources-and-watching", ["--help-article=sources-and-watching"]),
+        ("capture-the-best-video", ["--help-article=capture-the-best-video"]),
+        ("troubleshooting", ["--help-article=troubleshooting"]),
+        ("search-obs", ["--help-search=OBS"]),
+    ]
+    for appearance in appearances {
+        for (index, page) in pages.enumerated() {
+            let name = String(format: "help-%02d-%@-%@", index + 1, page.name, appearance)
+            run("/usr/bin/open", ["-n", app.path, "--args", "--sample-data", "--show=help", "--appearance=" + appearance] + page.flags)
+            var windows: [(CGWindowID, CGRect)] = []
+            var pid: pid_t = 0
+            let deadline = Date().addingTimeInterval(15)
+            while windows.isEmpty && Date() < deadline {
+                Thread.sleep(forTimeInterval: 0.3)
+                if let first = pids(of: app).first { pid = first; windows = layerZeroWindows(pid: pid).filter { $0.1.width > 600 } }
+            }
+            guard let window = windows.first else {
+                say("FAIL  \(name): the Help window did not appear within 15 s"); failures += 1; quitAll(app); continue
+            }
+            NSRunningApplication(processIdentifier: pid)?.activate()
+            Thread.sleep(forTimeInterval: 2.0)
+            // Help opens alone: the main window stays closed, so the capture is of Help and nothing else.
+            let all = layerZeroWindows(pid: pid).filter { $0.1.width > 600 }
+            let png = out.appending(path: name + ".png")
+            let (status, text) = run("/usr/sbin/screencapture", ["-x", "-o", "-l", String(window.0), png.path])
+            if status != 0 {
+                say("FAIL  \(name): screencapture said \(text.trimmingCharacters(in: .whitespacesAndNewlines))"); failures += 1
+            } else {
+                let size = NSImageRep(contentsOf: png).map { "\($0.pixelsWide)x\($0.pixelsHigh) px" } ?? "unreadable"
+                let alone = all.count == 1
+                if !alone { failures += 1 }
+                // The bounds read after the window settled (read while it opens, they are still growing).
+                let settled = all.first { $0.0 == window.0 }?.1 ?? window.1
+                say("\(alone ? "PASS" : "FAIL")  \(name): \(Int(settled.width))x\(Int(settled.height)) pt window, \(all.count) window(s) open, saved \(png.lastPathComponent) (\(size))")
+            }
+            quitAll(app)
+        }
+    }
+    // The Help menu's search handler, through the debug switch: it prints the article ids it returns.
+    let binary = app.appending(path: "Contents/MacOS/Prakriti")
+    say("")
+    for (words, expected) in [("OBS", "set-up-obs-for-prakriti"), ("notifications", "troubleshooting"), ("privacy", "people-and-privacy")] {
+        let (status, output) = run(binary.path, ["--debug-help-search=" + words])
+        let ids = output.split(separator: "\n").map(String.init).filter { $0.allSatisfy { $0.isLowercase || $0 == "-" } && !$0.isEmpty }
+        let ok = status == 0 && ids.first == expected
+        if !ok { failures += 1 }
+        say("\(ok ? "PASS" : "FAIL")  --debug-help-search=\(words): \(ids.isEmpty ? "nothing" : ids.joined(separator: ", ")) (expected \(expected) first; exit \(status))")
+    }
+    say("")
+    say(failures == 0 ? "PASS: Help opened alone at every article and search, light and dark, and the Help menu's search put the expected article first"
+                      : "FAIL: \(failures) check(s) failed")
+    let file = out.deletingLastPathComponent().appending(path: "acceptance-help.txt")
+    try? (report.joined(separator: "\n") + "\n").write(to: file, atomically: true, encoding: .utf8)
+    print("      wrote \(file.path)")
+    exit(failures == 0 ? 0 : 1)
 }
 if args.first == "--analyze" {
     let ok = args.dropFirst().map { describe(($0 as NSString).lastPathComponent, analyze(URL(fileURLWithPath: $0))) }

@@ -75,6 +75,12 @@ final class AppModel {
     /// Opens the main window. Set by a view that is on screen (the menu bar icon or the window),
     /// because SwiftUI only hands its openWindow action to views.
     @ObservationIgnored var openMainWindow: (() -> Void)?
+    /// Opens the Help window, set the same way (the menu bar icon, the main window, Help itself).
+    @ObservationIgnored var openHelpWindow: (() -> Void)?
+    /// Prakriti Help: the articles this build shows, the open one, Back and Forward, search (v2 part M2a).
+    let help: HelpModel
+    /// The Help menu's search field handler, registered at launch (AppDelegate).
+    @ObservationIgnored private(set) var helpMenuSearch: HelpMenuSearch?
 
     var selection: SidebarItem? = .today {
         didSet { if oldValue != selection { path = [] } }
@@ -103,9 +109,15 @@ final class AppModel {
         self.settings = settings
         self.log = log
         self.now = now
+        help = HelpModel(library: .bundled(), lastArticle: settings.helpLastArticle) { [settings] id in
+            settings.helpLastArticle = id
+        }
         runner.model = self
         watcher.model = self
         notifier.model = self
+        helpMenuSearch = HelpMenuSearch(index: help.index) { [weak self] articleID, search in
+            self?.openHelp(article: articleID, search: search)
+        }
     }
 
     var context: ModelContext { container.mainContext }
@@ -120,6 +132,11 @@ final class AppModel {
     /// The model for this launch. Under tests: an in-memory store, throwaway preferences and no
     /// files written, so a test run never touches Ivan's folders or his real store.
     static func launch() -> AppModel {
+        #if DEBUG
+        // Debug switches (docs/v2/PLAN.md rule 2.1.10): each does one thing and quits, before any store,
+        // lock or folder is touched. Never read by the installed copy (DebugSwitches.isAllowed).
+        DebugSwitches.runIfAsked()
+        #endif
         if isRunningTests {
             let model = AppModel(container: inMemoryContainer(), paths: AppPaths(mode: .development),
                                  settings: .ephemeral(), log: AppLog(directory: nil))
@@ -135,7 +152,17 @@ final class AppModel {
             let model = Fixtures.model(mode: paths.mode, log: AppLog(directory: AppPaths(mode: .development).logs))
             model.selection = launch.screen
             current = model
-            model.log.write("Opened with sample data for a window capture, showing \(launch.screen.title). Nothing is saved.")
+            model.log.write("Opened with sample data for a window capture, showing \(launch.showsHelp ? "Help" : launch.screen.title). Nothing is saved.")
+            // Help alone (v2 part M2a): the Help window opens instead of the main window, at one article
+            // or with a search filled in, so the capture finds one window.
+            if launch.showsHelp {
+                if let id = launch.helpArticle { model.help.open(id) }
+                // Typed once the window is up, as a person would: set before the window existed, the
+                // search field drew its text in the Mac's own appearance (white on a light capture).
+                if let search = launch.helpSearch {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { model.help.searchText = search }
+                }
+            }
             // Shows the refusal alert in the real window, through the same path Add Folder takes.
             if let folder = launch.addFolder {
                 model.addSource(at: URL(fileURLWithPath: folder, isDirectory: true))
@@ -397,6 +424,48 @@ final class AppModel {
         selection = item
     }
 
+    // MARK: Help
+
+    /// Opens the Help window at an article (if this build shows it), or with a search filled in.
+    func openHelp(article id: String? = nil, search: String? = nil) {
+        if let id { help.open(id) }
+        if let search { help.searchText = search }
+        if let openHelpWindow {
+            openHelpWindow()
+        } else {
+            // No view has handed over SwiftUI's openWindow yet (the menu bar item hidden and the main
+            // window closed): the Help menu's own Prakriti Help item opens the window instead.
+            Self.chooseHelpMenuItem("Prakriti Help")
+        }
+        NSApp.activate()
+    }
+
+    /// Help, Show Log in Finder: today's log selected in the Finder, or its folder if nothing is
+    /// written yet today. Ivan never has to type a path (help article 10).
+    func showLogInFinder() {
+        let target = logToShow
+        if target.selects {
+            NSWorkspace.shared.activateFileViewerSelecting([target.url])
+        } else {
+            try? FileManager.default.createDirectory(at: target.url, withIntermediateDirectories: true)
+            NSWorkspace.shared.open(target.url)
+        }
+        log.write("Help: Show Log in Finder showed \(paths.display(target.url.path)).")
+    }
+
+    /// What Show Log in Finder shows: this mode's log for today, selected, or its folder when nothing has
+    /// been written today. A window capture's sample data writes to the development log, so it shows that.
+    var logToShow: (url: URL, selects: Bool) {
+        if let today = log.todayFile, FileManager.default.fileExists(atPath: today.path) { return (today, true) }
+        return (log.todayFile?.deletingLastPathComponent() ?? paths.logs, false)
+    }
+
+    private static func chooseHelpMenuItem(_ title: String) {
+        let menu = NSApp.helpMenu ?? NSApp.mainMenu?.items.last { $0.submenu != nil }?.submenu
+        guard let menu, let index = menu.items.firstIndex(where: { $0.title == title }) else { return }
+        menu.performActionForItem(at: index)
+    }
+
     func open(_ recording: Recording) {
         selection = .recordings
         path = [RecordingRoute(id: recording.persistentModelID)]
@@ -556,6 +625,11 @@ struct CaptureLaunch {
     let addFolder: String?
     var openReady = false
     var sampleEdits = false
+    /// `--show=help`: the Help window opens on its own, without the main window (v2 part M2a), at
+    /// `--help-article=<id>` or with `--help-search=<words>` in its search field.
+    var showsHelp = false
+    var helpArticle: String?
+    var helpSearch: String?
 
     static var current: CaptureLaunch? {
         let args = CommandLine.arguments
@@ -570,7 +644,9 @@ struct CaptureLaunch {
         default: nil
         }
         return CaptureLaunch(screen: screen, colorScheme: colorScheme, addFolder: value("--add-folder"),
-                             openReady: value("--open") == "ready", sampleEdits: args.contains("--sample-edits"))
+                             openReady: value("--open") == "ready", sampleEdits: args.contains("--sample-edits"),
+                             showsHelp: value("--show") == "help", helpArticle: value("--help-article"),
+                             helpSearch: value("--help-search"))
     }
 }
 

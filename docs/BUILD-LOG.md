@@ -2350,3 +2350,201 @@ disc, for the negative control); the real menu bar items `menubar-sample-working
 - Three decisions this part raised, none urgent: a Dock badge counting what waits for your yes (the
   old reason against one is gone); the website's favicon matching the cut disc; a trademark or likeness
   search before the mark goes anywhere public.
+
+---
+
+## v2 part M2a: Help in the app. Sun 11 Oct 2026
+
+The third part of v2 (`docs/v2/PLAN.md`, M2, part M2a; REQUEST item 2, "start building documentation for
+the help section of the app"): the eleven Help articles in the app, the capability blocks and their text
+pass, the Help window with its rendering and search, the Help menu's search field and the Help menu
+items. Nothing from M2b (the welcome window) was built. Built on `main`, as this run's instructions said
+(the plan's rule 2.1.1 names a `v2-m2a` branch). swift-markdown was fetched with Ivan's yes (PLAN section
+11), pinned exactly.
+
+### What was built
+
+- **The articles moved into the app, one by one** (`git mv` of `00-index.md` to `10-troubleshooting.md`,
+  never a glob) to `mac/Prakriti/Resources/Help/`, copied into the bundle as one folder,
+  `Contents/Resources/Help`. `welcome-panels.md` moved to `docs/v2/help-notes/` (M2b's copy source); every
+  "Builder notes" section moved to `docs/v2/help-notes/<same name>.md`, each with a "Status after v2 part
+  M2a" section saying what is visible, what is gated and what was corrected; `docs/v2/help/README.md`
+  says how an article is written now. Front matter gained `section`, `order` and the optional `requires`;
+  `related` now holds article ids.
+- **Every article rewritten so that, with only Help built, each visible sentence is true of today's
+  app** (v1 with the podcast-ready episode and M1's icons). Corrected against the v1 code: a new folder
+  starts as Ask me first; outputs show under a folder only with Make outputs automatically; Add File waits
+  for Make Outputs, File, Process File starts at once; iCloud files are asked for and waited on for up to an
+  hour; the recording page's Listen (Episode or Original), transcript lines, Control-click menu, Trim and
+  cuts and Clear Trim and Cuts; Approve's real rules (Talk, one teacher speaking; edits made); "Approved
+  before this change"; the podcast-ready folder as built on 10 and 11 Oct (`Episode text.txt` and `.md`,
+  `Upload checklist.txt`, MISSING until Ivan sets show, host and artwork, a class never made ready); the
+  v1 privacy lock (a class, or "Serenity" in the transcript); the four providers and three tasks; Show Log
+  in Finder. v2 text was kept, wrapped in capability blocks, for the part that builds it to confirm.
+  Tables became lists (design spec 5.3: no tables); "See also" lists went, because the window draws
+  Related links from `related`.
+- **Capabilities** (`Help/Capabilities.swift`): `help`, `welcome`, `viewer`, `progress`, `captureCheck`,
+  `cloudProviders`, `people`, `gallery`, `video`, `style`, `timelines`, `shorts`, `thumbnails`, `merge`;
+  only `help` is built. An article whose `requires` is not built is hidden (today: Editorial direction);
+  a block between `:::requires <capability>` and `:::` is hidden while it is not built, and a block
+  between `:::unless <capability>` and `:::` shows only until it is.
+- **The `:::` pass** (`HelpLibrary.resolve`): a text pass before swift-markdown parses anything; fence
+  lines are removed, so a block can sit inside a list. Nested blocks, an unclosed block, a stray `:::`, a
+  malformed fence and an unknown capability are errors: the article is left out and named in the
+  library's problems, and the Help test fails.
+- **Rendering** (`Help/HelpRenderer.swift`, `Views/Help/HelpArticleView.swift`): swift-markdown 0.9.0
+  (21 Sep 2026, with swift-cmark 0.9.0; both pinned in `Package.resolved`, committed) parses the article
+  with smart punctuation off into plain blocks (headings, paragraphs, numbered and bulleted lists, nested
+  lists, code blocks, rules); anything else (a table, an image, HTML, a quote) is named as a problem and
+  not drawn. Drawn with `AppFont`: title 28 pt, sections 21, subsections 17 semibold, body 17, code 15
+  monospaced; at most 680 pt wide; "Tip:", "Note:" and "Important:" with a symbol; links in the accent
+  (light) and #7D8BFF (dark, design spec C7); Related links at the end; text selectable.
+- **Links:** `NN-name.md` (with or without `#heading`) and `prakriti-help://<id>` open an article inside
+  Help; `prakriti://show/<screen>` is a **Show Me** button that opens the main window at that screen. No
+  URL scheme is registered (no `CFBundleURLTypes`), and nothing in Help opens a web page.
+- **The Help window** (`Window` id `help`, 960 by 720, Help, Prakriti Help, Command-?): the sections and
+  their articles in a sidebar (section names 15 pt semibold, titles 17 pt; a section with no visible
+  article is not shown; People and Privacy is called Privacy until `people` is built), Back and Forward
+  (Command-[ and Command-]), the article's title in the toolbar, search as you type in the toolbar's
+  search field (results: title, summary and the sentence holding the most searched words; choosing one
+  opens it). It opens on the contents page, then on the last article read (a preference). It is never
+  reopened by itself at launch.
+- **Search** (`Help/HelpSearch.swift`): over the visible articles and visible blocks only; every searched
+  word must be found; title 1,000, keywords 100, summary 10, text 1 per hit (up to 9); case and accents
+  ignored; ties keep the sidebar's order.
+- **The Help menu's search field** (`Help/HelpMenuSearch.swift`): `NSApp.registerUserInterfaceItemSearchHandler`
+  at launch, with the same index, article ids as items, titles for the menu, choosing one opens the Help
+  window there, Show All Help Topics opens it with the search filled in.
+- **Help menu items:** Prakriti Help (Command-?) and Show Log in Finder (today's log selected in the
+  Finder, else its folder). Welcome to Prakriti waits for M2b's window.
+- **Debug switch** (`App/DebugSwitches.swift`, Debug builds only): `--debug-help-search=<words>` runs the
+  Help menu's search handler, prints the article ids it returns and quits, before any store, lock or
+  folder is touched. Because `make install` installs the Debug build, the switch also checks where the
+  app runs from: `~/Applications/Prakriti.app` never reads it.
+- **Capture flags** (`--sample-data` only): `--show=help` opens the Help window alone (the main window's
+  launch is suppressed), at `--help-article=<id>` or with `--help-search=<words>`.
+- **`make accept-help`** (`capture-window.swift --help`): the real Help window alone at three articles
+  and a search, light and dark, captured; then the debug switch for OBS, notifications and privacy; writes
+  `acceptance-help.txt`. **`make snapshots ONLY=help`** draws every visible article, light and dark, with
+  every screenful of a long one, and a search; `SnapshotRenderer` now draws any window with its own
+  sidebar (the Help sidebar's rows are checked for a readable label; they have no icon).
+- **Tests:** `HelpTests` (22) and `SnapshotTests.testRenderHelp`, listed under Checks.
+- **Docs:** START_HERE (the M2a line, Day to day's Help, the commands and what they do, two Where things
+  live rows, the tests row, warnings 74 to 79), CHANGELOG, README (one line), `docs/v2/help/README.md`,
+  `docs/v2/help-notes/`.
+
+### Checks run, with results (PLAN M2, the checks part M2a runs: 1, 2 and 3 for the articles, 4, 6)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `make test`, including `HelpTests`: every article parses; ids unique; every `related` id and every link resolves; no file under `Resources/Help` contains "builder-notes", an em or en dash, "we" as a word, "Processing" or "tap"; every SF Symbol named exists | **PASS. 163 tests, 0 failures, 8 skipped by design** (the acceptance methods and the migration check), 490.7 s, on the final code (12:44 to 12:53); **0 compiler warnings** (the only "warning" lines are the `appintentsmetadataprocessor` tool line W4 describes and XCTest's main-thread Keychain note). The 22 Help tests: the app holds exactly the eleven articles (and the source folder too); all 11 parse with every field, ids unique, each `# Title` equal to its front matter; front matter read strictly (a missing section, an unknown section or capability, a word for an order, no front matter: each refused); every visible article draws with only the blocks Help draws, with only `help` and with every capability on; every `related` id exists and none lists itself; every link resolves, inside hidden blocks too; no visible link opens a hidden article; the copy rules over every byte of every file (dashes, HTML, "we", "our", "Processing", "tap"); no dash reaches visible text even from a written `--`; the SF Symbols Help uses (`lightbulb`, `info.circle`, `exclamationmark.triangle`, `arrow.forward.circle`, the chevrons, `questionmark.circle`) exist; the capability pass and its five refusals; search ranking; the Help menu handler; Show Me; Back, Forward and links; Show Log in Finder's target; no URL scheme; the installed copy refuses the debug switch. **Proved by breaking it:** an em dash in 05, the shorts block's fence removed in 03, an unclosed block at the end of 10, the Sources Show Me pointed at Models, and the installed-copy guard removed, all at once: 31 assertions failed, each naming its cause (the em dash by line, "shorts" visible in 03, "the block opened on line 152 is never closed", Show Me at Models, the guard); restored, all pass |
+| 2 | Capability test: with only `help` on, no visible text of any article names a feature of an unbuilt part; with every capability on, every article is visible | **PASS.** `testOnlyWhatIsBuiltIsVisible`: `Capabilities.built` is `[help]`; 36 feature names by the capability that builds them (the plan's Viewer, Blur Face, Final Cut Pro, DaVinci, Shorts, OpenAI and People, plus Welcome to Prakriti, time left, Activity window, Command-9, percent, capture check, Hybrid MOV, Unnamed, face and voice print, People gallery, Name This Person, Forget This Person, edited video, Ready to post, Make Video, house style, preset(s), Direction, zooms, FCPXML, timeline, vertical short, thumbnail(s), Moments From Other Recordings, supporting moment) found **0 times** in every visible title, summary, section name, block and Related line; the same check over the articles with every block shown finds them (the check works); Editorial direction hidden. `testWithEveryCapabilityEveryArticleIsVisible`: **11 of 11 visible, all 8 sections**. First run caught one false hit ("the Zoom gallery" in 02); the gallery phrases were narrowed |
+| 3 | `make accept-help MILESTONE=v2-m2a`: the real app with `--sample-data --show=help`, the real window for three articles in light and dark into `screens/mac/v2-m2a/real/`; `--debug-help-search=OBS`, `=notifications`, `=privacy` each print the expected article first; every PNG looked at: 17 pt body, nothing clipped | **PASS** (final code, 12:43 to 12:44). Sources and watching, Capture the best video, If something isn't working, and a search for OBS, light and dark: **each a 960 by 720 pt window, the only window open, 1920 by 1440 px**. **OBS: set-up-obs-for-prakriti first** (then capture-the-best-video, troubleshooting, welcome, index, sources-and-watching); **notifications: troubleshooting first** (welcome, people-and-privacy, index, sources-and-watching); **privacy: people-and-privacy first** (models-and-api-keys, index, troubleshooting, capture-the-best-video, sources-and-watching); exit 0 each. **All 8 PNGs looked at:** body at 17 pt (lines 46 px apart at 2x: 17 pt type with 3 pt spacing), titles 28, sections 21, sidebar section names 15 and rows 17, nothing clipped, the Show Me buttons and links readable in both, the selected row white on the accent. The search capture first drew the typed word white on white in light: the capture set the search before the window existed, on a Mac set to Dark; typed into the real field through Accessibility the word is dark (`typed-light.png`, looked at), so the capture now types it a second after the window opens, and the final light capture shows "OBS" in dark text. **Also run and looked at:** `make snapshots ONLY=help` and the full `make test` render, **78 Help pictures** (10 visible articles, light and dark, every screenful of the long ones, and a search for notifications), looked at in contact sheets of four, every one |
+| 4 | A Show Me link in "Sources and watching" opens the Sources place (a UI-model test) | **PASS.** `testShowMeInSourcesAndWatchingOpensSources`: the first Show Me in the article's first four blocks (step 1, in the first screenful of every snapshot and real capture) is `Show Me` to `screen(sources)`; performed on a model at Today, it opened the main window and selected **Sources**. **Also in the real app:** the Help window alone at that article, its Show Me pressed through Accessibility: the main window opened (1180 by 760) at **Sources** (`real/show-me-sources.png`, looked at) and the log said "Help: Show Me opened Sources." |
+| 6 | Regression set | **PASS** (`make regress MILESTONE=v2-m2a`, 12:24 to 12:40, exit 0): **`make test` 163 tests, 0 failures, 8 skipped** (492.6 s); **`make accept` PASS** (292.1 s): 13 Sep **-16.8 LUFS** (-16.82 by loudnorm's meter), true peak **-1.7 dBFS** (-1.68 dBTP), 2,948 words reaching 15:47 of 15:48, 137 captions for 137 sentences, 0 differing; **`silent-60s` Needs a decision** at -91 dB, nothing made; the 30 s clip filed as a test; 6 Sep -16.7 LUFS (-16.72), -1.4 dBFS (-1.43 dBTP), 9,952 words reaching 55:38 of 55:39, 555 captions; **`grep -c 2026-09-14 acceptance.txt`: 0**. **`make accept-edits` PASS** (179.3 s): the approved episode **38.82 s shorter (expected 38.82)**, the same SHA-256 as the made one, **0 of 73** cut runs heard and 189 of 201 from the minute after, a class refused. One capture-only change came after (the search typed a second later), so `make test` ran again on the final code (check 1) |
+
+**The Help menu in the real app**, read through Accessibility by process id: the development copy and,
+after the install, the live copy (pid 78010) list **Prakriti Help (Command-?)** and **Show Log in
+Finder** (with macOS 27's own "Send Prakriti Feedback to Apple" above them). Prakriti Help, chosen
+through Accessibility in a development copy, opened the 960 by 720 Help window; Show Log in Finder
+opened the Finder at `~/Library/Logs/Prakriti/Development` with `2026-10-11.log` selected
+(`real/show-log-in-finder.png`, looked at) and logged "Help: Show Log in Finder showed
+~/Library/Logs/Prakriti/Development/2026-10-11.log."
+
+**The originals:** unchanged, by `stat` before (12:24) and after (12:41): the 13 Sep talk 730,464,600
+bytes, modified 1789350092; the 6 Sep talk 2,578,079,009 bytes, 1788746532.
+
+**Ship gate.** `make migrate-check` **PASS** (12:53; no SwiftData model changed, run anyway; the new
+preference is in UserDefaults): the live store's copy opens, 11 recordings (2 ready), 2 folders, 30
+output settings, 290 Activity lines, titles on in 0 folders. **`make install`** at 12:53:19: BUILD
+SUCCEEDED, the old copy (pid 62658) quit cleanly ("Quit." 12:53:20), **new pid 78010, "Prakriti 0.1 (1)
+opened. Mode: live. Store: ~/Library/Application Support/Prakriti/Prakriti.store"** (no fallback store),
+login item on, "Caught up on changes made while Prakriti was closed: 0 events", `codesign --verify --deep
+--strict` passes (Apple Development, team LD587PB2H8, hardened runtime), the installed bundle holds the
+11 articles. **"Checked 2 folders. Nothing new." at 12:53:22 and again at 12:58:22**, still pid 78010. The live
+`~/Prakriti/Outputs`, `Approved` and `Drop`: the same 12 files with the same SHA-256 before the install and
+after the second heartbeat.
+
+### What the runs caught and fixed
+
+- **swift-markdown's smart punctuation curled every quote and apostrophe** in the first snapshots (the
+  rest of the app writes them straight, and Help's own sidebar titles too), and the same option turns `--`
+  into an en dash and `---` into an em dash. Off (`ParseOptions.disableSmartOpts`), with a test that a
+  written `--` reaches the reader as written.
+- **A Show Me link in the middle of a paragraph left two spaces** ("Click Activity in the sidebar.  Prakriti
+  writes ..."): the space on each side of the removed link is now one, with a test over every article.
+- **A search for "Keep Downloaded" showed the sentence "It keeps watching ..."**: the result line is now the
+  sentence holding the most searched words.
+- **"gallery" flagged "the Zoom gallery"** in the capture article as the People gallery: the forbidden
+  phrases for that capability are now "People gallery" and "gallery of".
+- **The light search capture drew the typed word white on white** (check 3): set before the window existed
+  on a Mac set to Dark. Typed for real, the word is dark; the capture now types a second after the window
+  opens. A try at giving captures the app-wide appearance did not change it and was taken back.
+- **A wrong reading of the Help menu, and what it did to the live app.** System Events finds a process by
+  name even when asked by process id, and both copies are named Prakriti, so the first reads of "the
+  development copy's" Help menu were the **live** copy's (v1 code, with macOS's default "Prakriti Help"
+  only), which looked like SwiftUI dropping the Help items. Two "Prakriti Help" clicks went to the live
+  copy and opened two "Help isn't available for Prakriti" alerts there, and activating it opened its main
+  window; both alerts were closed with OK, nothing else was touched, and the install restarted it. Read by
+  process id through Accessibility (a small script), the development copy had every item. **For a
+  verifier:** never address a Prakriti copy through System Events by name or by `whose unix id`; use
+  `AXUIElementCreateApplication(pid)`. A Finder query from this session also raised a macOS prompt,
+  "claude wants access to control Finder", which was left unanswered (For Ivan).
+
+### Decisions, each with its reason
+
+1. **Three capabilities beyond the plan's list: `welcome` (M2b), `captureCheck` (M4b) and `thumbnails`
+   (M11b).** Reason: each guards text that would be false today ("Help > Welcome to Prakriti", the capture
+   check, thumbnails) and belongs to a part that does not share a capability with another.
+2. **`:::unless <capability>` beside the plan's `:::requires`.** Reason: some sentences are true only until
+   a part lands (Approve's v1 rules, the Listen section, Hybrid MP4); without it, every-capability-on would
+   show both the old and new rules, and later parts would have to remember to delete old text.
+3. **Two titles changed while their features do not exist:** "Welcome to Prakriti" became "What Prakriti
+   does" (design spec 5.7's own title for `welcome`), and "People and privacy" became "Privacy and
+   students"; the section shows as Privacy. Ids stay. Reason: "Welcome to Prakriti" is M2b's menu item and
+   window, and there is no People feature until M6; M6 renames the article and the section.
+4. **Keywords name only what is built;** each note in `docs/v2/help-notes/` lists keywords to add later.
+   Reason: a Help menu search for a feature that does not exist must find nothing.
+5. **Tables became lists and "See also" lists became Related links from front matter.** Reason: the design
+   spec allows no tables at 17 pt in a narrow window, and Related filtered by visibility cannot link to a
+   hidden article.
+6. **Smart punctuation off** (above), so quotes are straight as in the rest of the app.
+7. **Help's links use the dark text accent #7D8BFF** (design spec C7) now, ahead of M3a. Reason: the dark
+   accent #4459E8 measures 3.05 to 1 on the dark window, under the 4.5 text needs, and Help is mostly text.
+8. **The debug switch checks the install location as well as `#if DEBUG`.** Reason: `make install`
+   installs a Debug build.
+9. **The Help window remembers its last article (a preference) and never reopens itself at launch**
+   (`.restorationBehavior(.disabled)`). Reason: Prakriti opens at login, and Help should not appear
+   uninvited; the remembered article is what design spec 5.2 asks for.
+10. **Code blocks wrap rather than scroll sideways.** Reason: nothing is clipped at any width, and selecting
+    the text copies it as written (the ffprobe command wraps across three lines on screen).
+11. **Show Me buttons sit under their paragraph or list item,** wherever the link is written. Reason: a
+    button inside running text cannot be drawn by SwiftUI's `Text`, and a button on its own line is easier
+    to hit.
+
+### Looked at (D1)
+
+No video frame, face or recording was made or looked at in this part: Help shows none. Looked at: the 8
+real-window captures and the 3 other real captures named above (`real/show-me-sources.png`,
+`real/show-log-in-finder.png`, and the light search typed through Accessibility), and all 78 Help
+snapshot pictures in `screens/mac/v2-m2a/`.
+
+### What does not work yet, or was not seen working
+
+- **Command-F inside the Help window** (design spec 5.2) is not built; the search field is clicked.
+- **The Help menu's search field was not typed into by a person or a script;** its handler was run through
+  the debug switch and the tests (results, titles, choosing one, Show All Help Topics).
+- **Command-? was not pressed;** the menu shows it (Accessibility reads the item's command key "?").
+- **The Help window's size is not shown to be remembered** between launches (not measured).
+- **Scrolled pages were not captured in the real window;** in the bitmap snapshots, text scrolled under
+  the toolbar shows through it, the glass limitation warning 7 describes.
+- **Quick Help, the "?" buttons and TipKit** wait for M3 (PLAN M2: they point at controls M3 creates).
+
+### For Ivan
+
+- [ ] **A macOS prompt may be waiting on your screen:** "claude wants access to control Finder". It came
+  from this session checking Show Log in Finder. Nothing needs it: click **Don't Allow**.
+- [ ] **Open Help once:** Help, Prakriti Help (or Command-?). It describes the app as it is today, so it
+  is shorter than the v2 drafts. Say what reads wrong, and whether "What Prakriti does" and "Privacy and
+  students" are the names you want until the people features arrive.
+- Nothing is blocked on you. The swift-markdown yes was already given (PLAN section 11).
