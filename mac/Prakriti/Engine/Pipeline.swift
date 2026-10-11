@@ -28,7 +28,7 @@ import Foundation
 /// The steps, in order. `title` is what the recording page lists; `doing` is what the status line
 /// says while it runs ("Working on Sun 13 Sep: making the episode audio"). Never "Processing".
 enum PipelineStep: String, CaseIterable, Sendable {
-    case complete, sound, speechAudio, transcript, coverage, wordList, trim, edits, episode, loudness, episodeTranscript, report
+    case complete, sound, speechAudio, transcript, coverage, wordList, trim, edits, episode, loudness, episodeTranscript, writing, report
 
     var title: String {
         switch self {
@@ -43,6 +43,7 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .episode: "Episode audio"
         case .loudness: "Loudness check"
         case .episodeTranscript: "Transcript matched to the episode"
+        case .writing: "Titles, show notes and chapters"
         case .report: "Report"
         }
     }
@@ -60,6 +61,7 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .episode: "Making the episode audio"
         case .loudness: "Measuring the episode audio"
         case .episodeTranscript: "Matching the transcript to the episode"
+        case .writing: "Writing the titles, show notes and chapters"
         case .report: "Writing the report"
         }
     }
@@ -109,6 +111,13 @@ struct PipelineOptions: Sendable {
     /// the sections cut out, on the original's clock. Empty: the episode is made as milestone 4 made it.
     var edits = EpisodeEdits()
 
+    /// Titles, show notes and chapters (milestone 6): who writes them, or nil when they are not made.
+    /// They are written from the transcript, so they are made only with it.
+    var writing: WritingSetup?
+    /// What the recording is, and whether Serenity is already known to be in it: the privacy lock.
+    var kind: RecordingKind = .unknown
+    var knownSerenity = false
+
     /// Anything taken out of the recording or added to it, so the episode's clock is not the
     /// original's and the transcript files are rewritten to follow the episode.
     var changesTheClock: Bool {
@@ -129,6 +138,7 @@ struct PipelineOptions: Sendable {
             steps += [.episode, .loudness]
             if makeTranscript && changesTheClock { steps.append(.episodeTranscript) }
         }
+        if makeTranscript && writing != nil { steps.append(.writing) }
         if makeReport { steps.append(.report) }
         return steps
     }
@@ -195,6 +205,11 @@ struct PipelineResult: Sendable {
     /// Files an earlier make left that this one replaced or removed (a transcript turned off).
     var replaced: [String] = []
     var seconds: Double = 0
+    /// The titles, show notes and chapters written and checked, or why they were not (milestone 6).
+    var written: WrittenPackage?
+    var writingProblem: String?
+    /// The transcript says "Serenity": the recording is privacy locked from now on.
+    var mentionsSerenity = false
 }
 
 struct PipelineProgress: Sendable {
@@ -545,6 +560,7 @@ struct Pipeline: Sendable {
                 }
                 let words = Measure.wordCount(text)
                 result.wordCount = words
+                result.mentionsSerenity = Privacy.mentionsSerenity(text)
                 await finish(.transcript, "\(Format.number(words)) words.")
 
                 await begin(.coverage)
@@ -687,7 +703,32 @@ struct Pipeline: Sendable {
                 }
             }
 
-            // 8. The report Ivan reads before he listens.
+            // 8. Titles, show notes and chapters, from the transcript as the episode plays it. A model
+            //    that is closed or answers badly costs only this step: the episode and transcript are
+            //    kept, the step says why, and Write Again on the page tries once more.
+            if options.makeTranscript, let setup = options.writing {
+                await begin(.writing)
+                guard let input = WritingInput.from(folder: staging, clock: result.clock, duration: ready.duration, applyLexicon: options.applyLexicon,
+                                                    label: label, fileName: file.lastPathComponent, kind: options.kind, knownSerenity: options.knownSerenity) else {
+                    throw PipelineFailure(step: .writing, reason: "The transcript could not be read to write the titles, show notes and chapters.")
+                }
+                let outcome = try await Writer(setup: setup, log: log).write(input)
+                result.mentionsSerenity = result.mentionsSerenity || outcome.mentionsSerenity
+                if let package = outcome.package {
+                    do {
+                        try package.save(in: staging, label: label, fileName: file.lastPathComponent)
+                    } catch {
+                        throw PipelineFailure(step: .writing, reason: "The titles, show notes and chapters were written but could not be saved.", detail: error.localizedDescription)
+                    }
+                    result.written = package
+                    await finish(.writing, package.stepLine)
+                } else {
+                    result.writingProblem = outcome.problem ?? "Nothing was written."
+                    await finish(.writing, (result.writingProblem ?? "") + " The episode and transcript are kept.", state: .failed)
+                }
+            }
+
+            // 9. The report Ivan reads before he listens.
             result.outcome = .ready
             if options.makeReport {
                 await begin(.report)
@@ -702,7 +743,7 @@ struct Pipeline: Sendable {
                 await finish(.report, "Written to REPORT.md, beside the episode.")
             }
 
-            // 9. Only now do the new files take the place of the old ones.
+            // 10. Only now do the new files take the place of the old ones.
             let placed: (files: [String], replaced: [String])
             do {
                 placed = try Self.place(staging, into: outputFolder)
@@ -768,11 +809,16 @@ struct Pipeline: Sendable {
         var made: [String] = []
         if options.makeEpisode { made.append("Episode audio") }
         if options.makeTranscript { made.append("transcript") }
-        var reason = made.isEmpty ? "The checks passed." : made.joined(separator: " and ") + (made.count > 1 ? " are ready." : " is ready.")
+        if options.makeTranscript && result.written != nil { made.append("show notes") }
+        let listed = made.count > 1 ? made.dropLast().joined(separator: ", ") + " and " + (made.last ?? "") : (made.first ?? "")
+        var reason = made.isEmpty ? "The checks passed." : listed + (made.count > 1 ? " are ready." : " is ready.")
         if result.coverageOK == false, let reaches = result.transcriptReaches, let duration = result.duration {
             reason += " The transcript stops at \(Format.timecode(reaches)) of \(Format.timecode(duration)): listen to the end before trusting it."
         } else {
             reason += " Speakers are not checked yet."
+        }
+        if let problem = result.writingProblem {
+            reason += " Titles, show notes and chapters were not written. \(problem)"
         }
         return reason
     }
@@ -925,6 +971,7 @@ struct Pipeline: Sendable {
     /// folder; anything else Ivan keeps there is left alone.
     static let madeNames: Set<String> = Set(["episode.mp3", "REPORT.md", "speech.wav", TranscriptFiles.asHeard]
                                             + TranscriptFormat.allCases.map(TranscriptFiles.fileName))
+        .union(WrittenPackage.fileNames)
 
     /// A hidden folder beside the recording's own, in the same Outputs folder (so a move is a rename).
     static func stagingFolder(for outputFolder: URL) -> URL {

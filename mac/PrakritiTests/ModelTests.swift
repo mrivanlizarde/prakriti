@@ -52,10 +52,11 @@ final class ModelTests: XCTestCase {
         // The folder's switches, as seeded.
         XCTAssertEqual(make(), [.podcastEpisode, .transcript, .checksAndReport])
 
-        // The folder turns titles on: they wait for the writing model (milestone 6), so not made.
+        // The folder turns titles on: since milestone 6 they are made (written from the transcript).
         drop.setting(for: .titlesNotesChapters)?.isOn = true
-        XCTAssertFalse(make().contains(.titlesNotesChapters))
-        XCTAssertFalse(OutputResolver.isOn(.titlesNotesChapters, recording: recording, source: nil, defaults: defaults))
+        XCTAssertEqual(make(), [.podcastEpisode, .transcript, .checksAndReport, .titlesNotesChapters])
+        XCTAssertTrue(OutputResolver.isOn(.titlesNotesChapters, recording: recording, source: nil, defaults: defaults))
+        drop.setting(for: .titlesNotesChapters)?.isOn = false
 
         // The folder turns the transcript off.
         drop.setting(for: .transcript)?.isOn = false
@@ -105,8 +106,10 @@ final class ModelTests: XCTestCase {
         standard.loudnessTarget = -12
         XCTAssertEqual(OutputResolver.details(for: .podcastEpisode, recording: recording, defaults: defaults)?.loudnessTarget, -19)
 
-        // Titles cannot be turned on before the writing model.
+        // Titles can be turned on for one recording (milestone 6), and off again.
         model.setOutput(.titlesNotesChapters, on: true, for: recording)
+        XCTAssertTrue(make().contains(.titlesNotesChapters))
+        model.setOutput(.titlesNotesChapters, on: false, for: recording)
         XCTAssertFalse(make().contains(.titlesNotesChapters))
 
         // Back to the folder's choices.

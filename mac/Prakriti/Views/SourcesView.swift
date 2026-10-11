@@ -163,8 +163,8 @@ struct OutputSwitch: View {
     }
 }
 
-/// The switch itself. An output that cannot be made yet (titles, until the writing model is
-/// connected) shows off and greyed, whatever is stored, so the screen never claims it is made.
+/// The switch itself. An output that cannot be made (one not built yet) shows off and greyed,
+/// whatever is stored, so the screen never claims it is made.
 struct OutputToggle: View {
     let kind: OutputKind
     @Binding var isOn: Bool
@@ -181,9 +181,7 @@ struct OutputToggle: View {
         .disabled(!kind.isAvailable)
     }
 
-    private var line: String {
-        kind.isAvailable || !kind.isBuilt ? kind.summary : "Not made yet: it needs the writing model, which Prakriti does not use yet."
-    }
+    private var line: String { kind.summary }
 }
 
 /// Drop a recording (or a folder) here. A dashed outline is the standard sign of a drop target.

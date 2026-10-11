@@ -131,18 +131,13 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
         }
     }
 
-    /// Can be made today. Titles, show notes and chapters are built into the plan and the screens
-    /// but need the writing model (milestone 6), so until then they are never made and their switch
-    /// is shown off and greyed, whatever is stored.
-    var isAvailable: Bool {
-        switch self {
-        case .podcastEpisode, .transcript, .checksAndReport: true
-        default: false
-        }
-    }
+    /// Can be made today. Since milestone 6 the four built outputs can; the five not built yet are
+    /// never made and their switch shows off and greyed, whatever is stored.
+    var isAvailable: Bool { isBuilt }
 
-    /// On for a new folder unless Ivan changes it. Titles wait for the writing model, which holds
-    /// about 33 GB of memory while it runs, so they start off.
+    /// On for a new folder unless Ivan changes it. Titles, show notes and chapters start off: the
+    /// writing model holds about 33 GB of memory while it runs and takes minutes per recording, so
+    /// Ivan turns them on per folder or per recording.
     var isOnByDefault: Bool {
         switch self {
         case .podcastEpisode, .transcript, .checksAndReport: true
@@ -193,6 +188,9 @@ enum SourceMode: String, Codable, CaseIterable, Sendable {
 
 enum RunTrigger: String, Codable, CaseIterable, Sendable {
     case launch, timer, fileEvent, byHand, makeAgain, retry, wake, checkNow
+    /// Writes the titles, show notes and chapters again from the transcript already made, and
+    /// nothing else (milestone 6).
+    case writeAgain
 
     var title: String {
         switch self {
@@ -204,6 +202,7 @@ enum RunTrigger: String, Codable, CaseIterable, Sendable {
         case .retry: "Trying again"
         case .wake: "After the Mac woke"
         case .checkNow: "Check Now"
+        case .writeAgain: "Write again"
         }
     }
 
@@ -211,7 +210,7 @@ enum RunTrigger: String, Codable, CaseIterable, Sendable {
     /// New Recording Found notice.
     var isAutomatic: Bool {
         switch self {
-        case .byHand, .makeAgain: false
+        case .byHand, .makeAgain, .writeAgain: false
         default: true
         }
     }
@@ -284,7 +283,7 @@ enum ModelTask: String, Codable, CaseIterable, Sendable {
         switch self {
         case .writing: "Titles, show notes and chapters."
         case .tagging: "Topics and terms for each recording."
-        case .summarizing: "Short summaries for the report."
+        case .summarizing: "A short summary, in the show notes."
         }
     }
 }

@@ -56,6 +56,13 @@ enum Report {
             rows.append(("Words as heard", "`\(TranscriptFiles.asHeard)`, every word with its time, is kept in the Outputs folder only. "
                          + "Approve never copies it: it keeps the words of anything taken out."))
         }
+        if options.makeTranscript && options.writing != nil {
+            // This report is copied into the approved folder, which gets show-notes.md but not the
+            // JSON (it keeps the model's own answer, quotes that failed the check included).
+            rows.append(("Titles, show notes and chapters", result.written.map {
+                "`\(WrittenPackage.notesFileName)` (and `\(WrittenPackage.fileName)`, kept in the Outputs folder only). " + $0.stepLine
+            } ?? "Not written. \(result.writingProblem ?? "")"))
+        }
 
         var text = "# \(label): \(file.lastPathComponent)\n\n"
         text += "Made by Prakriti for Mac on \(stamp(madeAt)) in \(Format.timecode(result.seconds)). **Nothing has been published.**\n\n"

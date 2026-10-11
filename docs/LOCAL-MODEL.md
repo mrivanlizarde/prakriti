@@ -33,3 +33,18 @@ license confirmed on Hugging Face the same day.
 Optional later: LM Studio's experimental Splash engine runs a 4-bit package about 7x faster with
 real reasoning-level control, but has no published quality comparison. A speed option, not the
 quality pick. Watch list: new open-weight releases due mid-October.
+
+## Measured in Prakriti for Mac, Sat 10 Oct (milestone 6)
+
+Every setting above is in the app (`mac/Prakriti/Writing/ModelClients.swift`, pinned by `WritingTests`).
+What running it on the 13 Sep talk (15:48, 2,948 words, 137 lines) showed:
+
+| | |
+|---|---|
+| Loading at 65,536 | Through LM Studio's REST API, `POST http://localhost:1235/api/v1/models/load` with `{"model": "qwen/qwen3.8-27b", "context_length": 65536}`; `GET /api/v1/models` shows each loaded instance's `config.context_length`; `POST /api/v1/models/unload` with `instance_id`. 8 to 10 s. The `lms` CLI cannot reach this server (port 1235), so HTTP is the only control |
+| `reasoning_effort: "medium"` | Honored on `/v1/chat/completions`: the same 41-token prompt measured 79 prompt tokens without the field and 41 with it, so it changes what the template builds. On the talk: 4,580, 7,117 and 5,073 thinking tokens in three runs, against about 48k at the template's default |
+| Time | 585 s, 847 s and 630 s for the writing request (the second while the Mac ran the unit tests beside it); about 5,200 to 5,300 tokens read, 5,300 to 7,700 written, about 9 tokens a second. The whole step, with Apple's tags and summary: 10 min 3 s, 14 min 25 s and 10 min 48 s |
+| Answers | All three runs: valid JSON as it came (no fence, no prose, after trimming the leading blank lines), passed every check on the first try: 3 titles, 3 chapters at real line times, 8, 7 and 8 quotes found word for word, none left out |
+| What a prompt must say | The first run's show notes repeated a private family matter from the talk; a rule against private matters (illness, deaths, family, money troubles) fixed it in the second. Chapter titles ran to 5 words until the prompt said "2 to 4 words (count them)" |
+| `response_format: json_schema` | Not used, and not tested: the JSON came back clean without it, and rule 4 checks it in Swift either way |
+| Memory | The app loads the model only for the writing step and unloads it after, so the 33 GB is held for about ten minutes per recording, not all day |

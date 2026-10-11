@@ -61,7 +61,8 @@ struct OutputsView: View {
     private var writerLine: String {
         let provider = model.settings.provider[.writing] ?? .lmStudio
         let writer = provider == .lmStudio ? Format.modelName(model.settings.lmStudioModel) + " in LM Studio" : provider.title
-        return "Needs the writing model (\(writer)), which Prakriti does not use yet, so these are not made. Classes, and anything with Serenity in it, will stay on this Mac."
+        return "Three title options, show notes, chapters and an accuracy checklist, written by \(writer) from the transcript, so they are made only with it. "
+            + "Every chapter time and quote is checked against the transcript. It takes minutes per recording. Classes, and anything with Serenity in it, stay on this Mac."
     }
 }
 

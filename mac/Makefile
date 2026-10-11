@@ -21,6 +21,15 @@
 #                 words checked gone by transcribing the approved episode again, then marked as a
 #                 class and refused. Writes acceptance-edits.txt and pictures of every state to
 #                 ../screens/mac/$(MILESTONE)/ (takes about 3 minutes)
+# make accept-models  milestone 6's acceptance on the REAL 13 Sep talk: made with titles, show notes
+#                 and chapters on, writing set to the Claude API on purpose (the talk names Serenity, so
+#                 the privacy lock must hand it to LM Studio; the Claude client only counts and refuses),
+#                 tags and summary on Apple on-device. Qwen3.8-27B is unloaded first so Prakriti's own
+#                 load at 65,536 tokens serves it. Every chapter time is checked against transcript.srt
+#                 and every quote against transcript.txt; then Apple on-device tags a short input and
+#                 each provider is tested for real. Needs LM Studio's server running with the model
+#                 downloaded. Writes acceptance-models.txt and pictures to ../screens/mac/$(MILESTONE)/
+#                 (takes about 5 to 15 minutes, most of it the writing model)
 # make migrate-check  copy the live store (sqlite3 .backup, a consistent snapshot; the live store
 #                 is only read) into build/store-copy and open the COPY with this build's models.
 #                 Run it before `make install` whenever the models change
@@ -44,7 +53,7 @@ MODE      ?= development
 ONLY      ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: generate build test snapshots accept accept-outputs accept-edits migrate-check run look check install drop
+.PHONY: generate build test snapshots accept accept-outputs accept-edits accept-models migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -66,6 +75,9 @@ accept-outputs:
 
 accept-edits:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=edits TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/EditsAcceptanceTests
+
+accept-models:
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=models TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/ModelsAcceptanceTests
 
 STORE_COPY = $(CURDIR)/$(DERIVED)/store-copy/Prakriti.store
 

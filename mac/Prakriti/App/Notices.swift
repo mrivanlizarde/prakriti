@@ -30,6 +30,8 @@ struct NoticeFacts: Sendable, Equatable {
     /// What this run makes, for Started and Ready.
     var makesEpisode = true
     var makesTranscript = true
+    /// Titles, show notes and chapters are written too (milestone 6).
+    var makesWriting = false
     /// Started: how long the work should take, in seconds, when known.
     var estimate: Double?
     /// Ready: how much of the end has no words, when the coverage check failed.
@@ -145,6 +147,7 @@ enum NoticeBuilder {
         var made: [String] = []
         if facts.makesEpisode { made.append("the episode audio") }
         if facts.makesTranscript { made.append("the transcript") }
+        if facts.makesTranscript && facts.makesWriting { made.append("the show notes") }
         return made
     }
 

@@ -81,6 +81,21 @@ final class SnapshotTests: XCTestCase {
             }
         }
 
+        // Milestone 6: the 13 Sep talk marked as a class, its titles not written yet, with writing set
+        // to the Claude API: the page says the privacy lock hands the writing to LM Studio.
+        for (scheme, appearance) in appearances {
+            let model = Fixtures.model()
+            model.settings.provider[.writing] = .claudeAPI
+            let recordings = try model.context.fetch(FetchDescriptor<Recording>())
+            let recording = try XCTUnwrap(recordings.first { $0.title == "Talk with Gabriel" && $0.status == .readyForYourYes })
+            recording.writtenJSON = nil
+            model.setKind(.lesson, for: recording)
+            model.open(recording)
+            let name = "08-recording-class-not-written-\(scheme)"
+            try renderer.render(model: model, appearance: appearance, name: name)
+            written.append(name)
+        }
+
         if only == "recording" {
             print("Snapshots written to \(outputFolder.path): \(written.count) recording pages")
             return
@@ -110,6 +125,6 @@ final class SnapshotTests: XCTestCase {
 
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, SidebarItem.allCases.count * 2 + 20)
+        XCTAssertEqual(written.count, SidebarItem.allCases.count * 2 + 22)
     }
 }

@@ -85,6 +85,13 @@ final class AppModel {
     /// Something Ivan tried that was refused, shown by the main window as an alert.
     var notice: Notice?
 
+    /// What each model's test button found, shown on the Models screen (milestone 6).
+    var providerChecks: [ModelProvider: ProviderCheck] = [:]
+    /// A Claude API key is in the Keychain. Read when the Models screen opens; the key itself never is.
+    var claudeKeyAdded = false
+    /// Where the Claude API key lives. Tests use their own Keychain item, never Ivan's.
+    @ObservationIgnored var keyStore: KeyStore = AppModel.isRunningTests ? .testing : .claude
+
     /// The model the running app uses, so the app delegate and menu commands can reach it.
     static var current: AppModel?
 

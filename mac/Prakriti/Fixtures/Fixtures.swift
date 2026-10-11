@@ -65,6 +65,40 @@ enum Fixtures {
         // The files engine v0 made for this talk, which are in that folder, so the page's player
         // and transcript show the real talk (read only).
         talk13.madeFiles = ["REPORT.md", "episode.mp3", "transcript.json", "transcript.srt", "transcript.txt", "transcript.vtt"]
+        // What Qwen3.8-27B wrote for this talk in milestone 6's acceptance (10 Oct, 7:41 pm), as it
+        // was checked: every chapter time is a line of the episode's transcript, every quote was found
+        // word for word. Two of its seven claims are left out here: the speaker's own sales figure, so
+        // the repository holds no money detail about anyone, and the yin yoga one, whose quote starts
+        // with a word the copy rules ban from app strings. The transcript names Serenity, so the
+        // recording is privacy locked, and the writing that was set to the Claude API stayed on this Mac.
+        talk13.hasSerenity = true
+        talk13.writtenJSON = WrittenPackage(
+            titles: ["Yoga Marga: Lineage, Sales, and Yin Yoga", "The History and Future of Yoga Marga School",
+                     "From Krishnamacharya to the Business of Yoga"],
+            showNotes: "The teacher gives a life update on Yoga Marga School, tracing the school's yoga lineage back to Sri Krishnamacharya and Sri BNS Iyengar. "
+                + "The talk covers the decision to pause enrollment of new students, the shift in how the two teachers divide their work, and the upcoming "
+                + "division of the curriculum into a coaching and mindset track led by Serenity and a business and sales track. The teacher also announces "
+                + "the return of weekly yin yoga classes on Mondays and Wednesdays, walks through the online platform, and mentions that new viewers can access a free week.",
+            chapters: [WrittenChapter(start: 0.418, title: "Yoga Lineage and Origins"), WrittenChapter(start: 251.938, title: "School Changes Ahead"),
+                       WrittenChapter(start: 744.258, title: "Yin Yoga Schedule")],
+            checklist: [
+                CheckedClaim(claim: "Sri BNS Iyengar recently celebrated his 100th birthday.", quote: "who actually just celebrated his 100th birthday", at: 30.258),
+                CheckedClaim(claim: "Sri Krishnamacharya is described as the father of modern yoga.", quote: "he's the father of modern yoga", at: 44.818),
+                CheckedClaim(claim: "The teacher states that 99.9% of yoga practiced today traces back to Sri Krishnamacharya.",
+                             quote: "99.9% of every single yoga that is practiced nowadays", at: 56.338),
+                CheckedClaim(claim: "Pattabhi Jois and BKS Iyengar were named as disciples of Sri Krishnamacharya.",
+                             quote: "Pattabhi Jois, BKS Iyengar, some of the other like famous", at: 84.098),
+                CheckedClaim(claim: "The teacher is starting a new school group within Yoga Marga focused on sales.",
+                             quote: "it's specifically going to be focused on sales", at: 630.858),
+            ],
+            tags: ["yoga of communication", "coaching program", "business of yoga"],
+            summary: "The talk outlines the evolution of the Yoga Marga school following a trip to India and the decision to shift focus away from new student enrollment. "
+                + "It details the restructuring of the curriculum into coaching and mindset support alongside a new business-focused program. The session covers "
+                + "updates to the online schedule, including the return of weekly yin yoga classes and access to existing educational materials.",
+            writtenBy: "Qwen3.8-27B in LM Studio", writingProvider: ModelProvider.lmStudio.rawValue,
+            taggedBy: "Apple on-device", summarizedBy: "Apple on-device", lockReason: "Serenity is in this recording", lockedTasks: ["writing"],
+            writtenAt: date(2026, 10, 10, 19, 41, 49), seconds: 864.7, attempts: 1, writingSeconds: 846.5,
+            promptTokens: 5306, completionTokens: 7710, reasoningTokens: 7117, clock: "episode").json()
         context.insert(talk13)
         talk13.source = studio
         addRun(context, to: talk13, start: date(2026, 10, 9, 16, 15, 11), trigger: .fileEvent, outcome: .ready,
@@ -185,6 +219,14 @@ enum Fixtures {
         }
         model.notifier.permission = .allowed
         model.loginItem = .on
+        // The Models screen as each provider's test button left it on 10 Oct (milestone 6's acceptance).
+        let tested = date(2026, 10, 10, 19, 42)
+        model.providerChecks = [
+            .lmStudio: ProviderCheck(state: .ok, line: "Answered in 14 s. Loaded Qwen3.8-27B in LM Studio at 65,536 tokens in 8 s. Unloaded again after the test.", at: tested),
+            .appleOnDevice: ProviderCheck(state: .ok, line: "Wrote 3 tags in 0.8 s: breath, exhale, pause.", at: tested),
+            .ollama: ProviderCheck(state: .notSetUp, line: "Ollama answers. Installed: qwen3:4b. Name one above to use it.", at: tested),
+            .claudeAPI: ProviderCheck(state: .notSetUp, line: "No key added. Nothing is sent to Anthropic.", at: tested),
+        ]
         return model
     }
 

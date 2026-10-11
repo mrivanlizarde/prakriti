@@ -106,6 +106,9 @@ struct RecordingDetailView: View {
             }
             if recording.status != .needsADecision && recording.status != .skipped {
                 AboutSection(recording: recording)
+                if recording.outputFolder != nil || recording.written != nil {
+                    WritingSection(recording: recording)
+                }
             }
 
             if let run = recording.latestRun, !run.steps.isEmpty {

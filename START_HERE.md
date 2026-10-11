@@ -79,7 +79,7 @@ If something listed here does not exist yet, that work has not landed. Check `CH
 | `web/public/` | **The only folder served to the internet**: `index.html` (the front door), `roadmap.html`, `404.html`, `robots.txt`, `assets/`. Written Thu 8 Oct, not deployed | Anything placed here is public |
 | `scripts/shoot.mjs` | Renders pages to PNGs in headless Chrome and reports console errors, failed loads and sideways overflow | The verification step for anything visual. Caps a full-page capture at 16,000px (warning 26) |
 | `screens/` | Where screenshots land | Gitignored |
-| `mac/` | **Prakriti for Mac**, the native app (SwiftUI, SwiftData). Milestones 1 to 5 landed Sat 10 Oct: window and menu bar, the pipeline in Swift, the watcher and notifications, outputs and settings, and the recording page (trim, cuts, Make Again, Approve). Milestone 6 (the writing models) is next. **Since Sat 10 Oct it is the live engine**, installed in `~/Applications`, opening at login | Read "Prakriti for Mac" below, then `docs/BUILD-LOG.md` |
+| `mac/` | **Prakriti for Mac**, the native app (SwiftUI, SwiftData). Milestones 1 to 6 landed Sat 10 Oct: window and menu bar, the pipeline in Swift, the watcher and notifications, outputs and settings, the recording page (trim, cuts, Make Again, Approve), and the writing models (titles, show notes and chapters by Qwen3.8-27B in LM Studio, checked against the transcript, with the privacy lock). **Since Sat 10 Oct it is the live engine**, installed in `~/Applications`, opening at login | Read "Prakriti for Mac" below, then `docs/BUILD-LOG.md` |
 | `docs/BUILD-LOG.md` | One dated entry per milestone of the Mac app: what was built, every check with its measured result, decisions, and what Ivan must do | A new session resumes from its last entry |
 
 Later, from the Up Next template: `migrations/`, `test/`, `scripts/smoke.mjs` (production refusals
@@ -492,6 +492,16 @@ to `~/Prakriti/Approved/<name>/` with a receipt; nothing is uploaded.** Only a r
 talk with one teacher speaking can be approved: a class, a conversation or one nobody has marked
 shows "Speakers not checked" (speaker checks do not exist yet). Once anything is taken out of an
 episode, its transcript files follow it: the cut words are gone and the times match the audio.
+**Milestone 6 (the models), Sat 10 Oct:** titles, show notes, chapters and an accuracy checklist,
+written by the model chosen for each task on the Models screen (LM Studio by default, with Qwen3.8-27B
+loaded by Prakriti at 65,536 tokens; Apple on-device; Ollama; the Claude API with its key in the
+Keychain), then checked in Swift: every chapter starts at a time that is one of the transcript's own
+lines, and every quote is found word for word in `transcript.txt`, or it is left out and counted.
+Tags and a short summary are their own tasks. **The privacy lock:** a recording marked as a class, or
+whose transcript says "Serenity", is only read by models on this Mac; a task set to the Claude API is
+done by LM Studio instead, and the page, the step and `show-notes.md` say so. The output is a draft in
+`show-notes.md` (Approve copies it) and `titles-notes-chapters.json` (Outputs only). It is off for
+every folder until Ivan turns it on, because the model holds about 33 GB and takes minutes.
 Progress, checks and decisions per milestone are in `docs/BUILD-LOG.md`.
 
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
@@ -536,6 +546,9 @@ cd ~/Code/prakriti/mac && make accept-edits MILESTONE=m5
 ```
 ```bash
 cd ~/Code/prakriti/mac && make snapshots MILESTONE=m5 ONLY=recording
+```
+```bash
+cd ~/Code/prakriti/mac && make accept-models MILESTONE=m6
 ```
 ```bash
 cd ~/Code/prakriti/mac && make migrate-check
@@ -593,7 +606,16 @@ to 5:30 cut on its page, made again, approved into `~/Prakriti/Dev/Approved`, th
 measured with ffprobe against the first episode (about 40 s shorter), the cut words checked gone from
 the approved transcript and by transcribing the approved episode again, then marked as a class and
 refused; it writes `acceptance-edits.txt` and pictures of each state. `make snapshots ONLY=recording`
-draws only the recording pages, for a quick look. The real window on the sample recording page:
+draws only the recording pages, for a quick look. `make accept-models` is milestone 6's check on the
+**real 13 Sep talk** with the **real models** (about 11 to 15 minutes, nearly all of it Qwen3.8-27B
+thinking; it needs LM Studio's server running at the Models screen's address with the model
+downloaded): writing is set to the Claude API on purpose, so the privacy lock must hand it to LM Studio
+(the talk names Serenity; the Claude client in the test only counts and refuses, and must be asked 0
+times); tags and summary go to Apple on-device; the model is unloaded first so Prakriti's own load at
+65,536 tokens is exercised, and must be unloaded again after. It checks every chapter start against
+the cue starts of `transcript.srt` and every quote against `transcript.txt`, has Apple on-device tag a
+short input, tests each provider for real, and writes `acceptance-models.txt`, the model's own answer
+(`model-answer.txt`) and pictures of the page and the Models screen. The real window on the sample recording page:
 `open -n build/Build/Products/Debug/Prakriti.app --args --sample-data --show=recordings --open=ready
 --appearance=light` (add `--sample-edits` for a trim and cut not made yet), then
 `swift scripts/capture-window.swift --window build/Build/Products/Debug/Prakriti.app out.png`.
@@ -610,6 +632,9 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `RecordingPageTests` (milestone 5: edits, the episode's clock, typed times, the cut's words gone through Parakeet with the Mac's voice, six sentences of Parakeet's real misplaced tokens, what the report names, the page's player, Approve and its refusals), `EditsAcceptanceTests` (the 13 Sep talk trimmed, cut, made again and approved, `make accept-edits` only), `StoreMigrationTests` (`make migrate-check` only), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share) |
 | Real-window capture | `mac/scripts/capture-window.swift` (run by `make look` and `make check`); also `--analyze <png>` to check any capture, and `--window <app> <png>` to capture the running app as it is |
 | Real-app pipeline check | `mac/scripts/process-in-app.sh <file> <folder>` |
+| The writing models (milestone 6) | `mac/Prakriti/Writing/`: `ModelClients.swift` (the request and reply, LM Studio with its load at 65,536 tokens, Ollama, the Claude API), `AppleOnDevice.swift` (Foundation Models, guided generation for tags and summaries), `Keychain.swift` (the Claude API key), `Writer.swift` (prompts, the privacy lock, tries, `WritingCheck`, `WrittenPackage` and `show-notes.md`); `App/ModelActions.swift` (test buttons, the key, Write Again, Use This Title); `Views/ModelsView.swift`, `Views/WritingSection.swift`; the pipeline step `.writing` and `PipelineRunner.write` (Write Again); tests `WritingTests` (in `make test`) and `ModelsAcceptanceTests` (`make accept-models`) |
+| Written files | Beside the episode: `show-notes.md` (titles, notes, chapters, tags, summary, the checklist for review, what the checks changed, and placeholders for what is not chosen yet) and `titles-notes-chapters.json` (the checked package plus the model's own answer; never approved). On the recording: `writtenJSON` (the package without the raw answer) and `writingProblem` |
+| The Claude API key | The login Keychain, generic password, service `studio.therowan.prakriti.app.claude-api`, account `api-key`. Tests use `studio.therowan.prakriti.app.tests.claude-api` |
 | The recording page (milestone 5) | `mac/Prakriti/Views/RecordingPage.swift` (player, transcript lines, trim and cuts, title and notes, Approve), `App/RecordingActions.swift` (what its buttons do), `App/Approval.swift` (who may be approved, the copy and its receipt), `Engine/EpisodeEdits.swift` (the edits, the episode's clock, typed times, the transcript that follows the episode); tests `RecordingPageTests` (in `make test`) and `EditsAcceptanceTests` (`make accept-edits`) |
 | Approved files, live | `~/Prakriti/Approved/<file name without extension>/`: `episode.mp3`, the transcript's chosen formats (following the episode), `REPORT.md`, and `APPROVAL.md` (title, notes, edits, every file's size and SHA-256). Never `transcript.json`. Development: `~/Prakriti/Dev/Approved/` |
 | Outputs, development mode | `~/Prakriti/Dev/Outputs/<file name without extension>/`: `episode.mp3`, `transcript.txt/.srt/.vtt/.md` (the chosen formats, with the word list applied), `transcript.json` (Parakeet's words as heard, with their times; never changed), `REPORT.md` (engine v0's layout). A make in progress lives in the hidden `.making <name>` folder beside it |
@@ -757,9 +782,10 @@ top and its end. Reading the code is not verification, and neither is a passing 
     list matches whole words only, and every fix is listed with its time in REPORT.md.** Reason:
     SCOPE 7.7 keeps the originals, and a wrong fix ("the yoga market" meant literally) must be
     findable. The list fixes only known variants; phonetic matching is not built.
-32. **Titles, show notes and chapters cannot be made until the writing model is connected**
-    (`OutputKind.isAvailable`); their switch shows off and greyed whatever is stored. Reason: the
-    screen must never claim something is made that is not.
+32. **A switch for an output that cannot be made shows off and greyed, whatever is stored**
+    (`OutputKind.isAvailable`, the four built outputs since milestone 6). Reason: the screen must never
+    claim something is made that is not. Until milestone 6 this held titles, show notes and chapters
+    off; they are now made, from the transcript only (warning 56 for why they start off).
 33. **Run `make migrate-check` before `make install` whenever a model changes.** Reason: a store that
     fails to open falls back to a temporary one, and the live watcher would run with no memory of what
     it has made (it would make nothing new, but every recording and its numbers would vanish from the
@@ -836,6 +862,61 @@ top and its end. Reading the code is not verification, and neither is a passing 
     shipped those joins in every file that follows the episode, including after the default silence
     trim with no edits (8 captions of the 6 Sep .srt began with "." or "?"; engine v0's had none).
     `make accept` and `make accept-edits` now check every caption against Parakeet's sentence text.
+46. **LM Studio is loaded by Prakriti at 65,536 tokens through its REST API (`POST /api/v1/models/load`
+    with `context_length`), before the first request; a copy loaded smaller is unloaded and loaded
+    again; and Prakriti unloads only what it loaded, when the writing step ends.** Reason: LM Studio's
+    default is 8,192 tokens, and a chat request to a model that is not loaded makes LM Studio load it
+    on demand at that default, which would cut a transcript off (docs/LOCAL-MODEL.md rule 1). The model
+    holds about 33 GB, so it is not left loaded for nothing. The `lms` CLI cannot reach the server on
+    port 1235; Prakriti uses HTTP only. Measured 10 Oct: the load takes 8 to 9 s.
+47. **Every LM Studio request is one system and one user message, `max_tokens` at least 16,384,
+    `reasoning_effort` "medium", temperature 0.7, top_p 0.8, top_k 20, presence_penalty 1.5, and no
+    `response_format`; `finish_reason` "length" or empty content is a failure, tried again up to three
+    times, never a result** (`LMStudioClient.body`, `.reply`; pinned by `WritingTests`). Reason:
+    docs/LOCAL-MODEL.md rules 2 to 5. At the template's own effort the model spent about 48k tokens
+    thinking; at medium it spent 4,580 and 7,117 on the 13 Sep talk.
+48. **Nothing the model writes is trusted until `WritingCheck` passes it:** chapter starts must be one
+    of the transcript's own line times (the brackets it was shown), quotes must be found word for word
+    in `transcript.txt` or in the lines the model read (they differ only where engine v0's `.txt` lacks
+    the word list's fixes; only whitespace and typographic quotes are evened out; case, spelling and
+    punctuation count), and both are left out and counted otherwise; em and en dashes become commas;
+    a chapter under 2 minutes, or one too many, joins the one before; JSON that is not JSON, fewer than
+    three titles, too few chapters or no quote found is tried again. Reason: SCOPE 13's evidence check
+    and LOCAL-MODEL.md rule 4; a model invents times and quotes.
+49. **The writer reads the episode's cues (`EpisodeTranscript.cues` on the episode's clock, the words
+    of every cut gone), never `transcript.json` as heard.** Reason: a chapter title or a quote must not
+    name a student whose question was cut, and the times must match the audio (milestone 5's note).
+50. **The privacy lock lives in `Writer.write` (`route`), the only way any task reaches a model:** a
+    class, or a transcript that says "Serenity" (`Privacy.mentionsSerenity`, whole word, any case;
+    `Recording.hasSerenity` is then set and never unset), turns a Claude API choice into LM Studio for
+    every task, and the step line, the page and `show-notes.md` say so. Reason: SCOPE PRV-10, until
+    Serenity's yes no Claude session reads her teaching or any class. Proved: the acceptance set writing
+    to the Claude API on the 13 Sep talk and the Claude client was asked 0 times.
+51. **The prompts keep private matters out:** titles, show notes, chapters, tags and summaries leave out
+    illness, deaths, grief, family matters, money troubles and relationships, anyone's, the speaker's
+    included; the checklist may hold the speaker's own income, health or result claims, because those
+    must be checked. Reason: on 10 Oct the first run's show notes (Qwen) and summary (Apple) both
+    repeated a private family matter the 13 Sep talk mentions; the second run, with this rule, had
+    none. A prompt is not a guarantee: Ivan reads every draft.
+52. **The Claude API key lives only in the Keychain (`KeyStore.claude`), is read only when a task is set
+    to the Claude API, and is never written to a file, a preference, the store or a log.** Tests use
+    `KeyStore.testing`. Reason: the build's rule, and a key in a file ends up in git.
+53. **Approve copies `show-notes.md`, never `titles-notes-chapters.json`.** Reason: the JSON keeps the
+    model's own answer, quotes that failed the check included; REPORT.md says the JSON stays in Outputs.
+54. **A writing failure costs only its step:** the make is still Ready for your yes, with the reason in
+    its status and the step; the written files of an earlier make are removed with the rest of that
+    make's files (they described another transcript); Write Again tries once more and, if it fails,
+    leaves the last written files as they were. Reason: LM Studio closed for a minute must not cost a
+    40-second episode, and an old draft must never sit beside a new transcript it does not match.
+55. **Apple on-device reads `SystemLanguageModel.default.contextSize` tokens (8,192 on macOS 27.2),
+    counted with Apple's `tokenCount`:** a long transcript is read in parts for tags and summaries and
+    refused for writing, with the reason. Catch macOS 27's `LanguageModelError`, not the deprecated
+    `GenerationError` (a deprecation warning fails the build). Reason: the build asked to chunk or refuse
+    beyond the limit, never to truncate.
+56. **Titles, show notes and chapters start off for every folder, including the live studio folder**
+    (`OutputKind.isOnByDefault`; `make migrate-check` asserts no folder has them on after an upgrade).
+    Reason: the model holds about 33 GB and takes 10 to 15 minutes on a 16-minute talk; a new studio
+    recording must not start that on its own.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

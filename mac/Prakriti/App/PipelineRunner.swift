@@ -14,6 +14,9 @@ final class PipelineRunner {
     /// How long a file's size must hold still before work starts. 60 s, as engine v0 waits; the
     /// acceptance test shortens it, because its files are long finished.
     @ObservationIgnored var stableWait: Duration = .seconds(60)
+    /// Makes the model clients for writing. Nil: the real ones. Tests set it to see which provider
+    /// the privacy lock let through, without calling any model.
+    @ObservationIgnored var makeClient: (@Sendable (ModelProvider, WritingSetup) -> any LanguageModelClient)?
 
     /// Recordings waiting their turn, and the one being worked on (by Recording.id), for the UI.
     private(set) var waitingIDs: [UUID] = []
@@ -33,6 +36,12 @@ final class PipelineRunner {
     /// the 13 Sep talk took 36 s for 15:48 (0.038), the 6 Sep talk 124 s for 55:39 (0.037). Used
     /// only for the "about N minutes" in Started.
     static let workPerSecond = 0.04
+
+    /// About how long the titles, show notes and chapters take with Qwen3.8-27B in LM Studio, for
+    /// the "about N minutes" in Started. Measured 10 Oct on the 15:48 talk (milestone 6's acceptance).
+    static func writingEstimate(_ duration: Double) -> Double {
+        WritingEstimate.fixed + duration * WritingEstimate.perSecond
+    }
 
     func isWaiting(_ recording: Recording) -> Bool { waitingIDs.contains(recording.id) }
     func isCurrent(_ recording: Recording) -> Bool { currentID == recording.id }
@@ -101,7 +110,29 @@ final class PipelineRunner {
             options.applyLexicon = transcript.applyLexicon
         }
         options.edits = recording.edits
+        options.kind = recording.kind
+        options.knownSerenity = recording.hasSerenity
+        if make.contains(.titlesNotesChapters) && options.makeTranscript {
+            options.writing = writingSetup()
+        }
         return options
+    }
+
+    /// Who writes, from the Models screen. The Claude API key is read from the Keychain only when a
+    /// task is set to the Claude API (the privacy lock may still keep the recording away from it).
+    func writingSetup() -> WritingSetup {
+        var setup = WritingSetup()
+        guard let model else { return setup }
+        let settings = model.settings
+        setup.providers = settings.provider
+        setup.lmStudioAddress = settings.lmStudioAddress
+        setup.lmStudioModel = settings.lmStudioModel
+        setup.ollamaAddress = settings.ollamaAddress
+        setup.ollamaModel = settings.ollamaModel
+        setup.claudeModel = settings.claudeModel
+        if settings.provider.values.contains(.claudeAPI) { setup.claudeKey = model.keyStore.read() }
+        if let makeClient { setup.makeClient = makeClient }
+        return setup
     }
 
     /// Runs one recording now and waits for it. Outputs go to the mode's Outputs folder, in a
@@ -109,6 +140,7 @@ final class PipelineRunner {
     @discardableResult
     func process(_ recording: Recording, trigger: RunTrigger) async -> PipelineResult? {
         guard let model else { return nil }
+        if trigger == .writeAgain { return await write(recording) }
         currentID = recording.id
         defer { currentID = nil; activeRecording = nil; activeRun = nil }
 
@@ -155,6 +187,96 @@ final class PipelineRunner {
         return result
     }
 
+    /// Write Again: the titles, show notes and chapters written again from the transcript already in
+    /// the recording's folder, and nothing else made. The two written files are replaced only once
+    /// the new ones pass every check; a model that is closed or answers badly leaves the last ones.
+    /// An approved recording goes back to waiting for a yes, because what it covered changed.
+    @discardableResult
+    func write(_ recording: Recording) async -> PipelineResult? {
+        guard let model else { return nil }
+        currentID = recording.id
+        defer { currentID = nil }
+        let label = Format.dayLabel(recording.sessionDate)
+        let name = recording.fileName
+        let before = recording.status
+        let run = Run(startedAt: model.now(), trigger: .writeAgain, steps: [RunStep(name: PipelineStep.writing.title, state: .running)])
+        model.context.insert(run)
+        run.recording = recording
+        recording.status = .working
+        recording.currentStep = PipelineStep.writing.doing
+        recording.updatedAt = model.now()
+        try? model.context.save()
+        model.record("Writing the titles, show notes and chapters for \(label) (\(name)) again, from its transcript. Nothing else is made.", run: run)
+        let activity = ProcessInfo.processInfo.beginActivity(options: [.userInitiated, .idleSystemSleepDisabled], reason: "Prakriti is writing titles for a recording.")
+        defer { ProcessInfo.processInfo.endActivity(activity) }
+
+        let started = ContinuousClock.now
+        var result = PipelineResult()
+        var step = RunStep(name: PipelineStep.writing.title, state: .failed)
+        let defaults = model.defaultSettings()
+        let lexicon = OutputResolver.details(for: .transcript, recording: recording, defaults: defaults)?.applyLexicon ?? true
+        if let path = recording.outputFolder,
+           let input = WritingInput.from(folder: URL(fileURLWithPath: path, isDirectory: true), clock: recording.episodeClock, duration: recording.duration ?? 0,
+                                         applyLexicon: lexicon, label: label, fileName: name, kind: recording.kind, knownSerenity: recording.hasSerenity) {
+            do {
+                let outcome = try await Writer(setup: writingSetup(), log: model.log).write(input)
+                result.mentionsSerenity = outcome.mentionsSerenity
+                if let package = outcome.package {
+                    let folder = URL(fileURLWithPath: path, isDirectory: true)
+                    let staging = folder.deletingLastPathComponent().appending(path: ".writing " + folder.lastPathComponent, directoryHint: .isDirectory)
+                    do {
+                        try? FileManager.default.removeItem(at: staging)
+                        try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+                        defer { try? FileManager.default.removeItem(at: staging) }
+                        try package.save(in: staging, label: label, fileName: name)
+                        _ = try Pipeline.place(staging, into: folder, known: WrittenPackage.fileNames)
+                        result.written = package
+                        result.outcome = .ready
+                        step.state = .done
+                        step.detail = package.stepLine
+                    } catch {
+                        result.writingProblem = "The titles, show notes and chapters were written but could not be saved."
+                        model.log.write("\(name): saving the written files failed. \(error.localizedDescription)")
+                    }
+                } else {
+                    result.writingProblem = outcome.problem ?? "Nothing was written."
+                }
+            } catch {
+                result.outcome = .stopped
+                result.writingProblem = "Stopped before it finished."
+            }
+        } else {
+            result.writingProblem = "There is no transcript to write from. Turn the transcript on for this recording and Make Again first."
+        }
+        step.seconds = ModelHTTP.seconds(since: started)
+        if step.state != .done { step.detail = (result.writingProblem ?? "") + " The earlier files, if any, are as they were." }
+        run.steps = [step]
+        run.endedAt = model.now()
+        recording.currentStep = nil
+        recording.status = before == .working ? .readyForYourYes : before
+        recording.updatedAt = model.now()
+        if result.mentionsSerenity && !recording.hasSerenity {
+            recording.hasSerenity = true
+            model.record("\(label) (\(name)): Serenity is named in the transcript, so from now on only models on this Mac may read it.", run: run)
+        }
+        if let written = result.written {
+            recording.writtenJSON = written.stored.json()
+            recording.writingProblem = nil
+            recording.madeFiles = Array(Set(recording.madeFiles).union(WrittenPackage.fileNames)).sorted()
+            run.outcome = .ready
+            run.summary = "Titles, show notes and chapters written."
+            model.record("\(label) (\(name)): titles, show notes and chapters written again. \(written.stepLine)", run: run)
+            model.changedAfterApproval(recording, what: "its titles, show notes and chapters")
+        } else {
+            recording.writingProblem = result.writingProblem
+            run.outcome = result.outcome == .stopped ? .stopped : .couldntFinish
+            run.summary = result.writingProblem ?? ""
+            model.record("\(label) (\(name)): titles, show notes and chapters were not written. \(result.writingProblem ?? "")", level: .attention, run: run)
+        }
+        try? model.context.save()
+        return result
+    }
+
     private func apply(_ progress: PipelineProgress) {
         guard let model, let recording = activeRecording, let run = activeRun else { return }
         run.steps = progress.steps
@@ -171,7 +293,7 @@ final class PipelineRunner {
             }
         case .soundOK:
             var facts = facts(for: recording)
-            facts.estimate = recording.duration.map { $0 * Self.workPerSecond }
+            facts.estimate = recording.duration.map { $0 * Self.workPerSecond + (activeOptions.writing != nil ? Self.writingEstimate($0) : 0) }
             model.notifier.post(.started, facts)
         case nil:
             break
@@ -182,6 +304,7 @@ final class PipelineRunner {
         var facts = NoticeFacts(recording)
         facts.makesEpisode = activeOptions.makeEpisode
         facts.makesTranscript = activeOptions.makeTranscript
+        facts.makesWriting = activeOptions.writing != nil
         return facts
     }
 
@@ -196,6 +319,11 @@ final class PipelineRunner {
         if let volume = result.volume {
             recording.loudestDB = volume.max.isFinite ? volume.max : nil
             recording.averageDB = volume.mean.isFinite ? volume.mean : nil
+        }
+        // Once a transcript says "Serenity", the recording stays privacy locked (never unset).
+        if result.mentionsSerenity && !recording.hasSerenity {
+            recording.hasSerenity = true
+            model.record("\(label) (\(recording.fileName)): Serenity is named in the transcript, so from now on only models on this Mac may read it.", run: run)
         }
         // What was made is written only when a make finishes: until then the files of the last
         // finished make are still in the folder, so their numbers stay. Something not made this
@@ -222,6 +350,9 @@ final class PipelineRunner {
             recording.madeCuts = made.cuts
             recording.episodeParts = (result.clock?.segments ?? []).map { TimeRange(start: $0.start, end: $0.end) }
             recording.episodeIntro = result.clock?.intro
+            // What was written goes with this make's files; titles not made this time leave none.
+            recording.writtenJSON = result.written?.stored.json()
+            recording.writingProblem = activeOptions.writing == nil ? nil : result.writingProblem
         }
         recording.statusReason = result.reason
 
@@ -264,8 +395,13 @@ final class PipelineRunner {
                 numbers.append("your trim and cuts kept \(Format.timecode(parts.reduce(0) { $0 + $1.length })) of \(Format.timecode(result.duration ?? 0))")
             }
             if let left = result.wordsLeftOut, left > 0 { numbers.append("\(Format.count(left, "word")) left out of the transcript") }
+            if let written = result.written {
+                numbers.append("titles, show notes and chapters by \(written.writtenBy) in \(Format.length(written.seconds))")
+            } else if activeOptions.writing != nil {
+                numbers.append("titles, show notes and chapters NOT written (\(result.writingProblem ?? "no reason given"))")
+            }
             model.record("\(label) (\(name)) is ready for your yes, made in \(Format.length(result.seconds))" + (numbers.isEmpty ? "." : ": " + numbers.joined(separator: ", ") + "."),
-                         level: result.coverageOK == false ? .attention : .info, run: run)
+                         level: result.coverageOK == false || result.writingProblem != nil ? .attention : .info, run: run)
             if !result.replaced.isEmpty {
                 let gone = result.replaced.filter { !result.files.contains($0) }
                 model.record("Made again: the earlier files were replaced" + (gone.isEmpty ? "." : ", and \(gone.joined(separator: ", ")) removed because \(gone.count == 1 ? "it was" : "they were") not chosen this time."),
@@ -328,4 +464,12 @@ final class PipelineRunner {
         }
         try? model.context.save()
     }
+}
+
+/// How long writing takes with Qwen3.8-27B in LM Studio, for the Started notice. One measurement
+/// (10 Oct, the 15:48 talk: 603 s in all, of which 585 s writing at about 9 tokens a second, most of
+/// them thinking), so a fixed part and a part that grows with the length, rounded up.
+enum WritingEstimate {
+    static let fixed = 300.0
+    static let perSecond = 0.3
 }

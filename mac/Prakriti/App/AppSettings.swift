@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 /// Small preferences, kept in UserDefaults. Records (sources, recordings, runs) live in the store.
-/// No secret ever lives here: the Claude API key goes in the Keychain (milestone 6).
+/// No secret ever lives here: the Claude API key is in the Keychain (KeyStore, milestone 6).
 @MainActor
 @Observable
 final class AppSettings {
@@ -15,6 +15,9 @@ final class AppSettings {
         static let providerPrefix = "provider."
         static let lmStudioAddress = "lmStudioAddress"
         static let lmStudioModel = "lmStudioModel"
+        static let ollamaAddress = "ollamaAddress"
+        static let ollamaModel = "ollamaModel"
+        static let claudeModel = "claudeModel"
         static let lastEventID = "lastEventID"
         static let eventDevice = "eventDevice"
         static let engineV0ImportedAt = "engineV0ImportedAt"
@@ -32,6 +35,11 @@ final class AppSettings {
     /// LM Studio runs on port 1235 on Ivan's Mac, not its default 1234 (checked 10 Oct).
     var lmStudioAddress: String { didSet { defaults.set(lmStudioAddress, forKey: Key.lmStudioAddress) } }
     var lmStudioModel: String { didSet { defaults.set(lmStudioModel, forKey: Key.lmStudioModel) } }
+    /// Ollama is optional; it runs on port 11434 unless changed. No model is chosen until Ivan names one.
+    var ollamaAddress: String { didSet { defaults.set(ollamaAddress, forKey: Key.ollamaAddress) } }
+    var ollamaModel: String { didSet { defaults.set(ollamaModel, forKey: Key.ollamaModel) } }
+    /// The Claude API's model. Its key is never here: it lives in the Keychain (KeyStore).
+    var claudeModel: String { didSet { defaults.set(claudeModel, forKey: Key.claudeModel) } }
 
     /// The newest file-system event already looked at, and the disk it belongs to: the watcher
     /// replays from here on the next launch. Kept as text because UserDefaults has no 64-bit unsigned type.
@@ -40,8 +48,10 @@ final class AppSettings {
     /// When engine v0's state.json was taken in at the switch-over. Read once, never again.
     var engineV0ImportedAt: Date? { didSet { defaults.set(engineV0ImportedAt, forKey: Key.engineV0ImportedAt) } }
 
-    static let defaultLMStudioAddress = "http://localhost:1235/v1"
-    static let defaultLMStudioModel = "qwen/qwen3.8-27b"
+    nonisolated static let defaultLMStudioAddress = "http://localhost:1235/v1"
+    nonisolated static let defaultLMStudioModel = "qwen/qwen3.8-27b"
+    nonisolated static let defaultOllamaAddress = "http://localhost:11434"
+    nonisolated static let defaultClaudeModel = "claude-opus-5-5"
 
     init(defaults: UserDefaults) {
         self.defaults = defaults
@@ -60,6 +70,9 @@ final class AppSettings {
         self.provider = provider
         lmStudioAddress = defaults.string(forKey: Key.lmStudioAddress) ?? Self.defaultLMStudioAddress
         lmStudioModel = defaults.string(forKey: Key.lmStudioModel) ?? Self.defaultLMStudioModel
+        ollamaAddress = defaults.string(forKey: Key.ollamaAddress) ?? Self.defaultOllamaAddress
+        ollamaModel = defaults.string(forKey: Key.ollamaModel) ?? ""
+        claudeModel = defaults.string(forKey: Key.claudeModel) ?? Self.defaultClaudeModel
         lastEventID = defaults.string(forKey: Key.lastEventID).flatMap(UInt64.init) ?? 0
         eventDevice = defaults.string(forKey: Key.eventDevice) ?? ""
         engineV0ImportedAt = defaults.object(forKey: Key.engineV0ImportedAt) as? Date

@@ -66,14 +66,17 @@ struct ApprovalCheck: Equatable, Sendable {
         }
     }
 
-    /// The files Approve copies: everything the last make left, except the words as heard.
+    /// The files Approve copies: everything the last make left, except the words as heard and the
+    /// writer's working record.
     @MainActor
     static func filesToApprove(_ recording: Recording) -> [String] {
         var names = recording.madeFiles
         if names.isEmpty, let folder = recording.outputFolder {
             names = Pipeline.madeFiles(in: URL(fileURLWithPath: folder)).filter(Pipeline.madeNames.contains)
         }
-        return names.filter { $0 != TranscriptFiles.asHeard && $0 != "speech.wav" }.sorted()
+        // titles-notes-chapters.json keeps the model's own answer, quotes that failed the check
+        // included; show-notes.md is what is approved.
+        return names.filter { $0 != TranscriptFiles.asHeard && $0 != "speech.wav" && $0 != WrittenPackage.fileName }.sorted()
     }
 }
 

@@ -36,14 +36,23 @@ final class StoreMigrationTests: XCTestCase {
             XCTAssertEqual(recording.episodeParts, [])
             XCTAssertNil(recording.approvedAt)
             XCTAssertEqual(recording.approvedFiles, [])
+            // Milestone 6's fields arrive empty: nothing written, no problem recorded.
+            XCTAssertNil(recording.writtenJSON)
+            XCTAssertNil(recording.writingProblem)
             if recording.fromEngineV0, recording.status == .readyForYourYes, let duration = recording.duration {
                 XCTAssertEqual(recording.episodeClock?.segments, [Mastering.Span(start: 0, end: duration)])
                 XCTAssertTrue(ApprovalCheck.check(recording, isBusy: false).speakersNotChecked, "not marked as a talk yet")
             }
         }
+        // Titles, show notes and chapters can be made from milestone 6. None of the folders may start
+        // writing on its own after the upgrade: every folder's switch was stored off (it started off,
+        // and could not be turned on before milestone 6).
+        let writingOn = sources.filter { $0.setting(for: .titlesNotesChapters)?.isOn == true }.map(\.name)
+        XCTAssertEqual(writingOn, [], "a folder would start writing with the 33 GB model on its own")
         let ready = recordings.filter { $0.status == .readyForYourYes }
         print("Store copy opened: \(recordings.count) recordings (\(ready.count) ready: "
               + ready.map { "\($0.fileName) \($0.loudnessLUFS.map { String($0) } ?? "?") LUFS" }.joined(separator: ", ")
-              + "), \(sources.count) folders (" + sources.map(\.name).joined(separator: ", ") + "), \(settings.count) output settings, \(lines) Activity lines")
+              + "), \(sources.count) folders (" + sources.map(\.name).joined(separator: ", ") + "), \(settings.count) output settings, \(lines) Activity lines; "
+              + "titles switched on in \(writingOn.count) folders; \(recordings.filter { $0.writtenJSON != nil }.count) recordings with anything written")
     }
 }

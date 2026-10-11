@@ -5,6 +5,29 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-10, Sat: Prakriti for Mac, milestone 6 (the models)
+
+- **Prakriti now writes titles, show notes, chapters and an accuracy checklist for a recording,**
+  with Qwen3.8-27B in LM Studio by default, and Apple on-device, Ollama or the Claude API chosen per
+  task on the Models screen, each with a test button. Why: titles and notes were Growati's job and are
+  Prakriti's to replace (SCOPE PKG-04), and Ivan asked for local models first.
+- **Nothing the model writes is kept on trust.** Every chapter must start at one of the transcript's
+  own line times and every checklist quote must be found word for word in `transcript.txt`; anything
+  else is left out and counted, and a bad answer is tried again. Why: a model invents times and quotes,
+  and Serenity's condition is that a person can check every claim (SCOPE 13).
+- **The privacy lock is real now:** a class, or a recording whose transcript says "Serenity", is only
+  read by models on this Mac; a task set to the Claude API is done by LM Studio instead, and the page
+  and the show notes say so. Why: SCOPE PRV-10, until Serenity says yes no Claude session reads her
+  teaching or any class. The 13 Sep talk names her, and the acceptance proved the Claude API was asked
+  0 times.
+- **Prakriti loads Qwen3.8-27B itself at 65,536 tokens and unloads it after.** Why: LM Studio's default
+  8,192 would cut a transcript off (LOCAL-MODEL.md), and the model holds 33 GB.
+- **The prompts keep private matters out of titles and notes.** Why: the first real run's show notes
+  repeated a private family matter the talk mentions; with the rule, the second run's did not.
+- **Off for every folder until Ivan turns it on,** including the live studio folder. Why: 10 to 15
+  minutes and 33 GB per recording should be a choice.
+- Checks and measured results: `docs/BUILD-LOG.md`, "Milestone 6".
+
 ## 2026-10-10, Sat: Prakriti for Mac, milestone 5 fixes (the transcript reads as it was said)
 
 - **The transcript files that follow the episode now read exactly as Parakeet wrote each sentence.**

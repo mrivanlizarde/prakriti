@@ -4,11 +4,11 @@ One dated entry per milestone of `docs/NEXT-PROMPT.md`, oldest first: what was b
 with its measured result, the decisions taken and why, and anything Ivan must do. A new session
 resumes from the last entry. Weekdays computed with `date(1)`.
 
-**Where it stands:** milestones 1 to 5 of 6 done (Sat 10 Oct). **The switch-over happened:**
-engine v0 is retired and Prakriti for Mac, installed in `~/Applications` (milestone 5's build since
-17:26), is the only thing watching the studio folder and `~/Prakriti/Drop`. Next: milestone 6, the
-models (titles, show notes and chapters by Qwen3.8-27B through LM Studio, Apple on-device for a short
-input, the privacy lock).
+**Where it stands:** milestones 1 to 6 of 6 done (Sat 10 Oct). Prakriti for Mac, installed in
+`~/Applications` (milestone 6's build since 20:20), is the only thing watching the studio folder and
+`~/Prakriti/Drop`. Titles, show notes and chapters can now be written (Qwen3.8-27B in LM Studio by
+default) but are off for every folder until Ivan turns them on. Not yet written: the v1 finish-line
+section (what works, what does not, every screen, the three things to try first).
 
 ---
 
@@ -1102,3 +1102,180 @@ at its cause and re-measured on the real recordings below.
 
 Nothing new to do. Episode 1's files in `~/Prakriti/Outputs` are still engine v0's and were never
 affected; if you Make Again on it, its captions now match v0's word for word.
+
+---
+
+## Milestone 6: the models. Sat 10 Oct 2026
+
+### What was built
+
+- **`mac/Prakriti/Writing/`, the models behind one interface** (`LanguageModelClient`: prepare, a
+  budget check, one request, release, a test):
+  - **LM Studio** (`LMStudioClient`, the default for every task): Qwen3.8-27B through the local
+    OpenAI-compatible server at the Models screen's address (`http://localhost:1235/v1`). Before the
+    first request Prakriti makes sure the model is loaded at **65,536 tokens** through LM Studio's REST
+    API (`/api/v1/models`, `/load` with `context_length`, `/unload`): not loaded, it loads it; loaded
+    smaller, it unloads and reloads it; and when the writing step ends it unloads only what it loaded.
+    Every request carries docs/LOCAL-MODEL.md's settings: one system and one user message,
+    `max_tokens` 16,384, `reasoning_effort` "medium", temperature 0.7, top_p 0.8, top_k 20,
+    presence_penalty 1.5, no `response_format`. A reply cut off by its length, or empty, is a failure.
+  - **Apple on-device** (`AppleOnDeviceClient`, Foundation Models): availability in plain words, its
+    real context (`contextSize`, 8,192 on macOS 27.2) and Apple's own `tokenCount`; tags and summaries
+    by guided generation (`@Generable`). A transcript that does not fit is read in parts for tags and
+    summaries (tags merged by how often they come up, part summaries summarized) and **refused for
+    writing**, with the reason.
+  - **Ollama** (`OllamaClient`, optional): its own chat API with `num_ctx` set per request.
+  - **Claude API** (`ClaudeClient`, optional): raw HTTP to the Messages API (no Swift SDK exists),
+    `claude-opus-5-5` by default, adaptive thinking, effort "medium", Anthropic's refusal fallback on.
+    The key is read from the **Keychain** (`KeyStore`, `Keychain.swift`) only when a task is set to it.
+- **The writer** (`Writer.swift`): for the writing task, titles, show notes, chapters and an accuracy
+  checklist, from the transcript as the episode plays it (one line per sentence, its time in
+  brackets, the words of any cut gone); then tags and a summary as their own tasks, each with its own
+  provider. **`WritingCheck`** passes nothing on trust: chapter starts must be the transcript's own line
+  times, quotes must be found word for word in `transcript.txt`, both left out and counted otherwise;
+  dashes become commas; a chapter under 2 minutes, or one too many for the length (SCOPE PKG-05: at
+  least three, at most six an hour), joins the one before; non-JSON, under three titles, too few
+  chapters or no quote found is tried again, up to three tries of the same single-turn request.
+- **The privacy lock** (`Privacy`, `Writer.route`): a class, or a transcript that says "Serenity"
+  (whole word, any case), turns any Claude API choice into LM Studio for every task. The pipeline sets
+  `Recording.hasSerenity` from the transcript (never unset), and the step line, the recording page and
+  `show-notes.md` say what the lock did.
+- **In the pipeline:** a step "Titles, show notes and chapters" after the transcript and the episode,
+  before the report, planned only when the output is on and the transcript is made. It writes
+  `show-notes.md` (the draft Ivan reads: titles, notes, chapters, tags, summary, the checklist for
+  review, what the checks changed, and a placeholder for the call to action and the removal address,
+  which SCOPE leaves open) and `titles-notes-chapters.json` (the checked package with the model's own
+  answer). A model that is closed or answers badly costs only this step: the make is still Ready, with
+  the reason. REPORT.md gains a row. Approve copies `show-notes.md`, never the JSON.
+- **Write Again** (`PipelineRunner.write`, trigger `writeAgain`): writes them again from the transcript
+  already made, takes its turn in line, replaces only the two written files, keeps the last ones if it
+  fails, and takes an approval back.
+- **Screens:** the **Models** screen (tasks, the privacy lock, LM Studio's address and model, Apple's
+  status, Ollama's address and model, the Claude API key with Save in Keychain and Remove Key, and a
+  test button per provider with what it found); on a recording's page, **Titles, show notes and
+  chapters**: who wrote them and when, the lock line, three title options each with Use This Title,
+  the show notes with Use as Notes, the chapters, the checklist with each quote and its time, tags,
+  summary, what the checks left out, and Write Titles and Notes or Write Again. Outputs and Sources now
+  let the switch be turned on, with plain lines on what it takes.
+- **Data:** `Recording.writtenJSON` (the package without the raw answer) and `writingProblem`
+  (additions; `make migrate-check` passes). Settings: Ollama's address and model, the Claude model.
+- **Tests and checks:** `WritingTests` (19, in `make test`), `ModelsAcceptanceTests`
+  (`make accept-models`), and the migration check now asserts no folder has titles on after an upgrade.
+
+### Checks run, with results
+
+| Check | Result |
+|---|---|
+| Build | `BUILD SUCCEEDED`, 0 compiler warnings (warnings fail the build) |
+| `make test MILESTONE=m6` (also inside `make check`; last run on the final code) | **113 tests, 0 failures, 5 skipped by design** (the four acceptances and the migration check): ModelTests 16, RulesTests 12, PipelineTests 15, NotificationTests 6, WatcherTests 16, OutputsTests 9, RecordingPageTests 13, **WritingTests 20**, SnapshotTests 1 |
+| **Acceptance: Qwen3.8-27B writes for the 13 Sep talk** (`make accept-models MILESTONE=m6`, run three times; the third on the final code, 20:03) | Ready for your yes. **Valid JSON** (the model's own answer parsed as it came, nothing around it), **3 title options** ("What's Happening at Yoga Marga School", "Yoga Marga's New Direction and Schedule", "Sales, Coaching, and Yin Yoga at Yoga Marga"), show notes (113 words), **3 chapters, each start found among the 137 cue starts of the episode's `transcript.srt` to the millisecond** (0:00 = cue 1, 4:11 = cue 37, 12:24 = cue 91), the first at the first line. **Checklist: 8 claims, every quote found word for word in `transcript.txt` as is** (character offsets 644, 714, 790, 978, 1845, 7702, 13225, 14517), 0 left out, 0 chapters left out. Runs one and two: 3 titles, 3 chapters, 8 and 7 quotes, all found. Full text: `screens/mac/m6/acceptance-models.txt` (gitignored) |
+| **Runtime** | Writing request **585 s, 847 s and 630 s** (the second with the unit tests running beside it): about 5,200 to 5,300 tokens read, 5,319, 7,710 and 5,774 written of which 4,580, 7,117 and 5,073 thinking; one try each. The whole step with Apple's tags (3.4 to 3.7 s) and summary (4.3 to 4.8 s): **10 min 3 s, 14 min 25 s and 10 min 48 s**; the whole make 10 min 45 s, 15 min 7 s and 11 min 29 s |
+| **LM Studio loaded at 65,536 by Prakriti** | The model was unloaded before each run; the log (third run): 20:04:23 the step starts, **20:04:32 "Loaded Qwen3.8-27B in LM Studio at 65,536 tokens in 8 s"**, 20:15:01 the answer, 20:15:11 "Unloaded Qwen3.8-27B in LM Studio, which Prakriti had loaded"; `GET /api/v1/models` afterwards: not loaded |
+| **Privacy lock, on the real talk** | Writing set to the Claude API on purpose. The 13 Sep transcript names Serenity: `hasSerenity` went from false to true, the step says "Privacy lock: Serenity is in this recording, so LM Studio did the writing chosen for the Claude API", and **the Claude client was asked 0 times** (it could only count and refuse) |
+| **Privacy lock, unit tests** | A class with every task on the Claude API: LM Studio asked 3 times, Claude 0, lock reason "this is a class", all three tasks named; a talk whose text says Serenity: Claude 0; a talk without her: Claude used (nothing else forbids it); a class with Apple chosen: Apple kept. Write Again on a class through the runner: Claude 0, files written, the lock in the step and in Activity, Ivan's own file in the folder untouched |
+| **Apple on-device, a short input** | The talk's first 8 lines (218 words, about 1,372 of its 8,192 tokens): **3 tags in 0.7 s** ("Yoga Marga, Ashtanga, guru"). Also in `make test` on made-up text, and the Models screen's test: 3 tags in 0.8 s. A long text with a small limit is read in parts, each part fitting, then summarized; writing is refused with "reads at most N tokens at once" and nothing sent |
+| LOCAL-MODEL.md settings, pinned | `WritingTests`: the request body (roles, 16,384, medium, 0.7/0.8/20/1.5, no response_format); "length" and empty content are retryable failures; leading blank lines trimmed; through a stub server, a model loaded at 8,192 is unloaded, loaded at 65,536, asked, and only Prakriti's instance unloaded; a closed server is asked once and said plainly |
+| The checks, unit tests | Planted answer: a title with an em dash (comma now), "9:99" and "2:40" left out as not line times, "[4:22]" accepted, a 16 s last chapter joined; quotes found with curly quotes, ellipses and a typographic apostrophe; "fifty years" (said: forty) and a two-word quote left out. Non-JSON, two titles, empty notes, one chapter, no quote found: each a retryable failure |
+| Keychain | Save, read, replace and remove on a test item; tests never touch Ivan's item; with no key the Claude API's test sends nothing ("No key added. Nothing is sent to Anthropic.") |
+| **Models screen, each provider tested for real** | LM Studio: "Answered in 14 s. Loaded Qwen3.8-27B in LM Studio at 65,536 tokens in 8 s. Unloaded again after the test." Apple on-device: "Wrote 3 tags in 0.8 s: breath, exhale, pause." Ollama: "Ollama answers. Installed: qwen3:4b. Name one above to use it." Claude API: "No key added. Nothing is sent to Anthropic." |
+| Regression: `make accept-outputs` and `make accept-edits` (MILESTONE=m6-regress) | -16.8 and -19.1 LUFS as before; with the trim off the decoded audio md5 `69658a8c...` is **identical to engine v0's**; the cut episode 907.732 s, 38.82 s shorter as expected; a class still refused |
+| `make check MILESTONE=m6` | Tests pass; PASS still running 15 s after its window closed; real-window captures **16 of 16 PASS** |
+| `make migrate-check` | The live store copy opens: 11 recordings, 2 folders, 27 output settings; the new fields empty; **titles on in 0 folders**, so nothing starts writing on its own after the upgrade |
+| **Installed live** (`make install`, 20:01:33, and again at 20:20:33 with the final code) | Quit cleanly, replaced, opened: "Mode: live. Store: ...Prakriti.store" (no fallback), login item on, "Checked 2 folders. Nothing new.", still running afterwards (pid 16709); signed Apple Development, team LD587PB2H8, `codesign --verify --deep --strict` passes. LM Studio left unloaded, as it was at the start of the session |
+| Pictures | `screens/mac/m6/`: every screen light and dark from `make test` (including the Models screen and the recording page with what Qwen wrote, and a class not written yet with the lock line), the acceptance's page after the real writing and the Models screen after the real tests (`m6-13sep-written-*`, `m6-models-*`), and `real/` (16 real-window captures). **Looked at:** the Models screen light and dark, every screenful; the recording page's writing section light and dark; Outputs; Sources; the class page |
+| Em and en dashes, tooltips | 0 in `mac/`, START_HERE, CHANGELOG, LOCAL-MODEL.md; RulesTests pass |
+
+### What the look-through and the runs caught and fixed
+
+- **The first real show notes, and Apple's summary, repeated a private family matter the talk
+  mentions.** Nothing in the checks could catch it: it was true and in the transcript. The writing,
+  tagging and summary prompts now leave out illness, deaths, grief, family matters, money troubles and
+  relationships (anyone's), while the checklist may keep the speaker's own income or health claims,
+  which must be checked. The second run had none. START_HERE warning 51; a prompt is not a guarantee.
+- **"Privacy lock: serenity is in this recording":** the reason was lowercased to sit mid-sentence. The
+  reasons are now written to sit mid-sentence ("this is a class", "Serenity is in this recording") and
+  capitalized only to start one; a test pins her capital. The same lowercasing would have printed
+  "lM Studio" and "qwen3.8" in a failure line; those sentences no longer lowercase anything.
+- **Chapter titles of five words** ("Life Update and India Trip") despite "at most 4": the prompt now
+  says "2 to 4 words (count them)", with an example; the second run's were 3 to 4 words. A longer
+  title is still kept and noted, never cut.
+- **The Models screen said "On this Mac" twice and Apple's 8,192 tokens three times:** the row is
+  "Status" and the test line says only what the test did.
+- **"Loaded ... at 65,536 tokens" was logged after a ten-minute answer**, timed as if it had just
+  happened: the model is now loaded before the first request and the line written then (third run:
+  logged 9 s into the step).
+- Test-side: an em dash inside a regular expression in my own code tripped RulesTests (now written as
+  `\u{2014}`); a fixture quote tripped the banned-words rule for app strings, so the fixture uses
+  another of the real claims.
+
+### Decisions, each with its reason
+
+1. **Off for every folder, including the live studio folder** (`isOnByDefault` false; migrate-check
+   asserts it). Reason: 10 to 15 minutes and 33 GB per recording should be Ivan's choice.
+2. **Prakriti loads and unloads the model itself, through LM Studio's REST API.** Reason: a request to
+   an unloaded model loads it at LM Studio's default 8,192; and leaving 33 GB loaded all day for a few
+   minutes of writing per recording is a cost Ivan did not choose. A model Ivan loaded is left loaded.
+3. **No `response_format`.** Reason: both runs returned clean JSON without it, LOCAL-MODEL.md calls
+   schema enforcement on this model unproven, and Swift checks the JSON either way.
+4. **Chapter and quote checks drop, never fix,** except two stated fixes: the first chapter is moved to
+   the first line, and a chapter too short joins the one before. Reason: a time or a quote the
+   transcript does not have is the model's invention; a moved first chapter and a joined short one
+   change no claim.
+5. **Quotes are matched with whitespace and typographic quotes evened out, nothing else.** Reason:
+   `transcript.txt` is one long line and models write curly apostrophes; case, spelling and punctuation
+   are what "word for word" means.
+   A quote is found in `transcript.txt` or in the lines the model read. Reason: on a recording engine
+   v0 made (the live 13 Sep and 6 Sep talks), the `.txt` has no word list fixes while the lines do, so
+   a true quote naming Krishnamacharya would otherwise be dropped (found reading the code after the
+   acceptance; covered by `WritingTests`, not by a real run).
+6. **A writing failure does not fail the make.** Reason: the episode and transcript took their own
+   work and are good; Write Again is one click.
+7. **The written files go with the make that wrote them;** a make without writing removes the old ones.
+   Reason: an old draft beside a new transcript (after a cut) could quote words that are gone.
+8. **Approve copies `show-notes.md`, not the JSON.** Reason: the JSON keeps the model's own answer,
+   including quotes that failed the check.
+9. **"Serenity" anywhere in the transcript locks the recording, even as a common word.** Reason: a false
+   alarm only keeps text on this Mac; a miss would send her teaching out.
+10. **Tags and summary are their own tasks with their own providers,** not folded into the writing
+    request. Reason: the Models screen offers a provider per task, and a switch that does nothing is
+    the problem milestone 4 fixed. On Apple on-device they take 3 to 5 s.
+11. **The Claude API defaults to `claude-opus-5-5`** with adaptive thinking and medium effort, raw
+    HTTP. Reason: the current Opus per Anthropic's own guidance; there is no Swift SDK. Never tested
+    with a key: none was added, and adding one is Ivan's.
+12. **The Started notice adds about 5 minutes plus 0.3 s per second of recording when writing is on.**
+    Reason: one measurement (603 s for the 15:48 talk); a guess stated as one.
+
+### What does not work yet, or was not seen working
+
+- **The Claude API has never answered:** no key exists, so only "no key, nothing sent" was tested.
+- **Ollama has never written anything:** it answers and lists `qwen3:4b`, but no model is named.
+- **The writing has run on one recording** (the 13 Sep talk, twice). The 55-minute 6 Sep talk would
+  take longer (an estimate, not a measurement) and has not been written. A recording of about two hours
+  reaches the 65,536-token limit by the size estimate; beyond it the writing is refused with the
+  reason, never cut off (chunked writing is not built).
+- Apple on-device's tags are weak ("yoga of communication"); LM Studio is the default for tagging.
+- No person has clicked Use This Title, Use as Notes, Write Again, a test button or Save in Keychain in
+  the real window; each was driven through the same model calls the buttons make.
+- Notifications are still turned off for Prakriti in System Settings (since milestone 3).
+
+### For Ivan
+
+1. **Turn notifications on for Prakriti** (still blocked on your click, since milestone 3).
+2. **To try the writing:** open Recordings, Sun 13 Sep, and press **Write Titles and Notes** (LM Studio
+   must be open with its server on; Prakriti loads the model itself and takes about 10 minutes). Or
+   turn on Titles, show notes and chapters for one folder on Sources.
+3. **Read the draft before trusting it.** The checks prove the times and quotes are real, not that the
+   claims are right or that nothing private slipped in. The first run put a private family matter in
+   the show notes; the prompt now forbids it, but a prompt is not a guarantee.
+4. **A Claude API key, if you want one,** goes on Models, Claude API, Save in Keychain. Classes and
+   anything with Serenity in it never reach it either way.
+5. LM Studio's default port is 1234; yours is 1235, which is what Prakriti uses.
+
+To see it:
+
+```bash
+cd ~/Code/prakriti/mac && open ~/Applications/Prakriti.app
+```
+
+Then Models, or Recordings, Sun 13 Sep.
+

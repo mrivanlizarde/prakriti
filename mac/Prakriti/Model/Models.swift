@@ -128,6 +128,12 @@ final class Recording {
     /// The files Approve copied into the approved folder, by name.
     var approvedFiles: [String] = []
 
+    /// Titles, show notes and chapters as last written and checked (milestone 6): a WrittenPackage
+    /// as JSON, read through `written`. Kept as text so the store migrates on its own.
+    var writtenJSON: String?
+    /// Why the last try at writing them did not give anything, in one plain sentence, or nil.
+    var writingProblem: String?
+
     var source: Source?
 
     @Relationship(deleteRule: .cascade, inverse: \Run.recording)
@@ -169,7 +175,11 @@ final class Recording {
     var fileName: String { (filePath as NSString).lastPathComponent }
 
     /// A class, or anything with Serenity in it, may only be read by a model on this Mac.
+    /// `hasSerenity` is set when a transcript says her name (Privacy.mentionsSerenity) and never unset.
     var isPrivacyLocked: Bool { kind == .lesson || hasSerenity }
+
+    /// The titles, show notes and chapters last written, or nil.
+    var written: WrittenPackage? { WrittenPackage.decode(writtenJSON) }
 
     /// The date the recording was made, else the date it was found. Used for its label ("Sun 13 Sep").
     var sessionDate: Date { recordedAt ?? foundAt }
