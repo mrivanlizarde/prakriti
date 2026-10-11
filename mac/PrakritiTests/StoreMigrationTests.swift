@@ -64,6 +64,11 @@ final class StoreMigrationTests: XCTestCase {
         XCTAssertEqual(defaultReady.count, 1, "the Outputs screen has its settings")
         XCTAssertEqual(defaultReady.first?.isOn, false)
         print("The new output was added to the copy: \(added.map(\.title)); switched on in \(readyOn.count) folders")
+        // The episode text (11 Oct): numbering and the call to action arrive as "not numbered" and
+        // empty on every setting, so nothing Ivan did not choose closes any show notes.
+        let all = try context.fetch(FetchDescriptor<OutputSetting>())
+        XCTAssertTrue(all.allSatisfy { $0.numbering == .none && $0.callToAction.isEmpty }, "numbering and call to action arrive unset")
+        print("Numbering and call to action on \(all.count) output settings: \(Set(all.map(\.numberingRaw))), \(all.filter { !$0.callToAction.isEmpty }.count) with a call to action")
         let ready = recordings.filter { $0.status == .readyForYourYes }
         print("Store copy opened: \(recordings.count) recordings (\(ready.count) ready: "
               + ready.map { "\($0.fileName) \($0.loudnessLUFS.map { String($0) } ?? "?") LUFS" }.joined(separator: ", ")

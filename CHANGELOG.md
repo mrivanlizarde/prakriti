@@ -5,6 +5,46 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-11, Sun: the episode text, and Ready to upload
+
+- **`Episode text.txt` (and the same as `Episode text.md`) in the Podcast-ready folder replaces
+  `Title, show notes and captions.txt`.** It holds the episode title (Ivan's, else the writer's first
+  pick) and three alternatives, a one-line summary under 160 characters, the show notes in 2 to 4 short
+  paragraphs followed by the chapters at their times in the finished MP3 and Ivan's call to action, the
+  keywords, and a caption each for Instagram (up to five hashtags), LinkedIn and X and Threads (under 280
+  characters), each with a one-sentence pull quote. Why: Ivan asked for the episode's name, show notes and
+  captions for that specific episode beside the file, as close as possible to uploadable; one caption
+  per platform is what gets pasted, and a pull quote is the line people share.
+- **Written in the same single request as the titles and notes**, by the chosen model (on this Mac
+  under the privacy lock). Why: a second request would hold the 33 GB model for another 10 to 20 minutes.
+  The request now takes 24 to 27 minutes on the 13 Sep talk (most of it thinking), so the Started
+  notice's estimate was raised from about 10 to about 27 minutes.
+- **Ivan's copy rules are read by Swift, not only asked for (`CopyRules`).** No prices, money,
+  earnings, enrollment, sign-ups or offers in a title, the one-line summary, the show notes, a keyword,
+  a caption, a pull quote, the tags or the summary: a flagged caption, quote, title or keyword is left
+  out, a flagged sentence is taken out, and each is said. Why: the 13 Sep drafts of 10 and 11 Oct said
+  "available to enrolled students", "pause new student enrollment", "a free week" and "pricing", while
+  enrollment may be closed and the talk names a teacher's own income. A prompt is not a guarantee.
+- **Every pull quote is found word for word inside one line of the transcript, or left out; every
+  hashtag is whole words the teacher says.** Why: Ivan's brief asks for a verbatim one-sentence quote,
+  and the model's first hashtags included a misspelling ("#Yogalinage").
+- **The recording page's podcast-ready section is now "Ready to upload":** whether it is ready, every
+  file with its size and Show in Finder, a Copy button for the title, the one-line summary, the show
+  notes and each caption and pull quote, and the whole checklist with PASS, MISSING and FAIL as words.
+  Why: what Ivan does next is paste these into a host's form and three apps; the file and the buttons
+  read the same function, so what is copied is what the file says.
+- **A class is never made ready to upload.** The pipeline skips both podcast-ready steps for a class,
+  Update Podcast-Ready Files refuses it, and the page says why. Why: students may be heard in a class
+  and voices are not checked; a folder named for upload must never hold one.
+- **Numbering and a call to action on the Outputs screen.** Numbered, an episode without its number is
+  MISSING; the call to action closes the show notes in Ivan's words, and is the only place money or
+  enrollment may appear. Why: Ivan's brief, and the show decides both once, not each episode.
+- **The show's name, host, artwork, numbering and call to action now always come from the Outputs
+  screen,** even for a recording with its own choices. Why: the acceptance found that a recording given
+  its own choices kept a frozen copy of them, so a show name typed later on the Outputs screen never
+  reached it; that is the exact flow BUILD-LOG gave Ivan for episode 1.
+- Checks and measured results: `docs/BUILD-LOG.md`, "Episode text and Ready to upload".
+
 ## 2026-10-10, Sat: the podcast-ready episode
 
 - **A new output, "Podcast-ready episode": the file Ivan can upload to a podcast host as it is.** In

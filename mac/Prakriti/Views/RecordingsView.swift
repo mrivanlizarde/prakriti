@@ -109,7 +109,9 @@ struct RecordingDetailView: View {
                 if recording.outputFolder != nil || recording.written != nil {
                     WritingSection(recording: recording)
                 }
-                if recording.podcastReady != nil || recording.podcastReadyProblem != nil
+                // Ready to upload: whenever the podcast-ready episode is made, asked for or refused, and
+                // always for a class, which says why it is never made ready.
+                if recording.podcastReady != nil || recording.podcastReadyProblem != nil || recording.kind == .lesson
                     || OutputResolver.isOn(.podcastReady, recording: recording, source: nil, defaults: model.defaultSettings()) {
                     PodcastReadySection(recording: recording)
                 }
@@ -198,7 +200,7 @@ struct RecordingDetailView: View {
                 }
                 if let ready = recording.outputSettings.first(where: { $0.kind == .podcastReady && $0.isOn }) {
                     Section {
-                        PodcastReadySettingsRows(setting: ready)
+                        PodcastReadySettingsRows(setting: ready, showsShow: false)
                     } header: {
                         SectionHeader("Podcast-ready settings for this recording")
                     }

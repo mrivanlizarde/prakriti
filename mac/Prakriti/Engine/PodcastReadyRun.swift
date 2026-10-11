@@ -201,9 +201,18 @@ extension Pipeline {
             }
         }
 
+        // The episode's words, twice: plain text to paste from, and Markdown. The chapters are the ones
+        // written into the MP3, at their times in it.
         let fileName = mp3.lastPathComponent
-        try PodcastPackage.episodeText(settings: settings, facts: facts, written: written, fileName: fileName, chapters: chapterPlan.chapters, madeAt: madeAt)
-            .write(to: folder.appending(path: PodcastPackage.textName), atomically: true, encoding: .utf8)
+        let copy = PodcastPackage.copy(settings: settings, facts: facts, written: written, chapters: chapterPlan.chapters)
+        for (name, markdown) in [(PodcastPackage.textName, false), (PodcastPackage.markdownName, true)] {
+            do {
+                try PodcastPackage.episodeText(copy, settings: settings, facts: facts, written: written, fileName: fileName, madeAt: madeAt, markdown: markdown)
+                    .write(to: folder.appending(path: name), atomically: true, encoding: .utf8)
+            } catch {
+                throw PipelineFailure(step: .podcastPackage, reason: "\(name) could not be written.", detail: error.localizedDescription)
+            }
+        }
 
         // Measured and read back from the file itself.
         let loudness = try await measureFinished(mp3, step: .podcastPackage, duration: duration)
@@ -229,12 +238,15 @@ extension Pipeline {
         let lines = PodcastPackage.checklist(measured, settings: settings, facts: facts, written: written)
         try PodcastPackage.checklistText(lines, facts: facts, fileName: fileName, madeAt: madeAt)
             .write(to: folder.appending(path: PodcastPackage.checklistName), atomically: true, encoding: .utf8)
+        let files = Pipeline.madeFiles(in: folder).map { name in
+            PodcastReadyRecord.PackageFile(name: name, bytes: ((try? fm.attributesOfItem(atPath: folder.appending(path: name).path))?[.size] as? NSNumber)?.int64Value ?? 0)
+        }
         return PodcastReadyRecord(fileName: fileName, integratedLUFS: loudness.lufs, truePeak: loudness.truePeak,
                                   loudnessRange: measured.lra, normalizationType: normalizationType, sampleRate: stream?.sampleRate ?? 0,
                                   bitrateKbps: stream?.bitrateKbps ?? settings.bitrate, channels: stream?.channels ?? 0, duration: stream?.duration ?? 0,
                                   expectedDuration: expectedDuration, bytes: bytes, talkLUFS: talkLUFS, talkLRA: nil, corrected: corrected, captions: captions?.count ?? 0,
                                   chapters: tag?.chapters.count ?? 0, checklist: lines, madeAt: madeAt,
-                                  fingerprint: PodcastPackage.fingerprint(settings: settings, facts: facts, written: written))
+                                  fingerprint: PodcastPackage.fingerprint(settings: settings, facts: facts, written: written), files: files)
     }
 
     /// A finished MP3's loudness, true peak and loudness range, by loudnorm's meter, which reports them

@@ -68,9 +68,20 @@ extension AppModel {
         runner.enqueue(recording, trigger: .writeAgain)
     }
 
-    /// Update Podcast-Ready Files can run: they exist, the MP3 is in its folder, nothing is running on it.
+    /// The podcast-ready settings this recording is made with: its own, else the Outputs screen's.
+    func podcastReadySettings(for recording: Recording) -> PodcastReadySettings {
+        OutputResolver.podcastReady(recording: recording, defaults: defaultSettings())
+    }
+
+    /// The highest episode number on any other recording, to say on the page (never filled in).
+    func highestEpisodeNumber(excluding recording: Recording) -> Int? {
+        ((try? context.fetch(FetchDescriptor<Recording>())) ?? []).filter { $0.id != recording.id }.compactMap(\.episodeNumber).max()
+    }
+
+    /// Update Podcast-Ready Files can run: they exist, the MP3 is in its folder, nothing is running on
+    /// it, and it is not a class (a class is never made ready to upload).
     func canUpdatePodcastReady(_ recording: Recording) -> Bool {
-        guard recording.status == .readyForYourYes || recording.status == .approved,
+        guard recording.status == .readyForYourYes || recording.status == .approved, PodcastPackage.refusal(kind: recording.kind) == nil,
               !runner.isWaiting(recording), !runner.isCurrent(recording),
               let folder = recording.outputFolder, let ready = recording.podcastReady else { return false }
         return FileManager.default.fileExists(atPath: URL(fileURLWithPath: folder).appending(path: PodcastPackage.folderName).appending(path: ready.fileName).path)
@@ -80,8 +91,7 @@ extension AppModel {
     /// episode number or set of written notes than the recording has now.
     func podcastReadyIsOutOfDate(_ recording: Recording) -> Bool {
         guard let ready = recording.podcastReady else { return false }
-        let settings = OutputResolver.details(for: .podcastReady, recording: recording, defaults: defaultSettings())?.podcastReadySettings ?? PodcastReadySettings()
-        return ready.fingerprint != PodcastPackage.fingerprint(settings: settings, facts: recording.podcastFacts, written: recording.written)
+        return ready.fingerprint != PodcastPackage.fingerprint(settings: podcastReadySettings(for: recording), facts: recording.podcastFacts, written: recording.written)
     }
 
     /// Writes the podcast-ready files again around the audio already made. Takes its turn in line.

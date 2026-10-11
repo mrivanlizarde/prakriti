@@ -123,6 +123,8 @@ struct WritingRules: Equatable, Sendable {
     static let chapterGap = 120.0
     static let shortTalk = 360.0
     static let titleLimit = 60
+    /// Four title options: the writer's pick first, then three alternatives (11 Oct).
+    static let titleOptions = 4
     static let chapterTitleWords = 4
     static let chapterTitleLimit = 45
     static let shortestQuote = 4
@@ -150,6 +152,58 @@ struct CheckedClaim: Codable, Equatable, Sendable {
     var claim: String
     var quote: String
     var at: Double?
+}
+
+/// The three places a podcast episode is shared by hand (11 Oct), each with its own length.
+enum SocialPlatform: String, Codable, CaseIterable, Sendable {
+    case instagram, linkedin, x
+
+    var title: String {
+        switch self {
+        case .instagram: "Instagram"
+        case .linkedin: "LinkedIn"
+        case .x: "X and Threads"
+        }
+    }
+
+    /// The keys a model may use for it in its answer.
+    var keys: [String] {
+        switch self {
+        case .instagram: ["instagram", "Instagram"]
+        case .linkedin: ["linkedin", "LinkedIn", "linked_in"]
+        case .x: ["x", "X", "x_threads", "threads", "twitter"]
+        }
+    }
+
+    /// The platform's own limit on a post, in characters: Instagram 2,200, LinkedIn 3,000, X 280
+    /// (Threads takes 500, so a post that fits X fits both). A caption is kept under it: one at or over
+    /// it is cut back to the whole sentences that fit, or left out.
+    var limit: Int {
+        switch self {
+        case .instagram: 2_200
+        case .linkedin: 3_000
+        case .x: 280
+        }
+    }
+
+    /// Instagram is the only one given hashtags, at most five (Ivan's brief, 11 Oct).
+    static let hashtagLimit = 5
+}
+
+/// One social caption, checked: the words to post, Instagram's hashtags, and a pull quote, one
+/// sentence of the teacher's own found word for word in one line of the transcript (left out when
+/// it is not), with that line's time in the episode.
+struct SocialCaption: Codable, Equatable, Sendable {
+    var platform: SocialPlatform
+    var text: String
+    var hashtags: [String] = []
+    var pullQuote: String?
+    var pullQuoteAt: Double?
+
+    /// What is pasted: the caption, then the hashtags on a line of their own.
+    var post: String {
+        hashtags.isEmpty ? text : text + "\n\n" + hashtags.map { "#" + $0 }.joined(separator: " ")
+    }
 }
 
 /// What was written for one recording, after the checks. Saved as titles-notes-chapters.json beside
@@ -195,6 +249,17 @@ struct WrittenPackage: Codable, Equatable, Sendable {
     var captions: [String]?
     /// Captions left out because they quoted words the transcript does not have.
     var leftOutCaptions: Int?
+    /// The episode text (11 Oct): a one-line summary of at most 160 characters, keywords, and one
+    /// caption per platform with its pull quote. Optional so a package written before still reads.
+    var oneLine: String?
+    var keywords: [String]?
+    var social: [SocialCaption]?
+    /// Pull quotes the model gave that are not in one line of the transcript word for word.
+    var leftOutPullQuotes: [String]?
+
+    /// The captions to show: one per platform, else the plain captions of a package written before
+    /// 11 Oct.
+    var captionTexts: [String] { social.map { $0.map(\.text) } ?? captions ?? [] }
 
     static let fileName = "titles-notes-chapters.json"
     static let notesFileName = "show-notes.md"
@@ -231,11 +296,24 @@ struct WrittenPackage: Codable, Equatable, Sendable {
         if let lockReason { text += "\n\(lockReason.capitalizedFirst), so it was written by a model on this Mac only.\n" }
         text += "\n## Title options\n\n"
         for (index, title) in titles.enumerated() { text += "\(index + 1). \(title)\n" }
+        if let oneLine, !oneLine.isEmpty { text += "\n## One-line summary\n\n\(oneLine)\n" }
         text += "\n## Show notes\n\n\(showNotes)\n"
         text += "\n## Chapters\n\n"
-        for chapter in chapters { text += "\(chapter.label) \(chapter.title)\n" }
-        text += "\n[Not chosen yet: the one call to action, and the address for questions or removal requests. SCOPE PKG-04 leaves both open for Gabriel and Serenity.]\n"
-        if let captions, !captions.isEmpty {
+        for chapter in chapters { text += "- \(chapter.label) \(chapter.title)\n" }
+        text += "\n[The call to action is yours to set, on the Outputs screen under Podcast-ready episode; none is written here. "
+            + "The address for questions or removal requests is not chosen yet: SCOPE PKG-04 leaves it open for Gabriel and Serenity.]\n"
+        if let keywords, !keywords.isEmpty { text += "\n## Keywords\n\n" + keywords.joined(separator: ", ") + "\n" }
+        if let social, !social.isEmpty {
+            text += "\n## Social captions, drafts to post by hand\n\n"
+            for caption in social {
+                text += "### \(caption.platform.title)\n\n\(caption.text)\n"
+                if !caption.hashtags.isEmpty { text += "\n" + caption.hashtags.map { "\\#" + $0 }.joined(separator: " ") + "\n" }
+                if let quote = caption.pullQuote {
+                    text += "\n> \u{201C}\(quote)\u{201D}" + (caption.pullQuoteAt.map { " (\(WritingText.stamp($0)))" } ?? "") + "\n"
+                }
+                text += "\n"
+            }
+        } else if let captions, !captions.isEmpty {
             text += "\n## Social captions, drafts to post by hand\n\n"
             for (index, caption) in captions.enumerated() { text += "\(index + 1). \(caption)\n" }
         }
@@ -249,7 +327,8 @@ struct WrittenPackage: Codable, Equatable, Sendable {
         var checks: [String] = []
         if leftOutQuotes.count > 0 { checks.append("\(Format.count(leftOutQuotes.count, "quote")) the model gave \(leftOutQuotes.count == 1 ? "was" : "were") not in the transcript word for word, so \(leftOutQuotes.count == 1 ? "it was" : "they were") left out.") }
         if leftOutChapters > 0 { checks.append("\(Format.count(leftOutChapters, "chapter")) did not start at a time in the transcript, so \(leftOutChapters == 1 ? "it was" : "they were") left out.") }
-        if let left = leftOutCaptions, left > 0 { checks.append("\(Format.count(left, "social caption")) quoted words that are not in the transcript, so \(left == 1 ? "it was" : "they were") left out.") }
+        if let left = leftOutCaptions, left > 0 { checks.append("\(Format.count(left, "social caption")) broke a check (named below, or quoted words the transcript does not have), so \(left == 1 ? "it was" : "they were") left out.") }
+        if let left = leftOutPullQuotes, !left.isEmpty { checks.append("\(Format.count(left.count, "pull quote")) \(left.count == 1 ? "was" : "were") not one line of the transcript word for word, so \(left.count == 1 ? "it was" : "they were") left out.") }
         checks += notes
         if !checks.isEmpty { text += "\n## What the checks changed\n\n" + checks.map { "- " + $0 }.joined(separator: "\n") + "\n" }
         return text
@@ -412,7 +491,11 @@ struct Writer: Sendable {
             var tags: [String] = []
             var taggedBy: String?
             do {
-                tags = WritingCheck.tags(try await shortTask(.tags, client: tagger, lines: lines, fileName: input.fileName))
+                let offered = WritingCheck.tags(try await shortTask(.tags, client: tagger, lines: lines, fileName: input.fileName))
+                tags = offered.filter { CopyRules.flag($0) == nil }
+                if tags.count < offered.count {
+                    notes.append("\(Format.count(offered.count - tags.count, "tag")) named money, enrollment or an offer, so \(offered.count - tags.count == 1 ? "it was" : "they were") left out.")
+                }
                 taggedBy = tagger.displayName
             } catch let failure as ModelFailure {
                 notes.append("No tags: \(failure.reason)")
@@ -421,8 +504,15 @@ struct Writer: Sendable {
             var summary: String?
             var summarizedBy: String?
             do {
-                summary = try await shortTask(.summary, client: summarizer, lines: lines, fileName: input.fileName).first
-                    .map { WritingText.withoutDashes($0.trimmingCharacters(in: .whitespacesAndNewlines)).0 }
+                // The summary is written into the MP3 when there is no one-line summary, so it keeps the
+                // copy rules too: a sentence about money, enrollment or an offer is taken out.
+                if let raw = try await shortTask(.summary, client: summarizer, lines: lines, fileName: input.fileName).first {
+                    let screened = CopyRules.withoutFlaggedSentences(WritingText.withoutDashes(raw.trimmingCharacters(in: .whitespacesAndNewlines)).0)
+                    summary = screened.text.isEmpty ? nil : screened.text
+                    if !screened.removed.isEmpty {
+                        notes.append("\(Format.count(screened.removed.count, "sentence")) of the summary named \(screened.removed.joined(separator: "; ")), so \(screened.removed.count == 1 ? "it was" : "they were") taken out.")
+                    }
+                }
                 summarizedBy = summarizer.displayName
             } catch let failure as ModelFailure {
                 notes.append("No summary: \(failure.reason)")
@@ -438,7 +528,9 @@ struct Writer: Sendable {
                 promptTokens: answer.reply.promptTokens, completionTokens: answer.reply.completionTokens, reasoningTokens: answer.reply.reasoningTokens,
                 leftOutQuotes: checked.leftOutQuotes, leftOutChapters: checked.leftOutChapters, notes: notes,
                 clock: input.followsEpisode ? "episode" : "recording", modelAnswer: answer.reply.text,
-                captions: checked.captions, leftOutCaptions: checked.leftOutCaptions)
+                captions: checked.captions.isEmpty ? nil : checked.captions, leftOutCaptions: checked.leftOutCaptions,
+                oneLine: checked.oneLine, keywords: checked.keywords, social: checked.social.isEmpty ? nil : checked.social,
+                leftOutPullQuotes: checked.leftOutPullQuotes)
             return outcome
         } catch is CancellationError {
             await releaseAll()
@@ -546,7 +638,7 @@ struct Writer: Sendable {
     static let tagsSystem = """
         You tag talks from the Yoga Marga school. Give 3 to 8 short topic tags, one to three words each, in the talk's own terms: \
         the practices, ideas and texts it teaches. Name no person except teachers of the lineage the speaker names. Never name a student. \
-        Nothing about anyone's private life: illness, deaths, family, money troubles. \
+        Nothing about anyone's private life: illness, deaths, family, money troubles. No tag about prices, money, earnings, enrollment or offers. \
         Answer with JSON only, in exactly this shape: {"tags": ["", ""]}
         """
 
@@ -554,6 +646,7 @@ struct Writer: Sendable {
         You summarize talks from the Yoga Marga school. Write two or three plain sentences, in the third person, that describe what \
         the talk covers. Use only what the transcript says. Describe; never sell. Never use an em dash or an en dash. Never name a student. \
         Leave out anyone's private life: illness, deaths, grief, family matters, money troubles, relationships. Describe the teaching and the school. \
+        Never mention prices, fees, money, income, earnings, enrollment, sign-ups or offers, even when the talk does. \
         Answer with JSON only, in exactly this shape: {"summary": ""}
         """
 
@@ -561,28 +654,36 @@ struct Writer: Sendable {
         let chapters = rules.minChapters == rules.maxChapters ? "exactly \(rules.minChapters)" : "between \(rules.minChapters) and \(rules.maxChapters)"
         let claims = "\(rules.minClaims) to \(rules.maxClaims)"
         return """
-            You write the titles, show notes and chapters for one recording from the Yoga Marga school, from its transcript. \
+            You write the titles, show notes, chapters and social captions for one recording from the Yoga Marga school, from its transcript. \
             The school's teachers are Gabriel and Serenity. Your answer is checked: every time you give must be one of the times \
             in the transcript, and every quote must be found word for word in the transcript.
 
             Rules for everything you write:
             - Use only what the transcript says. Add no facts, numbers, names, dates, prices or promises that are not in it.
-            - Describe; never sell. Plain, calm words. No hype, no exclamation marks, no emoji, no hashtags.
+            - Describe; never sell. Plain, calm words. No hype, no exclamation marks, no emoji, and no hashtags except in "hashtags".
             - Never use an em dash or an en dash. Use a comma, a colon or a full stop instead.
+            - Never mention prices, fees, money, income, earnings, sales figures, enrollment, sign-ups, registration, discounts, offers or anything free to try, even when the transcript does, and never quote a sentence that does. The checklist is the one exception (below).
             - Name no one except the teacher speaking, the school's teachers, and the teachers, lineages and texts the speaker names as part of the teaching. Never name a student or anyone who asks a question; say "a student" instead.
-            - The titles, show notes and chapters leave out private matters of anyone, the speaker included: illness, deaths, grief, family matters, money troubles, relationships, where someone lives. Describe the teaching and the school, not people's private lives.
+            - Everything except the checklist leaves out private matters of anyone, the speaker included: illness, deaths, grief, family matters, money troubles, relationships, where someone lives. Describe the teaching and the school, not people's private lives.
             - Call the speaker "the teacher" unless the transcript says who is speaking.
 
             What to write:
-            - "titles": exactly 3 title options, each 60 characters or fewer, each naming the main idea of the talk in a different way.
-            - "show_notes": one paragraph of 60 to 120 words that describes what the talk covers, in the third person.
+            - "titles": exactly 4 title options, each 60 characters or fewer, each naming the main idea of the talk in a different way. Put the one you would choose first.
+            - "one_line": one sentence of at most 150 characters that says what the episode is about.
+            - "show_notes": 2 to 4 short paragraphs, as a list of strings, 120 to 220 words in all, in the third person, describing what the talk covers. \
+            No chapter list, no links and no closing line: those are added later.
+            - "keywords": 5 to 10 keywords or short phrases a listener might search for, in the talk's own terms.
             - "chapters": \(chapters) chapters, in time order, at the talk's main changes of topic. The first chapter starts at \(first). \
             Every "start" must be copied exactly from one of the times in square brackets in the transcript (for example "\(example)"), \
             and chapters must start at least 2 minutes apart. Each chapter "title" is 2 to 4 words (count them; "Breath Before Posture" is 3) and at most 45 characters.
-            - "captions": exactly 3 captions for sharing this episode on social media, each a different way into the talk: \
-            one of at most 120 characters, two of 150 to 280 characters. Describe the teaching in plain words; never sell. \
-            No hashtags, no emoji, no exclamation marks, no links, no "listen now". A caption may quote the teacher only with words \
-            copied exactly from one line of the transcript, inside double quotation marks.
+            - "social": one caption for each of three platforms, each a different way into the talk. \
+            "instagram": a "caption" of 1 to 3 short sentences, at most 300 characters, and "hashtags": up to 5 hashtags without the # sign, each one word or joined words. \
+            "linkedin": a "caption" of 2 to 4 sentences, at most 600 characters, for teachers and people who work in wellness. \
+            "x": a "caption" of at most 240 characters in all. \
+            Each also has a "pull_quote": one sentence the teacher says that would make someone want to listen, copied exactly from one line of the transcript \
+            (6 to 25 words, the same spelling, punctuation and capital letters, without the time in brackets), and "pull_quote_at": the bracketed time of that line. \
+            Use a different pull quote for each platform. Captions describe the teaching in plain words; never sell. No hashtags inside a caption, no emoji, \
+            no exclamation marks, no links, no "listen now". A caption may quote the teacher only with words copied exactly from one line of the transcript, inside double quotation marks.
             - "checklist": \(claims) claims a listener could check: facts, numbers, dates, names, history, or any health, income or result claim. \
             The speaker's own income, health or result claims belong here, because they must be checked; another person's private matters never do. \
             "claim" says it in your own words, in one sentence, and says only what the quote says. "quote" is the speaker's own words for it, copied exactly from one line of the \
@@ -590,7 +691,10 @@ struct Writer: Sendable {
             "at" is the bracketed time of that line.
 
             Answer with one JSON object and nothing else, in exactly this shape:
-            {"titles": ["", "", ""], "show_notes": "", "chapters": [{"start": "\(first)", "title": ""}], "captions": ["", "", ""], "checklist": [{"claim": "", "quote": "", "at": "\(first)"}]}
+            {"titles": ["", "", "", ""], "one_line": "", "show_notes": ["", ""], "keywords": ["", ""], "chapters": [{"start": "\(first)", "title": ""}], \
+            "social": {"instagram": {"caption": "", "hashtags": [""], "pull_quote": "", "pull_quote_at": "\(first)"}, \
+            "linkedin": {"caption": "", "pull_quote": "", "pull_quote_at": "\(first)"}, "x": {"caption": "", "pull_quote": "", "pull_quote_at": "\(first)"}}, \
+            "checklist": [{"claim": "", "quote": "", "at": "\(first)"}]}
             """
     }
 
@@ -629,7 +733,15 @@ enum WritingCheck {
         var notes: [String]
         var captions: [String] = []
         var leftOutCaptions = 0
+        var oneLine: String?
+        var keywords: [String]?
+        var social: [SocialCaption] = []
+        var leftOutPullQuotes: [String] = []
     }
+
+    /// The longest one-line summary kept (Ivan's brief: under 160 characters; the prompt asks 150).
+    static let oneLineLimit = 159
+    static let longestPullQuote = 40
 
     /// The passages a caption puts in quotation marks (straight or curly), without the marks.
     static func quoted(_ text: String) -> [String] {
@@ -655,19 +767,161 @@ enum WritingCheck {
     static func captions(_ offered: [String], found: (String) -> Bool) -> (kept: [String], leftOut: Int, changed: Int) {
         var kept: [String] = [], leftOut = 0, changed = 0
         for raw in offered {
-            var (caption, dashes) = WritingText.withoutDashes(raw.trimmingCharacters(in: .whitespacesAndNewlines))
-            var words = caption.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
-            let before = words.count
-            words.removeAll { $0.hasPrefix("#") || $0.lowercased().hasPrefix("http") }
-            caption = words.joined(separator: " ")
-            let bangs = caption.filter { $0 == "!" }.count
-            caption = caption.replacingOccurrences(of: "!", with: ".")
-            guard !caption.isEmpty, caption.count <= 500 else { leftOut += 1; continue }
-            guard quoted(caption).allSatisfy({ found(WritingText.bareQuote($0)) }) else { leftOut += 1; continue }
-            if dashes > 0 || bangs > 0 || words.count != before { changed += 1 }
-            if !kept.contains(caption) { kept.append(caption) }
+            guard let cleaned = cleanCaption(raw), cleaned.text.count <= 500, CopyRules.flag(cleaned.text) == nil,
+                  quoted(cleaned.text).allSatisfy({ found(WritingText.bareQuote($0)) }) else { leftOut += 1; continue }
+            if cleaned.changed { changed += 1 }
+            if !kept.contains(cleaned.text) { kept.append(cleaned.text) }
         }
         return (Array(kept.prefix(3)), leftOut, changed)
+    }
+
+    /// A caption as kept: dashes made commas, exclamation marks made full stops, hashtags and links
+    /// taken out. Nil when nothing is left.
+    static func cleanCaption(_ raw: String) -> (text: String, changed: Bool)? {
+        var (caption, dashes) = WritingText.withoutDashes(raw.trimmingCharacters(in: .whitespacesAndNewlines))
+        var words = caption.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+        let before = words.count
+        words.removeAll { $0.hasPrefix("#") || $0.lowercased().hasPrefix("http") }
+        caption = words.joined(separator: " ")
+        let bangs = caption.filter { $0 == "!" }.count
+        caption = caption.replacingOccurrences(of: "!", with: ".")
+        return caption.isEmpty ? nil : (caption, dashes > 0 || bangs > 0 || words.count != before)
+    }
+
+    /// The whole sentences of `text`, from the start, that fit in `limit` characters, or nil.
+    static func fitting(_ text: String, limit: Int) -> String? {
+        if text.count <= limit { return text }
+        var out = ""
+        for sentence in CopyRules.sentences(text) {
+            let next = out.isEmpty ? sentence : out + " " + sentence
+            guard next.count <= limit else { break }
+            out = next
+        }
+        return out.isEmpty ? nil : out
+    }
+
+    /// "#YogaMarga" made "YogaMarga": letters and digits only, the words joined with capitals, an
+    /// apostrophe joining its word. Nil for nothing left.
+    static func hashtag(_ raw: String) -> String? {
+        let words = raw.replacingOccurrences(of: "'", with: "").replacingOccurrences(of: "\u{2019}", with: "").split { !$0.isLetter && !$0.isNumber }
+        let joined = words.map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined()
+        return joined.isEmpty || joined.count > 40 ? nil : joined
+    }
+
+    /// The hashtag as the transcript writes its words, or nil when its letters are not a run of whole
+    /// words there: "ashtangayoga" from "Ashtanga yoga" becomes "AshtangaYoga", and "Yogalinage" (the
+    /// model's misspelling on 11 Oct) is left out. Reason: a hashtag goes out under the teacher's name,
+    /// so it is held to the transcript like a quote, and run-together words read better capitalized.
+    static func hashtag(_ raw: String, in source: String) -> String? {
+        guard let joined = hashtag(raw) else { return nil }
+        let target = joined.lowercased()
+        var letters: [String] = [], starts: [Bool] = [], newWord = true
+        for character in source.replacingOccurrences(of: "'", with: "").replacingOccurrences(of: "\u{2019}", with: "") {
+            if character.isLetter || character.isNumber {
+                letters.append(String(character).lowercased())
+                starts.append(newWord)
+                newWord = false
+            } else {
+                newWord = true
+            }
+        }
+        let wanted = target.map { String($0) }
+        guard !wanted.isEmpty, wanted.count <= letters.count else { return nil }
+        for lo in 0...(letters.count - wanted.count) where starts[lo] && letters[lo] == wanted[0] {
+            let hi = lo + wanted.count
+            guard hi == letters.count || starts[hi], Array(letters[lo..<hi]) == wanted else { continue }
+            return (lo..<hi).map { starts[$0] ? letters[$0].uppercased() : letters[$0] }.joined()
+        }
+        return nil
+    }
+
+    /// The one caption per platform, each checked (11 Oct): cleaned like any caption; left out when it
+    /// breaks the copy rules, quotes words the transcript does not have, or is longer than its platform
+    /// takes even cut back to whole sentences. Its pull quote is kept only when it is found word for
+    /// word inside one line of the transcript (one sentence as Parakeet wrote it) and keeps the copy
+    /// rules; the line gives its time. Instagram's hashtags are cleaned, at most five, and come from
+    /// the keywords when the model gave none.
+    static func social(_ value: Any?, lines: [WritingLine], keywords: [String], found: (String) -> Bool)
+        -> (kept: [SocialCaption], leftOut: Int, leftOutQuotes: [String], notes: [String]) {
+        let object = value as? [String: Any] ?? [:]
+        var kept: [SocialCaption] = [], leftOut = 0, leftOutQuotes: [String] = [], notes: [String] = []
+        var usedQuotes = Set<String>()
+        let normalizedLines = lines.map { (start: $0.start, text: WritingText.normalized($0.text)) }
+        let spoken = lines.map(\.text).joined(separator: " ")
+        for platform in SocialPlatform.allCases {
+            guard let entry = platform.keys.lazy.compactMap({ object[$0] as? [String: Any] }).first else {
+                if !object.isEmpty { notes.append("No \(platform.title) caption came back.") }
+                continue
+            }
+            let raw = (entry["caption"] as? String) ?? (entry["text"] as? String) ?? ""
+            guard let cleaned = cleanCaption(raw) else {
+                leftOut += 1
+                notes.append("The \(platform.title) caption was empty.")
+                continue
+            }
+            if let why = CopyRules.flag(cleaned.text) {
+                leftOut += 1
+                notes.append("The \(platform.title) caption named \(why), so it was left out.")
+                continue
+            }
+            guard quoted(cleaned.text).allSatisfy({ found(WritingText.bareQuote($0)) }) else {
+                leftOut += 1
+                notes.append("The \(platform.title) caption quoted words that are not in the transcript, so it was left out.")
+                continue
+            }
+            // Under the platform's limit, not at it: Ivan's brief says "under 280" for X and Threads.
+            guard let text = fitting(cleaned.text, limit: platform.limit - 1) else {
+                leftOut += 1
+                notes.append("The \(platform.title) caption was \(cleaned.text.count) characters, over the \(Format.number(platform.limit)) it takes, so it was left out.")
+                continue
+            }
+            if text.count < cleaned.text.count {
+                notes.append("The \(platform.title) caption was \(cleaned.text.count) characters, over the \(Format.number(platform.limit)) it takes, so it was cut back to its first whole sentences (\(text.count)).")
+            }
+            var caption = SocialCaption(platform: platform, text: text)
+            if platform == .instagram {
+                let offered = ((entry["hashtags"] as? [Any]) ?? []).compactMap { $0 as? String }
+                var tags: [String] = []
+                // The rules read each tag as written ("free trial") and as joined ("FreeTrial"); each
+                // must be whole words the teacher says.
+                let candidates = (offered.isEmpty ? keywords : offered).filter { CopyRules.flag($0) == nil }
+                var unspoken = 0
+                for raw in candidates {
+                    guard let tag = hashtag(raw, in: spoken), CopyRules.flag(tag) == nil else { unspoken += 1; continue }
+                    if !tags.contains(where: { $0.caseInsensitiveCompare(tag) == .orderedSame }) { tags.append(tag) }
+                }
+                caption.hashtags = Array(tags.prefix(SocialPlatform.hashtagLimit))
+                if offered.isEmpty && !caption.hashtags.isEmpty { notes.append("No hashtags came back, so Instagram's are made from the keywords.") }
+                if offered.count > candidates.count {
+                    notes.append("\(Format.count(offered.count - candidates.count, "hashtag")) named money, enrollment or an offer, so \(offered.count - candidates.count == 1 ? "it was" : "they were") left out.")
+                }
+                if unspoken > 0 {
+                    notes.append("\(Format.count(unspoken, "hashtag")) \(unspoken == 1 ? "was not" : "were not") words the teacher says, as spelled in the transcript, so \(unspoken == 1 ? "it was" : "they were") left out.")
+                }
+            }
+            let rawQuote = (entry["pull_quote"] as? String) ?? (entry["pullQuote"] as? String) ?? ""
+            let quote = WritingText.bareQuote(rawQuote)
+            if !quote.isEmpty {
+                let words = WritingText.words(quote)
+                if let why = CopyRules.flag(quote) {
+                    leftOutQuotes.append(rawQuote)
+                    notes.append("The \(platform.title) pull quote named \(why), so it was left out.")
+                } else if usedQuotes.contains(quote) {
+                    notes.append("The \(platform.title) pull quote repeated another platform's, so it was left out.")
+                } else if words >= WritingRules.shortestQuote, words <= longestPullQuote,
+                          let line = normalizedLines.first(where: { $0.text.contains(quote) }) {
+                    caption.pullQuote = quote
+                    caption.pullQuoteAt = line.start
+                    usedQuotes.insert(quote)
+                } else {
+                    leftOutQuotes.append(rawQuote)
+                }
+            } else {
+                notes.append("No \(platform.title) pull quote came back.")
+            }
+            kept.append(caption)
+        }
+        return (kept, leftOut, leftOutQuotes, notes)
     }
 
     /// The JSON object in a reply: the reply itself, or the object inside a code fence or prose.
@@ -692,22 +946,70 @@ enum WritingCheck {
             return s
         }
 
-        // Titles: exactly three usable ones.
+        // Titles: three or four usable ones (the first is the writer's pick, the rest alternatives).
+        // A title that breaks the copy rules is left out.
         let offered = ((object["titles"] as? [Any]) ?? []).compactMap { $0 as? String }.map(clean)
         var titles: [String] = []
         for title in offered where !title.isEmpty && title.count <= 100 && !title.contains("<") && !title.contains(">") {
+            if let why = CopyRules.flag(title) {
+                notes.append("A title named \(why), so it was left out.")
+                continue
+            }
             if !titles.contains(where: { $0.caseInsensitiveCompare(title) == .orderedSame }) { titles.append(title) }
         }
         guard titles.count >= 3 else { throw invalid("The answer had fewer than three usable titles.") }
-        titles = Array(titles.prefix(3))
+        titles = Array(titles.prefix(WritingRules.titleOptions))
         for title in titles where title.count > WritingRules.titleLimit {
             notes.append("A title is \(title.count) characters, over the 60 a phone shows in full.")
         }
 
-        // Show notes.
+        // Show notes: 2 to 4 short paragraphs (a list, or one string with blank lines between). A
+        // sentence that breaks the copy rules is taken out; notes with nothing left fail the answer.
         let notesValue = object["show_notes"] ?? object["showNotes"]
-        let showNotes = clean((notesValue as? String) ?? ((notesValue as? [Any])?.compactMap { $0 as? String }.joined(separator: "\n\n") ?? ""))
-        guard !showNotes.isEmpty else { throw invalid("The answer had no show notes.") }
+        let offeredParagraphs = (notesValue as? [Any])?.compactMap { $0 as? String } ?? CopyRules.paragraphs((notesValue as? String) ?? "")
+        let screenedNotes = CopyRules.withoutFlaggedSentences(offeredParagraphs.map(clean).filter { !$0.isEmpty }.joined(separator: "\n\n"))
+        let showNotes = screenedNotes.text
+        guard !showNotes.isEmpty else {
+            throw invalid(screenedNotes.removed.isEmpty ? "The answer had no show notes." : "Every sentence of the show notes named money, enrollment or an offer.")
+        }
+        if !screenedNotes.removed.isEmpty {
+            notes.append("\(Format.count(screenedNotes.removed.count, "sentence")) of the show notes named \(screenedNotes.removed.joined(separator: "; ")), so \(screenedNotes.removed.count == 1 ? "it was" : "they were") taken out.")
+        }
+        let paragraphCount = CopyRules.paragraphs(showNotes).count
+        if notesValue is [Any] || paragraphCount > 1, !(2...4).contains(paragraphCount) {
+            notes.append("The show notes are \(Format.count(paragraphCount, "paragraph")), not the 2 to 4 asked for.")
+        }
+
+        // The one-line summary: under 160 characters (cut back to its first sentence if that fits),
+        // within the copy rules, or none.
+        var oneLine: String?
+        if let raw = (object["one_line"] ?? object["oneLine"]) as? String {
+            let line = clean(raw)
+            if let why = CopyRules.flag(line) {
+                notes.append("The one-line summary named \(why), so it was left out.")
+            } else if let fitted = fitting(line, limit: oneLineLimit), !fitted.isEmpty {
+                oneLine = fitted
+                if fitted.count < line.count { notes.append("The one-line summary was \(line.count) characters, so only its first sentence is kept.") }
+            } else if !line.isEmpty {
+                notes.append("The one-line summary was \(line.count) characters, over 159, so it was left out.")
+            }
+        }
+
+        // Keywords: trimmed, one to four words, within the copy rules, at most ten.
+        var keywords: [String]?
+        if let offeredKeywords = (object["keywords"] as? [Any])?.compactMap({ $0 as? String }) {
+            var kept: [String] = []
+            for raw in offeredKeywords {
+                let keyword = clean(raw.trimmingCharacters(in: CharacterSet(charactersIn: "#.,").union(.whitespaces)))
+                guard !keyword.isEmpty, keyword.count <= 40, WritingText.words(keyword) <= 4 else { continue }
+                if let why = CopyRules.flag(keyword) {
+                    notes.append("A keyword named \(why), so it was left out.")
+                    continue
+                }
+                if !kept.contains(where: { $0.caseInsensitiveCompare(keyword) == .orderedSame }) { kept.append(keyword) }
+            }
+            keywords = Array(kept.prefix(10))
+        }
 
         // Chapters: at the transcript's own times only.
         var starts: [String: Double] = [:]
@@ -720,6 +1022,11 @@ enum WritingCheck {
                 .trimmingCharacters(in: CharacterSet(charactersIn: "[] ").union(.whitespaces))
             let title = clean((entry["title"] as? String) ?? "")
             guard let start = starts[label], !title.isEmpty else { leftOutChapters += 1; continue }
+            if let why = CopyRules.flag(title) {
+                leftOutChapters += 1
+                notes.append("The chapter at \(label) named \(why) in its title, so it was left out.")
+                continue
+            }
             if !chapters.contains(where: { abs($0.start - start) < 0.001 }) { chapters.append(WrittenChapter(start: start, title: title)) }
         }
         chapters.sort { $0.start < $1.start }
@@ -800,17 +1107,25 @@ enum WritingCheck {
         if dashes > 0 {
             notes.append("\(Format.count(dashes, "dash", "dashes")) replaced with a comma: no em dashes or en dashes in anything written.")
         }
-        let offeredCaptions = ((object["captions"] as? [Any]) ?? []).compactMap { $0 as? String }
-        let social = captions(offeredCaptions) { quote in
-            !quote.isEmpty && (haystack.contains(quote) || located.contains(quote))
-        }
-        if offeredCaptions.isEmpty { notes.append("No social captions came back.") }
-        if social.changed > 0 {
-            notes.append("\(Format.count(social.changed, "social caption")) had a dash, an exclamation mark, a hashtag or a link taken out.")
+        let found: (String) -> Bool = { quote in !quote.isEmpty && (haystack.contains(quote) || located.contains(quote)) }
+        // One caption per platform (11 Oct), or the three plain captions a model may still give.
+        var social: (kept: [SocialCaption], leftOut: Int, leftOutQuotes: [String], notes: [String]) = ([], 0, [], [])
+        var plain: (kept: [String], leftOut: Int, changed: Int) = ([], 0, 0)
+        if let value = object["social"] {
+            social = Self.social(value, lines: lines, keywords: keywords ?? [], found: found)
+            notes += social.notes
+        } else {
+            let offeredCaptions = ((object["captions"] as? [Any]) ?? []).compactMap { $0 as? String }
+            plain = captions(offeredCaptions, found: found)
+            if offeredCaptions.isEmpty { notes.append("No social captions came back.") }
+            if plain.changed > 0 {
+                notes.append("\(Format.count(plain.changed, "social caption")) had a dash, an exclamation mark, a hashtag or a link taken out.")
+            }
         }
         return Checked(titles: titles, showNotes: showNotes, chapters: kept, checklist: checklist,
                        leftOutQuotes: leftOut, leftOutChapters: leftOutChapters, notes: notes,
-                       captions: social.kept, leftOutCaptions: social.leftOut)
+                       captions: plain.kept, leftOutCaptions: plain.leftOut + social.leftOut,
+                       oneLine: oneLine, keywords: keywords, social: social.kept, leftOutPullQuotes: social.leftOutQuotes)
     }
 
     /// Tags as kept: trimmed, one to four words, no dashes, merged by how often they came up (most
@@ -864,7 +1179,12 @@ extension WrittenPackage {
         line += attempts > 1 ? " (\(Format.count(attempts, "try", "tries")))" : ""
         line += ": \(Format.count(titles.count, "title option")), \(Format.count(chapters.count, "chapter")), "
         line += "\(Format.count(checklist.count, "quote")) found word for word in the transcript"
-        if let captions, !captions.isEmpty { line += ", \(Format.count(captions.count, "social caption"))" }
+        if let social, !social.isEmpty {
+            let quotes = social.filter { $0.pullQuote != nil }.count
+            line += ", \(Format.count(social.count, "social caption")) with \(Format.count(quotes, "pull quote")) found word for word"
+        } else if let captions, !captions.isEmpty {
+            line += ", \(Format.count(captions.count, "social caption"))"
+        }
         var left: [String] = []
         if !leftOutQuotes.isEmpty { left.append(Format.count(leftOutQuotes.count, "quote")) }
         if leftOutChapters > 0 { left.append(Format.count(leftOutChapters, "chapter")) }

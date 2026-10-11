@@ -96,9 +96,36 @@ final class SnapshotTests: XCTestCase {
             written.append(name)
         }
 
+        // 11 Oct: the 13 Sep talk marked as a class with the podcast-ready episode switched on: Ready to
+        // upload says why a class is never made ready, and nothing was made.
+        for (scheme, appearance) in appearances {
+            let model = Fixtures.model()
+            let recordings = try model.context.fetch(FetchDescriptor<Recording>())
+            let recording = try XCTUnwrap(recordings.first { $0.title == "Talk with Gabriel" && $0.status == .readyForYourYes })
+            model.setKind(.lesson, for: recording)
+            model.setOutput(.podcastReady, on: true, for: recording)
+            recording.podcastReadyJSON = nil
+            recording.podcastReadyProblem = PodcastPackage.refusal(kind: .lesson)
+            model.open(recording)
+            let name = "08-recording-class-not-ready-\(scheme)"
+            try renderer.render(model: model, appearance: appearance, name: name)
+            written.append(name)
+        }
+
         if only == "recording" {
             print("Snapshots written to \(outputFolder.path): \(written.count) recording pages")
             return
+        }
+
+        // 11 Oct: the Outputs screen with the show numbered, so its podcast-ready settings show the
+        // numbering choice and the empty call to action (nothing is ever filled in for Ivan).
+        for (scheme, appearance) in appearances {
+            let model = Fixtures.model()
+            model.selection = .outputs
+            try XCTUnwrap(model.defaultSettings().first { $0.kind == .podcastReady }).numbering = .episodes
+            let name = "04-outputs-numbered-\(scheme)"
+            try renderer.render(model: model, appearance: appearance, name: name)
+            written.append(name)
         }
 
         // Today with nothing waiting, and nothing set up.
@@ -125,6 +152,6 @@ final class SnapshotTests: XCTestCase {
 
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, SidebarItem.allCases.count * 2 + 22)
+        XCTAssertEqual(written.count, SidebarItem.allCases.count * 2 + 26)
     }
 }

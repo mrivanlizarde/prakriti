@@ -86,7 +86,9 @@ Neither page is listed in search engines.
   sound, makes the episode audio and the transcript, drafts titles and show notes, and lets Ivan trim,
   cut and approve. It can now also prepare a podcast-ready episode: the finished file with its name,
   details, chapters and captions, a text of the title, show notes and social posts, and a checklist
-  against Apple's published rules, so Ivan can upload it by hand. Nothing is uploaded by Prakriti.
+  against Apple's published rules, so Ivan can upload it by hand. Since Sun 11 Oct each recording's
+  page has a Copy button for the title, the show notes and a caption for Instagram, LinkedIn and X,
+  each with a quote in the teacher's own words. Nothing is uploaded by Prakriti.
   Progress is in `docs/BUILD-LOG.md`.
 - Prakriti is named, researched and planned. The front page and roadmap are written; they go live
   on Ivan's yes. The web app behind sign-in is not built yet.

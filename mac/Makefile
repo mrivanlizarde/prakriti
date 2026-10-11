@@ -37,6 +37,14 @@
 #                 notes, chapters and captions by Qwen3.8-27B in LM Studio; the MP3 measured and read back,
 #                 the checklist read. Needs LM Studio's server running. Writes to ~/Prakriti/Dev/Outputs and
 #                 acceptance-podcast-*.txt plus pictures to ../screens/mac/$(MILESTONE)/ (about 40 minutes)
+# make accept-episode-text  the episode text's acceptance on the REAL 13 Sep talk (11 Oct): made with
+#                 everything on, the writing by Qwen3.8-27B in LM Studio (set to the Claude API on purpose:
+#                 the privacy lock must keep it on this Mac), then Episode text.txt and .md read back: every
+#                 section there, every pull quote word for word in transcript.txt and inside one .srt cue,
+#                 every chapter time one ffprobe reads from the finished MP3, no dashes, no "$" or "enroll"
+#                 in the captions, X and Threads under 280 characters; a call to action set, updated and
+#                 cleared; pictures of the page and of the class refusal. Needs LM Studio's server running.
+#                 Writes acceptance-episode-text.txt and pictures to ../screens/mac/$(MILESTONE)/ (about 30 minutes)
 # make migrate-check  copy the live store (sqlite3 .backup, a consistent snapshot; the live store
 #                 is only read) into build/store-copy and open the COPY with this build's models.
 #                 Run it before `make install` whenever the models change
@@ -60,7 +68,7 @@ MODE      ?= development
 ONLY      ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: generate build test snapshots accept accept-outputs accept-edits accept-models accept-podcast migrate-check run look check install drop
+.PHONY: generate build test snapshots accept accept-outputs accept-edits accept-models accept-podcast accept-episode-text migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -88,6 +96,9 @@ accept-models:
 
 accept-podcast:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=podcast TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/PodcastReadyAcceptanceTests
+
+accept-episode-text:
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=episode-text TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/EpisodeTextAcceptanceTests
 
 STORE_COPY = $(CURDIR)/$(DERIVED)/store-copy/Prakriti.store
 

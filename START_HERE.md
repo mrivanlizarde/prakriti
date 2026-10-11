@@ -17,7 +17,10 @@ self-feedback; the Worker (`web/src/index.js`) and the front door (`web/public`)
 deployed (they go live through the pre-deploy sequence in PLAN.md row 21); nothing else is built yet.
 **Since then:** the front door and roadmap went live the evening of Thu 8 Oct (see Deploy), and on
 Sat 10 Oct Prakriti for Mac, the native engine, was built, took over from engine v0 and reached its
-v1 finish line (see "Prakriti for Mac" and the end of `docs/BUILD-LOG.md`).
+v1 finish line (see "Prakriti for Mac" and the end of `docs/BUILD-LOG.md`). That night it gained the
+podcast-ready episode, and on Sun 11 Oct its episode text (title and alternatives, one-line summary,
+show notes with chapters, keywords, a caption and pull quote per platform) and the recording page's
+Ready to upload section with a Copy button for each.
 
 **Current state, matching PLAN.md:**
 
@@ -514,12 +517,28 @@ chain (a 70 Hz high-pass, a gentle 1.5:1 compressor, the whole episode raised ev
 peaks limited to -1 dBTP or under, 44.1 kHz, mono 96 kbps) fixes the volume riding of every episode
 engine v0 made; Prakriti writes the ID3v2.4 tag itself (title, author, show, year, comment, genre
 Podcast, episode number, artwork, chapters); captions (.srt, .vtt) are timed to the finished file;
-`Title, show notes and captions.txt` holds the title, show notes and three social captions the
-writing model drafted; `Upload checklist.txt` measures the file against Apple's published rules, line
-by line, PASS, MISSING or FAIL. All in `<Outputs>/<recording>/Podcast-ready/`; Approve copies the
+`Episode text.txt` (and the same as `Episode text.md`) holds the words that go with it (below);
+`Upload checklist.txt` measures the file against Apple's published rules, line by line, PASS,
+MISSING or FAIL. All in `<Outputs>/<recording>/Podcast-ready/`; Approve copies the
 folder. Show name, host and artwork are MISSING until Ivan sets them on the Outputs screen: Prakriti
 never invents them. Off for every folder until turned on. See `docs/BUILD-LOG.md`, "Podcast-ready
 episode".
+**Episode text and Ready to upload, Sun 11 Oct:** `Episode text.txt` and `.md` in the Podcast-ready
+folder: the episode title (Ivan's, else the writer's first pick) and three alternatives, a one-line
+summary under 160 characters, show notes in 2 to 4 short paragraphs followed by the chapters at their
+times in the finished MP3 and Ivan's call to action (Outputs screen; none unless he types one),
+keywords, and a caption each for Instagram (up to five hashtags), LinkedIn and X and Threads (under 280
+characters), each with a one-sentence pull quote found word for word inside one line of the transcript
+or left out. Written in the same single request as the titles and notes, by the chosen model (on this
+Mac under the privacy lock), then read by Swift: Ivan's copy rules are enforced by `CopyRules` (no
+prices, money, earnings, enrollment or offers; a caption, pull quote, title or keyword that names one
+is left out, a sentence of drafted notes is taken out, and each is said). The recording page's **Ready
+to upload** section lists the files, the whole checklist with PASS, MISSING or FAIL as words, and a
+Copy button for the title, one-line summary, show notes and each caption and pull quote, with Show in
+Finder. **A class is never made ready:** the pipeline refuses both podcast-ready steps for it, Update
+Podcast-Ready Files refuses it, and the page says why. Numbering (not numbered, episode numbers, or
+seasons and episode numbers) is on the Outputs screen. See `docs/BUILD-LOG.md`, "Episode text and Ready
+to upload".
 
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
@@ -537,8 +556,8 @@ folders, beside the live one.
 
 - **Where things go.** Finished files: `~/Prakriti/Outputs/<recording name>/` (`episode.mp3`, the
   transcripts, `REPORT.md`, `show-notes.md` when writing is on, and the `Podcast-ready` folder when
-  that output is on: the MP3 to upload, its captions, the title and notes text, the upload
-  checklist). Your yeses:
+  that output is on: the MP3 to upload, its captions, `Episode text.txt` with the title, show notes
+  and social captions, and the upload checklist; the recording's page has a Copy button for each). Your yeses:
   `~/Prakriti/Approved/<recording name>/`, only when you press Approve. To have any file made, put it
   in `~/Prakriti/Drop`. Prakriti only reads the Studio Recordings folder and never writes into it.
   Every look and every step: `~/Library/Logs/Prakriti/<date>.log`, and the Activity screen.
@@ -597,6 +616,9 @@ cd ~/Code/prakriti/mac && make accept-models MILESTONE=m6
 ```
 ```bash
 cd ~/Code/prakriti/mac && make accept-podcast MILESTONE=podcast
+```
+```bash
+cd ~/Code/prakriti/mac && make accept-episode-text MILESTONE=episode-text
 ```
 ```bash
 cd ~/Code/prakriti/mac && make migrate-check
@@ -663,7 +685,15 @@ times); tags and summary go to Apple on-device; the model is unloaded first so P
 65,536 tokens is exercised, and must be unloaded again after. It checks every chapter start against
 the cue starts of `transcript.srt` and every quote against `transcript.txt`, has Apple on-device tag a
 short input, tests each provider for real, and writes `acceptance-models.txt`, the model's own answer
-(`model-answer.txt`) and pictures of the page and the Models screen. The real window on the sample recording page:
+(`model-answer.txt`) and pictures of the page and the Models screen. `make accept-episode-text` is the
+episode text's check on the **real 13 Sep talk** with the **real model** (about 30 minutes, nearly all
+of it Qwen3.8-27B; LM Studio's server must be running): made with everything on and writing set to the
+Claude API on purpose (the privacy lock must keep it on this Mac: 0 Claude calls), then `Episode
+text.txt` and `.md` are read back independently: every section, every pull quote found in
+`transcript.txt` and inside one `.srt` cue, every chapter time one ffprobe reads from the finished MP3,
+no dashes, no "$" or "enroll" in the captions, X and Threads under 280 characters, at most five
+hashtags; then a test call to action is set, the files updated, checked, cleared and updated again; it
+writes `acceptance-episode-text.txt` and pictures of the page and of the class refusal. The real window on the sample recording page:
 `open -n build/Build/Products/Debug/Prakriti.app --args --sample-data --show=recordings --open=ready
 --appearance=light` (add `--sample-edits` for a trim and cut not made yet), then
 `swift scripts/capture-window.swift --window build/Build/Products/Debug/Prakriti.app out.png`.
@@ -686,7 +716,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | The recording page (milestone 5) | `mac/Prakriti/Views/RecordingPage.swift` (player, transcript lines, trim and cuts, title and notes, Approve), `App/RecordingActions.swift` (what its buttons do), `App/Approval.swift` (who may be approved, the copy and its receipt), `Engine/EpisodeEdits.swift` (the edits, the episode's clock, typed times, the transcript that follows the episode); tests `RecordingPageTests` (in `make test`) and `EditsAcceptanceTests` (`make accept-edits`) |
 | Approved files, live | `~/Prakriti/Approved/<file name without extension>/`: `episode.mp3`, the transcript's chosen formats (following the episode), `REPORT.md`, and `APPROVAL.md` (title, notes, edits, every file's size and SHA-256). Never `transcript.json`. Development: `~/Prakriti/Dev/Approved/` |
 | Outputs, development mode | `~/Prakriti/Dev/Outputs/<file name without extension>/`: `episode.mp3`, `transcript.txt/.srt/.vtt/.md` (the chosen formats, with the word list applied), `transcript.json` (Parakeet's words as heard, with their times; never changed), `REPORT.md` (engine v0's layout). A make in progress lives in the hidden `.making <name>` folder beside it |
-| The podcast-ready episode | `mac/Prakriti/Engine/PodcastReady.swift` (the settings, the chain with the reason for every number, the file name, chapters, the text file and the checklist), `PodcastReadyRun.swift` (the passes ffmpeg makes and the package written and read back), `ID3.swift` (Prakriti's own ID3v2.4 writer and reader), `Artwork.swift` (Apple's artwork rules, read by ImageIO); `Views/PodcastReadyViews.swift` (its settings on Outputs, its section on the recording page); `PipelineRunner.packageAgain` (Update Podcast-Ready Files); tests `PodcastReadyTests` (in `make test`) and `PodcastReadyAcceptanceTests` (`make accept-podcast`) |
+| The podcast-ready episode | `mac/Prakriti/Engine/PodcastReady.swift` (the settings with numbering and the call to action, the chain with the reason for every number, the file name, chapters, `EpisodeCopy` and `PodcastPackage.copy` (the words the text files and the Copy buttons share), the two episode text files, the checklist and the class refusal), `PodcastReadyRun.swift` (the passes ffmpeg makes and the package written and read back), `ID3.swift` (Prakriti's own ID3v2.4 writer and reader), `Artwork.swift` (Apple's artwork rules, read by ImageIO); `Views/PodcastReadyViews.swift` (its settings on Outputs, the Ready to upload section with its Copy buttons and checklist, `Pasteboard`); `Writing/CopyRules.swift` (Ivan's copy rules, read by Swift); `PipelineRunner.packageAgain` (Update Podcast-Ready Files); tests `PodcastReadyTests` and `EpisodeTextTests` (in `make test`), `PodcastReadyAcceptanceTests` (`make accept-podcast`) and `EpisodeTextAcceptanceTests` (`make accept-episode-text`) |
 | The Yoga Marga word list | `mac/Prakriti/Engine/Lexicon.swift` (each word as written, how it has been misheard, and what it is); shown on the Outputs screen |
 | Output settings | Which outputs: each folder's switches (Sources), else the Outputs screen's (files added by hand). How: the Outputs screen. A recording's own choices (its page) override both: `OutputResolver` in `Model/Store.swift` |
 | Test clips | `~/Prakriti/Dev/Drop/2026-09-13 clip 30s.mp4` (a test) and `~/Prakriti/Dev/Clips/2026-09-13 clip 90s.mp4` (a full run), cut with `ffmpeg -c copy` from the 13 Sep talk |
@@ -1011,6 +1041,31 @@ top and its end. Reading the code is not verification, and neither is a passing 
     again.** The audio bytes are the same (tested). A new trim, cut, layout or bitrate needs Make
     Again. Reason: a new title or show name should not cost a remaster and a second listen (it takes about
     10 s on a 16-minute talk and 35 s on episode 1, most of it measuring the file again).
+67. **Ivan's copy rules are enforced in Swift (`CopyRules`), not only asked for in the prompt: no
+    prices, money, earnings, enrollment, sign-ups or offers in a title, the one-line summary, the show
+    notes, a keyword, a social caption, a pull quote, the tags or the summary.** A flagged caption, pull
+    quote, title or keyword is left out; a flagged sentence of drafted notes or the summary is taken
+    out; each is said in the notes and `Episode text.txt`. Ivan's own title, notes and call to action
+    are never screened or changed (except an em or en dash becoming a comma); the call to action is the
+    only place money or enrollment may appear, and the model never sees it. Reason: on 10 and 11 Oct the
+    13 Sep drafts said "available to enrolled students", "pause new student enrollment", "a free week"
+    and, in the MP3's comment, "pricing", while enrollment may be closed and the talk names a teacher's
+    own income. A prompt is not a guarantee (warning 51). Keep the patterns narrow: "the practice
+    offers", "pay attention" and "sales" as a subject are ordinary in a yoga talk.
+68. **A pull quote is kept only when it is found word for word inside one line of the transcript (one
+    sentence as Parakeet wrote it), keeps the copy rules and repeats no other platform's.** Otherwise it
+    is left out and counted, never fixed. Reason: Ivan's brief asks for a one-sentence quote that is
+    verbatim; a quote spanning two lines is two sentences, and a reworded one puts words in the
+    teacher's mouth.
+69. **A class is never made ready to upload.** `Pipeline` skips both podcast-ready steps for a recording
+    marked a class (`PodcastPackage.refusal`), `canUpdatePodcastReady` and `repackage` refuse it, and the
+    Ready to upload section says why. Make Again on a recording marked a class removes podcast-ready files
+    made while it was a talk. Reason: students may be heard in a class and voices are not checked; a
+    folder named for upload must never hold one.
+70. **`Episode text.txt`, `Episode text.md` and the page's Copy buttons all read `PodcastPackage.copy`,
+    and the chapters they list are the ones written into the MP3 (`PodcastPackage.chapters`, the first at
+    0:00).** Reason: what Ivan copies must be what the file says, and a chapter time that is not in the
+    finished file would send a listener to the wrong moment.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

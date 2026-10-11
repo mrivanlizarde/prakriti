@@ -15,9 +15,9 @@ enum Fixtures {
         Calendar.current.date(from: DateComponents(year: y, month: mo, day: d, hour: h, minute: mi, second: s)) ?? .distantPast
     }
 
-    /// The podcast-ready episode of the 13 Sep talk as the final acceptance measured it (10 Oct, 11:46
-    /// pm: -16.03 LUFS, true peak -1.78 dBTP, range 3.7 LU, 946.55 s), run through the real checklist
-    /// builder with nothing set on the Outputs screen: show name and artwork MISSING.
+    /// The podcast-ready episode of the 13 Sep talk as the acceptances measured it (10 Oct, 11:46 pm, and
+    /// 11 Oct, 2:21 am: -16.03 LUFS, true peak -1.78 dBTP, range 3.7 LU, 946.55 s), run through the real
+    /// checklist builder with nothing set on the Outputs screen: show name and artwork MISSING.
     static func podcastReady13(_ talk: Recording) -> PodcastReadyRecord {
         let facts = PodcastEpisodeFacts(title: talk.title, notes: talk.notes, recordedAt: talk.recordedAt, label: "Sun 13 Sep", kind: .talk, fileName: talk.fileName)
         let tag = ID3.Tag(version: 4, text: ["TIT2": talk.title, "TDRC": "2026", "TCON": "Podcast"], comment: "A talk.",
@@ -31,8 +31,12 @@ enum Fixtures {
                                   sampleRate: 44_100, bitrateKbps: 96, channels: 1, duration: 946.55, expectedDuration: 946.55, bytes: 11_361_543,
                                   talkLUFS: -26.67, captions: 137, chapters: 3,
                                   checklist: PodcastPackage.checklist(measured, settings: PodcastReadySettings(), facts: facts, written: written),
-                                  madeAt: date(2026, 10, 10, 22, 30),
-                                  fingerprint: PodcastPackage.fingerprint(settings: PodcastReadySettings(), facts: facts, written: written))
+                                  madeAt: date(2026, 10, 11, 2, 21),
+                                  fingerprint: PodcastPackage.fingerprint(settings: PodcastReadySettings(), facts: facts, written: written),
+                                  // The files and sizes the episode text's acceptance left (11 Oct, 2:21 am), named for this title.
+                                  files: [.init(name: talk.title + ".mp3", bytes: 11_360_986), .init(name: talk.title + ".srt", bytes: 20_629),
+                                          .init(name: talk.title + ".vtt", bytes: 20_197), .init(name: PodcastPackage.markdownName, bytes: 4_370),
+                                          .init(name: PodcastPackage.textName, bytes: 4_265), .init(name: PodcastPackage.checklistName, bytes: 3_453)])
     }
 
     static func populate(_ context: ModelContext, paths: AppPaths) {
@@ -85,46 +89,73 @@ enum Fixtures {
         // The files engine v0 made for this talk, which are in that folder, so the page's player
         // and transcript show the real talk (read only).
         talk13.madeFiles = ["REPORT.md", "episode.mp3", "transcript.json", "transcript.srt", "transcript.txt", "transcript.vtt"]
-        // What Qwen3.8-27B wrote for this talk in milestone 6's acceptance (10 Oct, 7:41 pm), as it
-        // was checked: every chapter time is a line of the episode's transcript, every quote was found
-        // word for word. Two of its seven claims are left out here: the speaker's own sales figure, so
-        // the repository holds no money detail about anyone, and the yin yoga one, whose quote starts
-        // with a word the copy rules ban from app strings. The transcript names Serenity, so the
-        // recording is privacy locked, and the writing that was set to the Claude API stayed on this Mac.
+        // What Qwen3.8-27B wrote for this talk in the episode text's acceptance (11 Oct, 2:20 am), as it
+        // was checked: every chapter time is a line of the episode's transcript, every quote and pull
+        // quote was found word for word, nothing named money, enrollment or an offer. Two of its seven
+        // claims are left out here: the speaker's own sales figure and his own early income, so the
+        // repository holds no money detail about anyone. Instagram's hashtags are the ones today's check
+        // keeps: the model's "Yogalinage" is not a word the teacher says. The transcript names Serenity,
+        // so the recording is privacy locked, and the writing that was set to the Claude API stayed here.
         talk13.hasSerenity = true
-        talk13.writtenJSON = WrittenPackage(
-            titles: ["Yoga Marga: Lineage, Sales, and Yin Yoga", "The History and Future of Yoga Marga School",
-                     "From Krishnamacharya to the Business of Yoga"],
-            showNotes: "The teacher gives a life update on Yoga Marga School, tracing the school's yoga lineage back to Sri Krishnamacharya and Sri BNS Iyengar. "
-                + "The talk covers the decision to pause enrollment of new students, the shift in how the two teachers divide their work, and the upcoming "
-                + "division of the curriculum into a coaching and mindset track led by Serenity and a business and sales track. The teacher also announces "
-                + "the return of weekly yin yoga classes on Mondays and Wednesdays, walks through the online platform, and mentions that new viewers can access a free week.",
-            chapters: [WrittenChapter(start: 0.418, title: "Yoga Lineage and Origins"), WrittenChapter(start: 251.938, title: "School Changes Ahead"),
-                       WrittenChapter(start: 744.258, title: "Yin Yoga Schedule")],
+        var written = WrittenPackage(
+            titles: ["A Life Update from Yoga Marga School", "Yoga's Lineage and the School's Next Chapter",
+                     "From India to Yin: What Changed at Yoga Marga", "The Two Paths of Yoga Marga Going Forward"],
+            showNotes: "The teacher opens by tracing the lineage of modern yoga back to Sri Krishnamacharya, whose disciples including Pattabhi Jois and BKS Iyengar "
+                + "carried the practice to the world. He recalls a trip to India to meet Sri BNS Iyengar, who recently turned one hundred, and reflects on how that "
+                + "visit prompted a period of rest and reflection for the school.\n\n"
+                + "The teacher describes how Yoga Marga is shifting its structure. Serenity will continue leading the coaching program and adding classes to the "
+                + "schedule, while the teacher is building a separate track focused on the business side of yoga, drawing on his own experience supporting other "
+                + "practitioners. The curriculum for the coming semester will be divided into these two halves.\n\n"
+                + "The talk closes with a schedule update. Yin yoga returns to the weekly calendar on Mondays and Wednesdays at 8 p.m. Pacific time, offered as a "
+                + "deep body practice for the community. The teacher also walks through the online platform, pointing to the library of recorded classes, "
+                + "philosophy teachings, and mentorship content available to students.",
+            chapters: [WrittenChapter(start: 0.418458, title: "The Lineage of Yoga"), WrittenChapter(start: 172.218458, title: "Shifting the School's Focus"),
+                       WrittenChapter(start: 744.258458, title: "Yin Yoga Returns")],
             checklist: [
-                CheckedClaim(claim: "Sri BNS Iyengar recently celebrated his 100th birthday.", quote: "who actually just celebrated his 100th birthday", at: 30.258),
-                CheckedClaim(claim: "Sri Krishnamacharya is described as the father of modern yoga.", quote: "he's the father of modern yoga", at: 44.818),
-                CheckedClaim(claim: "The teacher states that 99.9% of yoga practiced today traces back to Sri Krishnamacharya.",
-                             quote: "99.9% of every single yoga that is practiced nowadays", at: 56.338),
-                CheckedClaim(claim: "Pattabhi Jois and BKS Iyengar were named as disciples of Sri Krishnamacharya.",
-                             quote: "Pattabhi Jois, BKS Iyengar, some of the other like famous", at: 84.098),
-                CheckedClaim(claim: "The teacher is starting a new school group within Yoga Marga focused on sales.",
-                             quote: "it's specifically going to be focused on sales", at: 630.858),
+                CheckedClaim(claim: "Sri BNS Iyengar celebrated his 100th birthday around the time of the talk.",
+                             quote: "one of our gurus, uh, Sri BNS Iyengar, who actually just celebrated his 100th birthday", at: 30.258458),
+                CheckedClaim(claim: "Sri BNS Iyengar is described as one of the oldest practitioners and teachers of Ashtanga Yoga.",
+                             quote: "he is one of the oldest uh practitioners and teachers of Ashtanga Yoga", at: 44.818458),
+                CheckedClaim(claim: "The teacher claims 99.9 percent of yoga practiced today traces back to Sri Krishnamacharya.",
+                             quote: "99.9% of every single yoga that is practiced nowadays", at: 56.338458),
+                CheckedClaim(claim: "The teacher says the yoga practiced at Yoga Marga dates back to Sri Krishnamacharya at the beginning of the 19th century.",
+                             quote: "dates back to these uh these moments with Sri Krishnamacharya at the beginning of the 19th century", at: 96.018458),
+                // The teacher's own words keep his contraction, escaped so the rule for Prakriti's own
+                // voice (RulesTests, no "we are" contractions in app strings) reads them as quoted data.
+                CheckedClaim(claim: "Yin yoga is being added to the weekly schedule on Mondays and Wednesdays at 8 p.m. Pacific time.",
+                             quote: "But we\'re doing yin yoga starting Mondays and Wednesdays, starting tomorrow at 8 p.m.", at: 867.218458),
             ],
-            tags: ["yoga of communication", "coaching program", "business of yoga"],
-            summary: "The talk outlines the evolution of the Yoga Marga school following a trip to India and the decision to shift focus away from new student enrollment. "
-                + "It details the restructuring of the curriculum into coaching and mindset support alongside a new business-focused program. The session covers "
-                + "updates to the online schedule, including the return of weekly yin yoga classes and access to existing educational materials.",
+            tags: ["Ashtanga Yoga", "Yin Yoga", "Yoga of Communication", "Pranayama", "Asana", "Samkhya Philosophy", "Yoga Sutras", "Ahimsa"],
+            summary: "The speaker shares an update on the Yoga Marga school, noting a recent trip to India to meet Sri BNS Iyengar, a centenarian Ashtanga Yoga "
+                + "practitioner and direct disciple of Sri Krishnamacharya, and reflecting on the lineage that connects the school's teaching back to that tradition. "
+                + "The curriculum is being reorganized into two tracks: one led by Serenity focused on coaching, the yoga of communication, and relational practices, "
+                + "and another focused on the business and marketing side of running a yoga practice. Weekly yin yoga classes have been added to the schedule, and "
+                + "the online platform holds extensive recorded material covering asana, pranayama, anatomy, the sutras, and Samkhya philosophy.",
             writtenBy: "Qwen3.8-27B in LM Studio", writingProvider: ModelProvider.lmStudio.rawValue,
-            taggedBy: "Apple on-device", summarizedBy: "Apple on-device", lockReason: "This recording mentions Serenity", lockedTasks: ["writing"],
-            writtenAt: date(2026, 10, 10, 19, 41, 49), seconds: 864.7, attempts: 1, writingSeconds: 846.5,
-            promptTokens: 5306, completionTokens: 7710, reasoningTokens: 7117, clock: "episode",
-            // The social captions Qwen3.8-27B wrote for this talk in the podcast-ready acceptance (10 Oct,
-            // 10:24 pm); their times and numbers ("8 p.m. Pacific", "thousands of hours") were found in the transcript by hand.
-            captions: ["The teacher walks through Yoga Marga's next chapter: lineage, coaching, business, and a new yin yoga schedule.",
-                       "The teacher traces the school's practice back to Sri Krishnamacharya and Sri BNS Iyengar, then shares how Yoga Marga is splitting into a coaching track led by Serenity and a new business group focused on sales and marketing for yoga teachers.",
-                       "A weekly yin yoga class returns to the Yoga Marga schedule on Mondays and Wednesdays at 8 p.m. Pacific. The teacher also walks through the online platform, where thousands of hours of curriculum, from asana to Samkhya philosophy, are available to enrolled students."],
-            leftOutCaptions: 0).json()
+            taggedBy: "Qwen3.8-27B in LM Studio", summarizedBy: "Qwen3.8-27B in LM Studio", lockReason: "This recording mentions Serenity", lockedTasks: ["writing"],
+            writtenAt: date(2026, 10, 11, 2, 20, 8), seconds: 1798.4, attempts: 1, writingSeconds: 1457.4,
+            promptTokens: 5800, completionTokens: 12445, reasoningTokens: 11218, clock: "episode")
+        written.oneLine = "The teacher shares the school's journey through India, the lineage of modern yoga, and how Yoga Marga is reshaping its curriculum and schedule."
+        written.keywords = ["Sri Krishnamacharya", "Sri BNS Iyengar", "Ashtanga Yoga lineage", "Yoga Marga School", "yin yoga", "yoga of communication",
+                            "coaching program", "business of yoga", "Samkhya philosophy", "Pattabhi Jois"]
+        written.social = [
+            SocialCaption(platform: .instagram,
+                          text: "The teacher traces modern yoga back to Sri Krishnamacharya and shares how that lineage shaped a trip to India. Yoga Marga is splitting "
+                            + "its curriculum into two paths, and yin yoga returns to the weekly schedule.",
+                          hashtags: ["YinYoga", "YogaMarga", "Krishnamacharya", "AshtangaYoga"],
+                          pullQuote: "Yoga is a practice that is more than just asana, pranayama, breathing, stretching.", pullQuoteAt: 527.458458),
+            SocialCaption(platform: .linkedin,
+                          text: "The teacher reflects on a period of rest that followed a trip to India, and how that pause reshaped the school's direction. Yoga Marga "
+                            + "is dividing its curriculum into two tracks: one led by Serenity in coaching and the relational side of yoga, and one the teacher is "
+                            + "building around the business of teaching. The talk also covers the lineage of modern yoga through Sri Krishnamacharya and the return "
+                            + "of weekly yin yoga to the schedule.",
+                          pullQuote: "And if at any point it is becoming a disservice to ourselves, then it impacts our ability to show up for others.", pullQuoteAt: 157.738458),
+            SocialCaption(platform: .x,
+                          text: "The teacher traces yoga's lineage to Sri Krishnamacharya, shares how a trip to India reshaped the school, and announces yin yoga "
+                            + "returning to the weekly schedule.",
+                          pullQuote: "Yoga Marga, we\'re not going anywhere, we\'re still here.", pullQuoteAt: 729.618458),
+        ]
+        talk13.writtenJSON = written.json()
         talk13.podcastReadyJSON = podcastReady13(talk13).json()
         context.insert(talk13)
         talk13.source = studio

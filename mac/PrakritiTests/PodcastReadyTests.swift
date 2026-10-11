@@ -317,7 +317,9 @@ final class PodcastReadyTests: XCTestCase {
         XCTAssertEqual(record.bitrateKbps, 96)
         XCTAssertTrue(first.files.contains(PodcastPackage.folderName), "\(first.files)")
         let package = folder.appending(path: PodcastPackage.folderName)
-        XCTAssertEqual(Pipeline.madeFiles(in: package), ["2026-10-11.mp3", "2026-10-11.srt", "2026-10-11.vtt", PodcastPackage.textName, PodcastPackage.checklistName].sorted())
+        XCTAssertEqual(Pipeline.madeFiles(in: package), ["2026-10-11.mp3", "2026-10-11.srt", "2026-10-11.vtt", PodcastPackage.textName, PodcastPackage.markdownName,
+                                                         PodcastPackage.checklistName].sorted())
+        XCTAssertEqual(record.files?.map(\.name), Pipeline.madeFiles(in: package), "the record lists every file it left")
         XCTAssertFalse(FileManager.default.fileExists(atPath: Pipeline.stagingFolder(for: folder).path), "no staging left")
         let steps = first.steps.map(\.name)
         XCTAssertTrue(steps.contains(PipelineStep.podcastAudio.title) && steps.contains(PipelineStep.podcastPackage.title), "\(steps)")
@@ -387,9 +389,11 @@ final class PodcastReadyTests: XCTestCase {
         XCTAssertEqual(first.checklist.first { $0.item == "Show name" }?.status, .missing)
         XCTAssertFalse(model.podcastReadyIsOutOfDate(recording))
 
-        let own = try XCTUnwrap(recording.outputSettings.first { $0.kind == .podcastReady })
-        own.showName = "Test Show"
-        own.hostName = "Test Host"
+        // The show's name and host are the show's, typed on the Outputs screen (11 Oct), even for a
+        // recording that has its own choices.
+        let show = try XCTUnwrap(model.defaultSettings().first { $0.kind == .podcastReady })
+        show.showName = "Test Show"
+        show.hostName = "Test Host"
         recording.title = "The Long Exhale"
         recording.episodeNumber = 1
         XCTAssertTrue(model.podcastReadyIsOutOfDate(recording))

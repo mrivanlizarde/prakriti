@@ -68,7 +68,7 @@ enum Report {
                 "`\(PodcastPackage.folderName)/\(record.fileName)`, \(setup.settings.channels.title.lowercased()) \(record.bitrateKbps) kbps, "
                     + "\(String(format: "%.1f", Double(record.sampleRate) / 1000)) kHz: " + Pipeline.podcastLine(record)
                     + " Its own chain: high-pass at 70 Hz, a gentle compressor, raised evenly to -16 LUFS, peaks limited. "
-                    + "`\(PodcastPackage.checklistName)` lists every check, with its captions and `\(PodcastPackage.textName)` beside it"
+                    + "`\(PodcastPackage.checklistName)` lists every check, with its captions, `\(PodcastPackage.textName)` and `\(PodcastPackage.markdownName)` beside it"
             } ?? "Not made. \(result.podcastProblem ?? "")"))
         }
 

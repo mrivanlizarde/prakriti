@@ -10,7 +10,12 @@ of every screen are, and the three things to try first. **The same evening the p
 was added** (the last section, "Podcast-ready episode"): the file to upload to a podcast host, with
 its tags, chapters, captions, a title, show notes and captions text and an upload checklist, on a new
 mastering chain that ends episode 1's volume riding. Passed on the 6 Sep and 13 Sep talks; installed
-live at 23:55, off for every folder until Ivan turns it on.
+live at 23:55, off for every folder until Ivan turns it on. **On Sun 11 Oct it gained its episode text
+and the recording page's Ready to upload section** (the last section, "Episode text and Ready to
+upload"): title and alternatives, one-line summary, show notes with chapters and a call to action,
+keywords, a caption and verbatim pull quote per platform, Ivan's copy rules enforced in Swift, a Copy
+button for each, and a class never made ready. Passed on the 13 Sep talk with Qwen3.8-27B; installed
+live at 03:02.
 Prakriti for Mac, installed in `~/Applications` (milestone 6's build since 20:20), is the only thing
 watching the studio folder and `~/Prakriti/Drop`. Titles, show notes and chapters can be written
 (Qwen3.8-27B in LM Studio by default) but are off for every folder until Ivan turns them on.
@@ -1680,3 +1685,174 @@ The uncomfortable one: shorts are planned from OBS's vertical recording (PIP-23,
 vertical output has been off since 6 Sep. Episode 1 has its vertical twin
 (`2026-09-06 18-06-33-vertical.mp4`); 13 Sep and later do not. Turning it back on at the studio visit
 is what makes "post-ready" shorts possible without cropping a wide frame.
+
+---
+
+## Episode text and Ready to upload. Sun 11 Oct 2026
+
+The second half of Ivan's podcast-ready request: the text file with the episode's name, show notes and
+social captions for that specific episode, and a page he can upload from. Built on the podcast-ready
+episode above (Sat 10 Oct); the audio chain is unchanged.
+
+### What was built
+
+- **`Episode text.txt` and `Episode text.md`** in `<Outputs>/<recording>/Podcast-ready/`, replacing
+  `Title, show notes and captions.txt`. In order: the **episode title** (Ivan's, else the writer's first
+  pick, said to be a pick) and **three alternatives**; a **one-line summary** under 160 characters
+  (also the MP3's comment); the **show notes**, 2 to 4 short paragraphs, then **Chapters** at their
+  times in the finished MP3 (the ones written into its tag, the first at 0:00), then Ivan's **call to
+  action** if he set one, otherwise none; **keywords**; **social captions** for Instagram (up to five
+  hashtags), LinkedIn and X and Threads (under 280 characters, with its count), each with a
+  **one-sentence pull quote** and its time in the file; the details for the host's form; and what the
+  checks changed or left out. The `.md` is the same words as Markdown (hashtags escaped so they are not
+  headings, pull quotes as quotes).
+- **The writer** (`Writer.swift`) asks for all of it in the same single request as the titles, notes,
+  chapters and checklist: 4 titles (the pick first), `one_line`, `show_notes` as a list of paragraphs,
+  `keywords`, and `social` with a caption, `pull_quote` and `pull_quote_at` per platform. New checks in
+  `WritingCheck`, every one a drop or a stated fix, never an invention:
+  - a pull quote is kept only when it is found **word for word inside one line** of the transcript (one
+    sentence as Parakeet wrote it), is 4 to 40 words, keeps the copy rules and repeats no other
+    platform's; its time is that line's;
+  - a caption is cleaned as before (dashes, exclamation marks, inline hashtags and links out), left out
+    if it quotes words the transcript does not have or breaks the copy rules, and kept **under** its
+    platform's limit (X 280, LinkedIn 3,000, Instagram 2,200) by cutting back to whole sentences, or
+    left out;
+  - **a hashtag is kept only when its letters are a run of whole words the teacher says**
+    (`WritingCheck.hashtag(_:in:)`), capitalized as those words ("Ashtanga yoga" gives #AshtangaYoga);
+  - the one-line summary over 159 characters keeps its first sentence if that fits, else none.
+- **Ivan's copy rules in Swift** (`Writing/CopyRules.swift`): no prices or sums of money, no money or
+  earnings words, no enrollment or sign-ups, no offers ("a free week", "% off"), read sentence by
+  sentence with NaturalLanguage. Applied to titles, the one-line summary, show notes, keywords, captions,
+  pull quotes, hashtags, chapter titles, tags and the summary, both when the model answers and again when
+  the files are written (so a package written before 11 Oct is screened too). Ivan's own title, notes
+  and call to action are never screened. The accuracy checklist is exempt on purpose: the speaker's own
+  income claims belong there, for a person to check.
+- **`PodcastPackage.copy`** works out the words once (`EpisodeCopy`); the two text files and the page's
+  Copy buttons all read it.
+- **Outputs screen, Podcast-ready episode:** the switch, then the show's settings in the brief's order:
+  show name, show artwork (checked against Apple's rules as soon as it is chosen), host or author,
+  **numbering** (not numbered, episode numbers, or seasons and episode numbers) and **call to action**
+  (multi-line, "None" until typed; a dash in it becomes a comma in the files); then explicit and the
+  sound settings. Numbered, an episode without its number is MISSING on the checklist.
+- **The show's settings belong to the show** (`OutputResolver.podcastReady`): name, host, artwork,
+  numbering and call to action always come from the Outputs screen; explicit, layout, bitrate, noise
+  reduction and the AI voice line can be a recording's own. A recording's own podcast-ready settings no
+  longer show the show's rows, only a line saying where they are.
+- **The recording page's "Ready to upload" section** (was "Podcast-ready episode"): "Ready to upload" or
+  "Not ready to upload yet" with the FAIL, MISSING and PASS counts, Show in Finder; every file with what
+  it is for and its size; a **Copy** button (saying "Copied" for two seconds) for the title, the one-line
+  summary, the show notes (with the chapters and call to action, exactly as the file has them), each
+  caption (Instagram's with its hashtags) and each pull quote; the **whole checklist**, what is left
+  first, each line with **PASS, MISSING or FAIL as a word**, its detail and what to do; the episode and
+  season numbers, with the highest number used so far; Update Podcast-Ready Files.
+- **A class is never made ready.** `Pipeline` skips both podcast-ready steps for a recording marked a
+  class, with the reason on each step and on the page; `canUpdatePodcastReady` and `repackage` refuse
+  it; the Ready to upload section shows "Not made ready to upload" and why, for every class, and says so
+  when files from before it was marked a class are still in its folder (Make Again removes them).
+- **Checklist:** "Episode and season numbers" follows the numbering; "Show notes" says whether a call
+  to action closes them; "Social captions" passes only with all three platforms and their pull quotes;
+  a new "Copy rules" line says what was screened.
+- **Data:** `OutputSetting.numberingRaw` and `callToAction` (additions with defaults);
+  `WrittenPackage.oneLine`, `keywords`, `social`, `leftOutPullQuotes` (optional, so older packages read);
+  `PodcastReadyRecord.files` (optional).
+- **Also:** the Started notice's writing estimate is now 1,500 s plus 0.1 s per second of recording
+  (was 300 plus 0.3: it said about 10 minutes for the 13 Sep talk, which now takes about 30).
+- **Tests and checks:** `EpisodeTextTests` (10, in `make test`), `EpisodeTextAcceptanceTests`
+  (`make accept-episode-text`), and `make migrate-check` now asserts the new settings arrive unset.
+
+### Checks run, with results
+
+| Check | Result |
+|---|---|
+| Build | `BUILD SUCCEEDED`, 0 compiler warnings (warnings fail the build) |
+| Full test suite (final code, run while the second acceptance used LM Studio) | **136 tests, 0 failures, 8 skipped by design** (the seven acceptance methods and the migration check), 400 s. New: **EpisodeTextTests 10** |
+| **Acceptance on the 13 Sep talk with Qwen3.8-27B in LM Studio** (`make accept-episode-text MILESTONE=episode-text`), run twice: on the code before the last fixes (01:48 to 02:21) and on the final code (02:27 to 03:02) | Second run **passed**. Made with everything on in 33 min 32 s; writing set to the Claude API on purpose: **privacy lock held, Claude API client asked 0 times**, written by Qwen3.8-27B in LM Studio. The request: **1,632 s, one try**, 5,800 tokens read, 13,983 written of which 13,036 thinking (first run: 1,457 s, 11,218 thinking). The whole writing step with tags and summary on LM Studio: 1,923 s (first run 1,798 s) |
+| `Episode text.txt` sections | **12 of 12** found (title, Alternatives, one-line summary, show notes, Chapters, keywords, social captions, Instagram, LinkedIn, X and Threads, pull quotes, the host's form); `.md` has the same as headings. Title "Yoga Marga's New Direction and Yin Yoga" (the writer's pick) **plus 3 alternatives**; one-line summary **141 characters**; show notes **3 paragraphs, 147 words**; **9 keywords**; call to action none set |
+| **Every pull quote word for word** (checked in the test against `transcript.txt` and the `.srt`, and again from the shell with `grep -F` on `transcript.txt`) | Instagram "Yoga is a practice that is more than just asana, pranayama, breathing, stretching." at 8:47: offset 8,816, inside cue 66; LinkedIn "And if at any point it is becoming a disservice to ourselves, then it impacts our ability to show up for others." at 2:37: offset 2,638, cue 20; X and Threads "Yoga Marga, we're not going anywhere, we're still here." at 12:09: offset 12,243, cue 88. `grep -cF`: **1, 1, 1**. Both runs chose the same three |
+| **Chapter times in the finished audio** (ffprobe on `2026-09-13.mp3`, 946.550 s) | 0:00 "The Lineage of Yoga" = 0.000 s; 2:52 "A New Direction" = 172.218 s; 12:24 "Weekly Yin Yoga" = 744.258 s: **the same three, in the same order, all inside the file** |
+| **No em dashes** (`grep` for em and en dashes) | **0** in `Episode text.txt`, `Episode text.md` and `Upload checklist.txt` |
+| **No prices, earnings or enrollment in the captions** (`grep` of the captions section) | **0 "$", 0 "enroll"**, 0 of price, pricing, income, earn, money, dollar, bucks, tuition, free week, sign up; the whole file: 0 "$", 0 "enroll"; `CopyRules` on every sentence of the file: nothing |
+| **X and Threads under 280** | **153 characters** (first run 162). Instagram 168 characters with **4 hashtags** (#YogaMarga #AshtangaYoga #YinYoga #Krishnamacharya), all whole words of `transcript.txt`; LinkedIn 331 |
+| Call to action, through Update Podcast-Ready Files | A test line set on the Outputs screen: the files went out of date, were updated, and **the show notes ended with it**; cleared and updated again: gone, the rest of the file unchanged |
+| The class refusal on the real recording | Marked a class after the run: Update Podcast-Ready Files refused (`canUpdatePodcastReady` false); the page shows "Not made ready to upload" with the reason and the note about files from before |
+| Checklist | 0 FAIL, **6 MISSING** (show name, episode title, host, artwork, show notes, speakers: all Ivan's), 18 PASS, including Social captions and Copy rules |
+| LM Studio after each run | **nothing loaded** |
+| `make migrate-check` | the live store copy opens: 11 recordings, 2 folders, 30 output settings, 172 Activity lines; **numbering "none" and no call to action on all 30**; podcast-ready on in 0 folders |
+| **Installed live** (`make install`, 03:02:54) | quit cleanly, replaced, signed (`codesign --verify --deep --strict` passes), reopened: pid 2200, "Mode: live. Store: ...Prakriti.store", "Checked 2 folders. Nothing new." at 03:02:54 and again at 03:07:54 (the 5-minute look, still pid 2200), both also in the live store's Activity lines (read only with sqlite3). `~/Prakriti/Outputs` still holds only engine v0's two folders; `Approved` and `Drop` empty |
+| Pictures, looked at | `screens/mac/episode-text/`: the real 13 Sep page from the acceptance, light and dark (`episode-text-13sep-ready-*`: the Ready to upload section with the real files, Copy rows, pull quotes and checklist) and marked as a class (`episode-text-13sep-class-*`); from `make test`: the fixture page (`08-recording-ready-*`, now the real Qwen text), the class refusal (`08-recording-class-not-ready-*`, with the recording's own settings showing only where the show's are), and the Outputs screen with the new settings (`04-outputs-numbered-*`, light and dark) |
+
+### What the runs and the look-through caught and fixed
+
+- **A show name or call to action typed on the Outputs screen never reached a recording that had its
+  own choices.** The first acceptance run set its test call to action on the Outputs screen after the
+  recording had been given its own outputs, and the show notes did not change. A recording's own
+  setting held a frozen copy of the show's name, host, artwork and call to action, and it won. This is
+  the exact flow the entry above gives Ivan for episode 1 (turn the output on for the recording, then
+  set the show). Fixed with `OutputResolver.podcastReady`; tested; the second run passed.
+- **The model's hashtags included "#Yogalinage"** (misspelled) and "#Ashtangayoga" (run together). Now
+  a hashtag must be whole words of the transcript, capitalized as those words.
+- **The page's file sizes and the checklist disagreed** (10.8 MB against 11.4 MB, binary against decimal
+  megabytes). Both decimal now.
+- The P1 fixture's captions said "available to enrolled students" and its notes "pause enrollment" and
+  "a free week": the screen took them out on the page, which is how the rule was first seen working;
+  the fixture now holds the real Qwen output of 11 Oct.
+- The banned-words rule for app strings tripped on the teacher's own "we're" in a fixture quote; the
+  quote keeps his words, escaped.
+
+### Decisions, each with its reason
+
+1. **One request, not a second one for the episode text.** Reason: a second request holds the 33 GB
+   model for another 10 to 20 minutes; the same request grew from 17 to 23 minutes (10 Oct, with three
+   plain captions) to 24 and 27 minutes (11 Oct).
+2. **Ask for 4 titles and call the first the pick; the title stays MISSING until Ivan chooses.**
+   Reason: the brief asks for the chosen title plus three alternatives, and P1's rule is that a draft is
+   not ready to upload.
+3. **Drop, never fix, except to cut a caption back to whole sentences or the one-line summary to its
+   first sentence.** Reason: as for quotes and chapters, a fixed claim is an invented one.
+4. **The copy rules are narrow word lists, not a model.** Reason: they must be predictable and
+   testable; "sales" as a subject, "pay attention" and "the practice offers" are ordinary here. A false
+   alarm costs one caption; a miss costs trust.
+5. **The call to action is the only place money or enrollment may appear, and the model never sees
+   it.** Reason: "never mention prices or enrollment unless the call to action setting says so" is met
+   by the setting itself saying so, in Ivan's words; letting the model echo it would let it embellish.
+6. **Only a class is refused.** A conversation or a recording not marked keeps its FAIL or MISSING line.
+   Reason: the brief names classes; the others already cannot pass the checklist or be approved.
+7. **Explicit stays the episode's own;** name, host, artwork, numbering and call to action are the
+   show's. Reason: Apple asks explicit per episode; the rest describe the show.
+8. **Pull quotes are timed in the file**, not the original. Reason: a quote card or clip is cut from the
+   finished episode.
+
+### What does not work yet, or was not seen working
+
+- **No person has pressed a Copy button.** The pasteboard is tested on a private pasteboard (never
+  Ivan's clipboard); the real window was not driven by hand.
+- **The claims in the drafts are not checked, only the quotes.** The second run's notes say yin yoga is
+  "a deep body reset for practitioners who have been spending long hours in conversation and
+  stillness", which reads as the model's colour. Read every draft before using it.
+- **The drafts name Serenity** (leading the coaching track), as P1 found; her consent for anything
+  public still rules.
+- The last chapter in the tag ends 48 ms after the file does (946.598 against 946.550 s, the encoder's
+  length against the planned one, P1's code). Apple and ffprobe read it; noted, not changed.
+- Writing now takes about 30 minutes on the 15:48 talk. The 6 Sep talk was not run with the episode
+  text (P1's run of it took 24 minutes before this change).
+
+### For Ivan
+
+1. **Set the show once, on the Outputs screen, Podcast-ready episode:** the show's name (Gabriel's to
+   choose), host or author, artwork, numbering, and, if you want one, a call to action in your words.
+   They now reach every episode, including ones you turned on by hand.
+2. **On a recording's page, under Ready to upload:** read the drafts, press Use This Title and Use as
+   Notes (above) for the ones you keep, then Update Podcast-Ready Files, then Copy each piece into the
+   host's form and the three apps. Nothing is posted by Prakriti.
+3. **Read every caption and pull quote before posting.** The quotes are proved to be the teacher's
+   words; whether a sentence should be shared is your call, and nothing here checks who is named.
+
+### For the videos ("post ready")
+
+What this session adds to the earlier answer (the end of "Podcast-ready episode", above): the episode
+text carries over to video as one text per platform from the same single request (a YouTube title of at
+most 100 characters and a description with the same chapters; a caption and hashtags for each short),
+with the same copy rules, the same hashtag rule, and pull quotes that double as each short's opening
+line, since each comes with its time in the finished cut. The Ready to upload section becomes one per
+video, with the same Copy buttons and a checklist per platform. The class refusal becomes the stronger
+rule video needs: refused until the screen check (PRV-14) can say no student is in the picture.

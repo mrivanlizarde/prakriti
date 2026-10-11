@@ -62,22 +62,43 @@ struct WritingSection: View {
                     }
                 }
                 .padding(.vertical, 4)
-                if let captions = written.captions, !captions.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Social captions").font(AppFont.headline)
-                        Text("Drafts to post by hand. Nothing is posted.")
-                            .font(AppFont.secondary).foregroundStyle(.secondary)
-                        ForEach(Array(captions.enumerated()), id: \.offset) { index, caption in
-                            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                                Text("\(index + 1)").font(AppFont.numbers).foregroundStyle(.secondary)
-                                    .frame(minWidth: 24, alignment: .leading)
-                                Text(caption).font(AppFont.body)
-                                    .textSelection(.enabled)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
+                if let one = written.oneLine, !one.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("One-line summary").font(AppFont.headline)
+                        Text(one).font(AppFont.body)
+                            .textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.vertical, 4)
+                }
+                if let keywords = written.keywords, !keywords.isEmpty {
+                    ValueRow(label: "Keywords", value: keywords.joined(separator: ", "))
+                }
+                if !written.captionTexts.isEmpty {
+                    if recording.podcastReady != nil && recording.kind != .lesson {
+                        // The captions are words to paste, so they sit with their Copy buttons below.
+                        RowNote("Social captions for Instagram, LinkedIn and X and Threads, each with its pull quote, are under Ready to upload, with a Copy button each.")
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Social captions").font(AppFont.headline)
+                            Text("Drafts to post by hand. Nothing is posted.")
+                                .font(AppFont.secondary).foregroundStyle(.secondary)
+                            ForEach(Array(captionRows(written).enumerated()), id: \.offset) { _, row in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(row.label).font(AppFont.secondaryEmphasis)
+                                    Text(row.text).font(AppFont.body)
+                                        .textSelection(.enabled)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    if let quote = row.quote {
+                                        Text(quote).font(AppFont.secondary).foregroundStyle(.secondary)
+                                            .textSelection(.enabled)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Accuracy checklist").font(AppFont.headline)
@@ -168,6 +189,17 @@ struct WritingSection: View {
         return "Privacy lock: \(reason), so LM Studio will do the \(cloud.map { $0.title.lowercased() }.joined(separator: " and ")) set to the Claude API."
     }
 
+    /// Each caption with its platform and its pull quote, or the numbered plain captions written before 11 Oct.
+    private func captionRows(_ written: WrittenPackage) -> [(label: String, text: String, quote: String?)] {
+        if let social = written.social, !social.isEmpty {
+            return social.map { caption in
+                (caption.platform.title, caption.post,
+                 caption.pullQuote.map { "Pull quote" + (caption.pullQuoteAt.map { ", at \(WritingText.stamp($0))" } ?? "") + ": \u{201C}\($0)\u{201D}" })
+            }
+        }
+        return (written.captions ?? []).enumerated().map { ("Caption \($0.offset + 1)", $0.element, nil) }
+    }
+
     private func checkLines(_ written: WrittenPackage) -> [String] {
         var lines: [String] = []
         if !written.leftOutQuotes.isEmpty {
@@ -177,6 +209,9 @@ struct WritingSection: View {
         if written.leftOutChapters > 0 {
             let n = written.leftOutChapters
             lines.append("\(Format.count(n, "chapter")) did not start at a time in the transcript, so \(n == 1 ? "it was" : "they were") left out.")
+        }
+        if let left = written.leftOutPullQuotes, !left.isEmpty {
+            lines.append("\(Format.count(left.count, "pull quote")) the model gave \(left.count == 1 ? "was" : "were") not one line of the transcript word for word, so \(left.count == 1 ? "it was" : "they were") left out.")
         }
         return lines + written.notes
     }

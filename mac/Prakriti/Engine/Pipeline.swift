@@ -697,7 +697,14 @@ struct Pipeline: Sendable {
             // 6b. The podcast-ready audio: its own chain, on the same trim, cuts, intro and outro. A
             //     failure costs only this step and the package: the episode and transcript are kept.
             var podcastMaster: PodcastMaster?
-            if let setup = options.podcastReady {
+            let podcastRefusal = options.podcastReady.flatMap { PodcastPackage.refusal(kind: $0.facts.kind) }
+            if let refusal = podcastRefusal {
+                // A class is never made ready to upload (11 Oct): nothing is mastered or written for it,
+                // and the page says why. The episode and transcript are made as for any recording.
+                await begin(.podcastAudio)
+                result.podcastProblem = refusal
+                await finish(.podcastAudio, refusal + " Nothing was made for it.", state: .skipped)
+            } else if let setup = options.podcastReady {
                 await begin(.podcastAudio)
                 do {
                     let made = try await masterPodcastReady(file: file, duration: ready.duration, program: program, staging: staging, setup: setup,
@@ -771,7 +778,10 @@ struct Pipeline: Sendable {
 
             // 8b. The podcast-ready files: the tagged MP3, captions, the text file and the checklist,
             //     written after the titles and notes so they can carry them.
-            if let setup = options.podcastReady {
+            if let refusal = podcastRefusal {
+                await begin(.podcastPackage)
+                await finish(.podcastPackage, refusal + " Nothing was written for it.", state: .skipped)
+            } else if let setup = options.podcastReady {
                 await begin(.podcastPackage)
                 if let master = podcastMaster {
                     do {

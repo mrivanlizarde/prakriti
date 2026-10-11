@@ -143,8 +143,8 @@ final class WritingTests: XCTestCase {
         XCTAssertEqual(rules, WritingRules(minChapters: 3, maxChapters: 3, minClaims: 5, maxClaims: 10))
         let checked = try WritingCheck.check(answer, lines: Self.lines, transcript: Self.text, rules: rules, length: 418)
 
-        XCTAssertEqual(checked.titles, ["The Breath Comes First", "Why the Long Exhale Matters, Tonight", "Twelve Rounds Before Any Posture"],
-                       "three titles, the dash replaced with a comma")
+        XCTAssertEqual(checked.titles, ["The Breath Comes First", "Why the Long Exhale Matters, Tonight", "Twelve Rounds Before Any Posture", "A Fourth"],
+                       "four titles (the pick and three alternatives), the dash replaced with a comma")
         XCTAssertFalse(checked.showNotes.contains("\u{2014}"))
         // Chapters: "9:99" and "2:40" are not line times; "[4:22]" is, without its brackets; "6:42"
         // would be a 16-second last chapter, so it joins the one before.
@@ -494,7 +494,8 @@ final class WritingTests: XCTestCase {
         XCTAssertTrue(markdown.contains("1. One\n2. Two\n3. Three"))
         XCTAssertTrue(markdown.contains("0:00 Welcome"))
         XCTAssertTrue(markdown.contains("5:31"))
-        XCTAssertTrue(markdown.contains("Not chosen yet: the one call to action"), "a placeholder, never an invented address")
+        XCTAssertTrue(markdown.contains("The call to action is yours to set") && markdown.contains("removal requests is not chosen yet"),
+                      "a placeholder, never an invented call to action or address")
         XCTAssertTrue(markdown.contains("1 quote the model gave was not in the transcript word for word, so it was left out."))
         XCTAssertTrue(markdown.contains("**Nothing has been published.**"))
         XCTAssertNil(package.stored.modelAnswer, "the store keeps the checked package, not the raw answer")

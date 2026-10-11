@@ -26,6 +26,11 @@ struct PodcastReadySettings: Codable, Equatable, Sendable {
     var noiseReduction = false
     /// The intro or outro has a voice made by AI (Apple 1.11 asks for a disclosure).
     var aiVoice = false
+    /// How the show numbers its episodes (11 Oct): numbered, an episode without its number is MISSING.
+    var numbering: PodcastNumbering = .none
+    /// Ivan's closing line for the show notes, in his words, or empty for none (11 Oct). Prakriti never
+    /// writes one, and the model never sees it.
+    var callToAction = ""
 
     /// Stereo never goes under 128 kbps (Apple's recommendation for stereo MP3 starts there).
     var bitrate: Int { channels == .stereo ? max(128, bitrateKbps) : bitrateKbps }
@@ -33,6 +38,23 @@ struct PodcastReadySettings: Codable, Equatable, Sendable {
     /// The bitrates offered for each layout: Apple recommends 96 to 128 kbps for mono MP3 and 128
     /// to 256 for stereo; 64 kbps mono is inside Apple's range for feeds but measured worse (below).
     static func bitrates(_ channels: AudioChannels) -> [Int] { channels == .mono ? [64, 96, 128] : [128, 192] }
+}
+
+/// How the show numbers its episodes, chosen once on the Outputs screen (11 Oct). Apple asks for
+/// episode numbers only for a serial show, and season numbers only for a show in seasons.
+enum PodcastNumbering: String, Codable, CaseIterable, Sendable {
+    case none, episodes, seasons
+
+    var title: String {
+        switch self {
+        case .none: "Not numbered"
+        case .episodes: "Episode numbers"
+        case .seasons: "Seasons and episode numbers"
+        }
+    }
+
+    var needsEpisode: Bool { self != .none }
+    var needsSeason: Bool { self == .seasons }
 }
 
 /// What the package needs to know about this episode, read from the recording.
@@ -47,6 +69,49 @@ struct PodcastEpisodeFacts: Codable, Equatable, Sendable {
     var label = ""
     var kind: RecordingKind = .unknown
     var fileName = ""
+}
+
+/// The words that go out with one episode (11 Oct), as `PodcastPackage.copy` works them out: the
+/// files and the recording page's Copy buttons both read this, so they always say the same.
+struct EpisodeCopy: Equatable, Sendable {
+    struct ChapterLine: Equatable, Sendable {
+        var label: String
+        var title: String
+    }
+
+    /// Ivan's title, else the writer's first pick (`titleChosen` false), or nil.
+    var title: String?
+    var titleChosen = false
+    /// Up to three other title options.
+    var alternatives: [String] = []
+    var oneLine: String?
+    /// The show notes' paragraphs: Ivan's, or the writer's draft.
+    var notes: [String] = []
+    var notesChosen = false
+    var aiDisclosure = false
+    /// The chapters as written into the finished MP3, at their times in it.
+    var chapters: [ChapterLine] = []
+    var callToAction: String?
+    var keywords: [String] = []
+    /// One caption per platform, each with its pull quote.
+    var captions: [SocialCaption] = []
+    /// The plain captions of a package written before 11 Oct.
+    var plainCaptions: [String] = []
+    /// What the copy rules left out here, in plain sentences.
+    var leftOut: [String] = []
+
+    /// What goes into the host's episode description: the paragraphs, the AI voice line when there is
+    /// one, the chapters with their times in the finished file, then the call to action. Nil without notes.
+    var showNotes: String? {
+        guard !notes.isEmpty else { return nil }
+        var parts = [notes.joined(separator: "\n\n")]
+        if aiDisclosure { parts.append(PodcastPackage.aiDisclosure) }
+        if !chapters.isEmpty { parts.append("Chapters\n" + chapters.map { "\($0.label) \($0.title)" }.joined(separator: "\n")) }
+        if let callToAction { parts.append(callToAction) }
+        return parts.joined(separator: "\n\n")
+    }
+
+    func caption(_ platform: SocialPlatform) -> SocialCaption? { captions.first { $0.platform == platform } }
 }
 
 /// Everything a run needs to make the podcast-ready episode.
@@ -210,6 +275,14 @@ struct PodcastReadyRecord: Codable, Equatable, Sendable {
     var madeAt: Date
     /// The title, notes and settings the files were made with, to tell when they are out of date.
     var fingerprint: String
+    /// Every file the make left in the Podcast-ready folder, with its size (11 Oct). Optional so a
+    /// record made before still reads.
+    var files: [PackageFile]?
+
+    struct PackageFile: Codable, Equatable, Sendable {
+        var name: String
+        var bytes: Int64
+    }
 
     var passed: Int { checklist.filter { $0.status == .pass }.count }
     var missing: Int { checklist.filter { $0.status == .missing }.count }
@@ -243,7 +316,15 @@ struct PodcastReadyRecord: Codable, Equatable, Sendable {
 enum PodcastPackage {
     static let folderName = "Podcast-ready"
     static let checklistName = "Upload checklist.txt"
-    static let textName = "Title, show notes and captions.txt"
+    /// The episode's words, plain text to paste from, and the same as Markdown (11 Oct).
+    static let textName = "Episode text.txt"
+    static let markdownName = "Episode text.md"
+
+    /// Why a recording is never made ready to upload, or nil. A class: students may be heard, and
+    /// Prakriti cannot check voices yet (SCOPE PRV, the standing rule that classes are not published).
+    static func refusal(kind: RecordingKind) -> String? {
+        kind == .lesson ? "This is a class. Students may be heard in a class, so it is never made ready to upload." : nil
+    }
     /// Apple's published requirements, read 10 Oct 2026, named in the checklist.
     static let sources = "Apple Podcasts' audio requirements (podcasters.apple.com/support/893) and show cover rules (support/5514), read 10 Oct 2026"
 
@@ -331,12 +412,7 @@ enum PodcastPackage {
 
     /// "#YogaMarga #Pranayama": hashtags made from the tags, letters and digits only.
     static func hashtags(_ tags: [String]) -> String {
-        tags.compactMap { tag -> String? in
-            // An apostrophe joins its word ("Five A's" is #FiveAs, not #FiveAS).
-            let words = tag.replacingOccurrences(of: "'", with: "").replacingOccurrences(of: "\u{2019}", with: "").split { !$0.isLetter && !$0.isNumber }
-            let joined = words.map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined()
-            return joined.isEmpty ? nil : "#" + joined
-        }.joined(separator: " ")
+        tags.compactMap(WritingCheck.hashtag).map { "#" + $0 }.joined(separator: " ")
     }
 
     /// The show notes the package uses: Ivan's own (chosen on the page), else the writer's draft.
@@ -349,76 +425,198 @@ enum PodcastPackage {
 
     static let aiDisclosure = "This episode's intro or outro uses an AI-generated voice."
 
-    /// The MP3's comment: the summary, else the show notes' first sentence.
+    /// The MP3's comment: the one-line summary, else the summary, else the show notes' first sentence.
     static func comment(facts: PodcastEpisodeFacts, written: WrittenPackage?) -> String? {
-        if let summary = written?.summary?.trimmingCharacters(in: .whitespacesAndNewlines), !summary.isEmpty { return summary }
+        if let line = written?.oneLine?.trimmingCharacters(in: .whitespacesAndNewlines), !line.isEmpty, CopyRules.flag(line) == nil { return line }
+        if let summary = written?.summary?.trimmingCharacters(in: .whitespacesAndNewlines), !summary.isEmpty {
+            let screened = CopyRules.withoutFlaggedSentences(summary).text
+            if !screened.isEmpty { return screened }
+        }
         guard let notes = showNotes(facts: facts, written: written)?.text else { return nil }
-        let first = notes.split(separator: ".", maxSplits: 1).first.map { String($0) + "." } ?? notes
-        return first.trimmingCharacters(in: .whitespacesAndNewlines)
+        return CopyRules.sentences(notes).first ?? notes
     }
 
-    /// "Title, show notes and captions.txt": what to paste into the host's episode form, and the
-    /// social captions to post by hand. Every draft is said to be a draft.
-    static func episodeText(settings: PodcastReadySettings, facts: PodcastEpisodeFacts, written: WrittenPackage?,
-                            fileName: String, chapters: [ID3.Chapter], madeAt: Date) -> String {
-        var t = "\(facts.label): title, show notes and captions\n\n"
-        t += "For the podcast-ready episode \"\(fileName)\", made by Prakriti on \(Format.dayAndTime(madeAt)). "
-        t += "Nothing has been posted or uploaded. Read every line against the episode before using it.\n"
-
-        t += "\nEPISODE TITLE\n"
-        let title = facts.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !title.isEmpty {
-            t += title + "\n"
-        } else if let options = written?.titles, !options.isEmpty {
-            t += "Not chosen yet. The writer's options:\n"
-            for (index, option) in options.enumerated() { t += "  \(index + 1). \(option)\n" }
-            t += "Choose one with Use This Title on the recording's page, then Update Podcast-Ready Files.\n"
-        } else {
-            t += "Not chosen yet. Write one in About this recording, on the recording's page.\n"
+    /// The episode's words, worked out once for "Episode text.txt", "Episode text.md" and the Copy
+    /// buttons on the recording's page, so what is copied is what the file says. The writer's drafts
+    /// are read through the copy rules again here (a package written before 11 Oct never was); Ivan's
+    /// own title, notes and call to action are his words and are never changed, except that a dash
+    /// his rule forbids becomes a comma.
+    static func copy(settings: PodcastReadySettings, facts: PodcastEpisodeFacts, written: WrittenPackage?, chapters: [ID3.Chapter]) -> EpisodeCopy {
+        var c = EpisodeCopy()
+        var leftOut: [String] = []
+        func screened(_ text: String, _ what: String) -> String? {
+            if let why = CopyRules.flag(text) {
+                leftOut.append("The \(what) named \(why), so it is left out here.")
+                return nil
+            }
+            return text
         }
 
-        t += "\nSHOW AND EPISODE\n"
-        t += "Show: " + (settings.showName.isEmpty ? "not set (Outputs screen, Podcast-ready episode)" : settings.showName) + "\n"
-        t += "Host or author: " + (settings.hostName.isEmpty ? "not set" : settings.hostName) + "\n"
-        t += "Episode number: " + (facts.episodeNumber.map(String.init) ?? "not set") + "\n"
-        t += "Season: " + (facts.seasonNumber.map(String.init) ?? "not set") + "\n"
-        t += "Explicit: " + (settings.explicit ? "Yes" : "No") + "\n"
+        // The title: Ivan's, else the writer's first pick; then up to three alternatives.
+        let own = facts.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let drafts = (written?.titles ?? []).compactMap { screened($0, "title \"\($0)\"") }
+        if !own.isEmpty && !isOnlyADate(own) {
+            c.title = WritingText.withoutDashes(own).0
+            c.titleChosen = true
+            c.alternatives = Array(drafts.filter { $0.caseInsensitiveCompare(own) != .orderedSame }.prefix(3))
+        } else if let first = drafts.first {
+            c.title = first
+            c.alternatives = Array(drafts.dropFirst().prefix(3))
+        }
 
-        t += "\nSHOW NOTES\n"
+        // The one-line summary, else the first sentence of the summary when it fits.
+        if let line = written?.oneLine, !line.isEmpty {
+            c.oneLine = screened(line, "one-line summary")
+        } else if let first = written?.summary.flatMap({ CopyRules.sentences($0).first }), first.count <= WritingCheck.oneLineLimit {
+            c.oneLine = screened(first, "summary's first sentence")
+        }
+
+        // The show notes: Ivan's as written, or the draft with any sentence the rules forbid taken out.
         if let notes = showNotes(facts: facts, written: written) {
-            t += notes.text + "\n"
-            if settings.aiVoice { t += "\n" + aiDisclosure + "\n" }
-            t += notes.chosen ? "(Your notes, as written on the recording's page.)\n"
-                : "(A draft by \(written?.writtenBy ?? "the writing model"), not chosen yet. Press Use as Notes on the recording's page, or write your own.)\n"
+            c.notesChosen = notes.chosen
+            if notes.chosen {
+                c.notes = CopyRules.paragraphs(WritingText.withoutDashes(notes.text).0)
+            } else {
+                let checked = CopyRules.withoutFlaggedSentences(notes.text)
+                c.notes = CopyRules.paragraphs(checked.text)
+                for why in checked.removed { leftOut.append("A sentence of the drafted show notes named \(why), so it is left out here.") }
+            }
+        }
+        c.aiDisclosure = settings.aiVoice
+        c.chapters = chapters.map { EpisodeCopy.ChapterLine(label: WritingText.stamp(Double($0.startMS) / 1000), title: $0.title) }
+        let action = WritingText.withoutDashes(settings.callToAction.trimmingCharacters(in: .whitespacesAndNewlines)).0
+        c.callToAction = action.isEmpty ? nil : action
+
+        // Keywords, else the tags of a package written before keywords.
+        c.keywords = (written?.keywords ?? written?.tags ?? []).compactMap { screened($0, "keyword \"\($0)\"") }
+
+        // One caption per platform, each with its pull quote; or the plain captions written before.
+        for var caption in written?.social ?? [] {
+            guard screened(caption.text, "\(caption.platform.title) caption") != nil else { continue }
+            if let quote = caption.pullQuote, screened(quote, "\(caption.platform.title) pull quote") == nil {
+                caption.pullQuote = nil
+                caption.pullQuoteAt = nil
+            }
+            caption.hashtags = caption.hashtags.filter { CopyRules.flag($0) == nil }
+            c.captions.append(caption)
+        }
+        if written?.social == nil {
+            c.plainCaptions = (written?.captions ?? []).enumerated().compactMap { screened($0.element, "caption \($0.offset + 1)") }
+        }
+        c.leftOut = leftOut
+        return c
+    }
+
+    /// "Episode text.txt" (plain text, to paste from) or "Episode text.md" (the same, as Markdown):
+    /// the title and its alternatives, the one-line summary, the show notes with the chapters of the
+    /// finished file and the call to action, the keywords, a caption for Instagram, LinkedIn and X and
+    /// Threads each with its pull quote, the details for the host's form, and what the checks left
+    /// out. Every draft is said to be a draft; nothing is posted.
+    static func episodeText(_ c: EpisodeCopy, settings: PodcastReadySettings, facts: PodcastEpisodeFacts, written: WrittenPackage?,
+                            fileName: String, madeAt: Date, markdown md: Bool) -> String {
+        var t = ""
+        func heading(_ text: String) { t += md ? "\n## \(text)\n\n" : "\n\(text.uppercased())\n" }
+        func subheading(_ text: String) { t += md ? "\n### \(text)\n\n" : "\n\(text)\n" }
+        func line(_ text: String) { t += text + "\n" }
+        func aside(_ text: String) { t += (md ? "_(\(text))_" : "(\(text))") + "\n" }
+        /// A line that starts with # is a heading in Markdown; hashtags keep their sign.
+        func escaped(_ text: String) -> String { md ? text.replacingOccurrences(of: "#", with: "\\#") : text }
+
+        t += md ? "# \(facts.label): episode text\n\n" : "\(facts.label): episode text\n\n"
+        let by = written.map { "Drafted on this Mac by \($0.writtenBy) and checked against the transcript: every pull quote below was found word for word in it, and every chapter time is in the finished file. " } ?? ""
+        line("For \"\(fileName)\" in this folder, made by Prakriti on \(Format.dayAndTime(madeAt)). " + by
+             + "Nothing has been posted or uploaded. Read every line against the episode before using it.")
+
+        heading("Episode title")
+        if let title = c.title {
+            line(md ? "**\(title)**" : title)
+            if !c.titleChosen { aside("Not chosen yet: this is the writer's first pick. Use This Title on the recording's page makes it the episode's title and the file's name.") }
+            if !c.alternatives.isEmpty {
+                subheading("Alternatives")
+                for (index, option) in c.alternatives.enumerated() { line("\(index + 1). \(option)") }
+            }
         } else {
-            t += "None yet. Turn on Titles, show notes and chapters for this recording, or write notes on its page.\n"
-            if settings.aiVoice { t += aiDisclosure + "\n" }
+            line("Not chosen yet. Write one in About this recording, on the recording's page.")
         }
 
-        t += "\nCHAPTERS\n"
-        if chapters.isEmpty {
-            t += "None in the file.\n"
+        heading("One-line summary")
+        if let one = c.oneLine {
+            line(one)
+            aside("\(one.count) characters. Written into the MP3 as its comment.")
         } else {
-            for chapter in chapters { t += WritingText.stamp(Double(chapter.startMS) / 1000) + " " + chapter.title + "\n" }
-            t += "(Written into the MP3. Times are in this file.)\n"
+            line("None yet. It is written with the titles and show notes.")
         }
 
-        t += "\nSOCIAL CAPTIONS (drafts; nothing is posted)\n"
-        let captions = written?.captions ?? []
-        if captions.isEmpty {
-            t += "None yet. They are written with the titles and show notes.\n"
+        heading("Show notes")
+        if c.notes.isEmpty {
+            line("None yet. Turn on Titles, show notes and chapters for this recording, or write notes on its page.")
+        }
+        if let block = c.showNotes {
+            if md {
+                for paragraph in c.notes { t += paragraph + "\n\n" }
+                if c.aiDisclosure { t += aiDisclosure + "\n\n" }
+                if !c.chapters.isEmpty {
+                    t += "Chapters\n\n" + c.chapters.map { "- \($0.label) \($0.title)" }.joined(separator: "\n") + "\n\n"
+                }
+                if let action = c.callToAction { t += action + "\n\n" }
+            } else {
+                t += block + "\n\n"
+            }
+            var said: [String] = []
+            if !c.notes.isEmpty {
+                said.append(c.notesChosen ? "Your notes, as written on the recording's page."
+                    : "A draft by \(written?.writtenBy ?? "the writing model"), not chosen yet. Press Use as Notes on the recording's page, or write your own.")
+            }
+            said.append(c.chapters.isEmpty ? "No chapters are in the file." : "The chapters are the ones written into the MP3, at their times in this file.")
+            said.append(c.callToAction == nil ? "No call to action is set (Outputs screen, Podcast-ready episode), so none closes the notes." : "The last line is your call to action, from the Outputs screen.")
+            aside(said.joined(separator: " "))
+        }
+
+        heading("Keywords")
+        line(c.keywords.isEmpty ? "None yet." : c.keywords.joined(separator: ", "))
+
+        heading("Social captions")
+        line("Drafts to post by hand. Nothing is posted. Each pull quote is the teacher's own words, found word for word in one line of the transcript, with its time in this file.")
+        if !c.captions.isEmpty {
+            for caption in c.captions {
+                let count = caption.platform == .x ? "\(caption.text.count) of \(caption.platform.limit) characters" : Format.count(caption.text.count, "character")
+                subheading("\(caption.platform.title) (\(count))")
+                line(caption.text)
+                if !caption.hashtags.isEmpty { t += "\n" + escaped(caption.hashtags.map { "#" + $0 }.joined(separator: " ")) + "\n" }
+                if let quote = caption.pullQuote {
+                    let at = caption.pullQuoteAt.map { ", at \(WritingText.stamp($0))" } ?? ""
+                    t += md ? "\n> \u{201C}\(quote)\u{201D}\n>\n> Pull quote\(at)\n" : "\nPull quote\(at): \"\(quote)\"\n"
+                } else {
+                    t += "\n" + (md ? "_(No pull quote: none was found word for word in the transcript.)_" : "(No pull quote: none was found word for word in the transcript.)") + "\n"
+                }
+            }
+            let missing = SocialPlatform.allCases.filter { platform in !c.captions.contains { $0.platform == platform } }
+            if !missing.isEmpty { aside("No caption for \(missing.map(\.title).joined(separator: " or ")): it broke a check, named at the end of this file.") }
+        } else if !c.plainCaptions.isEmpty {
+            aside("Written before the captions were made per platform: write them again for Instagram, LinkedIn and X and Threads, each with a pull quote.")
+            for (index, caption) in c.plainCaptions.enumerated() { line("\(index + 1). \(caption)") }
         } else {
-            for (index, caption) in captions.enumerated() { t += "\(index + 1). \(caption)\n" }
-            let tags = hashtags(written?.tags ?? [])
-            if !tags.isEmpty { t += "Hashtags from the tags, to use or drop: \(tags)\n" }
+            line("None yet. They are written with the titles and show notes.")
         }
 
-        if let comment = comment(facts: facts, written: written) {
-            t += "\nSUMMARY (written into the MP3 as its comment)\n\(comment)\n"
-        }
+        heading("For the host's form")
+        line((md ? "- " : "") + "Show: " + (settings.showName.isEmpty ? "not set (Outputs screen, Podcast-ready episode)" : settings.showName))
+        line((md ? "- " : "") + "Host or author: " + (settings.hostName.isEmpty ? "not set" : settings.hostName))
+        line((md ? "- " : "") + "Episode number: " + (facts.episodeNumber.map(String.init) ?? (settings.numbering.needsEpisode ? "not set, and the show is numbered" : "not set (the show is not numbered)")))
+        line((md ? "- " : "") + "Season: " + (facts.seasonNumber.map(String.init) ?? (settings.numbering.needsSeason ? "not set, and the show has seasons" : "not set")))
+        line((md ? "- " : "") + "Explicit: " + (settings.explicit ? "Yes" : "No"))
 
-        t += "\nNOT CHOSEN YET\n"
-        t += "The one call to action, and the address for questions or removal requests. SCOPE PKG-04 leaves both open for Gabriel and Serenity.\n"
+        var checks = c.leftOut
+        if let left = written?.leftOutPullQuotes, !left.isEmpty {
+            checks.append("\(Format.count(left.count, "pull quote")) the writer gave \(left.count == 1 ? "was" : "were") not one line of the transcript word for word, so \(left.count == 1 ? "it was" : "they were") left out.")
+        }
+        for note in written?.notes ?? [] where note.contains("caption") || note.contains("pull quote") || note.contains("one-line") || note.contains("show notes") || note.contains("title") || note.contains("keyword") {
+            checks.append(note)
+        }
+        if !checks.isEmpty {
+            heading("What the checks changed or left out")
+            for check in checks { line((md ? "- " : "- ") + check) }
+        }
         return t
     }
 
@@ -494,15 +692,27 @@ enum PodcastPackage {
         let title = facts.title.trimmingCharacters(in: .whitespacesAndNewlines)
         if title.isEmpty || isOnlyADate(title) {
             add(.missing, "Episode title", title.isEmpty ? "Not chosen; the file is named by its date." : "\"\(title)\" is only a date.",
-                (written?.titles.isEmpty == false ? "Pick one of the three drafts in \"\(textName)\" with Use This Title" : "Write one in About this recording")
+                (written?.titles.isEmpty == false ? "Pick one of the drafts in \"\(textName)\" with Use This Title" : "Write one in About this recording")
                     + " on the recording's page, then Update Podcast-Ready Files.")
         } else {
             add(.pass, "Episode title", "\"\(title)\".")
         }
         add(settings.hostName.isEmpty ? .missing : .pass, "Host or author", settings.hostName.isEmpty ? "Not set." : "\"\(settings.hostName)\", in the MP3 as its artist.",
             "Type it on the Outputs screen, Podcast-ready episode.")
+        // Numbers, as the show is numbered on the Outputs screen (11 Oct): a numbered show needs each
+        // episode's number, and a show in seasons its season too; otherwise they are optional.
         let numbers = [facts.episodeNumber.map { "episode \($0)" }, facts.seasonNumber.map { "season \($0)" }].compactMap { $0 }
-        add(.pass, "Episode and season numbers", numbers.isEmpty ? "Not set. Optional: Apple asks for them only for a serial show." : numbers.joined(separator: ", ").capitalizedFirst + ".")
+        let lacking = [settings.numbering.needsEpisode && facts.episodeNumber == nil ? "the episode number" : nil,
+                       settings.numbering.needsSeason && facts.seasonNumber == nil ? "the season" : nil].compactMap { $0 }
+        if !lacking.isEmpty {
+            add(.missing, "Episode and season numbers", "The show is set to \(settings.numbering.title.lowercased()) (Outputs screen), and \(lacking.joined(separator: " and ")) \(lacking.count == 1 ? "is" : "are") not set.",
+                "Type \(lacking.joined(separator: " and ")) on the recording's page, then Update Podcast-Ready Files.")
+        } else if settings.numbering == .none {
+            add(.pass, "Episode and season numbers", numbers.isEmpty ? "Not numbered, as set on the Outputs screen. Apple asks for numbers only for a serial show."
+                : numbers.joined(separator: ", ").capitalizedFirst + ", written into the MP3, though the show is set to not numbered.")
+        } else {
+            add(.pass, "Episode and season numbers", numbers.joined(separator: ", ").capitalizedFirst + ", as the show is numbered.")
+        }
         add(.pass, "Explicit", settings.explicit ? "Yes, as set on the Outputs screen." : "No, as set on the Outputs screen. Choose Yes there if anything said needs it.")
 
         // The tag, read back.
@@ -560,16 +770,32 @@ enum PodcastPackage {
 
         // The words around it.
         let title2 = written?.writtenBy ?? "the writing model"
+        let episode = Self.copy(settings: settings, facts: facts, written: written, chapters: [])
+        let closing = episode.callToAction == nil ? " No call to action is set (optional)." : " Your call to action closes them."
         if let notes = showNotes(facts: facts, written: written) {
             add(notes.chosen ? .pass : .missing, "Show notes",
-                notes.chosen ? "Yours, from the recording's page (\(WritingText.words(notes.text)) words), in \"\(textName)\"." : "A draft by \(title2) is in \"\(textName)\", not chosen yet.",
+                (notes.chosen ? "Yours, from the recording's page (\(WritingText.words(notes.text)) words), in \"\(textName)\" with the chapters." : "A draft by \(title2) is in \"\(textName)\", not chosen yet.") + closing,
                 "Read the draft, then press Use as Notes on the recording's page (or write your own), then Update Podcast-Ready Files.")
         } else {
             add(.missing, "Show notes", "None.", "Turn on Titles, show notes and chapters, or write notes on the recording's page.")
         }
-        let captions = written?.captions ?? []
-        add(captions.isEmpty ? .missing : .pass, "Social captions", captions.isEmpty ? "None yet." : "\(Format.count(captions.count, "draft")) in \"\(textName)\", to post by hand.",
-            "They are written with the titles and show notes.")
+        if !episode.captions.isEmpty {
+            let quotes = episode.captions.filter { $0.pullQuote != nil }.count
+            let complete = episode.captions.count == SocialPlatform.allCases.count && quotes == episode.captions.count
+            add(complete ? .pass : .missing, "Social captions",
+                "\(episode.captions.map(\.platform.title).joined(separator: ", ")), with \(Format.count(quotes, "pull quote")) found word for word in the transcript, in \"\(textName)\", to post by hand.",
+                "Write the titles and notes again for the missing ones, or write them yourself.")
+        } else if !episode.plainCaptions.isEmpty {
+            add(.missing, "Social captions", "\(Format.count(episode.plainCaptions.count, "draft")) written before captions were made per platform, with no pull quotes.",
+                "Press Write Again on the recording's page for a caption per platform, each with its pull quote.")
+        } else {
+            add(.missing, "Social captions", "None yet.", "They are written with the titles and show notes.")
+        }
+        if written != nil {
+            add(.pass, "Copy rules", episode.leftOut.isEmpty
+                ? "The drafts in \"\(textName)\" name no prices, money, earnings, enrollment or offers, checked sentence by sentence. Your own title, notes and call to action are yours and are not changed."
+                : "\(Format.count(episode.leftOut.count, "drafted sentence or caption", "drafted sentences or captions")) named prices, money, earnings, enrollment or an offer and \(episode.leftOut.count == 1 ? "is" : "are") left out of \"\(textName)\"; the rest were checked sentence by sentence.")
+        }
 
         // Rules about people.
         if settings.aiVoice {
@@ -619,7 +845,7 @@ enum PodcastPackage {
     /// What the files were made with: when this changes, the files are out of date.
     static func fingerprint(settings: PodcastReadySettings, facts: PodcastEpisodeFacts, written: WrittenPackage?) -> String {
         var parts = [settings.showName, settings.hostName, settings.artworkPath ?? "", settings.explicit ? "x" : "",
-                     settings.aiVoice ? "ai" : "", facts.title, facts.notes, facts.episodeNumber.map(String.init) ?? "",
+                     settings.aiVoice ? "ai" : "", settings.numbering.rawValue, settings.callToAction, facts.title, facts.notes, facts.episodeNumber.map(String.init) ?? "",
                      facts.seasonNumber.map(String.init) ?? "", facts.kind.rawValue, written.map { "\($0.writtenAt.timeIntervalSince1970)" } ?? ""]
         if let path = settings.artworkPath, let attributes = try? FileManager.default.attributesOfItem(atPath: path) {
             parts.append("\((attributes[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0)")

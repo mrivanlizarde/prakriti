@@ -25,8 +25,9 @@ struct OutputsView: View {
             }
             if let ready = defaults.first(where: { $0.kind == .podcastReady }) {
                 Section {
-                    OutputSwitch(setting: ready, detail: "The finished MP3 for a podcast host: named for the show and the episode, with its tags, artwork, chapters and captions, "
-                                 + "a text file of the title, show notes and social captions, and an upload checklist measured against Apple's rules. Nothing is uploaded.")
+                    OutputSwitch(setting: ready, detail: "The finished MP3 for a podcast host: named for the show and the episode, with its tags, artwork, chapters and captions; "
+                                 + "Episode text, with the title and three alternatives, a one-line summary, the show notes with chapters, keywords, and a caption each for "
+                                 + "Instagram, LinkedIn and X and Threads with a pull quote; and an upload checklist measured against Apple's rules. Never made for a class. Nothing is uploaded.")
                     PodcastReadySettingsRows(setting: ready)
                 }
             }
@@ -68,8 +69,8 @@ struct OutputsView: View {
     private var writerLine: String {
         let provider = model.settings.provider[.writing] ?? .lmStudio
         let writer = provider == .lmStudio ? Format.modelName(model.settings.lmStudioModel) + " in LM Studio" : provider.title
-        return "Three title options, show notes, chapters and an accuracy checklist, written by \(writer) from the transcript, so they are made only with it. "
-            + "Every chapter time and quote is checked against the transcript. It takes minutes per recording. Classes, and anything with Serenity in it, stay on this Mac."
+        return "Four title options, a one-line summary, show notes, chapters, keywords, social captions and an accuracy checklist, written by \(writer) from the transcript, so they are made only with it. "
+            + "Every chapter time and quote is checked against the transcript, and nothing names a price, earnings, enrollment or an offer. It takes minutes per recording. Classes, and anything with Serenity in it, stay on this Mac."
     }
 }
 

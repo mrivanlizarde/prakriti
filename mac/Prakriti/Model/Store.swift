@@ -113,6 +113,27 @@ enum OutputResolver {
     }
 }
 
+extension OutputResolver {
+    /// The podcast-ready settings a recording is made with (11 Oct). How it sounds (layout, bitrate,
+    /// noise reduction), the AI voice line and explicit are the episode's: the recording's own settings,
+    /// else the Outputs screen's. What the show is called, who hosts it, its artwork, how it numbers its
+    /// episodes and the call to action that closes its notes belong to the show, so they always come
+    /// from the Outputs screen. Reason: a recording given its own choices kept a frozen copy of them, so
+    /// a show name or call to action typed on the Outputs screen afterwards never reached it (found by
+    /// the episode text's acceptance, 11 Oct; it is the flow BUILD-LOG gives Ivan for episode 1).
+    static func podcastReady(recording: Recording?, defaults: [OutputSetting]) -> PodcastReadySettings {
+        var settings = details(for: .podcastReady, recording: recording, defaults: defaults)?.podcastReadySettings ?? PodcastReadySettings()
+        if let show = defaults.first(where: { $0.kind == .podcastReady && $0.source == nil && $0.recording == nil })?.podcastReadySettings {
+            settings.showName = show.showName
+            settings.hostName = show.hostName
+            settings.artworkPath = show.artworkPath
+            settings.numbering = show.numbering
+            settings.callToAction = show.callToAction
+        }
+        return settings
+    }
+}
+
 /// The privacy lock: a class, or anything with Serenity in it, only ever reaches a model on this
 /// Mac. If the chosen provider sends text out, LM Studio is used instead, and the UI says so.
 enum ModelRouting {

@@ -118,8 +118,8 @@ final class PipelineRunner {
         if make.contains(.titlesNotesChapters) && options.makeTranscript {
             options.writing = writingSetup()
         }
-        if make.contains(.podcastReady), let ready = OutputResolver.details(for: .podcastReady, recording: recording, defaults: defaults) {
-            options.podcastReady = PodcastReadySetup(settings: ready.podcastReadySettings, facts: recording.podcastFacts)
+        if make.contains(.podcastReady) {
+            options.podcastReady = PodcastReadySetup(settings: OutputResolver.podcastReady(recording: recording, defaults: defaults), facts: recording.podcastFacts)
         }
         return options
     }
@@ -337,6 +337,11 @@ final class PipelineRunner {
             step.detail = "There are no podcast-ready files to update. Turn the podcast-ready episode on for this recording and Make Again."
             return (nil, step)
         }
+        if let refusal = PodcastPackage.refusal(kind: recording.kind) {
+            step.state = .skipped
+            step.detail = refusal + " Its files were not updated."
+            return (nil, step)
+        }
         let folder = URL(fileURLWithPath: path, isDirectory: true)
         let existing = folder.appending(path: PodcastPackage.folderName).appending(path: old.fileName)
         let staging = folder.deletingLastPathComponent().appending(path: ".packaging " + folder.lastPathComponent, directoryHint: .isDirectory)
@@ -347,8 +352,7 @@ final class PipelineRunner {
             try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
             let untagged = staging.appending(path: ".untagged.mp3")
             try ID3.audio(of: Data(contentsOf: existing)).write(to: untagged)
-            let settings = OutputResolver.details(for: .podcastReady, recording: recording, defaults: defaults)?.podcastReadySettings ?? PodcastReadySettings()
-            let setup = PodcastReadySetup(settings: settings, facts: recording.podcastFacts)
+            let setup = PodcastReadySetup(settings: OutputResolver.podcastReady(recording: recording, defaults: defaults), facts: recording.podcastFacts)
             let lexicon = OutputResolver.details(for: .transcript, recording: recording, defaults: defaults)?.applyLexicon ?? true
             let duration = old.expectedDuration ?? old.duration
             let clock = recording.episodeClock ?? EpisodeClock(intro: 0, segments: [Mastering.Span(start: 0, end: recording.duration ?? duration)])
@@ -578,10 +582,11 @@ final class PipelineRunner {
     }
 }
 
-/// How long writing takes with Qwen3.8-27B in LM Studio, for the Started notice. One measurement
-/// (10 Oct, the 15:48 talk: 603 s in all, of which 585 s writing at about 9 tokens a second, most of
-/// them thinking), so a fixed part and a part that grows with the length, rounded up.
+/// How long writing takes with Qwen3.8-27B in LM Studio, for the Started notice. Since the episode
+/// text joined the request (11 Oct) it is mostly thinking, and barely grows with the length: the whole
+/// step took 1,608 s and 1,798 s on the 15:48 talk (10 and 11 Oct, tags and summary on LM Studio too)
+/// and 1,456 s on the 55:39 one; 10 Oct's first estimate (300 s plus 0.3 s a second) said 10 minutes.
 enum WritingEstimate {
-    static let fixed = 300.0
-    static let perSecond = 0.3
+    static let fixed = 1_500.0
+    static let perSecond = 0.1
 }

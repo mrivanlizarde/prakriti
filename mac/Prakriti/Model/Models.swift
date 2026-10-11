@@ -280,6 +280,9 @@ final class OutputSetting {
     var bitrateKbps: Int = 96
     var noiseReduction: Bool = false
     var aiVoice: Bool = false
+    /// How the show numbers its episodes, and Ivan's closing line for the show notes (11 Oct).
+    var numberingRaw: String = PodcastNumbering.none.rawValue
+    var callToAction: String = ""
 
     var source: Source?
     var recording: Recording?
@@ -291,6 +294,11 @@ final class OutputSetting {
     }
 
     var kind: OutputKind { OutputKind(rawValue: kindRaw) ?? .podcastEpisode }
+
+    var numbering: PodcastNumbering {
+        get { PodcastNumbering(rawValue: numberingRaw) ?? .none }
+        set { numberingRaw = newValue.rawValue }
+    }
 
     var channels: AudioChannels {
         get { AudioChannels(rawValue: channelsRaw) ?? .mono }
@@ -326,13 +334,16 @@ final class OutputSetting {
         bitrateKbps = other.bitrateKbps
         noiseReduction = other.noiseReduction
         aiVoice = other.aiVoice
+        numberingRaw = other.numberingRaw
+        callToAction = other.callToAction
     }
 
     /// The podcast-ready settings as the pipeline reads them.
     var podcastReadySettings: PodcastReadySettings {
         PodcastReadySettings(showName: showName.trimmingCharacters(in: .whitespacesAndNewlines), hostName: hostName.trimmingCharacters(in: .whitespacesAndNewlines),
                              artworkPath: artworkPath, explicit: explicitContent, channels: channels, bitrateKbps: bitrateKbps,
-                             noiseReduction: noiseReduction, aiVoice: aiVoice)
+                             noiseReduction: noiseReduction, aiVoice: aiVoice, numbering: numbering,
+                             callToAction: callToAction.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 }
 

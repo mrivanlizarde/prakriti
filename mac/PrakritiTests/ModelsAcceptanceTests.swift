@@ -130,7 +130,7 @@ final class ModelsAcceptanceTests: XCTestCase {
         let answerObject = try XCTUnwrap(WritingCheck.jsonObject(modelAnswer), "the model's own answer is valid JSON")
         let answerIsBareJSON = (try? JSONSerialization.jsonObject(with: Data(modelAnswer.trimmingCharacters(in: .whitespacesAndNewlines).utf8))) != nil
         let titles = try XCTUnwrap(object["titles"] as? [String])
-        XCTAssertEqual(titles.count, 3)
+        XCTAssertTrue((3...4).contains(titles.count), "the pick and up to three alternatives (four asked for since 11 Oct)")
         let showNotes = try XCTUnwrap(object["showNotes"] as? String)
         XCTAssertFalse(showNotes.isEmpty)
         let chapters = try XCTUnwrap(object["chapters"] as? [[String: Any]])
