@@ -4,11 +4,12 @@ One dated entry per milestone of `docs/NEXT-PROMPT.md`, oldest first: what was b
 with its measured result, the decisions taken and why, and anything Ivan must do. A new session
 resumes from the last entry. Weekdays computed with `date(1)`.
 
-**Where it stands:** milestones 1 to 6 of 6 done (Sat 10 Oct). Prakriti for Mac, installed in
-`~/Applications` (milestone 6's build since 20:20), is the only thing watching the studio folder and
-`~/Prakriti/Drop`. Titles, show notes and chapters can now be written (Qwen3.8-27B in LM Studio by
-default) but are off for every folder until Ivan turns them on. Not yet written: the v1 finish-line
-section (what works, what does not, every screen, the three things to try first).
+**Where it stands:** v1 reached its finish line on Sat 10 Oct: all six milestones passed on real
+recordings, and the last section of this file, "Finish line", says what works, what does not, what
+Ivan must click, where the pictures of every screen are, and the three things to try first.
+Prakriti for Mac, installed in `~/Applications` (milestone 6's build since 20:20), is the only thing
+watching the studio folder and `~/Prakriti/Drop`. Titles, show notes and chapters can be written
+(Qwen3.8-27B in LM Studio by default) but are off for every folder until Ivan turns them on.
 
 ---
 
@@ -1279,3 +1280,148 @@ cd ~/Code/prakriti/mac && open ~/Applications/Prakriti.app
 
 Then Models, or Recordings, Sun 13 Sep.
 
+---
+
+## Finish line, Sat 10 Oct 2026
+
+**Prakriti for Mac v1 passes its finish line.** All six milestones passed their checks on real
+recordings (the 13 Sep talk, the 6 Sep talk, the silent 14 Sep class, clips cut from the 13 Sep talk).
+Since 14:57 it is the live engine: installed at `~/Applications/Prakriti.app`, opening at login,
+watching the Studio Recordings folder and `~/Prakriti/Drop`, writing to `~/Prakriti/Outputs`. Engine
+v0 is retired. Nothing has been published, uploaded or sent, and `~/Prakriti/Approved` is empty: no
+yes has been given on Ivan's behalf.
+
+### How it was checked
+
+Each milestone was built, then re-checked by an independent verifier working from a fresh clone and
+the real app. The verdicts relayed to this session: **milestone 1 passed** (16 checks, one blocked:
+the menu bar menu cannot be pictured without Screen Recording permission) and **milestone 2 passed**
+(reproduced from a fresh clone: the 13 Sep episode -16.8 LUFS, true peak -1.6 dBFS, decoded audio
+bit for bit the same as engine v0's). The milestone 5 verifier found the caption-order regression,
+fixed and re-measured in "Milestone 5 fixes" above. The milestone 6 verifier ran the real writing
+again (20:28 to 20:39; notes in `screens/mac/m6-verify/verifier-independent-check.txt`). The
+milestone 3 and 4 verifiers' pictures and acceptance text are in `screens/mac/m3-verify/` and
+`screens/mac/m4-verify/`; their verdict text was not relayed to this session, so this section relies
+on the measurements in those milestones' own entries.
+
+Re-checked for this section, 20:44 to 20:50, on the final commit (`11f7781`):
+
+| Check | Result |
+|---|---|
+| `make test MILESTONE=finish` | **113 tests, 0 failures, 5 skipped by design** (the four acceptances and the migration check), 248 s. 128 pictures of every screen, light and dark, in `screens/mac/finish/`; Today empty and the 13 Sep steps looked at |
+| The live app | Running (pid 16709, opened 20:20:33 by `make install`). Its log shows the 5-minute look every time: "Checked 2 folders. Nothing new." at 20:25:33, 20:30:53, 20:36:13, 20:41:24, 20:46:44 |
+| Engine v0 | `launchctl print gui/501/studio.therowan.prakriti`: "Could not find service". Its plist is in `~/Prakriti/retired/`. `~/Prakriti/Outputs` holds only v0's two folders (8 and 9 Oct); `~/Prakriti/Drop` and `~/Prakriti/Approved` are empty |
+| The installed app's signature | `studio.therowan.prakriti.app`, team LD587PB2H8, `codesign --verify --deep --strict` passes |
+| LM Studio | `qwen/qwen3.8-27b` present, **no instance loaded**: Prakriti unloaded what it loaded |
+| The 13 Sep episode, measured again (made 20:28 in development) | ebur128: **-16.8 LUFS, true peak -1.7 dBFS**, loudness range 4.2 LU. ffprobe: 946.55 s, mono, 48 kHz, 128 kbps. Last 5 s decode clean. 137 captions, 0 starting with punctuation, the last ending at 15:46.4 on the episode's clock (15:47 of 15:48 on the recording's). `show-notes.md`: 0 em or en dashes |
+| The approved test episode (development) | ffprobe: **907.732 s** against the recording's 947.780 s: the 10 s trim and the 30 s cut are gone |
+| Housekeeping | Two `tail -f` processes left on the development log by earlier build sessions (started 13:50 and 19:15, orphaned) were stopped. Nothing else was touched |
+
+### What works, with the measured evidence
+
+| What | Measured |
+|---|---|
+| **The app** | Signed with Ivan's Apple Development certificate, no sandbox, hardened runtime. Keeps running with its window closed (verifier: alive 2 min 30 s with no window). One watcher per mode: a second live copy logs why and quits |
+| **Finding recordings, with no clicks** (milestone 3) | Live, after the switch-over: a 90 s clip moved into `~/Prakriti/Drop` was **found in 7 s and Ready for your yes 78 s later**, most of it the 60 s wait that proves the file finished copying. Changes made while Prakriti was closed are caught on the next launch. The switch-over imported v0's memory, so **nothing v0 had seen was made again** (11 recordings, 0 runs) |
+| **The pipeline** (milestone 2) | The 13 Sep talk: **-16.8 LUFS, true peak -1.6 dBFS, transcript reaching 15:47 of 15:48, 2,948 words**, in about 41 s. The 6 Sep talk (episode 1): -16.7 LUFS, 55:38 of 55:39. Both episodes decode **bit for bit the same as engine v0's**. The silent 14 Sep class: **Needs a decision, nothing made** (loudest point -91 dB). A 30 s clip: filed as a test, nothing made, no notice |
+| **Outputs and settings** (milestone 4) | Loudness target -16 made -16.8 LUFS; changed to -19 and made again: **-19.1 LUFS on two meters**. Transcript turned off: no transcript file left. Everything off: bit for bit v0's episode. Silence trim, intro, outro and stereo measured on generated audio. The Yoga Marga word list made 15 fixes on the 13 Sep talk, none wrong |
+| **The recording page** (milestone 5) | Trim the first 10 s, cut 5:00 to 5:30, Make Again, Approve: the approved episode is **38.82 s shorter, exactly as expected**; Parakeet run again on it heard **0 of the 73 five-word runs said inside the cut**. Captions: 137 of 137 (13 Sep) and 555 of 555 (6 Sep) read exactly as Parakeet wrote each sentence. A recording marked as a class is refused at Approve. The system player plays the episode or the original; a transcript line plays from its moment |
+| **The models** (milestone 6) | Qwen3.8-27B in LM Studio, four runs on the 13 Sep talk (three by the builder, one by the verifier): **valid JSON every time, 3 titles, 3 chapters each starting on a real transcript line, and 8, 7, 8 and 6 quotes found word for word** (the verifier's run dropped one quote that was not word for word, as the check is meant to). Prakriti loads the model at 65,536 tokens itself (8 s) and unloads it after. The writing takes about 10 to 14 minutes. **Privacy lock:** with the writing set to the Claude API, the 13 Sep talk (it names Serenity) went to LM Studio and **the Claude API was asked 0 times**. Apple on-device wrote 3 tags for a short input in 0.7 s |
+| **Design rules** | Body text 17 pt, nothing under 12 pt, no tooltips (they draw at 11 pt), no em or en dashes anywhere in the app: each enforced by `RulesTests`, inside the 113 |
+
+### What does not work, or was not reached
+
+- **No notice has ever reached the screen.** macOS has notifications turned off for Prakriti (the live
+  log says so at every launch, last at 20:20:33). The notice builder, its wording and its identifiers
+  are proved by tests, and macOS accepts each request; a banner on screen and a click opening the
+  recording were never seen. Until Ivan turns them on, **a silent class shows in Today and Activity
+  but not as a banner.**
+- **The menu bar menu was never pictured** (it needs Screen Recording permission). The log says
+  "Menu bar item: shown".
+- **No person has clicked through the app.** Every button was driven through the same code it calls,
+  and the real window was captured in each state, but a hand click on a line, the player's sound,
+  typing in a field and the confirmation dialogs were not done by a person.
+- **Episodes are leveled moment to moment, not evenly,** on every studio talk, since engine v0 and
+  including episode 1. Not changed on purpose: it needs Ivan's ears before anything about how
+  episodes sound changes, and episode 1 ships Fri 23 Oct.
+- **Speakers are not checked.** Only a recording Ivan marks "Talk, one teacher speaking" can be
+  approved. Classes and conversations cannot be approved in v1.
+- **The accuracy check proves the quotes, not the claims.** In the verifier's run, the claim "The
+  teacher was living on 300 dollars a month in 2018" sits on the quote "living on his buddy's couch
+  for 300 bucks a month" (a couch for 300 a month, not a whole budget), and two other claims add
+  words their quotes do not say ("Pacific time", "within six months"). Every claim needs a person.
+- **Nothing restarts Prakriti if it crashes** until the next login (engine v0's LaunchAgent restarted
+  itself). The only sign is Activity going quiet: no "Checked 2 folders" line for more than 5 minutes.
+- **The writing is proved on one recording** (the 13 Sep talk, four runs). The 55-minute 6 Sep talk
+  has not been written; about two hours is the limit, and longer is refused, never cut off. The
+  Claude API has never answered (no key exists); Ollama has never written; Apple's tags are weak.
+- **Not tested for real:** closing the lid (sleep and wake), a real login (opening at login is
+  registered "on"), a real intro or outro file. Readiness is v0's rule (60 s steady), not SCOPE
+  7.3's fuller one.
+- **Not built, as the spec said:** edited video, three thumbnails, shorts, knowledge base, voice
+  dataset (each shown as "Not built yet" with one line), and any publishing.
+- Small: the transcript does not scroll to follow the player; the word list cannot be edited in the
+  app.
+
+### For Ivan: what needs you
+
+- [ ] **Turn on notifications** (since milestone 3): System Settings, Notifications, Prakriti: Allow
+  notifications, Banners, Play sound.
+- [ ] **Look at the menu bar once:** a ring icon; its menu has the status line, Open Prakriti, Pause
+  All, Settings and Quit Prakriti.
+- [ ] **Listen to episode 1 before Fri 23 Oct** (`~/Prakriti/Outputs/2026-09-06 18-06-33/episode.mp3`)
+  for quiet passages swelling and loud ones sitting down. Say if it pumps.
+- [ ] **At your next login, nothing to do;** afterwards the log should say "Finished launching at
+  login". If Prakriti is not in the menu bar after a restart, open it once.
+- [ ] Glance at the word list's spellings (Outputs screen), especially Krishnamacharya, Pattabhi Jois
+  and Iyengar.
+- [ ] Optional: a Claude API key (Models, Claude API, Save in Keychain). Nothing in v1 needs it.
+- Before approving anything: under About this recording, set What this is to "Talk, one teacher
+  speaking". Approve copies to `~/Prakriti/Approved`, your real yes folder.
+
+### The best picture of every screen
+
+All under `~/Code/prakriti/screens/mac/` (gitignored, on this Mac only). "Real" means the real
+running window; the others are drawn by the tests. Every one listed was looked at.
+
+| Screen | Picture |
+|---|---|
+| Today | `m6/real/01-today-light.png` |
+| Today, the live app on Ivan's real recordings | `m3/real/m3-live-today.png` |
+| Today, nothing waiting | `finish/09-today-empty-dark.png` |
+| Recordings | `m6/real/02-recordings-dark.png` |
+| Sources | `m6/real/03-sources-light.png` |
+| Outputs | `m6/real/04-outputs-light.png` |
+| Models | `m6/real/05-models-dark.png` |
+| Activity | `m6/real/06-activity-light.png` |
+| Settings | `m6/real/07-settings-dark.png` |
+| A recording's page, the live 13 Sep talk, with the system player | `m5/real/m5-real-live-13sep-page.png` |
+| A recording's page with a trim and cut not made yet | `m5/real/m5-real-page-light-edits.png` |
+| Titles, show notes and chapters written by Qwen3.8-27B, with the privacy lock line | `m6/m6-13sep-written-light-p3.png` |
+| The silent class: Needs a decision, privacy locked | `m6/08-recording-silent-dark.png` |
+| The steps and their timings on the 13 Sep talk | `finish/08-recording-class-not-written-light-p4.png` |
+| A folder refused (a test copy asked to watch the studio folder) | `m6/real/08-refusal-light.png` |
+| The menu bar menu | None: blocked on Screen Recording permission |
+
+The full set from the final code, every screen light and dark and every screenful of the long pages,
+is `finish/` (128 pictures).
+
+### Try these three first
+
+1. **Turn on notifications, then drop a recording in.** Copy any talk at least a minute long into
+   `~/Prakriti/Drop` (never a class). Within about a minute and a half you should see "New Recording
+   Found", then "Ready for Your Yes". Open it from the notice. This is the one thing no one has seen
+   on screen yet.
+2. **Open Sun 13 Sep and use the page with your own hands.** Recordings, Sun 13 Sep: press play,
+   click a line of the transcript and hear it jump there, type 0:10 in "Episode starts at", press
+   Make Again, and listen to the start. Use the 13 Sep talk, not episode 1 (Sun 6 Sep), so episode
+   1's files stay exactly as they are.
+3. **Have it write the titles and show notes, then check its claims.** Open LM Studio with its server
+   on, press Write Titles and Notes on the 13 Sep page, and wait about 10 minutes. Then read the
+   accuracy checklist against the episode: the quotes are guaranteed to be real, the claims are not.
+
+To open it:
+
+```bash
+cd ~ && open ~/Applications/Prakriti.app
+```

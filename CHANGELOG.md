@@ -5,6 +5,20 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-10, Sat: Prakriti for Mac v1, finish line
+
+- **`docs/BUILD-LOG.md` ends with the finish line:** what works with its measured evidence, what does
+  not, Ivan's checklist, the best picture of every screen, and the three things to try first. Why:
+  the build prompt's finish line asks for exactly that, and a v1 nobody can pick up cold is not done.
+- **Re-checked on the final commit before writing it:** 113 tests, 0 failures; the live app's
+  5-minute look still logging; engine v0 still retired; the 13 Sep episode measured again at -16.8
+  LUFS, true peak -1.7 dBFS. Why: the section quotes numbers, and each had to survive a fresh
+  measurement.
+- **START_HERE gains "Day to day (for Ivan)"** (open, where files go, pause, stop, and that nothing
+  restarts Prakriti after a crash), and its opening paragraph no longer says nothing is built. Why: the
+  section was written for whoever builds the app, not for the person who uses it, and the opening
+  described Thu 8 Oct.
+
 ## 2026-10-10, Sat: Prakriti for Mac, milestone 6 (the models)
 
 - **Prakriti now writes titles, show notes, chapters and an accuracy checklist for a recording,**

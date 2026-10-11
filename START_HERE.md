@@ -15,6 +15,9 @@ approve and get notified. The name is the yoga-philosophy word for the raw matte
 from. On Thu 8 Oct 2026 it is named, researched, scoped, planned and through all three rounds of
 self-feedback; the Worker (`web/src/index.js`) and the front door (`web/public`) are written and not
 deployed (they go live through the pre-deploy sequence in PLAN.md row 21); nothing else is built yet.
+**Since then:** the front door and roadmap went live the evening of Thu 8 Oct (see Deploy), and on
+Sat 10 Oct Prakriti for Mac, the native engine, was built, took over from engine v0 and reached its
+v1 finish line (see "Prakriti for Mac" and the end of `docs/BUILD-LOG.md`).
 
 **Current state, matching PLAN.md:**
 
@@ -502,12 +505,40 @@ whose transcript says "Serenity", is only read by models on this Mac; a task set
 done by LM Studio instead, and the page, the step and `show-notes.md` say so. The output is a draft in
 `show-notes.md` (Approve copies it) and `titles-notes-chapters.json` (Outputs only). It is off for
 every folder until Ivan turns it on, because the model holds about 33 GB and takes minutes.
+**Finish line, Sat 10 Oct:** v1 passed on real recordings. What works, what does not, what Ivan must
+click and the three things to try first are the last section of `docs/BUILD-LOG.md`, "Finish line".
 Progress, checks and decisions per milestone are in `docs/BUILD-LOG.md`.
 
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
 folders, beside the live one.
+
+### Day to day (for Ivan)
+
+- **Open it.** It opens by itself when you log in and keeps watching with its window closed. To see
+  the window, click the ring in the menu bar and choose Open Prakriti, or:
+
+  ```bash
+  cd ~ && open ~/Applications/Prakriti.app
+  ```
+
+- **Where things go.** Finished files: `~/Prakriti/Outputs/<recording name>/` (`episode.mp3`, the
+  transcripts, `REPORT.md`, and `show-notes.md` when writing is on). Your yeses:
+  `~/Prakriti/Approved/<recording name>/`, only when you press Approve. To have any file made, put it
+  in `~/Prakriti/Drop`. Prakriti only reads the Studio Recordings folder and never writes into it.
+  Every look and every step: `~/Library/Logs/Prakriti/<date>.log`, and the Activity screen.
+- **Pause it.** Pause All (the window's toolbar, the menu bar, or Settings). A recording already
+  running finishes; nothing new is found or started until Resume All.
+- **Stop it.** Menu bar ring, Quit Prakriti (or Command-Q with the window in front). It stays stopped
+  until you open it again or log in again. To stop it opening at login: System Settings, General,
+  Login Items, switch Prakriti off. **If it crashes, nothing restarts it until the next login** (engine
+  v0 restarted itself): Activity going quiet, no "Checked 2 folders" line for more than 5 minutes, is
+  the sign.
+- **Engine v0 is retired** (Sat 10 Oct, 14:57). Prakriti for Mac is the only thing watching. Never
+  run both: two watchers make and notify everything twice. Going back: "Engine v0: retired" above.
+- **What still needs you:** the checklist in `docs/BUILD-LOG.md`, "Finish line" (turning on
+  notifications first).
 
 ### Build, run, test
 
