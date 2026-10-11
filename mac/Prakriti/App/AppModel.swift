@@ -131,6 +131,18 @@ final class AppModel {
             if let folder = launch.addFolder {
                 model.addSource(at: URL(fileURLWithPath: folder, isDirectory: true))
             }
+            // A recording's page (milestone 5): the sample talk that is ready for a yes, optionally
+            // with a trim and a cut that are not made yet, to see the real player and fields.
+            if launch.openReady {
+                let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
+                if let ready = all.sorted(by: Recording.newestFirst).first(where: { $0.status == .readyForYourYes }) {
+                    if launch.sampleEdits {
+                        model.setTrim(start: 10, end: nil, for: ready)
+                        model.addCut(TimeRange(start: 300, end: 330), to: ready)
+                    }
+                    model.open(ready)
+                }
+            }
             return model
         }
         let paths = AppPaths(mode: AppMode.current)
@@ -515,14 +527,17 @@ final class AppModel {
 }
 
 /// How the real-window capture opens the app: `--sample-data`, optionally `--show=<screen>`,
-/// `--appearance=light|dark` and `--add-folder=<path>` (tries to add that folder, as Add Folder
-/// does, so a refusal can be seen). Used only by scripts/capture-window.swift. Each flag is one word with
+/// `--appearance=light|dark`, `--add-folder=<path>` (tries to add that folder, as Add Folder
+/// does, so a refusal can be seen), `--open=ready` (the sample talk's page) and `--sample-edits`
+/// (with a trim and a cut on it, not made yet). Used only by scripts/capture-window.swift. Each flag is one word with
 /// its value after "=": a value passed as a separate word reads to macOS as a file to open, and an
 /// app launched to open a file does not open its window.
 struct CaptureLaunch {
     let screen: SidebarItem
     let colorScheme: ColorScheme?
     let addFolder: String?
+    var openReady = false
+    var sampleEdits = false
 
     static var current: CaptureLaunch? {
         let args = CommandLine.arguments
@@ -536,7 +551,8 @@ struct CaptureLaunch {
         case "dark": .dark
         default: nil
         }
-        return CaptureLaunch(screen: screen, colorScheme: colorScheme, addFolder: value("--add-folder"))
+        return CaptureLaunch(screen: screen, colorScheme: colorScheme, addFolder: value("--add-folder"),
+                             openReady: value("--open") == "ready", sampleEdits: args.contains("--sample-edits"))
     }
 }
 

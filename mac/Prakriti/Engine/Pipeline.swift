@@ -28,7 +28,7 @@ import Foundation
 /// The steps, in order. `title` is what the recording page lists; `doing` is what the status line
 /// says while it runs ("Working on Sun 13 Sep: making the episode audio"). Never "Processing".
 enum PipelineStep: String, CaseIterable, Sendable {
-    case complete, sound, speechAudio, transcript, coverage, wordList, trim, episode, loudness, report
+    case complete, sound, speechAudio, transcript, coverage, wordList, trim, edits, episode, loudness, episodeTranscript, report
 
     var title: String {
         switch self {
@@ -39,8 +39,10 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .coverage: "Coverage check"
         case .wordList: "Word list"
         case .trim: "Silence at the start and end"
+        case .edits: "Your trim and cuts"
         case .episode: "Episode audio"
         case .loudness: "Loudness check"
+        case .episodeTranscript: "Transcript matched to the episode"
         case .report: "Report"
         }
     }
@@ -54,8 +56,10 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .coverage: "Checking the transcript reaches the end"
         case .wordList: "Applying the Yoga Marga word list"
         case .trim: "Finding the silence at the start and end"
+        case .edits: "Applying your trim and cuts"
         case .episode: "Making the episode audio"
         case .loudness: "Measuring the episode audio"
+        case .episodeTranscript: "Matching the transcript to the episode"
         case .report: "Writing the report"
         }
     }
@@ -101,6 +105,16 @@ struct PipelineOptions: Sendable {
     var transcriptFormats: Set<TranscriptFormat> = [.txt, .srt, .vtt]
     var applyLexicon = false
 
+    /// Ivan's edits from the recording's page (milestone 5): where the episode starts and ends, and
+    /// the sections cut out, on the original's clock. Empty: the episode is made as milestone 4 made it.
+    var edits = EpisodeEdits()
+
+    /// Anything taken out of the recording or added to it, so the episode's clock is not the
+    /// original's and the transcript files are rewritten to follow the episode.
+    var changesTheClock: Bool {
+        trimSilence || !(introPath ?? "").isEmpty || !(outroPath ?? "").isEmpty || !edits.isEmpty
+    }
+
     /// The steps this run will take, in order. The checks always run.
     var plannedSteps: [PipelineStep] {
         var steps: [PipelineStep] = [.complete, .sound]
@@ -111,7 +125,9 @@ struct PipelineOptions: Sendable {
         }
         if makeEpisode {
             if trimSilence { steps.append(.trim) }
+            if !edits.isEmpty { steps.append(.edits) }
             steps += [.episode, .loudness]
+            if makeTranscript && changesTheClock { steps.append(.episodeTranscript) }
         }
         if makeReport { steps.append(.report) }
         return steps
@@ -157,6 +173,15 @@ struct PipelineResult: Sendable {
     /// Seconds of silence trimmed from the start and the end (0 when the trim found none).
     var trimmedStart: Double?
     var trimmedEnd: Double?
+    /// The edits this make applied (milestone 5), and the parts of the original the episode kept
+    /// because of them. Nil parts: no edits.
+    var edits = EpisodeEdits()
+    var parts: [Mastering.Span]?
+    /// Where the original's moments play in the episode: the intro, then what was kept.
+    var clock: EpisodeClock?
+    /// The transcript files were rewritten to follow the episode, and how many words they lost.
+    var transcriptFollowsEpisode = false
+    var wordsLeftOut: Int?
     var introDuration: Double?
     var outroDuration: Double?
     /// The word list's fixes, each with its time in the original recording.
@@ -257,6 +282,15 @@ enum Mastering {
         var channels: AudioChannels = .mono
         var intro: Piece?
         var outro: Piece?
+        /// Ivan's edits (milestone 5): the parts of the recording the episode keeps, in order, each
+        /// faded in and out over 15 ms. Nil: `kept` (the silence trim) or the whole recording, and
+        /// the chain is milestone 4's string for string.
+        var parts: [Span]?
+
+        /// The talk's parts, as the episode plays them.
+        func talk(duration: Double) -> [Span] {
+            parts ?? [kept ?? Span(start: 0, end: duration)]
+        }
     }
 
     /// "1.183": trim points to the millisecond.
@@ -268,6 +302,7 @@ enum Mastering {
     /// pieces (each in the same layout and rate) before the same loudness filters.
     static func pass(file: String, program: Program, loudness: String) -> [String] {
         let format = format(program.channels)
+        if let parts = program.parts { return pass(file: file, parts: parts, program: program, loudness: loudness) }
         let trim = program.kept.map { "atrim=start=\(time($0.start)):end=\(time($0.end)),asetpts=PTS-STARTPTS," } ?? ""
         guard program.intro != nil || program.outro != nil else {
             return ["-i", file, "-vn", "-af", trim + format + "," + loudness]
@@ -284,6 +319,44 @@ enum Mastering {
         add(file, trim + format, "talk")
         if let outro = program.outro { add(outro.path, "\(format),volume=\(number(outro.gainDB))dB", "outro") }
         graph.append(labels.joined() + "concat=n=\(labels.count):v=0:a=1,\(loudness)[episode]")
+        return inputs + ["-filter_complex", graph.joined(separator: ";"), "-map", "[episode]"]
+    }
+
+    /// One kept part: cut out of the recording, started at zero, faded in and out over 15 ms.
+    static func part(_ span: Span) -> String {
+        "atrim=start=\(time(span.start)):end=\(time(span.end)),asetpts=PTS-STARTPTS,"
+            + "afade=t=in:st=0:d=\(time(EpisodeEdits.fade)),afade=t=out:st=\(time(max(0, span.length - EpisodeEdits.fade))):d=\(time(EpisodeEdits.fade))"
+    }
+
+    /// The pass with Ivan's edits: the recording is split into its kept parts, each cut and faded,
+    /// joined end to end, set to the layout and 48 kHz (before the limiter, v0's bug 2), and joined
+    /// to the intro and outro when there are any, before the same loudness filters.
+    private static func pass(file: String, parts: [Span], program: Program, loudness: String) -> [String] {
+        let format = format(program.channels)
+        var inputs: [String] = []
+        var graph: [String] = []
+        var labels: [String] = []
+        if let intro = program.intro {
+            graph.append("[\(labels.count):a]\(format),volume=\(number(intro.gainDB))dB[intro]")
+            inputs += ["-i", intro.path]
+            labels.append("[intro]")
+        }
+        let talkInput = labels.count
+        inputs += ["-i", file]
+        if parts.count == 1, let only = parts.first {
+            graph.append("[\(talkInput):a]\(part(only)),\(format)[talk]")
+        } else {
+            graph.append("[\(talkInput):a]asplit=\(parts.count)" + parts.indices.map { "[s\($0)]" }.joined())
+            for (index, span) in parts.enumerated() { graph.append("[s\(index)]\(part(span))[p\(index)]") }
+            graph.append(parts.indices.map { "[p\($0)]" }.joined() + "concat=n=\(parts.count):v=0:a=1,\(format)[talk]")
+        }
+        labels.append("[talk]")
+        if let outro = program.outro {
+            graph.append("[\(labels.count):a]\(format),volume=\(number(outro.gainDB))dB[outro]")
+            inputs += ["-i", outro.path]
+            labels.append("[outro]")
+        }
+        graph.append(labels.count == 1 ? "[talk]\(loudness)[episode]" : labels.joined() + "concat=n=\(labels.count):v=0:a=1,\(loudness)[episode]")
         return inputs + ["-filter_complex", graph.joined(separator: ";"), "-map", "[episode]"]
     }
 }
@@ -508,6 +581,21 @@ struct Pipeline: Sendable {
                     await finish(.trim, SilenceTrim.line(start: result.trimmedStart ?? 0, end: result.trimmedEnd ?? 0))
                 }
 
+                // Ivan's trim and cuts, on top of the silence trim: the parts the episode keeps.
+                if !options.edits.isEmpty {
+                    await begin(.edits)
+                    if let problem = options.edits.problem(duration: ready.duration, silence: program.kept) {
+                        throw PipelineFailure(step: .edits, reason: problem + " Nothing was made; change the trim or the cuts and make it again.")
+                    }
+                    let parts = options.edits.segments(duration: ready.duration, silence: program.kept)
+                    program.parts = parts
+                    result.edits = options.edits
+                    result.parts = parts
+                    let kept = parts.reduce(0) { $0 + $1.length }
+                    await finish(.edits, (options.edits.summary.map { $0 + " " } ?? "")
+                                 + "The episode keeps \(Format.timecode(kept)) of \(Format.timecode(ready.duration)).")
+                }
+
                 await begin(.episode)
                 // The intro and outro are checked first, so a missing file stops before minutes of work.
                 let intro = try await piece(options.introPath, role: "intro", duration: ready.duration)
@@ -560,16 +648,36 @@ struct Pipeline: Sendable {
                                            duration: ready.duration)
                 let made = Measure.probe(json: probe.stdout)?.duration
                 result.episodeDuration = made
-                // The intro, the talk (or the part kept after the trim) and the outro, end to end.
-                let expected = (intro?.duration ?? 0) + (program.kept?.length ?? ready.duration) + (outro?.duration ?? 0)
+                // The intro, the talk (the parts kept after the trims and cuts) and the outro, end to end.
+                let talkParts = program.talk(duration: ready.duration)
+                result.clock = EpisodeClock(intro: intro?.duration ?? 0, segments: talkParts)
+                let expected = (intro?.duration ?? 0) + talkParts.reduce(0) { $0 + $1.length } + (outro?.duration ?? 0)
                 guard let made, abs(made - expected) <= 1.0 else {
                     throw PipelineFailure(step: .loudness, reason: "The episode audio is not the length it should be, so it cannot be trusted.",
                                           detail: "episode \(made.map { String($0) } ?? "unreadable") s, expected \(expected) s (recording \(ready.duration) s)")
                 }
                 await finish(.loudness, "\(Format.lufs(loudness.integratedLUFS)), peak \(Format.dbfs(loudness.truePeakDBFS)). Plays to its end (\(Format.timecode(made))).")
+
+                // 7. The transcript files follow the episode: the words in anything taken out are
+                //    left out, and the times are the episode's. transcript.json keeps every word as
+                //    heard, on the original's clock, for the recording page.
+                if options.makeTranscript && options.changesTheClock, let clock = result.clock {
+                    await begin(.episodeTranscript)
+                    if clock.isIdentity(duration: ready.duration) {
+                        await finish(.episodeTranscript, "Nothing was taken out or added, so its times already match the episode.")
+                    } else {
+                        let left = try followEpisode(in: staging, clock: clock, label: label, fileName: file.lastPathComponent)
+                        result.transcriptFollowsEpisode = true
+                        result.wordsLeftOut = left
+                        let shift = clock.intro - (clock.segments.first?.start ?? 0)
+                        await finish(.episodeTranscript, "Times match the episode"
+                                     + (left > 0 ? "; \(Format.count(left, "word")) in the parts taken out are left out." : String(format: " (%.1f s %@).", abs(shift), shift >= 0 ? "later" : "earlier"))
+                                     + " transcript.json keeps every word as heard.")
+                    }
+                }
             }
 
-            // 7. The report Ivan reads before he listens.
+            // 8. The report Ivan reads before he listens.
             result.outcome = .ready
             if options.makeReport {
                 await begin(.report)
@@ -584,7 +692,7 @@ struct Pipeline: Sendable {
                 await finish(.report, "Written to REPORT.md, beside the episode.")
             }
 
-            // 8. Only now do the new files take the place of the old ones.
+            // 9. Only now do the new files take the place of the old ones.
             let placed: (files: [String], replaced: [String])
             do {
                 placed = try Self.place(staging, into: outputFolder)
@@ -709,6 +817,34 @@ struct Pipeline: Sendable {
         return (srt, corrections)
     }
 
+    /// Rewrites the chosen readable formats (.txt, .srt, .vtt, .md) from transcript.json so they
+    /// follow the episode: the words inside anything taken out are dropped, and every time is the
+    /// episode's. Returns how many words were left out. The .txt is rewritten only when words were.
+    private func followEpisode(in folder: URL, clock: EpisodeClock, label: String, fileName: String) throws -> Int {
+        guard let data = try? Data(contentsOf: folder.appending(path: TranscriptFiles.asHeard)),
+              let sentences = EpisodeTranscript.sentences(json: data) else {
+            throw PipelineFailure(step: .episodeTranscript, reason: "The transcript could not be matched to the episode: Parakeet's words with their times (transcript.json) could not be read.")
+        }
+        let made = EpisodeTranscript.cues(sentences, clock: clock, applyLexicon: options.applyLexicon)
+        let formats = options.transcriptFormats
+        var files: [(TranscriptFormat, String)] = []
+        if formats.contains(.srt) { files.append((.srt, EpisodeTranscript.srt(made.cues))) }
+        if formats.contains(.vtt) { files.append((.vtt, EpisodeTranscript.vtt(made.cues))) }
+        if formats.contains(.txt) && made.removedWords > 0 { files.append((.txt, EpisodeTranscript.text(made.cues))) }
+        if formats.contains(.md) {
+            files.append((.md, TranscriptFiles.markdown(cues: made.cues, label: label, fileName: fileName,
+                                                        wordListApplied: options.applyLexicon, followsEpisode: true)))
+        }
+        do {
+            for (format, text) in files {
+                try text.write(to: folder.appending(path: TranscriptFiles.fileName(format)), atomically: true, encoding: .utf8)
+            }
+        } catch {
+            throw PipelineFailure(step: .episodeTranscript, reason: "The transcript could not be matched to the episode.", detail: error.localizedDescription)
+        }
+        return made.removedWords
+    }
+
     /// Writes the .md when it is chosen and removes the formats that are not. transcript.json stays.
     private func keepChosenFormats(in folder: URL, srt: String, label: String, fileName: String) throws {
         let formats = options.transcriptFormats
@@ -785,11 +921,12 @@ struct Pipeline: Sendable {
 
     /// Moves a finished make into the recording's folder. A file made again replaces the old one; a
     /// file an earlier make left that this one did not make (a transcript turned off) is removed.
+    /// Only names in `known` are ever replaced or removed (Approve passes its own list).
     /// Returns the files now there from this make, and the names it replaced or removed.
-    static func place(_ staging: URL, into folder: URL) throws -> (files: [String], replaced: [String]) {
+    static func place(_ staging: URL, into folder: URL, known: Set<String> = madeNames) throws -> (files: [String], replaced: [String]) {
         let fm = FileManager.default
         let new = madeFiles(in: staging)
-        let old = madeFiles(in: folder).filter(madeNames.contains)
+        let old = madeFiles(in: folder).filter(known.contains)
         if !new.isEmpty { try fm.createDirectory(at: folder, withIntermediateDirectories: true) }
         for name in new {
             let destination = folder.appending(path: name)

@@ -62,7 +62,9 @@ enum Fixtures {
         talk13.wordCount = 2948
         talk13.wordListFixes = 15
         talk13.outputFolder = outputs + "/2026-09-13 18-25-44"
-        talk13.madeFiles = ["REPORT.md", "episode.mp3", "transcript.json", "transcript.md", "transcript.srt", "transcript.txt", "transcript.vtt"]
+        // The files engine v0 made for this talk, which are in that folder, so the page's player
+        // and transcript show the real talk (read only).
+        talk13.madeFiles = ["REPORT.md", "episode.mp3", "transcript.json", "transcript.srt", "transcript.txt", "transcript.vtt"]
         context.insert(talk13)
         talk13.source = studio
         addRun(context, to: talk13, start: date(2026, 10, 9, 16, 15, 11), trigger: .fileEvent, outcome: .ready,

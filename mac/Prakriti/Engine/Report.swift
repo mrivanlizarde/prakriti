@@ -31,6 +31,10 @@ enum Report {
             if let outro = result.outroDuration { made += String(format: ", outro `%@` (%.1f s) after it", name(options.outroPath), outro) }
             rows.append(("Episode audio", "`episode.mp3`, \(options.channels.title.lowercased()) 128 kbps, \(measured) (target \(Mastering.number(options.loudnessTarget)) LUFS, "
                          + "peak at or under \(Mastering.number(options.peakCeiling)))\(made)\(mode)"))
+            if let parts = result.parts, let summary = result.edits.summary {
+                let kept = parts.reduce(0) { $0 + $1.length }
+                rows.append(("Your edits", "\(summary) The episode keeps \(Format.timecode(kept)) of \(duration) (times in the original recording)"))
+            }
         }
         if options.makeTranscript {
             let formats = TranscriptFormat.allCases.filter(options.transcriptFormats.contains)
@@ -56,16 +60,17 @@ enum Report {
 
         if options.makeTranscript && options.applyLexicon && !result.corrections.isEmpty {
             text += "\n## Word list fixes\n\nThe Yoga Marga word list changed these in the .txt, .srt, .vtt and .md. "
-                + "`\(TranscriptFiles.asHeard)` keeps what was heard.\n\n| Now reads | Was heard as | At |\n|---|---|---|\n"
+                + "`\(TranscriptFiles.asHeard)` keeps what was heard. Times are in the original recording.\n\n| Now reads | Was heard as | At |\n|---|---|---|\n"
             for fix in result.corrections.prefix(60) {
                 text += "| \(fix.written) | \(fix.heard) | \(fix.at.map { Format.timecode($0) } ?? "") |\n"
             }
             if result.corrections.count > 60 { text += "\n\(result.corrections.count - 60) more are not listed.\n" }
         }
-        if options.makeTranscript && options.makeEpisode && (result.kept != nil || result.introDuration != nil) {
-            let shift = (result.introDuration ?? 0) - (result.kept?.start ?? 0)
-            text += String(format: "\nTranscript times are from the start of the original recording. In the episode, everything is %.1f s %@.\n",
-                           abs(shift), shift >= 0 ? "later" : "earlier")
+        if options.makeTranscript && result.transcriptFollowsEpisode {
+            let left = result.wordsLeftOut ?? 0
+            text += "\nThe transcript files follow the episode: their times match `episode.mp3`"
+                + (left > 0 ? ", and the \(Format.count(left, "word")) in the parts taken out are left out of them" : "")
+                + ". `\(TranscriptFiles.asHeard)` keeps every word as heard, timed from the start of the original recording.\n"
         }
 
         let timed = steps.filter { $0.state == .done && $0.seconds != nil }

@@ -1,0 +1,173 @@
+import Foundation
+import SwiftData
+
+// What Ivan does on a recording's page (milestone 5): set where the episode starts and ends, mark
+// sections to cut, say what the recording is, and Approve. Each leaves one line in Activity. A
+// change to an approved recording takes its approval back (SCOPE 9.1 #6: any change after a yes
+// voids it), and the approved copy stays where it is until he approves again.
+extension AppModel {
+    private func label(_ recording: Recording) -> String {
+        "\(Format.dayLabel(recording.sessionDate)) (\(recording.fileName))"
+    }
+
+    // MARK: Trim and cuts
+
+    /// Sets where the episode starts and ends (nil: the recording's own start or end). Returns the
+    /// problem in one plain sentence and changes nothing when the times cannot work.
+    @discardableResult
+    func setTrim(start: Double?, end: Double?, for recording: Recording) -> String? {
+        var edits = recording.edits
+        edits.start = start.flatMap { $0 <= 0.001 ? nil : $0 }
+        edits.end = end.flatMap { value in recording.duration.map { value >= $0 - 0.001 } == true ? nil : value }
+        if let problem = problem(edits, recording) { return problem }
+        guard !edits.matches(recording.edits) else { return nil }
+        let before = recording.edits
+        recording.edits = edits
+        var said: [String] = []
+        if !Self.same(before.start, edits.start) {
+            said.append(edits.start.map { "the episode now starts at \(TimeText.string($0))" } ?? "the episode starts at the beginning again")
+        }
+        if !Self.same(before.end, edits.end) {
+            said.append(edits.end.map { "it now ends at \(TimeText.string($0))" } ?? "it runs to the end again")
+        }
+        record("\(label(recording)): " + said.joined(separator: ", and ") + ". Make Again to hear it.")
+        changedAfterApproval(recording, what: "its trim")
+        try? context.save()
+        return nil
+    }
+
+    /// Marks a section to cut. Overlapping or touching cuts become one. Returns the problem, or nil.
+    @discardableResult
+    func addCut(_ cut: TimeRange, to recording: Recording) -> String? {
+        guard cut.end > cut.start else {
+            return "A cut must end after it starts."
+        }
+        if let duration = recording.duration, cut.start >= duration {
+            return "The cut starts after the end of the recording (\(TimeText.string(duration)))."
+        }
+        let clamped = TimeRange(start: max(0, cut.start), end: recording.duration.map { min($0, cut.end) } ?? cut.end)
+        let edits = recording.edits.adding(cut: clamped)
+        if let problem = problem(edits, recording) { return problem }
+        recording.edits = edits
+        record("\(label(recording)): cut \(TimeText.string(clamped.start)) to \(TimeText.string(clamped.end)) (\(Format.length(clamped.end - clamped.start))) marked. Make Again to hear it.")
+        changedAfterApproval(recording, what: "a cut")
+        try? context.save()
+        return nil
+    }
+
+    func removeCut(_ cut: TimeRange, from recording: Recording) {
+        var edits = recording.edits
+        edits.cuts.removeAll { abs($0.start - cut.start) < 0.001 && abs($0.end - cut.end) < 0.001 }
+        guard edits.cuts.count != recording.cuts.count else { return }
+        recording.edits = edits
+        record("\(label(recording)): the cut \(TimeText.string(cut.start)) to \(TimeText.string(cut.end)) was taken back. Make Again to hear it.")
+        changedAfterApproval(recording, what: "a cut")
+        try? context.save()
+    }
+
+    /// Clears the trim and every cut.
+    func clearEdits(_ recording: Recording) {
+        guard !recording.edits.isEmpty else { return }
+        recording.edits = EpisodeEdits()
+        record("\(label(recording)): the trim and cuts were cleared. Make Again to hear it.")
+        changedAfterApproval(recording, what: "its trim and cuts")
+        try? context.save()
+    }
+
+    private func problem(_ edits: EpisodeEdits, _ recording: Recording) -> String? {
+        guard let duration = recording.duration else { return nil }
+        let silence: Mastering.Span? = recording.silenceTrimmedStart.map { start in
+            Mastering.Span(start: start, end: duration - (recording.silenceTrimmedEnd ?? 0))
+        }
+        return edits.problem(duration: duration, silence: silence)
+    }
+
+    private static func same(_ a: Double?, _ b: Double?) -> Bool {
+        switch (a, b) {
+        case (nil, nil): true
+        case let (a?, b?): abs(a - b) < 0.01
+        default: false
+        }
+    }
+
+    // MARK: What it is
+
+    /// Says what the recording is. A class is privacy locked; only a talk can be approved until
+    /// speaker checks exist.
+    func setKind(_ kind: RecordingKind, for recording: Recording) {
+        guard recording.kind != kind, kind != .test else { return }
+        recording.kind = kind
+        let what: String = switch kind {
+        case .talk: "a talk with one teacher speaking"
+        case .lesson: "a class. Only models on this Mac may read it, and it cannot be approved"
+        case .conversation: "a conversation. It cannot be approved until speakers can be checked"
+        case .unknown: "not set. It cannot be approved until it is marked as a talk"
+        case .test: "a test"
+        }
+        record("\(label(recording)) marked as \(what).")
+        changedAfterApproval(recording, what: "what it is")
+        try? context.save()
+    }
+
+    /// A change to an approved recording takes its approval back. The approved copy stays in its
+    /// folder until Ivan approves again, which replaces it.
+    func changedAfterApproval(_ recording: Recording, what: String) {
+        guard recording.status == .approved else { return }
+        recording.status = .readyForYourYes
+        recording.statusReason = "Changed after it was approved (\(what)). The approved copy is from before the change; approve again to replace it."
+        record("\(label(recording)) changed after it was approved (\(what)), so it waits for your yes again. The approved copy was left as it was.", level: .attention)
+        try? context.save()
+    }
+
+    // MARK: Approve
+
+    /// Whether it can be approved now, and why not.
+    func approvalCheck(_ recording: Recording) -> ApprovalCheck {
+        ApprovalCheck.check(recording, isBusy: runner.isCurrent(recording) || runner.isWaiting(recording))
+    }
+
+    /// Where Approve puts this recording's files: ~/Prakriti/Approved/<the file's name>, beside its
+    /// folder in ~/Prakriti/Outputs, which has the same name.
+    func approvedFolder(for recording: Recording) -> URL {
+        paths.approved.appending(path: URL(fileURLWithPath: recording.filePath).deletingPathExtension().lastPathComponent, directoryHint: .isDirectory)
+    }
+
+    /// Approve: copies the finished files (never transcript.json) and a receipt to the approved
+    /// folder. Nothing is uploaded, posted or published. Refused, with the reason in Activity and an
+    /// alert, when the rules above say no, whoever asks: the button is only the first guard.
+    @discardableResult
+    func approve(_ recording: Recording) -> Bool {
+        let check = approvalCheck(recording)
+        guard check.canApprove, let source = recording.outputFolder else {
+            let reason = check.line ?? "It cannot be approved now."
+            record("Did not approve \(label(recording)). " + (check.speakersNotChecked ? "\(ApprovalCheck.speakersTitle): " : "") + reason, level: .attention)
+            notice = Notice(title: check.speakersNotChecked ? ApprovalCheck.speakersTitle : "Not approved", message: reason)
+            return false
+        }
+        let destination = approvedFolder(for: recording)
+        guard paths.isSafeOutputLocation(destination), destination.path.hasPrefix(paths.approved.path + "/") else {
+            record("Did not approve \(label(recording)): its approved folder would land outside \(paths.display(paths.approved.path)).", level: .problem)
+            return false
+        }
+        let files = ApprovalCheck.filesToApprove(recording)
+        let at = now()
+        let receipt = Approval.Receipt(label: Format.dayLabel(recording.sessionDate), title: recording.title, notes: recording.notes,
+                                       recordingFile: recording.fileName,
+                                       editsSummary: recording.madeEdits.summary, approvedAt: at)
+        do {
+            let copied = try Approval.copy(files, from: URL(fileURLWithPath: source, isDirectory: true), to: destination, receipt: receipt)
+            recording.status = .approved
+            recording.approvedAt = at
+            recording.approvedFolder = copied.folder.path
+            recording.approvedFiles = copied.files
+            recording.statusReason = "Approved. Its files are in \(paths.display(copied.folder.path)). Nothing was uploaded or published."
+            record("Approved \(label(recording)): \(Format.madeFiles(files)) and the receipt copied to \(paths.display(copied.folder.path)). Nothing was uploaded or published.")
+            try? context.save()
+            return true
+        } catch {
+            record("Could not approve \(label(recording)): the files could not be copied (\(error.localizedDescription)). The finished files are untouched.", level: .problem)
+            notice = Notice(title: "Not approved", message: "The files could not be copied to \(paths.display(destination.path)). The finished files are untouched.")
+            return false
+        }
+    }
+}

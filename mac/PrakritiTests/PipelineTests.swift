@@ -121,7 +121,11 @@ final class PipelineTests: XCTestCase {
                        "PipelineOptions() is engine v0's run")
         options.applyLexicon = true
         options.trimSilence = true
-        XCTAssertEqual(options.plannedSteps, [.complete, .sound, .speechAudio, .transcript, .coverage, .wordList, .trim, .episode, .loudness, .report])
+        // Once anything is taken out of the episode, the transcript files are matched to it (milestone 5).
+        XCTAssertEqual(options.plannedSteps, [.complete, .sound, .speechAudio, .transcript, .coverage, .wordList, .trim, .episode, .loudness, .episodeTranscript, .report])
+        options.edits = EpisodeEdits(start: 10, end: nil, cuts: [TimeRange(start: 300, end: 330)])
+        XCTAssertEqual(options.plannedSteps, [.complete, .sound, .speechAudio, .transcript, .coverage, .wordList, .trim, .edits, .episode, .loudness, .episodeTranscript, .report])
+        options.edits = EpisodeEdits()
         options.applyLexicon = false
         options.trimSilence = false
         options.makeTranscript = false

@@ -62,11 +62,14 @@ final class SnapshotRenderer {
         // A page taller than the window gets a second picture, scrolled to its end, so nothing
         // below the fold goes unlooked-at.
         let sidebarView = firstView(in: frameView, where: { $0.contains("SidebarStyleContext") })
-        let scrollers = views(in: frameView, where: { _ in true }).compactMap { $0 as? NSScrollView }.filter { scroll in
+        let tall = views(in: frameView, where: { _ in true }).compactMap { $0 as? NSScrollView }.filter { scroll in
             guard let document = scroll.documentView else { return false }
             let inSidebar = sidebarView.map { scroll.isDescendant(of: $0) } ?? false
             return !inSidebar && document.frame.height > scroll.contentView.bounds.height + 20
         }
+        // Only the page itself scrolls: a list inside the page (a recording's transcript, milestone 5)
+        // keeps its own place, as it does when Ivan scrolls the page, rather than being scrolled with it.
+        let scrollers = tall.filter { scroll in !tall.contains { other in other !== scroll && scroll.isDescendant(of: other) } }
         // A page more than two windows tall also gets a picture of each screenful between the top
         // and the end ("-p2", "-p3"), because on 10 Oct a recording's page put its Results and its
         // own outputs between the two pictures, where nobody looked.

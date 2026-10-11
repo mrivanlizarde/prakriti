@@ -104,14 +104,29 @@ final class Recording {
     /// The files the last finished make left in the output folder, by name.
     var madeFiles: [String] = []
 
-    // Edits for "Make again" (milestone 5).
+    // Ivan's edits, set on the recording's page and used by Make Again (milestone 5): where the
+    // episode starts and ends, and the sections cut out, in seconds on the original's clock.
     var trimStart: Double?
     var trimEnd: Double?
     var cuts: [TimeRange] = []
+    /// The edits the episode in the folder was made with. When they differ from the ones above, the
+    /// page says the trim and cuts are not in the episode yet, and Approve waits for Make Again.
+    var madeTrimStart: Double?
+    var madeTrimEnd: Double?
+    var madeCuts: [TimeRange] = []
+    /// Where the original's moments play in the episode in the folder: the parts of the original it
+    /// kept, in order, after an intro this long. Lets a transcript line play the episode from the
+    /// right place.
+    var episodeParts: [TimeRange] = []
+    var episodeIntro: Double?
+    /// When the files in the folder were made.
+    var madeAt: Date?
 
     var outputFolder: String?
     var approvedFolder: String?
     var approvedAt: Date?
+    /// The files Approve copied into the approved folder, by name.
+    var approvedFiles: [String] = []
 
     var source: Source?
 
@@ -163,6 +178,33 @@ final class Recording {
 
     /// This recording has its own output choices, set on its page, rather than its folder's.
     var hasOwnOutputs: Bool { !outputSettings.isEmpty }
+
+    /// The trim and cuts on its page.
+    var edits: EpisodeEdits {
+        get { EpisodeEdits(start: trimStart, end: trimEnd, cuts: cuts) }
+        set {
+            trimStart = newValue.start
+            trimEnd = newValue.end
+            cuts = EpisodeEdits.merged(newValue.cuts)
+        }
+    }
+
+    /// The trim and cuts the episode in the folder was made with.
+    var madeEdits: EpisodeEdits { EpisodeEdits(start: madeTrimStart, end: madeTrimEnd, cuts: madeCuts) }
+
+    /// The trim or cuts on the page are not in the episode yet: Make Again first.
+    var editsPending: Bool { !edits.matches(madeEdits) }
+
+    /// Where the original's moments play in the episode in the folder. A recording made before
+    /// milestone 5 kept one part: all of it (engine v0), or what the silence trim kept.
+    var episodeClock: EpisodeClock? {
+        guard episodeDuration != nil || fromEngineV0, let duration else { return nil }
+        if !episodeParts.isEmpty {
+            return EpisodeClock(intro: episodeIntro ?? 0, segments: episodeParts.map { Mastering.Span(start: $0.start, end: $0.end) })
+        }
+        let start = silenceTrimmedStart ?? 0, end = duration - (silenceTrimmedEnd ?? 0)
+        return EpisodeClock(intro: 0, segments: [Mastering.Span(start: start, end: max(start, end))])
+    }
 
     /// Newest first: the date it was made, then when it was found, then its path. Several clips can
     /// share one session's date (all cut from the same talk), and sorting on the date alone left

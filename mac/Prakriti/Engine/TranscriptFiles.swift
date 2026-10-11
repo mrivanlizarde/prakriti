@@ -37,13 +37,15 @@ enum TranscriptFiles {
     }
 
     /// The transcript for reading: a heading, one line on where it came from, then paragraphs, each
-    /// starting with its time in the original recording. A pause of 2 seconds or more, or a minute of
+    /// starting with its time (in the original recording, or in the episode once it follows it). A pause of 2 seconds or more, or a minute of
     /// talk ending a sentence, starts a new paragraph.
-    static func markdown(cues: [Cue], label: String, fileName: String, wordListApplied: Bool) -> String {
+    static func markdown(cues: [Cue], label: String, fileName: String, wordListApplied: Bool, followsEpisode: Bool = false) -> String {
         var text = "# \(label): transcript\n\n"
         text += "From \(fileName), transcribed on this Mac by Parakeet"
         text += wordListApplied ? ", with the Yoga Marga word list applied." : "."
-        text += " Speakers are not labeled yet. Times are from the start of the original recording.\n"
+        text += followsEpisode
+            ? " Speakers are not labeled yet. Times are from the start of the episode, and what was taken out of the episode is left out here too.\n"
+            : " Speakers are not labeled yet. Times are from the start of the original recording.\n"
         var paragraph: [Cue] = []
         func flush() {
             guard let first = paragraph.first else { return }

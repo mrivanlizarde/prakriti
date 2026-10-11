@@ -19,7 +19,10 @@ final class SnapshotTests: XCTestCase {
         let outputFolder = renderer.outputFolder
         var written: [String] = []
 
-        for (index, item) in SidebarItem.allCases.enumerated() {
+        // `make snapshots ONLY=recording` draws just the recording pages, for quick looks while
+        // working on them; the full set is the milestone's check.
+        let only = ProcessInfo.processInfo.environment["PRAKRITI_SNAPSHOT_ONLY"].flatMap { $0.isEmpty ? nil : $0 }
+        for (index, item) in SidebarItem.allCases.enumerated() where only == nil {
             for (scheme, appearance) in appearances {
                 let model = Fixtures.model()
                 model.selection = item
@@ -56,6 +59,33 @@ final class SnapshotTests: XCTestCase {
             written.append(name)
         }
 
+        // Milestone 5: the 13 Sep talk with a trim and a cut not made yet (Approve waits for Make
+        // Again), marked as a class (Speakers not checked), and approved.
+        for (slug, change) in [("edits-pending", { (model: AppModel, r: Recording) in
+                                   model.setTrim(start: 10, end: nil, for: r)
+                                   model.addCut(TimeRange(start: 300, end: 330), to: r) }),
+                               ("class-speakers-not-checked", { (model: AppModel, r: Recording) in model.setKind(.lesson, for: r) }),
+                               ("approved", { (_: AppModel, r: Recording) in
+                                   r.status = .approved
+                                   r.approvedAt = Fixtures.now
+                                   r.statusReason = "Approved. Its files are in ~/Prakriti/Approved/2026-09-13 18-25-44. Nothing was uploaded or published." })] {
+            for (scheme, appearance) in appearances {
+                let model = Fixtures.model()
+                let recordings = try model.context.fetch(FetchDescriptor<Recording>())
+                let recording = try XCTUnwrap(recordings.first { $0.title == "Talk with Gabriel" && $0.status == .readyForYourYes })
+                change(model, recording)
+                model.open(recording)
+                let name = "08-recording-\(slug)-\(scheme)"
+                try renderer.render(model: model, appearance: appearance, name: name)
+                written.append(name)
+            }
+        }
+
+        if only == "recording" {
+            print("Snapshots written to \(outputFolder.path): \(written.count) recording pages")
+            return
+        }
+
         // Today with nothing waiting, and nothing set up.
         for (scheme, appearance) in appearances {
             let model = Fixtures.model(empty: true)
@@ -80,6 +110,6 @@ final class SnapshotTests: XCTestCase {
 
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, SidebarItem.allCases.count * 2 + 14)
+        XCTAssertEqual(written.count, SidebarItem.allCases.count * 2 + 20)
     }
 }

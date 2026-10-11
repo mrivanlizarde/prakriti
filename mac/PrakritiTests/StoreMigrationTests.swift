@@ -29,6 +29,17 @@ final class StoreMigrationTests: XCTestCase {
         for recording in recordings {
             XCTAssertNil(recording.episodeDuration)
             XCTAssertEqual(recording.madeFiles, [])
+            // Milestone 5's fields arrive empty: no edits, none waiting for Make Again, nothing
+            // approved, and a recording engine v0 made reads as one part, all of it.
+            XCTAssertTrue(recording.edits.isEmpty)
+            XCTAssertFalse(recording.editsPending)
+            XCTAssertEqual(recording.episodeParts, [])
+            XCTAssertNil(recording.approvedAt)
+            XCTAssertEqual(recording.approvedFiles, [])
+            if recording.fromEngineV0, recording.status == .readyForYourYes, let duration = recording.duration {
+                XCTAssertEqual(recording.episodeClock?.segments, [Mastering.Span(start: 0, end: duration)])
+                XCTAssertTrue(ApprovalCheck.check(recording, isBusy: false).speakersNotChecked, "not marked as a talk yet")
+            }
         }
         let ready = recordings.filter { $0.status == .readyForYourYes }
         print("Store copy opened: \(recordings.count) recordings (\(ready.count) ready: "

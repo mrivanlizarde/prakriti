@@ -30,6 +30,7 @@ final class RulesTests: XCTestCase {
         let live = AppPaths(mode: .live, home: home)
         XCTAssertEqual(live.drop.path, "/Users/someone/Prakriti/Drop")
         XCTAssertEqual(live.outputs.path, "/Users/someone/Prakriti/Outputs")
+        XCTAssertEqual(live.approved.path, "/Users/someone/Prakriti/Approved", "Approve copies into ~/Prakriti/Approved/<name> in the live app")
         XCTAssertEqual(live.store.path, "/Users/someone/Library/Application Support/Prakriti/Prakriti.store")
     }
 

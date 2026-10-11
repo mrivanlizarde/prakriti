@@ -39,13 +39,16 @@ struct RecordingsView: View {
     }
 }
 
-/// One recording's page: its status, what to do next, the steps with their timings, what was
-/// measured and made, and which outputs it makes (its folder's choices, or its own), with Make
-/// Again. The player, transcript, trim, cuts and Approve arrive in milestone 5.
+/// One recording's page: its status and Approve at the top; the system player; the transcript as
+/// lines that play from their moment and can be cut; the trim and cuts; its title, notes and what it
+/// is; the steps with their timings; what was measured and made; and which outputs it makes, with
+/// Make Again.
 struct RecordingDetailView: View {
     @Bindable var recording: Recording
     @Environment(AppModel.self) private var model
     @State private var confirmMakeAgain = false
+    @State private var confirmApprove = false
+    @State private var page = RecordingPage()
 
     var body: some View {
         Form {
@@ -79,6 +82,9 @@ struct RecordingDetailView: View {
                     Button(action) { model.makeOutputs(recording) }
                         .buttonStyle(.borderedProminent)
                 }
+                if recording.status == .readyForYourYes || recording.status == .approved {
+                    ApproveRows(recording: recording, confirmApprove: $confirmApprove, confirmMakeAgain: $confirmMakeAgain, canMakeAgain: canMakeAgain)
+                }
                 if recording.isPrivacyLocked {
                     Label {
                         Text(lockLine)
@@ -91,6 +97,15 @@ struct RecordingDetailView: View {
                 }
             } header: {
                 SectionHeader("Status")
+            }
+
+            if showsEditing {
+                ListenSection(recording: recording, page: page)
+                TranscriptSection(recording: recording, page: page)
+                EditsSection(recording: recording, page: page, confirmMakeAgain: $confirmMakeAgain, canMakeAgain: canMakeAgain)
+            }
+            if recording.status != .needsADecision && recording.status != .skipped {
+                AboutSection(recording: recording)
             }
 
             if let run = recording.latestRun, !run.steps.isEmpty {
@@ -120,7 +135,9 @@ struct RecordingDetailView: View {
                         let peak = recording.truePeakDBFS.map { ", peak " + Format.dbfs($0) } ?? ""
                         ValueRow(label: "Episode audio", value: Format.lufs(lufs) + peak)
                         if let length = recording.episodeDuration {
-                            ValueRow(label: "Episode length", value: Format.timecode(length) + Format.trimmed(start: recording.silenceTrimmedStart, end: recording.silenceTrimmedEnd))
+                            ValueRow(label: "Episode length", value: Format.timecode(length)
+                                     + (recording.madeEdits.isEmpty ? Format.trimmed(start: recording.silenceTrimmedStart, end: recording.silenceTrimmedEnd)
+                                                                    : ", with your trim and cuts"))
                         }
                     }
                     if let words = recording.wordCount {
@@ -186,12 +203,40 @@ struct RecordingDetailView: View {
         }
         .formStyle(.grouped)
         .navigationTitle(Format.dayLabel(recording.sessionDate))
+        .onAppear { page.load(recording, applyLexicon: wordListOn) }
+        .onChange(of: recording.madeAt) { page.load(recording, applyLexicon: wordListOn) }
+        .onDisappear { page.player.pause() }
         .confirmationDialog("Make this recording again?", isPresented: $confirmMakeAgain) {
             Button("Make Again") { model.makeOutputs(recording) }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("It is made again with the choices on this page. The files made before are replaced once the new ones are ready, and the original recording is not changed.")
+            Text("It is made again with the trim, the cuts and the choices on this page. The files made before are replaced once the new ones are ready, and the original recording is not changed.")
         }
+        .confirmationDialog("Approve \(Format.dayLabel(recording.sessionDate))?", isPresented: $confirmApprove) {
+            Button("Approve") { model.approve(recording) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Copies \(Format.madeFiles(ApprovalCheck.filesToApprove(recording))) to \(model.paths.display(model.approvedFolder(for: recording).path)), with a receipt. Nothing is uploaded or published.")
+        }
+    }
+
+    /// The player, transcript and edits, once something has been checked or made.
+    private var showsEditing: Bool {
+        switch recording.status {
+        case .readyForYourYes, .approved: true
+        case .working, .found, .couldntFinish: recording.outputFolder != nil
+        case .needsADecision, .skipped: false
+        }
+    }
+
+    /// The word list as this recording's transcript was made, for reading the lines.
+    private var wordListOn: Bool {
+        OutputResolver.details(for: .transcript, recording: recording, defaults: model.defaultSettings())?.applyLexicon ?? true
+    }
+
+    /// Make Again: a finished recording, not waiting or working.
+    private var canMakeAgain: Bool {
+        (recording.status == .readyForYourYes || recording.status == .approved) && !model.runner.isWaiting(recording) && !model.runner.isCurrent(recording)
     }
 
     /// "episode.mp3, REPORT.md, transcript (.txt, .srt, .vtt, .md, .json)": what the last finished
@@ -299,9 +344,10 @@ struct RecordingOutputsSection: View {
         return "Made with the standard choices on the Outputs screen. Change a switch to give this recording its own choices."
     }
 
-    /// A finished recording can be made again with changed choices. One waiting or working cannot.
+    /// A finished (or approved) recording can be made again with changed choices. One waiting or
+    /// working cannot.
     private var canMakeAgain: Bool {
-        recording.status == .readyForYourYes && !model.runner.isWaiting(recording) && !model.runner.isCurrent(recording)
+        (recording.status == .readyForYourYes || recording.status == .approved) && !model.runner.isWaiting(recording) && !model.runner.isCurrent(recording)
     }
 }
 

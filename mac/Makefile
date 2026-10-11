@@ -5,6 +5,7 @@
 # make build      build the app (signed, warnings fail the build)
 # make test       run every unit test (includes the snapshot render)
 # make snapshots  render every screen, light and dark, to ../screens/mac/$(MILESTONE)/
+#                 (ONLY=recording draws just the recording pages, for a quick look)
 # make accept     milestone 2's acceptance on REAL recordings through the app's pipeline: the 13 Sep
 #                 talk, the silent 14 Sep class, a 30 s clip, the 6 Sep talk. Writes episodes to
 #                 ~/Prakriti/Dev/Outputs and pictures plus acceptance.txt to ../screens/mac/$(MILESTONE)/
@@ -14,6 +15,12 @@
 #                 on the recording's page and made again, then everything off (must equal engine v0
 #                 bit for bit). Writes to ~/Prakriti/Dev/Outputs and acceptance-outputs.txt plus
 #                 pictures to ../screens/mac/$(MILESTONE)/ (takes about 3 minutes)
+# make accept-edits  milestone 5's acceptance on the REAL 13 Sep talk: made, marked as a talk, the
+#                 first 10 s trimmed and 5:00 to 5:30 cut, made again, approved (copied to
+#                 ~/Prakriti/Dev/Approved), measured with ffprobe against the first episode, the cut
+#                 words checked gone by transcribing the approved episode again, then marked as a
+#                 class and refused. Writes acceptance-edits.txt and pictures of every state to
+#                 ../screens/mac/$(MILESTONE)/ (takes about 3 minutes)
 # make migrate-check  copy the live store (sqlite3 .backup, a consistent snapshot; the live store
 #                 is only read) into build/store-copy and open the COPY with this build's models.
 #                 Run it before `make install` whenever the models change
@@ -34,9 +41,10 @@ DERIVED   = build
 APP       = $(DERIVED)/Build/Products/Debug/Prakriti.app
 MILESTONE ?= latest
 MODE      ?= development
+ONLY      ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: generate build test snapshots accept accept-outputs migrate-check run look check install drop
+.PHONY: generate build test snapshots accept accept-outputs accept-edits migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -48,13 +56,16 @@ test:
 	TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test
 
 snapshots:
-	TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/SnapshotTests
+	TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) TEST_RUNNER_PRAKRITI_SNAPSHOT_ONLY=$(ONLY) $(XCB) test -only-testing:PrakritiTests/SnapshotTests
 
 accept:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=1 TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/PipelineAcceptanceTests
 
 accept-outputs:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=outputs TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/OutputsAcceptanceTests
+
+accept-edits:
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=edits TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/EditsAcceptanceTests
 
 STORE_COPY = $(CURDIR)/$(DERIVED)/store-copy/Prakriti.store
 

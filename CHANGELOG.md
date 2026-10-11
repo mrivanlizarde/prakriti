@@ -5,6 +5,28 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-10, Sat: Prakriti for Mac, milestone 5 (the recording page)
+
+- **Each recording now has a page Ivan can review and approve from.** Approve at the top; the
+  system's own audio player (the episode as made, or the original's sound); the transcript as lines
+  that play from their moment; where the episode starts and ends; sections to cut, from selected
+  lines or typed times; the title, notes and what the recording is; Make Again with all of it. Why:
+  until now a finished episode could only be opened in Finder, and nothing could be taken out of it.
+- **Trim and cut work, measured on the 13 Sep talk.** The first 10 s trimmed and 5:00 to 5:30 cut,
+  made again and approved: ffprobe measures the approved MP3 38.82 s shorter than the first episode
+  (which had already lost 1.18 s of silence) and 40.05 s shorter than the recording. The cut words
+  are gone from the approved transcript, and transcribing the approved episode again heard none of
+  them.
+- **Approve copies, it never publishes.** The finished files go to `~/Prakriti/Approved/<name>/` with
+  a receipt holding the title, the notes and every file's SHA-256; `transcript.json` (every word as
+  heard, cut words included) stays behind. **A class cannot be approved,** nor a conversation, nor a
+  recording nobody has marked as a talk: the page says "Speakers not checked". Why: speaker checks
+  do not exist yet, and an unknown voice counts as a student.
+- **The transcript files now follow the episode** once anything is taken out of it: the words in a
+  cut are dropped and the times match the audio. Why: a cut is how a student's question comes out,
+  and the words must go with it; it also fixes captions that sat 1.2 s late after the silence trim.
+- Every check, measurement and decision is in `docs/BUILD-LOG.md`.
+
 ## 2026-10-10, Sat: Prakriti for Mac, milestone 4 (outputs and settings)
 
 - **Every output's settings now change what is made, proved on the 13 Sep talk.** Loudness target

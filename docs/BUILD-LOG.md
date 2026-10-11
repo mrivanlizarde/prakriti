@@ -4,10 +4,11 @@ One dated entry per milestone of `docs/NEXT-PROMPT.md`, oldest first: what was b
 with its measured result, the decisions taken and why, and anything Ivan must do. A new session
 resumes from the last entry. Weekdays computed with `date(1)`.
 
-**Where it stands:** milestones 1 to 4 of 6 done (Sat 10 Oct). **The switch-over happened:**
-engine v0 is retired and Prakriti for Mac, installed in `~/Applications` (milestone 4's build since
-16:13), is the only thing watching the studio folder and `~/Prakriti/Drop`. Next: milestone 5, the
-recording page (player, transcript, trim, cuts, Make Again with edits, Approve).
+**Where it stands:** milestones 1 to 5 of 6 done (Sat 10 Oct). **The switch-over happened:**
+engine v0 is retired and Prakriti for Mac, installed in `~/Applications` (milestone 5's build since
+17:26), is the only thing watching the studio folder and `~/Prakriti/Drop`. Next: milestone 6, the
+models (titles, show notes and chapters by Qwen3.8-27B through LM Studio, Apple on-device for a short
+input, the privacy lock).
 
 ---
 
@@ -813,3 +814,199 @@ cd ~/Code/prakriti/mac && open ~/Applications/Prakriti.app
   corrected words are in the .srt.
 - `make accept-outputs` and `make migrate-check` are the patterns for milestone 5's acceptance and
   for any model change before `make install`.
+
+
+---
+
+## Milestone 5: the recording page. Sat 10 Oct 2026
+
+### What was built
+
+- **A recording's page, top to bottom** (`mac/Prakriti/Views/RecordingsView.swift`, `RecordingPage.swift`):
+  - **Status, with Approve at the top** (SCOPE 9.1 #5: the named action at the top of the pane). Under
+    the status: why it cannot be approved yet in one sentence, or "Speakers not checked" with the
+    reason; **Approve…** (a confirmation names the files and the folder and says nothing is uploaded);
+    **Make Again…** beside it while the trim or cuts are not in the episode; the approved folder with
+    Show in Finder once approved.
+  - **Listen:** AVKit's own `AVPlayerView` (inline controls, clipped to its pill: no drawn scrubber or
+    waveform), playing **Episode** (the MP3 as made) or **Original** (the recording's sound only, as an
+    audio-only composition of its first sound track, so no video area). Switching keeps the moment.
+  - **Transcript:** one line per Parakeet sentence, read from `transcript.json` with the word list
+    applied, each with its time. **Click a line and the player plays from it**: in the episode, from
+    where that moment is after the trim and cuts (`EpisodeClock`). Shift-click selects several, then
+    **Cut Selected Lines**; Control-click a line for Play From Here and Cut This Line. Lines a cut
+    takes are struck through and say "Cut from the episode" or "Partly cut from the episode"; the line
+    playing is shown in bold.
+  - **Trim and cuts:** "Episode starts at" and "Episode ends at" (typed as 4:12 or 1:02:30, applied on
+    Return or when the field is left, or **Use Player Time**), each cut with Remove, "Cut a section,
+    from and to" with Add Cut, what the episode keeps ("15:08 of 15:48 (40 s taken out)"), a line when
+    the changes are not in the episode yet, Clear Trim and Cuts, Make Again.
+  - **About this recording:** the title, the notes, and **What this is**: Talk, one teacher speaking;
+    Class; Conversation; Not set. A class is privacy locked, as before.
+  - Then the steps, results, outputs for this recording, and the file, as in milestone 4.
+- **The edits in the pipeline** (`Engine/EpisodeEdits.swift`, `Pipeline.swift`): `PipelineOptions.edits`
+  (start, end, cuts, seconds on the original's clock) become the parts of the recording the episode
+  keeps, after the silence trim (`EpisodeEdits.segments`). New step **"Your trim and cuts"** (refuses
+  edits that leave nothing, with the reason). The mastering pass with edits is one filter graph: the
+  recording split into its parts, each cut, started at zero and faded 15 ms in and out, joined, then
+  the layout and 48 kHz, then (with an intro or outro) joined to them, then loudnorm and the limiter
+  (`Mastering.part`); without edits the chain is milestone 4's, string for string. The length check
+  expects intro + the kept parts + outro.
+- **The transcript files follow the episode** (new step "Transcript matched to the episode",
+  `EpisodeTranscript`): whenever anything is taken out or added, the chosen .srt, .vtt and .md (and the
+  .txt when words were dropped) are rebuilt from `transcript.json`'s word times, the words inside a cut
+  or trim left out, every time on the episode's clock, the word list applied. `transcript.json` keeps
+  every word as heard. REPORT.md gains "Your edits" and says the files follow the episode and how many
+  words were left out.
+- **Approve** (`App/Approval.swift`, `App/RecordingActions.swift`): `ApprovalCheck` decides (busy, not
+  made, the speakers rule, edits not made, files missing, already approved), and `AppModel.approve`
+  checks it again whoever calls it. It copies the finished files except `transcript.json` through a
+  hidden `.approving <name>` folder into `~/Prakriti/Approved/<name>/` (development:
+  `~/Prakriti/Dev/Approved`), with **`APPROVAL.md`**: the title and notes as written, the edits, and
+  every file's size and SHA-256. Status Approved, one Activity line. Any later change (title, notes,
+  what it is, trim, cuts, Make Again) takes the approval back to Ready for your yes; the approved copy
+  stays until the next approval replaces it (only Prakriti's own file names).
+- **Data:** `Recording` gains `madeTrimStart`, `madeTrimEnd`, `madeCuts` (what the episode was made
+  with), `episodeParts`, `episodeIntro` (the episode's map), `madeAt`, `approvedFiles` (additions with
+  defaults; `trimStart`, `trimEnd`, `cuts`, `approvedFolder`, `approvedAt` existed since milestone 1).
+- **Tests and tools:** `RecordingPageTests` (11, in `make test`), `EditsAcceptanceTests`
+  (`make accept-edits`), `StoreMigrationTests` checks the new fields, `make snapshots ONLY=recording`,
+  and capture flags `--open=ready` and `--sample-edits` for the real window on the sample page. The
+  snapshot renderer now scrolls only the page, not a list inside it.
+
+### Checks run, with results
+
+| Check | Result |
+|---|---|
+| Build | `BUILD SUCCEEDED`, 0 compiler warnings (warnings fail the build) |
+| `make test MILESTONE=m5` | **90 tests, 0 failures, 4 skipped by design** (the three acceptances and the migration check): ModelTests 16, RulesTests 12, PipelineTests 15, NotificationTests 6, WatcherTests 16, OutputsTests 9, **RecordingPageTests 11**, SnapshotTests 1 |
+| **Acceptance: trim the first 10 s, cut one 30 s section, Make Again, Approve** (`make accept-edits`, the 13 Sep talk) | Made with the standard choices: episode **946.550 s** (ffprobe; 1.18 s of silence already trimmed). Marked as a talk; "0:10" typed as the start, 5:00 to 5:30 cut; Approve refused ("Make Again first"); made again: "The episode keeps 15:08 of 15:48", -16.8 LUFS, peak -1.6 dBFS. Approved: **ffprobe measures the approved `episode.mp3` at 907.732 s: 38.82 s shorter than the first episode** (expected 38.82: 10 s trimmed less the 1.18 s the silence trim had already taken, plus the 30 s cut) **and 40.05 s shorter than the 947.78 s recording**. Measured again by hand from the shell: 907.732000 and 947.780167 |
+| **The approved files exist** | `~/Prakriti/Dev/Approved/2026-09-13 18-25-44/`: APPROVAL.md, REPORT.md, episode.mp3, transcript.md, .srt, .txt, .vtt; **no transcript.json**; the approved MP3's SHA-256 (`320122f6...`) is the made one's and is in APPROVAL.md. `~/Prakriti/Approved` (live) is empty on purpose: see decision 1 |
+| **The cut is really gone** | The approved transcript has none of the cut's sentences, and every sentence of the minute after it. **Parakeet run again on the approved MP3 heard 0 of the 73 five-word runs said inside 5:00 to 5:30 (and nowhere else in the talk), and 189 of 201 from the minute after the cut.** "Transcript matched to the episode: 103 words in the parts taken out are left out." The approved .srt starts at 0:00.080 with the sentence that starts at 0:10.08 in the recording |
+| **A recording marked "class" cannot be approved** | `RecordingPageTests.testAClassCannotBeApproved`: Approve refused with "Speakers not checked", nothing copied, an Activity line and an alert; a conversation, "Not set" and a test refused too. On the real 13 Sep talk (the acceptance): marked as a class after approval, the approval is taken back, Approve refused, the earlier approved copy byte for byte unchanged |
+| Approving a talk | `testApprovingATalkCopiesTheFinishedFilesAndAReceipt`: Approved/<name> beside Outputs/<name>, every made file but transcript.json, the receipt's SHA-256 matches, no staging folder left, a title change takes the approval back, a trim not made blocks it, approving again keeps Ivan's own file in the folder |
+| The edits through the real tools | `testATrimAndACutMakeTheEpisodeShorterAndTheTranscriptForgetsTheCut`: the Mac's voice says three sentences, the middle one "A student named Maria asks about her divorce."; trimmed 1 s and that sentence cut: episode length within 0.3 s of expected (ffprobe agrees), "divorce" in none of .txt, .srt, .md, still in transcript.json; the last line's time moved up by the trim and the cut |
+| A line plays the episode from its moment | `testALinePlaysTheEpisodeFromWhereItsMomentIs`: the page's own player, after a cut, seeks the episode to the line's mapped time (within 0.1 s) and reads it back on the original's clock; switched to Original, the same moment as recorded; the cut line reads "Cut" |
+| Make Again uses the page's edits | `testMakeAgainUsesThePageEditsAndRemembersThem`: 10 s trimmed and 20 s cut from a 90 s tone: 30 s shorter, `episodeParts` [10 to 40, 60 to 90], not pending afterwards |
+| The chain | `testACutIsOneGraphWithFadesAndTheLimiterAfterIt`: the exact graph, `level=disabled` kept, 48 kHz before the limiter; no edits gives milestone 4's arguments |
+| **Regression: milestone 4's acceptance** (`make accept-outputs`) | -16.8 LUFS, -19.1 after the change to -19, no transcript file left with it off, and with the trim off the decoded audio md5 **69658a8c... identical to engine v0's** |
+| **Regression: milestone 2's acceptance** (`make accept`) | 13 Sep: -16.8 LUFS, peak -1.7, reaches 15:47 of 15:48; 14 Sep class: Needs a decision, nothing made (loudest -91 dB); 30 s clip: a test; 6 Sep: -16.7 LUFS, peak -1.4. Its .srt check now allows for the transcript following the episode |
+| Snapshots | `screens/mac/m5/`: 90 sample-data pictures (every screen light and dark; the recording page ready, with edits not made, marked as a class, approved, with its own choices, and silent, each screenful) and 60 from the acceptance (the real 13 Sep page made, with edits pending, made again, approved, as a class, light and dark, each screenful). **Every one looked at**, as contact sheets and full size |
+| **Real window** | `real/m5-real-page-{light,dark}{,-edits}.png` (the sample page: the system player, Approve enabled for a talk, disabled with Make Again beside it while edits wait, cut lines struck); `real/m5-real-dev-clip-90s-page.png` (the development store, migrated, on the 90 s clip: Speakers not checked); `real/m5-real-live-13sep-page.png` (**the installed live app on the 13 Sep talk engine v0 made**: its episode in the player, its transcript, Speakers not checked). All looked at |
+| `make look MILESTONE=m5` and the launch check | 16 of 16 PASS; still running 3 s after its window closed |
+| **Live store migration, on a copy** (`make migrate-check`) | 11 recordings (2 ready), 2 folders, 27 output settings, 47 Activity lines; every new field empty, nothing pending, v0's 13 Sep read as one part, Speakers not checked |
+| **Installed live** (`make install`, 17:26:50) | Quit cleanly, replaced, opened: "Mode: live. Store: ...Prakriti.store" (no fallback), login item on, "Checked 2 folders. Nothing new." |
+| Em and en dashes, tooltips | 0 in `mac/`; RulesTests pass |
+
+The full text of the acceptance is `screens/mac/m5/acceptance-edits.txt` (gitignored).
+
+### What the look-through and the runs caught and fixed
+
+- **A line wholly inside a cut read "Partly cut".** Measured on the Mac's voice: Parakeet stretches a
+  sentence's last word across the pause after it and puts the full stop after the pause, so by a
+  word's middle, words said inside the cut seemed to land outside it, and a lone "." could have been
+  kept in the episode's transcript. A word's place is now `min(middle, start + 0.15 s)` and punctuation
+  goes with the word before it (`EpisodeTranscript.position`, `isWord`); a planted case and the voice
+  test cover both.
+- **The system player sat on a black band** in the real window (AVKit's video area). It is clipped to
+  the player's own pill; the page shows the system control and nothing drawn by Prakriti.
+- **Time and title fields drew without borders** in the grouped form ("From to To" read as words);
+  they are bordered fields now, the title written from the left.
+- **The snapshot renderer scrolled the transcript list with the page**, so the pictures showed the
+  page's middle with the list at 2:00 and made ten pictures a page. Only the page scrolls now.
+- **The approved state said the same thing three times;** it is one line now, and the Approve caption
+  is hidden once approved.
+- **Make Again was a screen and a half below "Make Again first";** it now sits beside Approve too.
+- **The original is looked at off the main thread** (it lives in `~/Documents`; START_HERE warning 24).
+- **Test-side, not app:** the acceptance's refusal alert dimmed every later picture (now dismissed as
+  Ivan would); two of my own test expectations had wrong arithmetic (five words, not six; 17 s, not 16).
+
+### Decisions, each with its reason
+
+1. **The acceptance approves in development, into `~/Prakriti/Dev/Approved`, not the live
+   `~/Prakriti/Approved`.** Reason: the live folder is where Ivan's real yeses go, the place he will
+   upload from; a 13 Sep episode there with an arbitrary test cut and his name on the receipt would be
+   a trap. The live path is pinned by `RulesTests` (`~/Prakriti/Approved`), the code path is the same,
+   and the installed live app showed the page on the real 13 Sep talk. Nothing was approved live.
+2. **Only "Talk, one teacher speaking" can be approved until speaker checks exist;** Class,
+   Conversation and Not set show "Speakers not checked". Every recording arrives Not set, so approving
+   takes one more choice. Reason: unknown means student (SCOPE PR-3); Prakriti cannot tell voices
+   apart, so Ivan's word that only the teacher speaks is the only check there is, and the receipt says
+   so. Serenity being in a recording does not block a yes (she is a teacher); the privacy lock for
+   models is unchanged.
+3. **Approve is refused while the trim or cuts on the page are not in the episode.** Reason: a yes must
+   cover the file that exists, not the one on screen.
+4. **Approve never copies `transcript.json`.** Reason: it keeps the words of every cut, and the approved
+   folder is what goes out.
+5. **The transcript files follow the episode whenever anything is taken out or added, replacing
+   milestone 4's decision 9.** Reason: cuts exist to take things out, often someone's words; captions
+   must line up with what is heard (after milestone 4's silence trim they sat 1.2 s late). The page,
+   the coverage check and the word list's report times still use the original's clock through
+   `transcript.json`. With nothing taken out or added, the files are as before.
+6. **Edits are typed and stored in seconds on the original's clock;** each make stores the episode's
+   map. Reason: the transcript and the Original player speak that clock, and a line must play the
+   episode from where its moment is now.
+7. **The silence trim still runs under Ivan's trim;** the later start and the earlier end win.
+   Reason: a trim at 0:10 makes the silence trim moot at the start, but an untrimmed end still loses
+   its silence, as before.
+8. **Fades of 15 ms on every kept part when there are edits; none without.** Reason: a cut mid-word
+   clicks; without edits the chain stays milestone 4's (and v0's), proved bit for bit.
+9. **Parts shorter than a quarter second between cuts are cut too.** Reason: a blip of half a syllable,
+   and "uncertain means cut".
+10. **Approve's name is the file's name** (`Approved/2026-09-13 18-25-44`), beside its folder in
+    Outputs; the title goes in the receipt. Reason: a title can change, and a stable pair is easy to
+    find. Approving again replaces only Prakriti's own file names.
+11. **Any change takes an approval back** (title, notes, what it is, trim, cuts, Make Again). Reason:
+    SCOPE 9.1 #6, a yes is void once anything it covered changes.
+12. **The player is AVKit's own view, clipped to its pill.** Reason: Ivan's never-skeuomorphic rule
+    allows the system's media controls only; bitmap snapshots cannot draw it, so the real window is the
+    judge (START_HERE warning 43).
+13. **A line's time is about when its first word starts,** and clicking plays from there. Reason:
+    Parakeet's sentences begin where the one before ended, so the pause would play first.
+
+### What does not work yet, or was not seen working
+
+- **No person has clicked through the page.** Every action was driven through the same model calls the
+  buttons make (the acceptance and the tests), and the real window was captured in four states, but a
+  click on a line, the player's sound, typing in a field and the confirmation dialogs were not done by
+  hand (that would need Accessibility or Screen Recording permission for the tools).
+- **Speakers are not checked;** "Talk" is Ivan's word. Conversations cannot be approved at all yet.
+- Intros and outros with cuts are covered by the graph test only, not by a run with a real intro.
+- The line playing is shown in bold, but the list does not scroll to follow the player.
+- Notifications are still turned off for Prakriti in System Settings (milestone 3), so the Ready notice
+  after a Make Again reaches the log only.
+- Approving does not write anything to the web app or any feed; publishing is not part of v1.
+
+### For Ivan
+
+1. **Turn notifications on for Prakriti** (still blocked on your click, since milestone 3): System
+   Settings, Notifications, Prakriti: Allow notifications, Banners, Play sound.
+2. **To approve anything, first say what it is.** Every recording arrives "Not set", which counts as
+   possibly having students in it, so Approve stays off. On a talk where only Gabriel or Serenity
+   speaks, choose "Talk, one teacher speaking" under About this recording, listen, then Approve. A
+   class can never be approved in v1.
+3. **Episode 1 (Sun 6 Sep) is untouched.** Nothing remakes or approves it unless you do. If you
+   approve it as it is, Approve copies engine v0's files (they have no .md transcript) into
+   `~/Prakriti/Approved/2026-09-06 18-06-33`. If you trim or cut it, Make Again first: from then its
+   transcript follows the episode.
+4. Still open from milestone 4: listen to episode 1 for the level riding up and down (moment-to-moment
+   leveling); say if it pumps.
+
+To see it:
+
+```bash
+cd ~/Code/prakriti/mac && open ~/Applications/Prakriti.app
+```
+
+Then Recordings, Sun 13 Sep.
+
+### Notes for milestone 6
+
+- The writing model reads `transcript.json` (every word, original clock) or the episode's transcript
+  files (cut words gone, episode clock). **Chapters must be on the episode's clock and must not quote
+  a cut:** feed it the episode's cues (`EpisodeTranscript.cues` with `Recording.episodeClock`), never
+  the as-heard words, or a chapter title could name a student whose question was cut.
+- The privacy lock reads `Recording.kind`, which Ivan can now set on the page; a class must force a
+  local model.
+- The receipt (`APPROVAL.md`) is where written titles and show notes belong once they exist; any
+  change to them takes the approval back, as the title does now.

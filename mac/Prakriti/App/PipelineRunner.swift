@@ -100,6 +100,7 @@ final class PipelineRunner {
             options.transcriptFormats = transcript.transcriptFormats
             options.applyLexicon = transcript.applyLexicon
         }
+        options.edits = recording.edits
         return options
     }
 
@@ -212,6 +213,15 @@ final class PipelineRunner {
             recording.wordListFixes = activeOptions.makeTranscript && activeOptions.applyLexicon ? result.corrections.count : nil
             recording.outputFolder = result.outputFolder?.path
             recording.madeFiles = result.files
+            recording.madeAt = model.now()
+            // What the episode was made with, so the page can tell when the trim or cuts on it are
+            // not in the episode yet, and play the episode from a transcript line's moment.
+            let made = activeOptions.makeEpisode ? activeOptions.edits : EpisodeEdits()
+            recording.madeTrimStart = made.start
+            recording.madeTrimEnd = made.end
+            recording.madeCuts = made.cuts
+            recording.episodeParts = (result.clock?.segments ?? []).map { TimeRange(start: $0.start, end: $0.end) }
+            recording.episodeIntro = result.clock?.intro
         }
         recording.statusReason = result.reason
 
@@ -247,9 +257,13 @@ final class PipelineRunner {
             if activeOptions.makeTranscript && activeOptions.applyLexicon {
                 numbers.append("word list \(Format.count(result.corrections.count, "fix", "fixes"))")
             }
-            if let start = result.trimmedStart, let end = result.trimmedEnd, start + end >= 0.05 {
+            if result.parts == nil, let start = result.trimmedStart, let end = result.trimmedEnd, start + end >= 0.05 {
                 numbers.append(String(format: "%.1f s of silence trimmed", start + end))
             }
+            if let parts = result.parts {
+                numbers.append("your trim and cuts kept \(Format.timecode(parts.reduce(0) { $0 + $1.length })) of \(Format.timecode(result.duration ?? 0))")
+            }
+            if let left = result.wordsLeftOut, left > 0 { numbers.append("\(Format.count(left, "word")) left out of the transcript") }
             model.record("\(label) (\(name)) is ready for your yes, made in \(Format.length(result.seconds))" + (numbers.isEmpty ? "." : ": " + numbers.joined(separator: ", ") + "."),
                          level: result.coverageOK == false ? .attention : .info, run: run)
             if !result.replaced.isEmpty {

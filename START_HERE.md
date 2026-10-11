@@ -484,6 +484,14 @@ Oct:** every output's settings now change what is made: the loudness target, the
 intro and outro, mono or stereo, the transcript's formats (.txt, .srt, .vtt, .md) and the Yoga Marga
 word list; each folder chooses which outputs it makes, and each recording can have its own choices
 and be made again. Titles, show notes and chapters wait for the writing model (milestone 6).
+**Milestone 5 (the recording page), Sat 10 Oct:** each recording's page has Approve at the top, the
+system audio player (AVKit's own, episode or original), the transcript as lines that play from their
+moment and can be cut, where the episode starts and ends, sections to cut (from the lines or typed),
+its title, notes and what it is, and Make Again with all of it. **Approve copies the finished files
+to `~/Prakriti/Approved/<name>/` with a receipt; nothing is uploaded.** Only a recording marked as a
+talk with one teacher speaking can be approved: a class, a conversation or one nobody has marked
+shows "Speakers not checked" (speaker checks do not exist yet). Once anything is taken out of an
+episode, its transcript files follow it: the cut words are gone and the times match the audio.
 Progress, checks and decisions per milestone are in `docs/BUILD-LOG.md`.
 
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
@@ -522,6 +530,12 @@ cd ~/Code/prakriti/mac && ./scripts/process-in-app.sh "$HOME/Prakriti/Dev/Clips/
 ```
 ```bash
 cd ~/Code/prakriti/mac && make accept-outputs MILESTONE=m4
+```
+```bash
+cd ~/Code/prakriti/mac && make accept-edits MILESTONE=m5
+```
+```bash
+cd ~/Code/prakriti/mac && make snapshots MILESTONE=m5 ONLY=recording
 ```
 ```bash
 cd ~/Code/prakriti/mac && make migrate-check
@@ -573,7 +587,17 @@ of -19 on two meters), made again with the transcript turned off on the recordin
 engine v0's episode bit for bit). It writes `acceptance-outputs.txt` and pictures of each state to
 `screens/mac/<milestone>/`. `make migrate-check` copies the live store with `sqlite3 .backup` (the live
 store is only read) and opens the copy with this build's models: **run it before `make install`
-whenever a model changes.** `--open=<path>` opens one recording's page in the real app. **Then open
+whenever a model changes.** `make accept-edits` is milestone 5's check on the **real 13 Sep talk**
+(about 3 minutes): made with the standard choices, marked as a talk, the first 10 s trimmed and 5:00
+to 5:30 cut on its page, made again, approved into `~/Prakriti/Dev/Approved`, the approved MP3
+measured with ffprobe against the first episode (about 40 s shorter), the cut words checked gone from
+the approved transcript and by transcribing the approved episode again, then marked as a class and
+refused; it writes `acceptance-edits.txt` and pictures of each state. `make snapshots ONLY=recording`
+draws only the recording pages, for a quick look. The real window on the sample recording page:
+`open -n build/Build/Products/Debug/Prakriti.app --args --sample-data --show=recordings --open=ready
+--appearance=light` (add `--sample-edits` for a trim and cut not made yet), then
+`swift scripts/capture-window.swift --window build/Build/Products/Debug/Prakriti.app out.png`.
+`--open=<path>` opens one recording's page in the real app. **Then open
 every PNG and look at it,** including the `-p2`, `-p3` pictures of the screens between a long page's
 top and its end. Reading the code is not verification, and neither is a passing test.
 
@@ -583,9 +607,11 @@ top and its end. Reading the code is not verification, and neither is a passing 
 |---|---|
 | Project definition (source of truth) | `mac/project.yml`; `make generate` rebuilds `Prakriti.xcodeproj`, and both are committed |
 | App code | `mac/Prakriti/App` (launch, paths, settings, log, `PipelineRunner`, `Watcher`, `Notices`, `LoginItem` with the instance lock, `EngineV0Import`), `Engine` (the pipeline: `Subprocess`, `Readiness`, `Measurements`, `Pipeline` with `Mastering`, `Report`; the watcher's `FolderScan` and `EventStream`), `Model` (vocabulary, SwiftData models, store), `Views`, `Fixtures` |
-| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `StoreMigrationTests` (`make migrate-check` only), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share) |
+| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `RecordingPageTests` (milestone 5: edits, the episode's clock, typed times, the cut's words gone through Parakeet with the Mac's voice, the page's player, Approve and its refusals), `EditsAcceptanceTests` (the 13 Sep talk trimmed, cut, made again and approved, `make accept-edits` only), `StoreMigrationTests` (`make migrate-check` only), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share) |
 | Real-window capture | `mac/scripts/capture-window.swift` (run by `make look` and `make check`); also `--analyze <png>` to check any capture, and `--window <app> <png>` to capture the running app as it is |
 | Real-app pipeline check | `mac/scripts/process-in-app.sh <file> <folder>` |
+| The recording page (milestone 5) | `mac/Prakriti/Views/RecordingPage.swift` (player, transcript lines, trim and cuts, title and notes, Approve), `App/RecordingActions.swift` (what its buttons do), `App/Approval.swift` (who may be approved, the copy and its receipt), `Engine/EpisodeEdits.swift` (the edits, the episode's clock, typed times, the transcript that follows the episode); tests `RecordingPageTests` (in `make test`) and `EditsAcceptanceTests` (`make accept-edits`) |
+| Approved files, live | `~/Prakriti/Approved/<file name without extension>/`: `episode.mp3`, the transcript's chosen formats (following the episode), `REPORT.md`, and `APPROVAL.md` (title, notes, edits, every file's size and SHA-256). Never `transcript.json`. Development: `~/Prakriti/Dev/Approved/` |
 | Outputs, development mode | `~/Prakriti/Dev/Outputs/<file name without extension>/`: `episode.mp3`, `transcript.txt/.srt/.vtt/.md` (the chosen formats, with the word list applied), `transcript.json` (Parakeet's words as heard, with their times; never changed), `REPORT.md` (engine v0's layout). A make in progress lives in the hidden `.making <name>` folder beside it |
 | The Yoga Marga word list | `mac/Prakriti/Engine/Lexicon.swift` (each word as written, how it has been misheard, and what it is); shown on the Outputs screen |
 | Output settings | Which outputs: each folder's switches (Sources), else the Outputs screen's (files added by hand). How: the Outputs screen. A recording's own choices (its page) override both: `OutputResolver` in `Model/Store.swift` |
@@ -743,6 +769,52 @@ top and its end. Reading the code is not verification, and neither is a passing 
     first sound and after the last.** Reason: measured 10 Oct, the studio talks open with 1.7 to 3.4 s
     of near-silence and run to their last second; a looser rule would clip words. Transcript times
     stay on the original recording's clock, and REPORT.md says how far the episode is shifted.
+
+35. **Who may be approved is decided in `ApprovalCheck`, not by the button, and `AppModel.approve`
+    checks it again whoever calls it.** Only a recording marked "Talk, one teacher speaking" can be
+    approved; a class, a conversation or one marked "Not set" shows "Speakers not checked" and is
+    refused (a test approves a class and a conversation and checks nothing was copied). Reason:
+    speaker checks do not exist yet, an unknown voice counts as a student (SCOPE PR-2, PR-3), and every
+    recording arrives "Not set".
+36. **Approve waits while the trim or cuts on the page are not in the episode** (`Recording.editsPending`,
+    comparing the page's edits with `madeTrimStart`, `madeTrimEnd`, `madeCuts` from the last finished
+    make). Reason: a yes must cover exactly the file that was made, never an episode that still holds a
+    section Ivan cut on screen.
+37. **Approve never copies `transcript.json`,** and copies through a hidden `.approving <name>` folder,
+    replacing only Prakriti's own names (`Approval.knownNames`). Reason: transcript.json keeps every
+    word as heard, including the words of a cut; and a file Ivan keeps in the approved folder must
+    survive approving again (tested).
+38. **Any change to an approved recording takes the approval back** (`changedAfterApproval`: title,
+    notes, what it is, trim, cuts, Make Again); the approved copy stays as it was until he approves
+    again. Reason: SCOPE 9.1 #6, a yes is void once anything it covered changes.
+39. **Once anything is taken out of an episode or added to it, the transcript files follow the
+    episode** (step "Transcript matched to the episode", `EpisodeTranscript`): built from
+    `transcript.json`'s word times, the words inside a cut or trim dropped, every time on the episode's
+    clock. `transcript.json` keeps everything on the original's clock, and the page reads it. Reason:
+    a cut is how a student's question or a name comes out of an episode, so the transcript that ships
+    with it must lose those words too, and captions must line up with the audio. This replaces
+    milestone 4's decision 9 (times on the original's clock), which left the captions 1.2 s late after
+    the silence trim. With nothing removed or added (trim off, no intro), the files are Parakeet's own
+    (with the word list applied), as before.
+40. **A word's place is `min(middle, start + 0.15 s)`, and punctuation goes with the word before it**
+    (`EpisodeTranscript.position`, `isWord`). Reason: measured 10 Oct, Parakeet stretches the last word
+    before a pause across the pause and puts a sentence's full stop after it; by the middle, a line
+    wholly inside a cut read "Partly cut", and a lone "." could have been kept after a cut.
+41. **Edits are seconds on the original recording's clock, and each make stores the episode's map**
+    (`episodeParts`, `episodeIntro`, read as `Recording.episodeClock`). Reason: the transcript lines,
+    "Use Player Time" and the Original player all speak the original's clock, and a line must play the
+    episode from where its moment is now. A recording made before milestone 5 is read as one part (all
+    of it, or what the silence trim kept).
+42. **With edits, every kept part fades in and out over 15 ms and the parts are joined in one filter
+    graph before the layout, the 48 kHz rate and the limiter; without edits the chain is milestone 4's
+    string for string** (`Mastering.part`, `RecordingPageTests`). Reason: a cut through a word clicks
+    without a fade, and v0's bug 2 (resampling after the limiter) must not come back through the join.
+43. **The player is AVKit's own `AVPlayerView`, clipped to its pill; never a drawn scrubber or
+    waveform.** Bitmap snapshots cannot draw it (it shows as a black or grey pill); the real window,
+    `--open=ready`, is the judge. Reason: Ivan's never-skeuomorphic rule allows only the system's own
+    media controls.
+44. **The original is looked at off the main thread** before the player opens it. Reason: it lives in
+    the studio folder inside `~/Documents` (warning 24); a first read there can wait on a macOS prompt.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

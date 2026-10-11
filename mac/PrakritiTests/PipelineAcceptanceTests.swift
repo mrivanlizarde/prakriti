@@ -92,7 +92,9 @@ final class PipelineAcceptanceTests: XCTestCase {
         let again = try remeasure(talkFolder.appending(path: "episode.mp3"))
         XCTAssertEqual(again.lufs, lufs, accuracy: 0.3, "two meters disagree on the episode's loudness")
         let srt = try String(contentsOf: talkFolder.appending(path: "transcript.srt"), encoding: .utf8)
-        XCTAssertEqual(Measure.lastCueEnd(srt: srt), reaches)
+        // The .srt follows the episode since milestone 5: its last cue is the coverage check's
+        // (on the original's clock) less the silence trimmed at the start, to the second.
+        XCTAssertEqual(Measure.lastCueEnd(srt: srt), reaches - (talk.silenceTrimmedStart ?? 0), accuracy: 1.0)
         let markdown = try String(contentsOf: talkFolder.appending(path: "REPORT.md"), encoding: .utf8)
         XCTAssertTrue(markdown.contains(String(format: "%.1f LUFS", lufs)), "the report carries the measured loudness")
         report += summary("13 Sep talk", talk, folder: talkFolder, remeasured: again)
