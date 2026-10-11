@@ -69,10 +69,13 @@ enum RecordingKind: String, Codable, CaseIterable, Sendable {
     }
 }
 
-/// Everything Prakriti can make from a recording. Four are built in v1; five are shown and marked
-/// "Not built yet" so the plan is visible without pretending.
+/// Everything Prakriti can make from a recording. Five are built (the podcast-ready episode since 11
+/// Oct); five are shown and marked "Not built yet" so the plan is visible without pretending.
 enum OutputKind: String, Codable, CaseIterable, Sendable {
     case podcastEpisode
+    /// The finished episode for a podcast host: its own mastering chain, tags, artwork, chapters,
+    /// captions, a text file and an upload checklist. The podcast episode above stays the quick draft.
+    case podcastReady
     case transcript
     case checksAndReport
     case titlesNotesChapters
@@ -85,6 +88,7 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
     var title: String {
         switch self {
         case .podcastEpisode: "Podcast episode"
+        case .podcastReady: "Podcast-ready episode"
         case .transcript: "Transcript"
         case .checksAndReport: "Checks and report"
         case .titlesNotesChapters: "Titles, show notes and chapters"
@@ -99,6 +103,7 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
     var summary: String {
         switch self {
         case .podcastEpisode: "An MP3 at podcast loudness, ready to listen to."
+        case .podcastReady: "The finished MP3 for a podcast host, with its tags, chapters, captions and an upload checklist."
         case .transcript: "The words, with times, in the formats you choose."
         case .checksAndReport: "Length, sound, loudness and coverage, in one short report."
         case .titlesNotesChapters: "Written by the model you choose for writing."
@@ -113,6 +118,7 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
     var symbol: String {
         switch self {
         case .podcastEpisode: "play.circle"
+        case .podcastReady: "shippingbox"
         case .transcript: "text.alignleft"
         case .checksAndReport: "checklist"
         case .titlesNotesChapters: "list.bullet.indent"
@@ -126,7 +132,7 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
 
     var isBuilt: Bool {
         switch self {
-        case .podcastEpisode, .transcript, .checksAndReport, .titlesNotesChapters: true
+        case .podcastEpisode, .podcastReady, .transcript, .checksAndReport, .titlesNotesChapters: true
         default: false
         }
     }
@@ -137,7 +143,9 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
 
     /// On for a new folder unless Ivan changes it. Titles, show notes and chapters start off: the
     /// writing model holds about 33 GB of memory while it runs and takes minutes per recording, so
-    /// Ivan turns them on per folder or per recording.
+    /// Ivan turns them on per folder or per recording. The podcast-ready episode starts off too: it
+    /// takes a few more minutes per recording, and without a show name and artwork it is not ready
+    /// to upload anyway.
     var isOnByDefault: Bool {
         switch self {
         case .podcastEpisode, .transcript, .checksAndReport: true
@@ -191,6 +199,9 @@ enum RunTrigger: String, Codable, CaseIterable, Sendable {
     /// Writes the titles, show notes and chapters again from the transcript already made, and
     /// nothing else (milestone 6).
     case writeAgain
+    /// Writes the podcast-ready files again (tags, names, text, checklist) around the audio already
+    /// made: for a new title, notes, show name or artwork. The audio is not made again.
+    case packageAgain
 
     var title: String {
         switch self {
@@ -203,6 +214,7 @@ enum RunTrigger: String, Codable, CaseIterable, Sendable {
         case .wake: "After the Mac woke"
         case .checkNow: "Check Now"
         case .writeAgain: "Write again"
+        case .packageAgain: "Update podcast-ready files"
         }
     }
 
@@ -210,7 +222,7 @@ enum RunTrigger: String, Codable, CaseIterable, Sendable {
     /// New Recording Found notice.
     var isAutomatic: Bool {
         switch self {
-        case .byHand, .makeAgain, .writeAgain: false
+        case .byHand, .makeAgain, .writeAgain, .packageAgain: false
         default: true
         }
     }

@@ -190,6 +190,11 @@ struct WrittenPackage: Codable, Equatable, Sendable {
     var clock: String
     /// The model's own answer to the writing task, as it came (kept in the JSON file, for the record).
     var modelAnswer: String?
+    /// Social captions for sharing the episode (10 Oct), drafts to post by hand. Optional so a
+    /// package written before them still reads; any words they quote were found in the transcript.
+    var captions: [String]?
+    /// Captions left out because they quoted words the transcript does not have.
+    var leftOutCaptions: Int?
 
     static let fileName = "titles-notes-chapters.json"
     static let notesFileName = "show-notes.md"
@@ -230,6 +235,10 @@ struct WrittenPackage: Codable, Equatable, Sendable {
         text += "\n## Chapters\n\n"
         for chapter in chapters { text += "\(chapter.label) \(chapter.title)\n" }
         text += "\n[Not chosen yet: the one call to action, and the address for questions or removal requests. SCOPE PKG-04 leaves both open for Gabriel and Serenity.]\n"
+        if let captions, !captions.isEmpty {
+            text += "\n## Social captions, drafts to post by hand\n\n"
+            for (index, caption) in captions.enumerated() { text += "\(index + 1). \(caption)\n" }
+        }
         if !tags.isEmpty { text += "\n## Tags\n\n" + tags.joined(separator: ", ") + "\n" }
         if let summary, !summary.isEmpty { text += "\n## Summary\n\n\(summary)\n" }
         text += "\n## Accuracy checklist, for review\n\n"
@@ -240,6 +249,7 @@ struct WrittenPackage: Codable, Equatable, Sendable {
         var checks: [String] = []
         if leftOutQuotes.count > 0 { checks.append("\(Format.count(leftOutQuotes.count, "quote")) the model gave \(leftOutQuotes.count == 1 ? "was" : "were") not in the transcript word for word, so \(leftOutQuotes.count == 1 ? "it was" : "they were") left out.") }
         if leftOutChapters > 0 { checks.append("\(Format.count(leftOutChapters, "chapter")) did not start at a time in the transcript, so \(leftOutChapters == 1 ? "it was" : "they were") left out.") }
+        if let left = leftOutCaptions, left > 0 { checks.append("\(Format.count(left, "social caption")) quoted words that are not in the transcript, so \(left == 1 ? "it was" : "they were") left out.") }
         checks += notes
         if !checks.isEmpty { text += "\n## What the checks changed\n\n" + checks.map { "- " + $0 }.joined(separator: "\n") + "\n" }
         return text
@@ -427,7 +437,8 @@ struct Writer: Sendable {
                 writtenAt: Date(), seconds: ModelHTTP.seconds(since: started), attempts: attempts, writingSeconds: writingSeconds,
                 promptTokens: answer.reply.promptTokens, completionTokens: answer.reply.completionTokens, reasoningTokens: answer.reply.reasoningTokens,
                 leftOutQuotes: checked.leftOutQuotes, leftOutChapters: checked.leftOutChapters, notes: notes,
-                clock: input.followsEpisode ? "episode" : "recording", modelAnswer: answer.reply.text)
+                clock: input.followsEpisode ? "episode" : "recording", modelAnswer: answer.reply.text,
+                captions: checked.captions, leftOutCaptions: checked.leftOutCaptions)
             return outcome
         } catch is CancellationError {
             await releaseAll()
@@ -568,6 +579,10 @@ struct Writer: Sendable {
             - "chapters": \(chapters) chapters, in time order, at the talk's main changes of topic. The first chapter starts at \(first). \
             Every "start" must be copied exactly from one of the times in square brackets in the transcript (for example "\(example)"), \
             and chapters must start at least 2 minutes apart. Each chapter "title" is 2 to 4 words (count them; "Breath Before Posture" is 3) and at most 45 characters.
+            - "captions": exactly 3 captions for sharing this episode on social media, each a different way into the talk: \
+            one of at most 120 characters, two of 150 to 280 characters. Describe the teaching in plain words; never sell. \
+            No hashtags, no emoji, no exclamation marks, no links, no "listen now". A caption may quote the teacher only with words \
+            copied exactly from one line of the transcript, inside double quotation marks.
             - "checklist": \(claims) claims a listener could check: facts, numbers, dates, names, history, or any health, income or result claim. \
             The speaker's own income, health or result claims belong here, because they must be checked; another person's private matters never do. \
             "claim" says it in your own words, in one sentence, and says only what the quote says. "quote" is the speaker's own words for it, copied exactly from one line of the \
@@ -575,7 +590,7 @@ struct Writer: Sendable {
             "at" is the bracketed time of that line.
 
             Answer with one JSON object and nothing else, in exactly this shape:
-            {"titles": ["", "", ""], "show_notes": "", "chapters": [{"start": "\(first)", "title": ""}], "checklist": [{"claim": "", "quote": "", "at": "\(first)"}]}
+            {"titles": ["", "", ""], "show_notes": "", "chapters": [{"start": "\(first)", "title": ""}], "captions": ["", "", ""], "checklist": [{"claim": "", "quote": "", "at": "\(first)"}]}
             """
     }
 
@@ -612,6 +627,47 @@ enum WritingCheck {
         var leftOutQuotes: [String]
         var leftOutChapters: Int
         var notes: [String]
+        var captions: [String] = []
+        var leftOutCaptions = 0
+    }
+
+    /// The passages a caption puts in quotation marks (straight or curly), without the marks.
+    static func quoted(_ text: String) -> [String] {
+        let normalized = WritingText.normalized(text)
+        var out: [String] = []
+        var inside = false
+        var current = ""
+        for character in normalized {
+            if character == "\"" {
+                if inside, !current.trimmingCharacters(in: .whitespaces).isEmpty { out.append(current) }
+                inside.toggle()
+                current = ""
+            } else if inside {
+                current.append(character)
+            }
+        }
+        return out
+    }
+
+    /// Social captions as kept: dashes made commas, exclamation marks made full stops, hashtags and
+    /// links dropped, at most 500 characters, and every quoted passage found word for word in the
+    /// transcript or the caption is left out. They are optional: none never fails the answer.
+    static func captions(_ offered: [String], found: (String) -> Bool) -> (kept: [String], leftOut: Int, changed: Int) {
+        var kept: [String] = [], leftOut = 0, changed = 0
+        for raw in offered {
+            var (caption, dashes) = WritingText.withoutDashes(raw.trimmingCharacters(in: .whitespacesAndNewlines))
+            var words = caption.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+            let before = words.count
+            words.removeAll { $0.hasPrefix("#") || $0.lowercased().hasPrefix("http") }
+            caption = words.joined(separator: " ")
+            let bangs = caption.filter { $0 == "!" }.count
+            caption = caption.replacingOccurrences(of: "!", with: ".")
+            guard !caption.isEmpty, caption.count <= 500 else { leftOut += 1; continue }
+            guard quoted(caption).allSatisfy({ found(WritingText.bareQuote($0)) }) else { leftOut += 1; continue }
+            if dashes > 0 || bangs > 0 || words.count != before { changed += 1 }
+            if !kept.contains(caption) { kept.append(caption) }
+        }
+        return (Array(kept.prefix(3)), leftOut, changed)
     }
 
     /// The JSON object in a reply: the reply itself, or the object inside a code fence or prose.
@@ -744,8 +800,17 @@ enum WritingCheck {
         if dashes > 0 {
             notes.append("\(Format.count(dashes, "dash", "dashes")) replaced with a comma: no em dashes or en dashes in anything written.")
         }
+        let offeredCaptions = ((object["captions"] as? [Any]) ?? []).compactMap { $0 as? String }
+        let social = captions(offeredCaptions) { quote in
+            !quote.isEmpty && (haystack.contains(quote) || located.contains(quote))
+        }
+        if offeredCaptions.isEmpty { notes.append("No social captions came back.") }
+        if social.changed > 0 {
+            notes.append("\(Format.count(social.changed, "social caption")) had a dash, an exclamation mark, a hashtag or a link taken out.")
+        }
         return Checked(titles: titles, showNotes: showNotes, chapters: kept, checklist: checklist,
-                       leftOutQuotes: leftOut, leftOutChapters: leftOutChapters, notes: notes)
+                       leftOutQuotes: leftOut, leftOutChapters: leftOutChapters, notes: notes,
+                       captions: social.kept, leftOutCaptions: social.leftOut)
     }
 
     /// Tags as kept: trimmed, one to four words, no dashes, merged by how often they came up (most
@@ -799,6 +864,7 @@ extension WrittenPackage {
         line += attempts > 1 ? " (\(Format.count(attempts, "try", "tries")))" : ""
         line += ": \(Format.count(titles.count, "title option")), \(Format.count(chapters.count, "chapter")), "
         line += "\(Format.count(checklist.count, "quote")) found word for word in the transcript"
+        if let captions, !captions.isEmpty { line += ", \(Format.count(captions.count, "social caption"))" }
         var left: [String] = []
         if !leftOutQuotes.isEmpty { left.append(Format.count(leftOutQuotes.count, "quote")) }
         if leftOutChapters > 0 { left.append(Format.count(leftOutChapters, "chapter")) }

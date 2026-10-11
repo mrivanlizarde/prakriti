@@ -66,6 +66,14 @@ enum Format {
         return String(format: "%.0f MB", Double(bytes) / 1e6)
     }
 
+    /// "420 KB" (1,024 bytes each, as artwork limits are written), or "1.4 MB" from 1 MB up.
+    static func kilobytes(_ bytes: Int64) -> String {
+        bytes < 1_048_576 ? String(format: "%.0f KB", Double(bytes) / 1024) : String(format: "%.1f MB", Double(bytes) / 1_048_576)
+    }
+
+    /// "40.1 MB": a podcast file's size, to a tenth, as hosts show it.
+    static func megabytes(_ bytes: Int64) -> String { String(format: "%.1f MB", Double(bytes) / 1e6) }
+
     /// "-16.8 LUFS"
     static func lufs(_ value: Double) -> String { String(format: "%.1f LUFS", value) }
 

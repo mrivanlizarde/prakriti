@@ -23,6 +23,13 @@ struct OutputsView: View {
                     PodcastSettingsRows(setting: podcast)
                 }
             }
+            if let ready = defaults.first(where: { $0.kind == .podcastReady }) {
+                Section {
+                    OutputSwitch(setting: ready, detail: "The finished MP3 for a podcast host: named for the show and the episode, with its tags, artwork, chapters and captions, "
+                                 + "a text file of the title, show notes and social captions, and an upload checklist measured against Apple's rules. Nothing is uploaded.")
+                    PodcastReadySettingsRows(setting: ready)
+                }
+            }
             if let transcript = defaults.first(where: { $0.kind == .transcript }) {
                 Section {
                     OutputSwitch(setting: transcript)
@@ -197,6 +204,8 @@ struct FileChoiceRow: View {
     let label: String
     var detail: String?
     @Binding var path: String?
+    /// What the panel lets Ivan choose: audio for an intro or outro, images for artwork.
+    var contentTypes: [UTType] = [.audio]
 
     var body: some View {
         LabeledContent {
@@ -225,7 +234,7 @@ struct FileChoiceRow: View {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
-        panel.allowedContentTypes = [.audio]
+        panel.allowedContentTypes = contentTypes
         panel.prompt = "Use This File"
         if panel.runModal() == .OK, let url = panel.url {
             path = url.path

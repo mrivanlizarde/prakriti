@@ -30,6 +30,13 @@
 #                 each provider is tested for real. Needs LM Studio's server running with the model
 #                 downloaded. Writes acceptance-models.txt and pictures to ../screens/mac/$(MILESTONE)/
 #                 (takes about 5 to 15 minutes, most of it the writing model)
+# make accept-podcast  the podcast-ready episode's acceptance on the REAL 13 Sep and 6 Sep talks: engine v0's
+#                 episode diagnosed again (loudness range, loudnorm's mode, how its gain moved), the
+#                 podcast-ready episode made alone and then with the first 10 s trimmed (a known caption must
+#                 move by exactly 10 s less the silence trim), then made with everything on and the titles,
+#                 notes, chapters and captions by Qwen3.8-27B in LM Studio; the MP3 measured and read back,
+#                 the checklist read. Needs LM Studio's server running. Writes to ~/Prakriti/Dev/Outputs and
+#                 acceptance-podcast-*.txt plus pictures to ../screens/mac/$(MILESTONE)/ (about 40 minutes)
 # make migrate-check  copy the live store (sqlite3 .backup, a consistent snapshot; the live store
 #                 is only read) into build/store-copy and open the COPY with this build's models.
 #                 Run it before `make install` whenever the models change
@@ -53,7 +60,7 @@ MODE      ?= development
 ONLY      ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: generate build test snapshots accept accept-outputs accept-edits accept-models migrate-check run look check install drop
+.PHONY: generate build test snapshots accept accept-outputs accept-edits accept-models accept-podcast migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -78,6 +85,9 @@ accept-edits:
 
 accept-models:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=models TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/ModelsAcceptanceTests
+
+accept-podcast:
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=podcast TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/PodcastReadyAcceptanceTests
 
 STORE_COPY = $(CURDIR)/$(DERIVED)/store-copy/Prakriti.store
 

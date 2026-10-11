@@ -36,6 +36,9 @@ final class PipelineRunner {
     /// the 13 Sep talk took 36 s for 15:48 (0.038), the 6 Sep talk 124 s for 55:39 (0.037). Used
     /// only for the "about N minutes" in Started.
     static let workPerSecond = 0.04
+    /// The podcast-ready audio and files, per second of recording. Measured 10 Oct: 40 s for the 15:48
+    /// talk, 193 s for the 55:39 one (with the two-decimal meter), so about 0.05.
+    static let podcastReadyPerSecond = 0.05
 
     /// About how long the titles, show notes and chapters take with Qwen3.8-27B in LM Studio, for
     /// the "about N minutes" in Started. Measured 10 Oct on the 15:48 talk (milestone 6's acceptance).
@@ -115,6 +118,9 @@ final class PipelineRunner {
         if make.contains(.titlesNotesChapters) && options.makeTranscript {
             options.writing = writingSetup()
         }
+        if make.contains(.podcastReady), let ready = OutputResolver.details(for: .podcastReady, recording: recording, defaults: defaults) {
+            options.podcastReady = PodcastReadySetup(settings: ready.podcastReadySettings, facts: recording.podcastFacts)
+        }
         return options
     }
 
@@ -141,6 +147,7 @@ final class PipelineRunner {
     func process(_ recording: Recording, trigger: RunTrigger) async -> PipelineResult? {
         guard let model else { return nil }
         if trigger == .writeAgain { return await write(recording) }
+        if trigger == .packageAgain { return await packageAgain(recording) }
         currentID = recording.id
         defer { currentID = nil; activeRecording = nil; activeRun = nil }
 
@@ -266,6 +273,13 @@ final class PipelineRunner {
             run.outcome = .ready
             run.summary = "Titles, show notes and chapters written."
             model.record("\(label) (\(name)): titles, show notes and chapters written again. \(written.stepLine)", run: run)
+            // The podcast-ready files carry the chapters, notes and captions, so they follow.
+            if recording.podcastReady != nil {
+                let (_, line) = await repackage(recording)
+                var steps = run.steps
+                steps.append(line)
+                run.steps = steps
+            }
             model.changedAfterApproval(recording, what: "its titles, show notes and chapters")
         } else {
             recording.writingProblem = result.writingProblem
@@ -275,6 +289,94 @@ final class PipelineRunner {
         }
         try? model.context.save()
         return result
+    }
+
+    /// Update Podcast-Ready Files: the tags, file name, captions, text file and checklist written
+    /// again around the audio already made, for a new title, notes, show name, host, artwork or
+    /// episode number. The audio is not made again (Make Again does that); a failure leaves the
+    /// last files as they were. An approved recording goes back to waiting for a yes.
+    @discardableResult
+    func packageAgain(_ recording: Recording) async -> PipelineResult? {
+        guard let model else { return nil }
+        currentID = recording.id
+        defer { currentID = nil }
+        let before = recording.status
+        let run = Run(startedAt: model.now(), trigger: .packageAgain, steps: [RunStep(name: PipelineStep.podcastPackage.title, state: .running)])
+        model.context.insert(run)
+        run.recording = recording
+        recording.status = .working
+        recording.currentStep = PipelineStep.podcastPackage.doing
+        try? model.context.save()
+        let (record, step) = await repackage(recording)
+        run.steps = [step]
+        run.endedAt = model.now()
+        recording.currentStep = nil
+        recording.status = before == .working ? .readyForYourYes : before
+        var result = PipelineResult()
+        result.podcastReady = record
+        if record != nil {
+            run.outcome = .ready
+            run.summary = "Podcast-ready files updated."
+            model.changedAfterApproval(recording, what: "its podcast-ready files")
+        } else {
+            run.outcome = .couldntFinish
+            run.summary = step.detail ?? ""
+            result.podcastProblem = step.detail
+        }
+        try? model.context.save()
+        return result
+    }
+
+    /// Writes the podcast-ready folder again from the MP3 already in it, through a staging folder,
+    /// and records it. Returns the new record (nil when it failed) and the step to show.
+    func repackage(_ recording: Recording) async -> (PodcastReadyRecord?, RunStep) {
+        var step = RunStep(name: PipelineStep.podcastPackage.title, state: .failed)
+        let started = ContinuousClock.now
+        let label = Format.dayLabel(recording.sessionDate)
+        guard let model, let path = recording.outputFolder, let old = recording.podcastReady else {
+            step.detail = "There are no podcast-ready files to update. Turn the podcast-ready episode on for this recording and Make Again."
+            return (nil, step)
+        }
+        let folder = URL(fileURLWithPath: path, isDirectory: true)
+        let existing = folder.appending(path: PodcastPackage.folderName).appending(path: old.fileName)
+        let staging = folder.deletingLastPathComponent().appending(path: ".packaging " + folder.lastPathComponent, directoryHint: .isDirectory)
+        try? FileManager.default.removeItem(at: staging)
+        defer { try? FileManager.default.removeItem(at: staging) }
+        let defaults = model.defaultSettings()
+        do {
+            try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+            let untagged = staging.appending(path: ".untagged.mp3")
+            try ID3.audio(of: Data(contentsOf: existing)).write(to: untagged)
+            let settings = OutputResolver.details(for: .podcastReady, recording: recording, defaults: defaults)?.podcastReadySettings ?? PodcastReadySettings()
+            let setup = PodcastReadySetup(settings: settings, facts: recording.podcastFacts)
+            let lexicon = OutputResolver.details(for: .transcript, recording: recording, defaults: defaults)?.applyLexicon ?? true
+            let duration = old.expectedDuration ?? old.duration
+            let clock = recording.episodeClock ?? EpisodeClock(intro: 0, segments: [Mastering.Span(start: 0, end: recording.duration ?? duration)])
+            let hasTranscript = FileManager.default.fileExists(atPath: folder.appending(path: TranscriptFiles.asHeard).path)
+            let pipeline = Pipeline(tools: tools, options: options(for: recording), log: model.log)
+            let record = try await pipeline.packagePodcastReady(untagged: untagged, into: staging.appending(path: PodcastPackage.folderName, directoryHint: .isDirectory),
+                                                                setup: setup, written: recording.written, transcriptFolder: hasTranscript ? folder : nil,
+                                                                clock: clock, applyLexicon: lexicon, expectedDuration: duration,
+                                                                normalizationType: old.normalizationType, talkLUFS: old.talkLUFS, corrected: old.corrected, madeAt: Date())
+            try? FileManager.default.removeItem(at: untagged)
+            _ = try Pipeline.place(staging, into: folder, known: [PodcastPackage.folderName])
+            recording.podcastReadyJSON = record.json()
+            recording.podcastReadyProblem = nil
+            recording.updatedAt = model.now()
+            step.state = .done
+            step.detail = "\(record.fileName) and its checklist written again around the audio already made. Checklist: \(record.summary.lowercasedFirst)."
+            step.seconds = ModelHTTP.seconds(since: started)
+            model.record("\(label) (\(recording.fileName)): podcast-ready files updated. \(Pipeline.podcastLine(record))")
+            return (record, step)
+        } catch let failure as PipelineFailure {
+            step.detail = failure.reason + " The earlier files are as they were."
+            if let detail = failure.detail { model.log.write("\(recording.fileName): updating the podcast-ready files failed. \(detail)") }
+        } catch {
+            step.detail = "The podcast-ready files could not be updated: \(error.localizedDescription) The earlier files are as they were."
+        }
+        step.seconds = ModelHTTP.seconds(since: started)
+        model.record("\(label) (\(recording.fileName)): the podcast-ready files were not updated. \(step.detail ?? "")", level: .attention)
+        return (nil, step)
     }
 
     private func apply(_ progress: PipelineProgress) {
@@ -293,7 +395,8 @@ final class PipelineRunner {
             }
         case .soundOK:
             var facts = facts(for: recording)
-            facts.estimate = recording.duration.map { $0 * Self.workPerSecond + (activeOptions.writing != nil ? Self.writingEstimate($0) : 0) }
+            facts.estimate = recording.duration.map { $0 * Self.workPerSecond + (activeOptions.writing != nil ? Self.writingEstimate($0) : 0)
+                + (activeOptions.makePodcastReady ? $0 * Self.podcastReadyPerSecond : 0) }
             model.notifier.post(.started, facts)
         case nil:
             break
@@ -353,6 +456,10 @@ final class PipelineRunner {
             // What was written goes with this make's files; titles not made this time leave none.
             recording.writtenJSON = result.written?.stored.json()
             recording.writingProblem = activeOptions.writing == nil ? nil : result.writingProblem
+            // The same for the podcast-ready files: this make's, or none.
+            recording.podcastReadyJSON = result.podcastReady?.json()
+            recording.podcastReadyProblem = activeOptions.makePodcastReady ? result.podcastProblem : nil
+            if result.output == nil, let ready = result.podcastReady { recording.episodeDuration = ready.duration }
         }
         recording.statusReason = result.reason
 
@@ -400,8 +507,13 @@ final class PipelineRunner {
             } else if activeOptions.writing != nil {
                 numbers.append("titles, show notes and chapters NOT written (\(result.writingProblem ?? "no reason given"))")
             }
+            if let ready = result.podcastReady {
+                numbers.append("podcast-ready " + Pipeline.podcastLine(ready).dropLast())
+            } else if activeOptions.makePodcastReady {
+                numbers.append("podcast-ready files NOT made (\(result.podcastProblem ?? "no reason given"))")
+            }
             model.record("\(label) (\(name)) is ready for your yes, made in \(Format.length(result.seconds))" + (numbers.isEmpty ? "." : ": " + numbers.joined(separator: ", ") + "."),
-                         level: result.coverageOK == false || result.writingProblem != nil ? .attention : .info, run: run)
+                         level: result.coverageOK == false || result.writingProblem != nil || result.podcastProblem != nil ? .attention : .info, run: run)
             if !result.replaced.isEmpty {
                 let gone = result.replaced.filter { !result.files.contains($0) }
                 model.record("Made again: the earlier files were replaced" + (gone.isEmpty ? "." : ", and \(gone.joined(separator: ", ")) removed because \(gone.count == 1 ? "it was" : "they were") not chosen this time."),

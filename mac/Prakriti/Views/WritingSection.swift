@@ -62,6 +62,23 @@ struct WritingSection: View {
                     }
                 }
                 .padding(.vertical, 4)
+                if let captions = written.captions, !captions.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Social captions").font(AppFont.headline)
+                        Text("Drafts to post by hand. Nothing is posted.")
+                            .font(AppFont.secondary).foregroundStyle(.secondary)
+                        ForEach(Array(captions.enumerated()), id: \.offset) { index, caption in
+                            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                                Text("\(index + 1)").font(AppFont.numbers).foregroundStyle(.secondary)
+                                    .frame(minWidth: 24, alignment: .leading)
+                                Text(caption).font(AppFont.body)
+                                    .textSelection(.enabled)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Accuracy checklist").font(AppFont.headline)
                     Text("Each quote was found word for word in the transcript. Check each claim against the episode before anything is published.")

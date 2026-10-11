@@ -49,6 +49,21 @@ final class StoreMigrationTests: XCTestCase {
         // and could not be turned on before milestone 6).
         let writingOn = sources.filter { $0.setting(for: .titlesNotesChapters)?.isOn == true }.map(\.name)
         XCTAssertEqual(writingOn, [], "a folder would start writing with the 33 GB model on its own")
+        // The podcast-ready episode (10 Oct, after v1): the launch adds its settings to an older store,
+        // switched off everywhere, and its recording fields arrive empty.
+        for recording in recordings {
+            XCTAssertNil(recording.podcastReadyJSON)
+            XCTAssertNil(recording.podcastReadyProblem)
+            XCTAssertNil(recording.episodeNumber)
+        }
+        let added = try PrakritiStore.addMissingOutputKinds(context)
+        let readyOn = sources.filter { $0.setting(for: .podcastReady)?.isOn == true }.map(\.name)
+        XCTAssertEqual(readyOn, [], "a folder would start making podcast-ready episodes on its own")
+        XCTAssertTrue(sources.allSatisfy { $0.setting(for: .podcastReady) != nil }, "every folder has the switch, off")
+        let defaultReady = try context.fetch(FetchDescriptor<OutputSetting>()).filter { $0.kind == .podcastReady && $0.source == nil && $0.recording == nil }
+        XCTAssertEqual(defaultReady.count, 1, "the Outputs screen has its settings")
+        XCTAssertEqual(defaultReady.first?.isOn, false)
+        print("The new output was added to the copy: \(added.map(\.title)); switched on in \(readyOn.count) folders")
         let ready = recordings.filter { $0.status == .readyForYourYes }
         print("Store copy opened: \(recordings.count) recordings (\(ready.count) ready: "
               + ready.map { "\($0.fileName) \($0.loudnessLUFS.map { String($0) } ?? "?") LUFS" }.joined(separator: ", ")

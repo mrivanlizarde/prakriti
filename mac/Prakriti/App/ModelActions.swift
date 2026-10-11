@@ -68,6 +68,37 @@ extension AppModel {
         runner.enqueue(recording, trigger: .writeAgain)
     }
 
+    /// Update Podcast-Ready Files can run: they exist, the MP3 is in its folder, nothing is running on it.
+    func canUpdatePodcastReady(_ recording: Recording) -> Bool {
+        guard recording.status == .readyForYourYes || recording.status == .approved,
+              !runner.isWaiting(recording), !runner.isCurrent(recording),
+              let folder = recording.outputFolder, let ready = recording.podcastReady else { return false }
+        return FileManager.default.fileExists(atPath: URL(fileURLWithPath: folder).appending(path: PodcastPackage.folderName).appending(path: ready.fileName).path)
+    }
+
+    /// The podcast-ready files were made with an older title, notes, show name, host, artwork,
+    /// episode number or set of written notes than the recording has now.
+    func podcastReadyIsOutOfDate(_ recording: Recording) -> Bool {
+        guard let ready = recording.podcastReady else { return false }
+        let settings = OutputResolver.details(for: .podcastReady, recording: recording, defaults: defaultSettings())?.podcastReadySettings ?? PodcastReadySettings()
+        return ready.fingerprint != PodcastPackage.fingerprint(settings: settings, facts: recording.podcastFacts, written: recording.written)
+    }
+
+    /// Writes the podcast-ready files again around the audio already made. Takes its turn in line.
+    func updatePodcastReady(_ recording: Recording) {
+        guard canUpdatePodcastReady(recording) else { return }
+        runner.enqueue(recording, trigger: .packageAgain)
+    }
+
+    /// The episode number and season, set on the recording's page.
+    func setEpisodeNumbers(episode: Int?, season: Int?, for recording: Recording) {
+        guard recording.episodeNumber != episode || recording.seasonNumber != season else { return }
+        recording.episodeNumber = episode
+        recording.seasonNumber = season
+        record("\(label(recording)): episode " + (episode.map(String.init) ?? "not set") + ", season " + (season.map(String.init) ?? "not set") + ".")
+        try? context.save()
+    }
+
     /// Takes one of the written title options as the recording's title.
     func useTitle(_ title: String, for recording: Recording) {
         guard recording.title != title else { return }

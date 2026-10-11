@@ -51,6 +51,34 @@ enum PrakritiStore {
     }
 }
 
+extension PrakritiStore {
+    /// An output added after the store was made (the podcast-ready episode, 10 Oct) gets its default
+    /// setting on the Outputs screen and a setting in every folder, switched off, so the screens can
+    /// show it and nothing starts making it on its own. Returns the kinds it added.
+    @MainActor
+    @discardableResult
+    static func addMissingOutputKinds(_ context: ModelContext) throws -> [OutputKind] {
+        let all = try context.fetch(FetchDescriptor<OutputSetting>())
+        guard !all.isEmpty else { return [] }
+        let defaults = all.filter { $0.source == nil && $0.recording == nil }
+        var added: [OutputKind] = []
+        for kind in OutputKind.allCases where !defaults.contains(where: { $0.kind == kind }) {
+            context.insert(OutputSetting(kind: kind))
+            added.append(kind)
+        }
+        for source in try context.fetch(FetchDescriptor<Source>()) {
+            for kind in OutputKind.allCases where source.setting(for: kind) == nil {
+                let setting = OutputSetting(kind: kind)
+                context.insert(setting)
+                setting.source = source
+                if !added.contains(kind) { added.append(kind) }
+            }
+        }
+        if !added.isEmpty { try context.save() }
+        return added
+    }
+}
+
 /// Which choices apply to a recording.
 ///
 /// - **Whether** an output is made: the recording's own switch (set on its page), else its folder's

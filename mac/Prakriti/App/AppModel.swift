@@ -199,6 +199,14 @@ final class AppModel {
         } catch {
             record("Could not set up the defaults: \(error.localizedDescription)", level: .problem)
         }
+        do {
+            let added = try PrakritiStore.addMissingOutputKinds(context)
+            if !added.isEmpty {
+                record("New output available: \(added.map(\.title).joined(separator: ", ")). It is off for every folder until you turn it on.")
+            }
+        } catch {
+            record("Could not add the new outputs: \(error.localizedDescription)", level: .problem)
+        }
         importEngineV0IfNeeded()
         let sources = (try? context.fetch(FetchDescriptor<Source>())) ?? []
         log.write("Sources: \(sources.map { "\($0.name) (\($0.mode.rawValue))" }.joined(separator: " | ")).")
@@ -358,6 +366,7 @@ final class AppModel {
             own.channelsRaw = base.channelsRaw
             own.transcriptFormatsRaw = base.transcriptFormatsRaw
             own.applyLexicon = base.applyLexicon
+            own.copySettings(from: base)
             context.insert(own)
             own.recording = recording
         }

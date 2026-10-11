@@ -35,7 +35,7 @@ final class ModelTests: XCTestCase {
         for kind in OutputKind.notBuilt {
             XCTAssertFalse(OutputSetting(kind: kind, isOn: true).isOn, "\(kind) is not built and must stay off")
         }
-        XCTAssertEqual(OutputKind.built, [.podcastEpisode, .transcript, .checksAndReport, .titlesNotesChapters])
+        XCTAssertEqual(OutputKind.built, [.podcastEpisode, .podcastReady, .transcript, .checksAndReport, .titlesNotesChapters])
         XCTAssertEqual(OutputKind.notBuilt.count, 5)
     }
 

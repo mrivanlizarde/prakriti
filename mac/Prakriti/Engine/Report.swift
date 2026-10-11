@@ -63,6 +63,14 @@ enum Report {
                 "`\(WrittenPackage.notesFileName)` (and `\(WrittenPackage.fileName)`, kept in the Outputs folder only). " + $0.stepLine
             } ?? "Not written. \(result.writingProblem ?? "")"))
         }
+        if let setup = options.podcastReady {
+            rows.append(("Podcast-ready episode", result.podcastReady.map { record in
+                "`\(PodcastPackage.folderName)/\(record.fileName)`, \(setup.settings.channels.title.lowercased()) \(record.bitrateKbps) kbps, "
+                    + "\(String(format: "%.1f", Double(record.sampleRate) / 1000)) kHz: " + Pipeline.podcastLine(record)
+                    + " Its own chain: high-pass at 70 Hz, a gentle compressor, raised evenly to -16 LUFS, peaks limited. "
+                    + "`\(PodcastPackage.checklistName)` lists every check, with its captions and `\(PodcastPackage.textName)` beside it"
+            } ?? "Not made. \(result.podcastProblem ?? "")"))
+        }
 
         var text = "# \(label): \(file.lastPathComponent)\n\n"
         text += "Made by Prakriti for Mac on \(stamp(madeAt)) in \(Format.timecode(result.seconds)). **Nothing has been published.**\n\n"

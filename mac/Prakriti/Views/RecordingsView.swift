@@ -109,6 +109,10 @@ struct RecordingDetailView: View {
                 if recording.outputFolder != nil || recording.written != nil {
                     WritingSection(recording: recording)
                 }
+                if recording.podcastReady != nil || recording.podcastReadyProblem != nil
+                    || OutputResolver.isOn(.podcastReady, recording: recording, source: nil, defaults: model.defaultSettings()) {
+                    PodcastReadySection(recording: recording)
+                }
             }
 
             if let run = recording.latestRun, !run.steps.isEmpty {
@@ -190,6 +194,13 @@ struct RecordingDetailView: View {
                         TranscriptSettingsRows(setting: transcript, wordListIsBelow: false)
                     } header: {
                         SectionHeader("Transcript settings for this recording")
+                    }
+                }
+                if let ready = recording.outputSettings.first(where: { $0.kind == .podcastReady && $0.isOn }) {
+                    Section {
+                        PodcastReadySettingsRows(setting: ready)
+                    } header: {
+                        SectionHeader("Podcast-ready settings for this recording")
                     }
                 }
             }

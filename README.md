@@ -82,9 +82,12 @@ Neither page is listed in search engines.
 ## Status on Thu 8 Oct 2026 (one line added Sat 10 Oct)
 
 - **Sat 10 Oct:** Prakriti for Mac, on Ivan's laptop, is now what watches the studio folder (it
-  replaced engine v0). Four of its six steps are built: it finds new recordings, checks their sound,
-  makes the episode audio and the transcript, and lets Ivan choose what is made and how. Progress is
-  in `docs/BUILD-LOG.md`.
+  replaced engine v0). All six of its first steps are built: it finds new recordings, checks their
+  sound, makes the episode audio and the transcript, drafts titles and show notes, and lets Ivan trim,
+  cut and approve. It can now also prepare a podcast-ready episode: the finished file with its name,
+  details, chapters and captions, a text of the title, show notes and social posts, and a checklist
+  against Apple's published rules, so Ivan can upload it by hand. Nothing is uploaded by Prakriti.
+  Progress is in `docs/BUILD-LOG.md`.
 - Prakriti is named, researched and planned. The front page and roadmap are written; they go live
   on Ivan's yes. The web app behind sign-in is not built yet.
 - Podcast first: Gabriel's reply is due Mon 12 Oct, or at Ivan's studio visit if that comes first.

@@ -115,6 +115,16 @@ enum Approval {
         for name in files {
             let from = source.appending(path: name)
             try fm.copyItem(at: from, to: staging.appending(path: name))
+            var isFolder: ObjCBool = false
+            if fm.fileExists(atPath: from.path, isDirectory: &isFolder), isFolder.boolValue {
+                // The podcast-ready folder: every file in it is listed, so a change to any can be seen.
+                for inner in Pipeline.madeFiles(in: from) {
+                    let file = staging.appending(path: name).appending(path: inner)
+                    let bytes = ((try? fm.attributesOfItem(atPath: file.path))?[.size] as? NSNumber)?.int64Value ?? 0
+                    rows.append((name + "/" + inner, bytes, try sha256(file)))
+                }
+                continue
+            }
             let bytes = ((try? fm.attributesOfItem(atPath: from.path))?[.size] as? NSNumber)?.int64Value ?? 0
             rows.append((name, bytes, try sha256(staging.appending(path: name))))
         }

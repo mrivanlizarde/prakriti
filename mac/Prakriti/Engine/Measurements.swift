@@ -90,6 +90,36 @@ enum Measure {
         return Loudness(integratedLUFS: i, truePeakDBFS: peak)
     }
 
+    /// The loudness range in the same summary: the last "LRA: ... LU" line.
+    static func loudnessRange(stderr: String) -> Double? {
+        guard let match = stderr.matches(of: /LRA:\s+(-?[0-9.]+) LU\b/).last else { return nil }
+        return Double(match.output.1)
+    }
+
+    /// The audio stream of a finished file, from
+    /// `ffprobe -v error -select_streams a:0 -show_entries stream=sample_rate,channels,bit_rate:format=duration,bit_rate -of json`.
+    struct AudioStream: Equatable, Sendable {
+        let sampleRate: Int?
+        let channels: Int?
+        /// In kbps, rounded: the stream's own figure, else the container's.
+        let bitrateKbps: Int?
+        let duration: Double?
+    }
+
+    static func audioStream(json: String) -> AudioStream? {
+        struct Payload: Decodable {
+            struct Stream: Decodable { let sample_rate: String?; let channels: Int?; let bit_rate: String? }
+            struct Format: Decodable { let duration: String?; let bit_rate: String? }
+            let streams: [Stream]?
+            let format: Format?
+        }
+        guard let payload = try? JSONDecoder().decode(Payload.self, from: Data(json.utf8)) else { return nil }
+        let stream = payload.streams?.first
+        let bits = (stream?.bit_rate ?? payload.format?.bit_rate).flatMap(Double.init)
+        return AudioStream(sampleRate: stream?.sample_rate.flatMap { Int($0) }, channels: stream?.channels,
+                           bitrateKbps: bits.map { Int(($0 / 1000).rounded()) }, duration: payload.format?.duration.flatMap(Double.init))
+    }
+
     // MARK: Silence (silencedetect)
 
     struct Silence: Equatable, Sendable {

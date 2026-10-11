@@ -134,6 +134,15 @@ final class Recording {
     /// Why the last try at writing them did not give anything, in one plain sentence, or nil.
     var writingProblem: String?
 
+    /// The podcast-ready episode (10 Oct): this episode's number and season, set on its page (both
+    /// optional; Apple asks for them only for a serial show), and what the last podcast-ready make
+    /// measured and checked, a PodcastReadyRecord as JSON, read through `podcastReady`.
+    var episodeNumber: Int?
+    var seasonNumber: Int?
+    var podcastReadyJSON: String?
+    /// Why the podcast-ready files were not made, in one plain sentence, or nil.
+    var podcastReadyProblem: String?
+
     var source: Source?
 
     @Relationship(deleteRule: .cascade, inverse: \Run.recording)
@@ -180,6 +189,15 @@ final class Recording {
 
     /// The titles, show notes and chapters last written, or nil.
     var written: WrittenPackage? { WrittenPackage.decode(writtenJSON) }
+
+    /// What the last podcast-ready make measured and checked, or nil.
+    var podcastReady: PodcastReadyRecord? { PodcastReadyRecord.decode(podcastReadyJSON) }
+
+    /// The facts the podcast-ready package reads from this recording.
+    var podcastFacts: PodcastEpisodeFacts {
+        PodcastEpisodeFacts(title: title, notes: notes, episodeNumber: episodeNumber, seasonNumber: seasonNumber, recordedAt: recordedAt ?? foundAt,
+                            label: Format.dayLabel(sessionDate), kind: kind, fileName: fileName)
+    }
 
     /// The date the recording was made, else the date it was found. Used for its label ("Sun 13 Sep").
     var sessionDate: Date { recordedAt ?? foundAt }
@@ -253,6 +271,16 @@ final class OutputSetting {
     var transcriptFormatsRaw: [String] = TranscriptFormat.allCases.map(\.rawValue)
     var applyLexicon: Bool = true
 
+    // Podcast-ready episode (10 Oct). Its trim, intro and outro are the podcast episode's; these are
+    // its own. `channelsRaw` above is used too: the podcast-ready setting keeps its own layout.
+    var showName: String = ""
+    var hostName: String = ""
+    var artworkPath: String?
+    var explicitContent: Bool = false
+    var bitrateKbps: Int = 96
+    var noiseReduction: Bool = false
+    var aiVoice: Bool = false
+
     var source: Source?
     var recording: Recording?
 
@@ -285,7 +313,26 @@ final class OutputSetting {
         c.channelsRaw = channelsRaw
         c.transcriptFormatsRaw = transcriptFormatsRaw
         c.applyLexicon = applyLexicon
+        c.copySettings(from: self)
         return c
+    }
+
+    /// The podcast-ready settings, copied from another setting.
+    func copySettings(from other: OutputSetting) {
+        showName = other.showName
+        hostName = other.hostName
+        artworkPath = other.artworkPath
+        explicitContent = other.explicitContent
+        bitrateKbps = other.bitrateKbps
+        noiseReduction = other.noiseReduction
+        aiVoice = other.aiVoice
+    }
+
+    /// The podcast-ready settings as the pipeline reads them.
+    var podcastReadySettings: PodcastReadySettings {
+        PodcastReadySettings(showName: showName.trimmingCharacters(in: .whitespacesAndNewlines), hostName: hostName.trimmingCharacters(in: .whitespacesAndNewlines),
+                             artworkPath: artworkPath, explicit: explicitContent, channels: channels, bitrateKbps: bitrateKbps,
+                             noiseReduction: noiseReduction, aiVoice: aiVoice)
     }
 }
 

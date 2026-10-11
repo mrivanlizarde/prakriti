@@ -5,6 +5,46 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-10, Sat: the podcast-ready episode
+
+- **A new output, "Podcast-ready episode": the file Ivan can upload to a podcast host as it is.** In
+  `<Outputs>/<recording>/Podcast-ready/`: the MP3 named for the show and the episode, its captions
+  (.srt and .vtt) timed to it, `Title, show notes and captions.txt` and `Upload checklist.txt`. The
+  quick "Podcast episode" stays as the draft to listen to. Why: Ivan asked for edited audio as close
+  as possible to uploadable, with the episode name, show notes and social captions beside it.
+- **It fixes the volume riding Ivan heard on episode 1.** Diagnosed with numbers first: engine v0's
+  loudnorm pass falls back to "dynamic" on every studio talk, because the talk's peaks sit about 24
+  dB over its loudness; on episode 1 the gain it applied moved over a 4 dB spread, jumped more than 2
+  dB within a second for 104 s, and lifted the room tone in pauses unevenly. The new chain levels
+  with a gentle compressor, then raises the whole episode by one amount (loudnorm reports linear),
+  then limits the peaks. Why: the riding was the one thing about episode 1's sound already flagged
+  for Ivan's ears since milestone 2.
+- **Every setting was chosen from a measurement, and each reason sits beside its number in the
+  code:** 70 Hz high-pass (the voice's lowest notes sit at 90 to 120 Hz), 1.5:1 compression (stronger
+  settings jumped more than v0 did), noise reduction off (the room sits 38 to 51 dB under the voice
+  and afftdn lowered it only 1.5 dB), 44.1 kHz mono 96 kbps (a null test: 5 dB less coding noise than
+  64 kbps, which also broke the peak rule; 128 adds a third to the file for 1.5 dB). Why: "reading
+  code is not verification" applies to sound too.
+- **Prakriti writes the MP3's ID3v2.4 tag itself, and reads it back.** Why: ffmpeg wrote the comment
+  as the wrong frame and left the chapter titles out (measured), and a checklist must describe the
+  file, not the intent.
+- **The writing model now also drafts three social captions** in the same single request, checked like
+  the quotes: words in quotation marks must be the teacher's own, word for word. Why: Ivan asked for
+  captions for sharing each episode; a second request would hold the 33 GB model for minutes more.
+- **Show name, host and artwork are never invented.** They are MISSING in the checklist until Ivan
+  sets them on the Outputs screen; the file is named by its date until it has a title. **Update
+  Podcast-Ready Files** on the recording's page re-tags and renames around the audio already made
+  (about 10 s for a 16-minute talk, 35 s for episode 1). Why: the build's do-nots, and a title chosen
+  after the make should not cost a remaster.
+- **The finished file's true peak is measured to the hundredth.** Why: the first acceptance run found
+  episode 1, trimmed by 10 s, at -0.98 dBTP by loudnorm's meter while ebur128's one-decimal summary said
+  "-1.0", so the checklist would have passed a file over Apple's line. Now a file over -1.1 is made
+  again with the limits lowered, and the limits start 0.2 dB lower.
+- **Approve copies the Podcast-ready folder**, with every file in it in the receipt. Why: the approved
+  folder is where Ivan uploads from.
+- Off for every folder until Ivan turns it on. Checks and measured results: `docs/BUILD-LOG.md`,
+  "Podcast-ready episode".
+
 ## 2026-10-10, Sat: Prakriti for Mac v1, finish line
 
 - **`docs/BUILD-LOG.md` ends with the finish line:** what works with its measured evidence, what does

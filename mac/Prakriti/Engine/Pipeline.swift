@@ -28,7 +28,7 @@ import Foundation
 /// The steps, in order. `title` is what the recording page lists; `doing` is what the status line
 /// says while it runs ("Working on Sun 13 Sep: making the episode audio"). Never "Processing".
 enum PipelineStep: String, CaseIterable, Sendable {
-    case complete, sound, speechAudio, transcript, coverage, wordList, trim, edits, episode, loudness, episodeTranscript, writing, report
+    case complete, sound, speechAudio, transcript, coverage, wordList, trim, edits, episode, loudness, podcastAudio, episodeTranscript, writing, podcastPackage, report
 
     var title: String {
         switch self {
@@ -42,6 +42,8 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .edits: "Your trim and cuts"
         case .episode: "Episode audio"
         case .loudness: "Loudness check"
+        case .podcastAudio: "Podcast-ready audio"
+        case .podcastPackage: "Podcast-ready files"
         case .episodeTranscript: "Transcript matched to the episode"
         case .writing: "Titles, show notes and chapters"
         case .report: "Report"
@@ -60,6 +62,8 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .edits: "Applying your trim and cuts"
         case .episode: "Making the episode audio"
         case .loudness: "Measuring the episode audio"
+        case .podcastAudio: "Mastering the podcast-ready audio"
+        case .podcastPackage: "Writing and checking the podcast-ready files"
         case .episodeTranscript: "Matching the transcript to the episode"
         case .writing: "Writing the titles, show notes and chapters"
         case .report: "Writing the report"
@@ -118,6 +122,11 @@ struct PipelineOptions: Sendable {
     var kind: RecordingKind = .unknown
     var knownSerenity = false
 
+    /// The podcast-ready episode (10 Oct): its settings and the facts it names, or nil when it is
+    /// not made. It shares the episode's trim, cuts, intro and outro.
+    var podcastReady: PodcastReadySetup?
+    var makePodcastReady: Bool { podcastReady != nil }
+
     /// Anything taken out of the recording or added to it, so the episode's clock is not the
     /// original's and the transcript files are rewritten to follow the episode.
     var changesTheClock: Bool {
@@ -132,13 +141,15 @@ struct PipelineOptions: Sendable {
             steps += [.speechAudio, .transcript, .coverage]
             if applyLexicon { steps.append(.wordList) }
         }
-        if makeEpisode {
+        if makeEpisode || makePodcastReady {
             if trimSilence { steps.append(.trim) }
             if !edits.isEmpty { steps.append(.edits) }
-            steps += [.episode, .loudness]
-            if makeTranscript && changesTheClock { steps.append(.episodeTranscript) }
         }
+        if makeEpisode { steps += [.episode, .loudness] }
+        if makePodcastReady { steps.append(.podcastAudio) }
+        if (makeEpisode || makePodcastReady) && makeTranscript && changesTheClock { steps.append(.episodeTranscript) }
         if makeTranscript && writing != nil { steps.append(.writing) }
+        if makePodcastReady { steps.append(.podcastPackage) }
         if makeReport { steps.append(.report) }
         return steps
     }
@@ -210,6 +221,9 @@ struct PipelineResult: Sendable {
     var writingProblem: String?
     /// The transcript says "Serenity": the recording is privacy locked from now on.
     var mentionsSerenity = false
+    /// The podcast-ready episode as made and checked, or why it was not made (10 Oct).
+    var podcastReady: PodcastReadyRecord?
+    var podcastProblem: String?
 }
 
 struct PipelineProgress: Sendable {
@@ -586,9 +600,9 @@ struct Pipeline: Sendable {
             }
 
             // 5. The episode audio: the silence trim, two-pass loudness, the MP3 (Apple Podcasts spec).
-            if options.makeEpisode {
-                let mp3 = staging.appending(path: "episode.mp3")
-                var program = Mastering.Program(kept: nil, channels: options.channels)
+            //    The trim and cuts are found first, for the episode and the podcast-ready episode alike.
+            var program = Mastering.Program(kept: nil, channels: options.channels)
+            if options.makeEpisode || options.makePodcastReady {
                 if options.trimSilence {
                     await begin(.trim)
                     let scan = try await tool(.trim, tools.ffmpeg, ["-hide_banner", "-nostats", "-i", file.path, "-vn", "-af", SilenceTrim.filter, "-f", "null", "-"],
@@ -614,7 +628,9 @@ struct Pipeline: Sendable {
                     await finish(.edits, (options.edits.summary.map { $0 + " " } ?? "")
                                  + "The episode keeps \(Format.timecode(kept)) of \(Format.timecode(ready.duration)).")
                 }
-
+            }
+            if options.makeEpisode {
+                let mp3 = staging.appending(path: "episode.mp3")
                 await begin(.episode)
                 // The intro and outro are checked first, so a missing file stops before minutes of work.
                 let intro = try await piece(options.introPath, role: "intro", duration: ready.duration)
@@ -676,7 +692,29 @@ struct Pipeline: Sendable {
                                           detail: "episode \(made.map { String($0) } ?? "unreadable") s, expected \(expected) s (recording \(ready.duration) s)")
                 }
                 await finish(.loudness, "\(Format.lufs(loudness.integratedLUFS)), peak \(Format.dbfs(loudness.truePeakDBFS)). Plays to its end (\(Format.timecode(made))).")
+            }
 
+            // 6b. The podcast-ready audio: its own chain, on the same trim, cuts, intro and outro. A
+            //     failure costs only this step and the package: the episode and transcript are kept.
+            var podcastMaster: PodcastMaster?
+            if let setup = options.podcastReady {
+                await begin(.podcastAudio)
+                do {
+                    let made = try await masterPodcastReady(file: file, duration: ready.duration, program: program, staging: staging, setup: setup,
+                                                            knownTalkLUFS: options.makeEpisode && options.channels == setup.settings.channels ? result.inputLUFS : nil)
+                    podcastMaster = made
+                    if result.clock == nil { result.clock = made.clock }
+                    await finish(.podcastAudio, "\(setup.settings.channels.title) MP3, \(setup.settings.bitrate) kbps, 44.1 kHz: "
+                                 + String(format: "%.2f LUFS, true peak %.2f dBTP, loudness range %.1f LU. ", made.lufs, made.truePeak, made.lra)
+                                 + Self.levelingLine(made.normalizationType) + (made.corrected ? " Made twice: the first measured over -1.1 dBTP or off the loudness, so the limits or the aim were moved." : ""))
+                } catch let failure as PipelineFailure {
+                    result.podcastProblem = failure.reason
+                    if let detail = failure.detail { log?.write("\(name): podcast-ready audio failed. \(detail)") }
+                    await finish(.podcastAudio, failure.reason + " The episode and transcript are kept.", state: .failed)
+                }
+            }
+
+            if options.makeEpisode || options.makePodcastReady {
                 // 7. The transcript files follow the episode: the words in anything taken out are
                 //    left out, and the times are the episode's. transcript.json keeps every word as
                 //    heard, on the original's clock, for the recording page.
@@ -700,6 +738,9 @@ struct Pipeline: Sendable {
                                      + (left > 0 ? "; \(Format.count(left, "word")) in the parts taken out are left out\(fixesGone)." : String(format: " (%.1f s %@).", abs(shift), shift >= 0 ? "later" : "earlier"))
                                      + " transcript.json keeps every word as heard.")
                     }
+                } else if let i = index(.episodeTranscript), steps[i].state == .waiting {
+                    // Only the podcast-ready audio was asked for, and it was not made: no clock to follow.
+                    steps[i].state = .skipped
                 }
             }
 
@@ -725,6 +766,30 @@ struct Pipeline: Sendable {
                 } else {
                     result.writingProblem = outcome.problem ?? "Nothing was written."
                     await finish(.writing, (result.writingProblem ?? "") + " The episode and transcript are kept.", state: .failed)
+                }
+            }
+
+            // 8b. The podcast-ready files: the tagged MP3, captions, the text file and the checklist,
+            //     written after the titles and notes so they can carry them.
+            if let setup = options.podcastReady {
+                await begin(.podcastPackage)
+                if let master = podcastMaster {
+                    do {
+                        let record = try await packagePodcastReady(untagged: master.untagged, into: staging.appending(path: PodcastPackage.folderName, directoryHint: .isDirectory),
+                                                                   setup: setup, written: result.written, transcriptFolder: options.makeTranscript ? staging : nil,
+                                                                   clock: master.clock, applyLexicon: options.applyLexicon, expectedDuration: master.expectedDuration,
+                                                                   normalizationType: master.normalizationType, talkLUFS: master.talkLUFS, corrected: master.corrected, madeAt: Date())
+                        result.podcastReady = record
+                        await finish(.podcastPackage, "\(record.fileName) and its checklist, in the \(PodcastPackage.folderName) folder. Checklist: \(record.summary.lowercasedFirst).")
+                    } catch let failure as PipelineFailure {
+                        result.podcastProblem = failure.reason
+                        try? FileManager.default.removeItem(at: staging.appending(path: PodcastPackage.folderName))
+                        if let detail = failure.detail { log?.write("\(name): podcast-ready files failed. \(detail)") }
+                        await finish(.podcastPackage, failure.reason + " The episode and transcript are kept.", state: .failed)
+                    }
+                    try? FileManager.default.removeItem(at: master.untagged)
+                } else {
+                    await finish(.podcastPackage, "Not written: the podcast-ready audio was not made.", state: .failed)
                 }
             }
 
@@ -788,7 +853,7 @@ struct Pipeline: Sendable {
     }
 
     /// Runs one tool for a step, turning a tool's failure into one plain sentence.
-    private func tool(_ step: PipelineStep, _ executable: URL, _ arguments: [String], captureStdout: Bool = true,
+    func tool(_ step: PipelineStep, _ executable: URL, _ arguments: [String], captureStdout: Bool = true,
                       duration: Double?) async throws -> ToolOutput {
         do {
             return try await Subprocess.run(executable, arguments, captureStdout: captureStdout, timeout: limit(duration))
@@ -810,6 +875,7 @@ struct Pipeline: Sendable {
         if options.makeEpisode { made.append("Episode audio") }
         if options.makeTranscript { made.append("transcript") }
         if options.makeTranscript && result.written != nil { made.append("show notes") }
+        if result.podcastReady != nil { made.append("the podcast-ready files") }
         let listed = made.count > 1 ? made.dropLast().joined(separator: ", ") + " and " + (made.last ?? "") : (made.first ?? "")
         var reason = made.isEmpty ? "The checks passed." : listed + (made.count > 1 ? " are ready." : " is ready.")
         if result.coverageOK == false, let reaches = result.transcriptReaches, let duration = result.duration {
@@ -819,6 +885,9 @@ struct Pipeline: Sendable {
         }
         if let problem = result.writingProblem {
             reason += " Titles, show notes and chapters were not written. \(problem)"
+        }
+        if let problem = result.podcastProblem {
+            reason += " The podcast-ready files were not made. \(problem)"
         }
         return reason
     }
@@ -929,7 +998,7 @@ struct Pipeline: Sendable {
     }
 
     /// Checks an intro or outro is there and has sound, and measures its loudness and length.
-    private func piece(_ path: String?, role: String, duration: Double) async throws -> MeasuredPiece? {
+    func piece(_ path: String?, role: String, duration: Double) async throws -> MeasuredPiece? {
         guard let path, !path.isEmpty else { return nil }
         let name = (path as NSString).lastPathComponent
         guard FileManager.default.fileExists(atPath: path) else {
@@ -969,7 +1038,7 @@ struct Pipeline: Sendable {
 
     /// Every file a make can leave. Only these are ever replaced or removed from a recording's
     /// folder; anything else Ivan keeps there is left alone.
-    static let madeNames: Set<String> = Set(["episode.mp3", "REPORT.md", "speech.wav", TranscriptFiles.asHeard]
+    static let madeNames: Set<String> = Set(["episode.mp3", "REPORT.md", "speech.wav", TranscriptFiles.asHeard, PodcastPackage.folderName]
                                             + TranscriptFormat.allCases.map(TranscriptFiles.fileName))
         .union(WrittenPackage.fileNames)
 

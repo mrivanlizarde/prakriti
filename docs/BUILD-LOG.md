@@ -5,8 +5,12 @@ with its measured result, the decisions taken and why, and anything Ivan must do
 resumes from the last entry. Weekdays computed with `date(1)`.
 
 **Where it stands:** v1 reached its finish line on Sat 10 Oct: all six milestones passed on real
-recordings, and the last section of this file, "Finish line", says what works, what does not, what
-Ivan must click, where the pictures of every screen are, and the three things to try first.
+recordings, and "Finish line" says what works, what does not, what Ivan must click, where the pictures
+of every screen are, and the three things to try first. **The same evening the podcast-ready episode
+was added** (the last section, "Podcast-ready episode"): the file to upload to a podcast host, with
+its tags, chapters, captions, a title, show notes and captions text and an upload checklist, on a new
+mastering chain that ends episode 1's volume riding. Passed on the 6 Sep and 13 Sep talks; installed
+live at 23:55, off for every folder until Ivan turns it on.
 Prakriti for Mac, installed in `~/Applications` (milestone 6's build since 20:20), is the only thing
 watching the studio folder and `~/Prakriti/Drop`. Titles, show notes and chapters can be written
 (Qwen3.8-27B in LM Studio by default) but are off for every folder until Ivan turns them on.
@@ -1425,3 +1429,254 @@ To open it:
 ```bash
 cd ~ && open ~/Applications/Prakriti.app
 ```
+
+---
+
+## Podcast-ready episode. Sat 10 Oct 2026
+
+Ivan asked for podcast-ready edited audio as an output, as close as possible to a file that can be
+uploaded to a podcast host as it is, with a text file of the episode's name, show notes and social
+captions. Built as a new output, "Podcast-ready episode", separate from "Podcast episode" (which stays
+engine v0's chain: the quick draft to listen to).
+
+### The diagnosis first: why episode 1's MP3 rides its volume
+
+Measured 10 Oct on the originals and engine v0's MP3s in `~/Prakriti/Outputs` (read only), and again
+by `make accept-podcast` (its report, `screens/mac/podcast/acceptance-podcast-*.txt`):
+
+| | 6 Sep talk (episode 1) | 13 Sep talk |
+|---|---|---|
+| The talk as recorded (mono mix) | -23.80 LUFS, true peak +0.04 dBTP, loudness range 6.6 LU | -26.67 LUFS, true peak -0.38 dBTP, range 6.2 LU |
+| Peak over loudness | 23.8 dB | 26.3 dB |
+| What a linear raise to -15.4 with the peak at -1.5 allows | 13.9 dB | 13.9 dB |
+| loudnorm's second pass, engine v0's chain run again | **`normalization_type` dynamic** | **dynamic** |
+| engine v0's MP3 | -16.7 LUFS, true peak -1.2 dBTP, **range 5.2 LU** | -16.8 LUFS, -1.6 dBTP, **range 4.2 LU** |
+| The gain it applied over speech (short-term loudness, MP3 less original, 5th to 95th percentile) | 5.3 to 9.3 dB (a 4.0 dB spread; min 0.7, max 13.8) | 8.0 to 12.3 dB (4.3 dB spread) |
+| Seconds where that gain moved more than 2 dB within one second | **104 s** (largest 10.2 dB) | 58 s (largest 7.7 dB) |
+| Quiet passages against loud ones | +9.8 dB on the quietest speech, +5.9 on the loudest | +13.2 and +8.5 |
+| The room tone in pauses (original momentary under -50 LUFS) | +9.7 dB median, **+13.6 at the 95th percentile**, against +7.4 on speech | +12.8 and **+17.1**, against +10.3 |
+
+**The cause:** the talks' peaks sit about 24 to 26 dB over their loudness; raising them evenly to the
+target would push the peaks 10 to 12 dB past the ceiling, so loudnorm's second pass silently gives up
+"linear" and rides the level from a 3-second window, lifting quiet passages and the room tone between
+sentences, then pulling the level down when speech returns. Milestone 2 found the mode; these are the
+numbers of what it did. Engine v0's MP3 lines up with the original frame for frame (the alignment was
+checked: any shift but 0 widens the spread), so the gain curve is the chain's, not a timing artifact.
+
+### What was built
+
+- **The output** (`OutputKind.podcastReady`, "Podcast-ready episode"), off for every folder; an older
+  store gets its settings switched off at launch (`PrakritiStore.addMissingOutputKinds`). Settings on
+  the Outputs screen (and a recording's own): show name, host or author, show artwork (checked against
+  Apple's rules as soon as it is chosen), explicit, mono or stereo, bitrate (64, 96, 128 mono; 128, 192
+  stereo), light noise reduction, and "the intro or outro has an AI-made voice". Episode and season
+  numbers are the recording's own, on its page. It uses the podcast episode's silence trim, intro and
+  outro, and the recording's trim and cuts.
+- **The chain** (`PodcastMastering`, run by `Pipeline.masterPodcastReady`): the talk (trimmed and cut,
+  at 48 kHz) through a 70 Hz high-pass, optional afftdn, a gain to -20 LUFS, a 1.5:1 compressor above
+  -22 dB (20 ms attack, 500 ms release), the layout at 44.1 kHz, rendered once to a float WAV; the intro
+  and outro brought to the processed talk's loudness and joined; the gain before a -3.0 dBFS limiter
+  found by measuring until loudnorm's own correction is under 0.2 LU; loudnorm's second pass in linear
+  mode to -16 LUFS plus a 0.4 LU encoder allowance; the layout and rate again; a last limiter at -2.7;
+  LAME CBR. The MP3 is measured to the hundredth (loudnorm's meter): a true peak over -1.1 dBTP or a
+  loudness off by more than 0.5 makes it once more with the limits lowered by the excess.
+- **The package** (`Pipeline.packagePodcastReady`), in `<Outputs>/<recording>/Podcast-ready/`:
+  - `<Show name> - <Episode title>.mp3` (ASCII only, as Apple asks; the date until a title is chosen),
+    its **ID3v2.4 tag written by Prakriti** (`ID3.swift`): TIT2 title, TPE1 host, TALB show, TDRC year,
+    COMM the summary, TCON Podcast, TRCK the episode number, APIC the artwork when it passes, and the
+    chapters as a CTOC listing CHAP frames, each with its title, the first at 0:00.
+  - `<same name>.srt` and `.vtt`, timed to the finished file (`EpisodeTranscript.cues` on the episode's
+    clock: the intro, the trim and the cuts all moved in).
+  - `Title, show notes and captions.txt`: the episode title (or the writer's three options), the show
+    and episode details, the show notes (Ivan's own, or the writer's draft, said to be a draft), the
+    chapters, three social captions and hashtags from the tags, the summary, what is not chosen yet.
+  - `Upload checklist.txt`: 23 lines, each PASS, MISSING or FAIL with the measured value and what to
+    do, measured on the tagged file and read back (see "Checks" below).
+- **Social captions** (`WritingCheck.captions`): asked for in the same single writing request (no
+  second load of the 33 GB model), three of them, at most 120 and 150 to 280 characters, describe never
+  sell; any words a caption puts in quotation marks must be found word for word in the transcript or
+  the caption is left out and counted; dashes, exclamation marks, hashtags and links are taken out.
+  Shown on the recording page under the show notes and in `show-notes.md`.
+- **Update Podcast-Ready Files** (`PipelineRunner.packageAgain`, trigger `packageAgain`): re-tags,
+  renames and rewrites the text and checklist around the audio already made, without mastering again, for a new
+  title, notes, show name, host, artwork or episode number; the page says when the files are out of
+  date. Write Again updates them too. The audio is never made again by it (tested byte for byte); it
+  measures the file again, so it takes about 10 s on a 16-minute talk and 35 s on episode 1.
+- **Approve** copies the `Podcast-ready` folder, every file in it listed in `APPROVAL.md` with its
+  SHA-256 (tested).
+- **The recording page** gains a "Podcast-ready episode" section: the file and Show in Finder, the
+  sound and the file in one line each, the checklist's summary with every line that does not pass and
+  what to do, Open Checklist, the episode and season, and Update Podcast-Ready Files.
+- **REPORT.md** gains a "Podcast-ready episode" row; Activity and the step lines carry the numbers.
+- **Make:** `make accept-podcast` (`PodcastReadyAcceptanceTests`), and `make migrate-check` now runs
+  the store upgrade on its copy.
+
+### How each setting was chosen, measured 10 Oct
+
+| Setting | Measured | Chosen |
+|---|---|---|
+| High-pass | The voice's energy by band (speech windows, both talks): 90 to 120 Hz -13.6 and -15.2 dB of the whole, 70 to 90 Hz -27 to -30, under 70 Hz -39 to -48 (pops and room). An 80 Hz two-pole filter takes about 1.5 dB off the voice's lowest notes | **70 Hz**, two poles |
+| Noise reduction | The room tone sits 38 dB under the speech on 13 Sep and 51 dB on 6 Sep. afftdn at nr 6 and 12 lowered the pauses by 1.5 dB and left the speech at -26.7 LUFS | **Off** by default; an option for a noisier room |
+| Compressor | Six settings on both talks, against v0's 4.2 and 5.2 LU and its 58 and 104 s of gain jumps. 2:1 to 3:1, or a 50 ms attack and 1 s release, made 62 to 123 s of jumps. None at all left 4.8 LU on 13 Sep (above v0's) | **1.5:1 above -22 dB, 20 ms, 500 ms**: 3.7 and 4.7 LU |
+| Limits | alimiter limits samples: the encoded true peak lands 1.2 to 1.8 dB over its limit. When the last limiter took 0.7 dB the true peak rose (-0.9, -1.0). At -2.8 the 6 Sep talk trimmed by 10 s reached -0.98 dBTP | **-3.0 then -2.7 dBFS**, and a remake once over -1.1 |
+| Encoder allowance | The master -16.0 LUFS, the MP3 of it -16.4 at 96 and 128 kbps, -16.2 at 192 | **+0.4 LU** |
+| Bitrate | Null test against the master (13 Sep): coding noise 18.9 dB under the speech at 64 kbps, 24.1 at 96, 25.6 at 128; 29, 43 and 58 MB an hour; 64 kbps pushed the true peak to -0.3 dBTP. Apple recommends 96 to 128 kbps for mono MP3 | **96 kbps mono**, 44.1 kHz |
+
+### Checks run, with results
+
+| Check | Result |
+|---|---|
+| Build | `BUILD SUCCEEDED`, 0 compiler warnings (warnings fail the build) |
+| `make test MILESTONE=podcast` (final code) | **125 tests, 0 failures, 7 skipped by design** (the five acceptance methods, two of them new, and the migration check), 301 s. New: **PodcastReadyTests 10** |
+| The chain, string for string | `testTheChainIsTheMeasuredOne`: the talk chain, the gain stage, loudnorm linear with `level=disabled` limiters, the layout and 44.1 kHz before the last limiter (v0's bug 2), stereo never under 128 kbps |
+| **A chapters test file with 3 chapters** | `testATagWithThreeChaptersIsReadBack`, on a generated 200 s MP3: the CTOC (top level, ordered, ch0 ch1 ch2) and **three CHAP frames read back** by Prakriti's reader (starts 0, 60,000, 130,000 ms; ends 60,000, 130,000, 200,000; titles as written) **and by ffprobe** (3 chapters at 0.000000, 60.000000, 130.000000 with their titles); TIT2, TPE1, TALB, TDRC 2026, TCON Podcast, TRCK 3, a real **COMM** frame, APIC front cover; the audio decodes to the same number of samples before and after (gapless kept); broken chapters (out of order, only two) are caught |
+| **Artwork validation, generated test images (not shipped)** | `testArtworkIsCheckedAgainstApplesRules`, nine images drawn in a temporary folder and deleted: a 1400 px RGB JPEG and a 3000 px PNG **pass**; 1000 px (too small), 1400 by 1500 (not square), 3200 px (too large), a PNG with alpha, a grey JPEG, a 3000 px noisy JPEG over 512 KB, and a text file named .jpg each **fail with their own reason** |
+| **The captions follow a 10 s trim**, on the Mac's own voice | `testThePodcastReadyEpisodeAndItsCaptionsFollowATrim`: a known line moves by exactly 10 s less the silence trim (to the millisecond), the trimmed line is gone from the captions, the length shorter by the same; the package named, tagged, measured (-16 within 1, -1 or under, linear), its checklist MISSING show name and artwork; Approve copies the folder with every file's SHA-256 in the receipt |
+| Update Podcast-Ready Files | `testUpdatingTheFilesRetagsWithoutMakingTheAudioAgain`, through the app: a show name, host, title and episode number set, the files updated: renamed `Test Show - The Long Exhale.mp3`, the old name gone, **the audio byte for byte the same**, TALB, TPE1, TIT2, TRCK read back, the checklist's show name and title now PASS |
+| An older store | `testAnOlderStoreGetsTheNewOutputSwitchedOff`: the default and one per live folder added, all off, once only |
+| **6 Sep talk (episode 1), `make accept-podcast`** (final code, 22:37 to 23:16) | |
+| Diagnosis, measured again | the talk -23.80 LUFS, +0.04 dBTP, range 6.60 LU; peak over loudness 23.84 dB, 13.90 allowed; **engine v0's second pass: `dynamic`**; v0's MP3 -16.7 LUFS, -1.2 dBTP, **range 5.2 LU**; its gain over speech 5.3 to 9.3 dB, **more than 2 dB within a second for 104 s** (largest 10.2), pauses 9.7 to 13.6 dB |
+| The new MP3 | **-16.02 LUFS integrated, true peak -1.20 dBTP** (loudnorm's meter); **-16.0 LUFS, -1.2 dBTP by ebur128**; **loudness range 4.7 LU against v0's 5.2**; **loudnorm `linear`**; its gain over speech 6.5 to 10.3 dB, more than 2 dB within a second for 92 s (largest 8.3), pauses 13.1 to 16.3 dB; 55:36, 40.0 MB, mono 96 kbps 44.1 kHz |
+| Its tail and tags | the last 5 s decode with no error; **ffprobe: date=2026, genre=Podcast, title=Sun 6 Sep 2026, comment present, no album** (no show name invented); ID3 frames read back: TIT2 TDRC TCON COMM CTOC and 5 CHAP; **5 chapters read back by Prakriti and by ffprobe**, the first at 0:00, the last ending at 55:36 |
+| The 10 s trim | caption 101 ("And when we did um that first retreat...") at 777.183 s, then 770.040 s: **7.143 s earlier, expected 10 s less the 2.86 s silence trim = 7.143**; the file 3336.192 s, then 3329.049 s |
+| The checklist | **0 FAIL, 6 MISSING, 17 PASS: Show name MISSING, Artwork MISSING**, Episode title MISSING (three drafts offered), Host MISSING, Show notes MISSING (a draft, not chosen), Speakers MISSING; **Loudness PASS -16.02, True peak PASS -1.20**, Leveling PASS, Chapters PASS (5), Transcript PASS (555 captions, the last ending at 55:36 of 55:36), Social captions PASS (3) |
+| Writing, the first time on this talk | about 19,940 tokens to read; the request **1,115 s** (17,454 read, 9,040 written of which 8,009 thinking), one try: 3 titles, 5 chapters, 7 quotes found word for word, 3 social captions; tags 151 s and summary 181 s also on LM Studio; the step 24 min 16 s |
+| Times | podcast-ready audio 124 s (the episode's first pass reused) to 159 s; the files 34 s (the two-decimal meter over 55 minutes); the whole make with writing 29 min 6 s |
+| **13 Sep talk, `make accept-podcast`** (final code, 23:16 to 23:48) | |
+| Diagnosis | the talk -26.67 LUFS, -0.38 dBTP, range 6.20 LU; peak over loudness 26.29 dB; **v0's second pass `dynamic`**; v0's MP3 -16.8 LUFS, -1.6 dBTP, **range 4.2 LU**; its gain over speech 8.0 to 12.3 dB, more than 2 dB within a second for 58 s, pauses 12.8 to 17.1 dB |
+| The new MP3 | **-16.03 LUFS, true peak -1.78 dBTP** (loudnorm); -16.0, -1.8 (ebur128); **range 3.7 LU against v0's 4.2**; **`linear`**; gain over speech 8.9 to 13.7 dB, more than 2 dB within a second for 66 s (largest 7.2), pauses 16.2 to 19.3 dB; tail decodes; ffprobe date 2026, genre Podcast, no album; **3 chapters read back by both readers** |
+| The 10 s trim | caption 41 at 281.298 s, then 272.480 s: **8.818 s earlier, expected 10 s less 1.18 s = 8.818**; 946.550 s, then 937.732 s |
+| The checklist | **0 FAIL, 6 MISSING, 17 PASS**, the same lines as 6 Sep; Loudness PASS -16.03, True peak PASS -1.78 |
+| Writing | the request 1,409 s (11,330 thinking tokens), one try: 3 titles, 3 chapters, 7 quotes, 3 social captions (an earlier run: 1,046 s, 8,092 thinking); the step 27 min 41 s with tags and summary on LM Studio |
+| Both talks | the originals' size and date unchanged; LM Studio left with nothing loaded; writes only in `~/Prakriti/Dev/Outputs` |
+| A first run of the same acceptance, on the code before the fix | passed on 13 Sep, and **found the 6 Sep trimmed file at -0.98 dBTP**, which led to the fix (above); stopped before its writing, model not left loaded |
+| `make migrate-check` | the live store copy opens: 11 recordings (2 ready), 2 folders, 27 output settings, 134 Activity lines; every new field empty; **the new output added to the copy, switched on in 0 folders** |
+| `make look MILESTONE=podcast` | **16 of 16 PASS** (selected row icon 437 to 845 px, the refusal alert light and dark). Outputs in the real window, light and dark, looked at: the new section, its switch off, the show name field |
+| Snapshots | `screens/mac/podcast/`: every screen light and dark, and the acceptance's pages (`podcast-2026-09-06-*`, `podcast-2026-09-13-*`). **Looked at:** Outputs (both screenfuls with the new settings) light; the recording page's writing section with the captions and its podcast-ready section, light and dark; Sources with the new switch |
+| **Installed live** (`make install`, 23:55:55) | quit cleanly, replaced, opened: "Mode: live. Store: ...Prakriti.store" (no fallback); "New output available: Podcast-ready episode. It is off for every folder until you turn it on."; "Checked 2 folders. Nothing new."; `codesign --verify --deep --strict` passes. `~/Prakriti/Outputs` still holds engine v0's files of 8 and 9 Oct; `~/Prakriti/Approved` and `~/Prakriti/Drop` empty |
+| Em and en dashes | 0 in `mac/`, the docs, and every generated checklist, text file and show-notes.md |
+
+### What the runs and the look-through caught and fixed
+
+- **A true peak over Apple's line passed the checklist.** The 6 Sep talk trimmed by 10 s measured
+  "-1.0 dBTP" by ebur128 (one decimal) and -0.98 by loudnorm (two). The finished file is now measured
+  with loudnorm's meter, kept only at -1.1 or under, and the limits start 0.2 dB lower. The run in
+  progress was stopped (its model was not left loaded) and both talks were made again on the fix.
+- **ffmpeg's tags were not what the task asks for**: the comment went into a TXXX frame, not COMM, and
+  the CHAP frames had no titles (ffprobe showed "ch0"). Prakriti now writes the tag itself and reads it
+  back; ffprobe reads the chapter titles.
+- **The last limiter raised the peak it was meant to hold** when it had to take 0.7 dB; the gain is now
+  staged so it barely acts.
+- **The encoder takes 0.4 LU**: the MP3 measured -16.4 from a -16.0 master; the master aims 0.4 higher.
+- **The riding measure itself was off by 20 ms** on a trimmed file (the shift rounded to a 100 ms
+  frame): the pauses' 95th percentile read 22.9 dB where reading the original between frames gives
+  19.0 (the same file; the untrimmed prototype gave 18.2). The acceptance reads between frames now.
+- File names are ASCII only ("Mārga" becomes "Marga"), as Apple asks for file names and addresses
+  (research 06 §3.3). A hashtag from "Five A's" read "#FiveAS"; apostrophes now join their word.
+- Checklist wording: "the intro, talk and outro" on an episode with neither; the tags listed out of order.
+- The date in new code comments said 11 Oct; it is Sat 10 Oct (`date(1)`).
+
+### Decisions, each with its reason
+
+1. **A separate output, not a change to "Podcast episode".** Reason: episode.mp3 is engine v0's chain,
+   proved bit for bit, and episode 1 was approved in that form; the podcast-ready file can be compared
+   with it by ear before anything is switched.
+2. **96 kbps mono, not SCOPE PKG-01's 128.** Reason: the build asked for a choice from measurement; 96 is
+   the knee of the null test, inside Apple's recommendation, and 40 MB for episode 1 instead of 53. 128
+   is one click on the Outputs screen if Ivan prefers it.
+3. **Chapters in the ID3 tag**, as the task asks; SCOPE PKG-01 proposed chapters in the feed only. Both
+   can be done; the feed is not built.
+4. **No expander** (SCOPE PIP-18 lists one). Reason: an expander that misjudges a quiet word "breathes";
+   the measured cost of not having one is a room tone about 3.4 dB louder in pauses than engine v0's,
+   on the median (13 Sep: 16.2 dB of gain against 12.8; 6 Sep: 13.1 against 9.7), and steadier (the
+   spread from median to 95th percentile 3.1 and 3.2 dB against 4.3 and 3.9). Worth Ivan's ears on 13
+   Sep, the noisier room (the room sits about 33 dB under the speech there, about 46 dB on 6 Sep, in the prototype runs).
+5. **Host goes in the artist frame, the show in the album frame**, as the task asks (SCOPE PKG-01 put
+   the show's name in the artist). Hosts read the show from their own form either way.
+6. **Show notes and title count as PASS only once Ivan has chosen them** (Use This Title, Use as Notes,
+   or his own words). Reason: PASS means ready to upload, and a model's draft is not.
+7. **Speakers are always MISSING.** Reason: Prakriti cannot tell voices apart; a person must listen. It
+   names the 13 Sep example below.
+8. **The captions keep Parakeet's sentence cues** (one per sentence); SCOPE PKG-02 proposes cues of at
+   most two lines of 42 characters and voice spans for Apple. Not built: the voice spans need speaker
+   checks, which do not exist.
+9. **MP3, as the task asks**, although Apple's page now says it prefers AAC for RSS feeds. The checklist
+   says so; every host takes MP3.
+
+### What does not work yet, or was not seen working
+
+- **No person has listened to a podcast-ready file.** The numbers say the riding is gone; Ivan's ears
+  have not.
+- **The writing now takes longer** on the 13 Sep talk: 1,046 and 1,409 s for the request, against 585
+  to 847 s in milestone 6; 8,092 and 11,330 thinking tokens against 4,580 to 7,117. The captions are the
+  likely cause; two runs cannot say how much is them and how much is variance. Tags and summary on LM
+  Studio (the Models screen's default) add 4 to 5 minutes; on Apple on-device they take seconds.
+- Speakers are not checked; names said in a talk reach the captions (the 13 Sep captions name a person
+  in their first 8 seconds). The Speakers line says to listen for names.
+- Captions are one cue per sentence (no 42-character lines, no voice spans).
+- Nothing is uploaded, and no feed exists: episode and season numbers, explicit and the show details go
+  into the host's form by hand, from the text file.
+
+### For Ivan
+
+1. **Listen to episode 1's podcast-ready file against engine v0's**, at a quiet passage and at the
+   start of a sentence after a pause: `~/Prakriti/Dev/Outputs/2026-09-06 18-06-33/Podcast-ready/2026-09-06.mp3`
+   (made by the acceptance, development folder) and `~/Prakriti/Outputs/2026-09-06 18-06-33/episode.mp3`
+   (v0's, the one you said rides). The numbers say the riding is gone; your ears decide. Listen for
+   the room between sentences too: it is steadier but about 3 dB louder (decision 4).
+2. **Set the show on the Outputs screen**, Podcast-ready episode: the show's name (Gabriel's to choose,
+   SCOPE Q-G26), the host or author, and the artwork (square JPEG or PNG, 1400 to 3000 px, RGB, under
+   512 KB; the line under it says at once whether it passes). Until then the checklist says MISSING,
+   on purpose: Prakriti never makes them up.
+3. **To make episode 1's podcast-ready file in the live app:** open Recordings, Sun 6 Sep; under
+   Outputs for this recording turn on Podcast-ready episode (and Titles, show notes and chapters for
+   the notes and captions); mark it "Talk, one teacher speaking"; Make Again. With writing on it takes
+   about 30 minutes for episode 1 (24 for the writing). Then Use This Title, Use as Notes, set the episode number, and Update
+   Podcast-Ready Files (about half a minute). Episode 1's own `episode.mp3` is replaced by Make Again
+   with today's chain for the quick episode (silence trimmed): if you want v0's file kept exactly,
+   copy it aside first.
+4. **Read the drafts before using them.** Episode 1's titles, show notes and captions are the model's;
+   the quotes are checked, the claims are not. The 13 Sep captions name Serenity as leading the
+   coaching track; her consent rules for anything public that names her still apply.
+5. Optional: 128 kbps instead of 96 (Outputs screen) if you hear the difference; the file grows by a
+   third.
+
+### For the videos ("post ready", the question you asked)
+
+Short answer: five of the podcast-ready pieces carry straight over to the videos, three are new for
+video, and two do not apply. The videos themselves (SCOPE PKG-07 edited video, PKG-08 shorts) are Phase
+3, after Fri 6 Nov by the cut line, so this is the recommendation for that build, not built here.
+
+Carry over, the same code paths:
+1. **The sound chain** (high-pass, gentle compressor, one even raise, peaks limited, measured to the
+   hundredth). One change: YouTube and the short-video apps play loud uploads quieter but do not turn
+   quiet ones up, and the commonly measured reference is about -14 LUFS, so a -16 master plays about 2
+   dB under its neighbours there. Recommendation: the video's sound at -14 LUFS, true peak -1, from the
+   same chain; the podcast stays at -16. (SCOPE PKG-07 says "the same -16 master"; this is the one place
+   to revisit it.)
+2. **Captions timed to the finished cut**: the .srt for YouTube (PKG-09, uploaded rather than YouTube's
+   automatic ones), and the same word timings for the calm burned-in captions on shorts (PIP-24), since
+   most short video is watched with the sound off.
+3. **Chapters, checked the same way**: YouTube takes chapters as timestamps in the description and
+   asks for the first at 0:00 and at least three, the rule the ID3 chapters already pass.
+4. **The text file, per platform**: the YouTube title (100 characters at most), description with the
+   chapters, tags; and for each short its own caption and hashtags, drafted in the same writing request.
+5. **The upload checklist, per platform**, with the same privacy lines (not a class, speakers not
+   checked, no names said) plus the video ones below.
+
+New for video:
+6. **A thumbnail check** like the artwork check: 1280 by 720, 16:9, JPEG or PNG, under 2 MB (PKG-06).
+7. **What is on screen**: the privacy gate is bigger for picture than for sound. A cut removes a
+   student's voice, not their face in the frame; the screen check (PRV-14) has to exist before any
+   video is post-ready.
+8. **The video file itself**: 1920 by 1080 H.264 with AAC at 48 kHz for YouTube; 1080 by 1920 and under
+   3 minutes for shorts; plays to its end, picture and sound the same length, the length the cut list
+   says.
+
+Does not apply: the ID3 tag and embedded artwork (video platforms read their own forms), and the
+explicit flag (YouTube asks "made for kids" and age limits instead).
+
+The uncomfortable one: shorts are planned from OBS's vertical recording (PIP-23, SET-05), and the
+vertical output has been off since 6 Sep. Episode 1 has its vertical twin
+(`2026-09-06 18-06-33-vertical.mp4`); 13 Sep and later do not. Turning it back on at the studio visit
+is what makes "post-ready" shorts possible without cropping a wide frame.

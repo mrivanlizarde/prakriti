@@ -82,7 +82,7 @@ If something listed here does not exist yet, that work has not landed. Check `CH
 | `web/public/` | **The only folder served to the internet**: `index.html` (the front door), `roadmap.html`, `404.html`, `robots.txt`, `assets/`. Written Thu 8 Oct, not deployed | Anything placed here is public |
 | `scripts/shoot.mjs` | Renders pages to PNGs in headless Chrome and reports console errors, failed loads and sideways overflow | The verification step for anything visual. Caps a full-page capture at 16,000px (warning 26) |
 | `screens/` | Where screenshots land | Gitignored |
-| `mac/` | **Prakriti for Mac**, the native app (SwiftUI, SwiftData). Milestones 1 to 6 landed Sat 10 Oct: window and menu bar, the pipeline in Swift, the watcher and notifications, outputs and settings, the recording page (trim, cuts, Make Again, Approve), and the writing models (titles, show notes and chapters by Qwen3.8-27B in LM Studio, checked against the transcript, with the privacy lock). **Since Sat 10 Oct it is the live engine**, installed in `~/Applications`, opening at login | Read "Prakriti for Mac" below, then `docs/BUILD-LOG.md` |
+| `mac/` | **Prakriti for Mac**, the native app (SwiftUI, SwiftData). The podcast-ready episode followed v1 on Sat 10 Oct. Milestones 1 to 6 landed Sat 10 Oct: window and menu bar, the pipeline in Swift, the watcher and notifications, outputs and settings, the recording page (trim, cuts, Make Again, Approve), and the writing models (titles, show notes and chapters by Qwen3.8-27B in LM Studio, checked against the transcript, with the privacy lock). **Since Sat 10 Oct it is the live engine**, installed in `~/Applications`, opening at login | Read "Prakriti for Mac" below, then `docs/BUILD-LOG.md` |
 | `docs/BUILD-LOG.md` | One dated entry per milestone of the Mac app: what was built, every check with its measured result, decisions, and what Ivan must do | A new session resumes from its last entry |
 
 Later, from the Up Next template: `migrations/`, `test/`, `scripts/smoke.mjs` (production refusals
@@ -508,6 +508,18 @@ every folder until Ivan turns it on, because the model holds about 33 GB and tak
 **Finish line, Sat 10 Oct:** v1 passed on real recordings. What works, what does not, what Ivan must
 click and the three things to try first are the last section of `docs/BUILD-LOG.md`, "Finish line".
 Progress, checks and decisions per milestone are in `docs/BUILD-LOG.md`.
+**Podcast-ready episode, Sat 10 Oct (after v1):** a new output, separate from the quick "Podcast
+episode" draft, that makes the file Ivan can upload to a podcast host as it is. Its own mastering
+chain (a 70 Hz high-pass, a gentle 1.5:1 compressor, the whole episode raised evenly to -16 LUFS,
+peaks limited to -1 dBTP or under, 44.1 kHz, mono 96 kbps) fixes the volume riding of every episode
+engine v0 made; Prakriti writes the ID3v2.4 tag itself (title, author, show, year, comment, genre
+Podcast, episode number, artwork, chapters); captions (.srt, .vtt) are timed to the finished file;
+`Title, show notes and captions.txt` holds the title, show notes and three social captions the
+writing model drafted; `Upload checklist.txt` measures the file against Apple's published rules, line
+by line, PASS, MISSING or FAIL. All in `<Outputs>/<recording>/Podcast-ready/`; Approve copies the
+folder. Show name, host and artwork are MISSING until Ivan sets them on the Outputs screen: Prakriti
+never invents them. Off for every folder until turned on. See `docs/BUILD-LOG.md`, "Podcast-ready
+episode".
 
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
@@ -524,7 +536,9 @@ folders, beside the live one.
   ```
 
 - **Where things go.** Finished files: `~/Prakriti/Outputs/<recording name>/` (`episode.mp3`, the
-  transcripts, `REPORT.md`, and `show-notes.md` when writing is on). Your yeses:
+  transcripts, `REPORT.md`, `show-notes.md` when writing is on, and the `Podcast-ready` folder when
+  that output is on: the MP3 to upload, its captions, the title and notes text, the upload
+  checklist). Your yeses:
   `~/Prakriti/Approved/<recording name>/`, only when you press Approve. To have any file made, put it
   in `~/Prakriti/Drop`. Prakriti only reads the Studio Recordings folder and never writes into it.
   Every look and every step: `~/Library/Logs/Prakriti/<date>.log`, and the Activity screen.
@@ -580,6 +594,9 @@ cd ~/Code/prakriti/mac && make snapshots MILESTONE=m5 ONLY=recording
 ```
 ```bash
 cd ~/Code/prakriti/mac && make accept-models MILESTONE=m6
+```
+```bash
+cd ~/Code/prakriti/mac && make accept-podcast MILESTONE=podcast
 ```
 ```bash
 cd ~/Code/prakriti/mac && make migrate-check
@@ -669,6 +686,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | The recording page (milestone 5) | `mac/Prakriti/Views/RecordingPage.swift` (player, transcript lines, trim and cuts, title and notes, Approve), `App/RecordingActions.swift` (what its buttons do), `App/Approval.swift` (who may be approved, the copy and its receipt), `Engine/EpisodeEdits.swift` (the edits, the episode's clock, typed times, the transcript that follows the episode); tests `RecordingPageTests` (in `make test`) and `EditsAcceptanceTests` (`make accept-edits`) |
 | Approved files, live | `~/Prakriti/Approved/<file name without extension>/`: `episode.mp3`, the transcript's chosen formats (following the episode), `REPORT.md`, and `APPROVAL.md` (title, notes, edits, every file's size and SHA-256). Never `transcript.json`. Development: `~/Prakriti/Dev/Approved/` |
 | Outputs, development mode | `~/Prakriti/Dev/Outputs/<file name without extension>/`: `episode.mp3`, `transcript.txt/.srt/.vtt/.md` (the chosen formats, with the word list applied), `transcript.json` (Parakeet's words as heard, with their times; never changed), `REPORT.md` (engine v0's layout). A make in progress lives in the hidden `.making <name>` folder beside it |
+| The podcast-ready episode | `mac/Prakriti/Engine/PodcastReady.swift` (the settings, the chain with the reason for every number, the file name, chapters, the text file and the checklist), `PodcastReadyRun.swift` (the passes ffmpeg makes and the package written and read back), `ID3.swift` (Prakriti's own ID3v2.4 writer and reader), `Artwork.swift` (Apple's artwork rules, read by ImageIO); `Views/PodcastReadyViews.swift` (its settings on Outputs, its section on the recording page); `PipelineRunner.packageAgain` (Update Podcast-Ready Files); tests `PodcastReadyTests` (in `make test`) and `PodcastReadyAcceptanceTests` (`make accept-podcast`) |
 | The Yoga Marga word list | `mac/Prakriti/Engine/Lexicon.swift` (each word as written, how it has been misheard, and what it is); shown on the Outputs screen |
 | Output settings | Which outputs: each folder's switches (Sources), else the Outputs screen's (files added by hand). How: the Outputs screen. A recording's own choices (its page) override both: `OutputResolver` in `Model/Store.swift` |
 | Test clips | `~/Prakriti/Dev/Drop/2026-09-13 clip 30s.mp4` (a test) and `~/Prakriti/Dev/Clips/2026-09-13 clip 90s.mp4` (a full run), cut with `ffmpeg -c copy` from the 13 Sep talk |
@@ -948,6 +966,51 @@ top and its end. Reading the code is not verification, and neither is a passing 
     (`OutputKind.isOnByDefault`; `make migrate-check` asserts no folder has them on after an upgrade).
     Reason: the model holds about 33 GB and takes 10 to 15 minutes on a 16-minute talk; a new studio
     recording must not start that on its own.
+
+57. **The podcast-ready episode must stay "linear": loudnorm's second pass raises the whole episode by
+    one amount, and the gain before the first limiter is measured until loudnorm's own correction is
+    under 0.2 LU** (`masterPodcastReady`, step 4). Reason: engine v0's chain falls back to "dynamic" on
+    every studio talk (the talk's true peak sits 23.8 to 26 dB over its loudness) and rode episode 1's
+    volume: the gain over speech moved over a 4 dB spread, jumped more than 2 dB within a second for
+    104 s, and swelled the room tone in pauses (measured 10 Oct, BUILD-LOG). The checklist FAILs
+    anything but linear.
+58. **Prakriti writes the podcast-ready MP3's tag itself (`ID3.swift`); ffmpeg encodes it with
+    `-id3v2_version 0`.** Reason: measured on ffmpeg 9.0.1, its MP3 muxer writes the comment as a TXXX
+    frame (not COMM) and wrote CHAP frames with no titles in them. Every frame is read back before the
+    checklist says it is there, and ffprobe reads the chapters with their titles.
+59. **The podcast-ready limits are sample-peak limits set low on purpose (-3.0, then -2.7 dBFS), the
+    last limiter must barely act, and a finished MP3 over -1.1 dBTP is made once more with both limits
+    lowered by the excess.** Reason: alimiter limits samples, not true peaks; measured, the encoded
+    true peak lands 1.2 to 1.8 dB over its limit (at -2.8, the 6 Sep talk trimmed by 10 s reached
+    -0.98 dBTP, over Apple's line). When the last limiter had to take 0.7 dB, the true peak rose to
+    -0.9 and -1.0 instead of falling. The layout and 44.1 kHz are set before every limiter (v0's bug 2).
+60. **A podcast-ready MP3 is measured with loudnorm's meter (`measureFinished`), which reports
+    loudness and true peak to the hundredth, never with ebur128's one-decimal summary alone.** Reason:
+    on 10 Oct ebur128 printed "-1.0 dBTP" for the file loudnorm measured at -0.98, and the checklist
+    showed PASS for a file over the line. The acceptance checks with both meters.
+61. **The podcast-ready master aims 0.4 LU louder than -16 (`encoderAllowance`).** Reason: LAME at 96
+    and 128 kbps measures 0.4 LU quieter than the master it encodes (13 Sep: master -16.0, MP3 -16.4).
+    A miss over 0.5 LU after encoding makes it once more with the aim corrected.
+62. **The processed talk is rendered once to a float WAV with a hidden name (`.podcast-talk.wav`) in
+    the staging folder, and deleted when the audio is made.** Reason: float, because a talk brought to
+    -20 LUFS for the compressor has peaks over 0 dBFS that an integer WAV would clip; hidden, because
+    `Pipeline.place` moves every visible file into the recording's folder; once, because the gain
+    passes then read the WAV instead of decoding the 2.5 GB recording and compressing it again.
+63. **Show name, host and artwork are never filled in by Prakriti; they are MISSING until Ivan sets
+    them, and the file is named by its date until it has a title.** Reason: the build's do-nots, and a
+    made-up show name in a tag would ship. Artwork that breaks Apple's rules is not embedded and FAILs.
+64. **The podcast-ready episode starts off for every folder, and an older store gets it switched off**
+    (`isOnByDefault` false, `PrakritiStore.addMissingOutputKinds` at launch; `make migrate-check`).
+    Reason: it adds a few minutes per recording, and without a show name and artwork it is not ready
+    to upload anyway.
+65. **The checklist describes the file in the folder, measured after it was tagged: loudness, peak,
+    range, rate, bitrate, length, size, the tail decoded, every tag frame and chapter read back.**
+    Reason: reading code is not verification, and a file named for upload must prove itself. Update
+    Podcast-Ready Files measures again too.
+66. **Update Podcast-Ready Files re-tags and renames around the audio already made; it never masters
+    again.** The audio bytes are the same (tested). A new trim, cut, layout or bitrate needs Make
+    Again. Reason: a new title or show name should not cost a remaster and a second listen (it takes about
+    10 s on a 16-minute talk and 35 s on episode 1, most of it measuring the file again).
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

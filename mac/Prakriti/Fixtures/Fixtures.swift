@@ -15,6 +15,26 @@ enum Fixtures {
         Calendar.current.date(from: DateComponents(year: y, month: mo, day: d, hour: h, minute: mi, second: s)) ?? .distantPast
     }
 
+    /// The podcast-ready episode of the 13 Sep talk as the final acceptance measured it (10 Oct, 11:46
+    /// pm: -16.03 LUFS, true peak -1.78 dBTP, range 3.7 LU, 946.55 s), run through the real checklist
+    /// builder with nothing set on the Outputs screen: show name and artwork MISSING.
+    static func podcastReady13(_ talk: Recording) -> PodcastReadyRecord {
+        let facts = PodcastEpisodeFacts(title: talk.title, notes: talk.notes, recordedAt: talk.recordedAt, label: "Sun 13 Sep", kind: .talk, fileName: talk.fileName)
+        let tag = ID3.Tag(version: 4, text: ["TIT2": talk.title, "TDRC": "2026", "TCON": "Podcast"], comment: "A talk.",
+                          frameIDs: ["TIT2", "TDRC", "TCON", "COMM", "CTOC", "CHAP", "CHAP", "CHAP"])
+        let measured = PodcastPackage.Measured(lufs: -16.03, truePeak: -1.78, lra: 3.7, normalizationType: "linear", sampleRate: 44_100, bitrateKbps: 96,
+                                               channels: 1, duration: 946.55, expectedDuration: 946.55, bytes: 11_361_543, tailDecodes: true, tag: tag,
+                                               intended: ["TIT2", "TCON", "TDRC", "COMM", "CTOC"], artwork: nil, chapterProblem: nil, chaptersWritten: 3,
+                                               captions: (137, 0.08, 946.4), captionsProblem: nil)
+        let written = WrittenPackage.decode(talk.writtenJSON)
+        return PodcastReadyRecord(fileName: talk.title + ".mp3", integratedLUFS: -16.03, truePeak: -1.78, loudnessRange: 3.7, normalizationType: "linear",
+                                  sampleRate: 44_100, bitrateKbps: 96, channels: 1, duration: 946.55, expectedDuration: 946.55, bytes: 11_361_543,
+                                  talkLUFS: -26.67, captions: 137, chapters: 3,
+                                  checklist: PodcastPackage.checklist(measured, settings: PodcastReadySettings(), facts: facts, written: written),
+                                  madeAt: date(2026, 10, 10, 22, 30),
+                                  fingerprint: PodcastPackage.fingerprint(settings: PodcastReadySettings(), facts: facts, written: written))
+    }
+
     static func populate(_ context: ModelContext, paths: AppPaths) {
         // Default outputs.
         var defaults: [OutputKind: OutputSetting] = [:]
@@ -98,7 +118,14 @@ enum Fixtures {
             writtenBy: "Qwen3.8-27B in LM Studio", writingProvider: ModelProvider.lmStudio.rawValue,
             taggedBy: "Apple on-device", summarizedBy: "Apple on-device", lockReason: "This recording mentions Serenity", lockedTasks: ["writing"],
             writtenAt: date(2026, 10, 10, 19, 41, 49), seconds: 864.7, attempts: 1, writingSeconds: 846.5,
-            promptTokens: 5306, completionTokens: 7710, reasoningTokens: 7117, clock: "episode").json()
+            promptTokens: 5306, completionTokens: 7710, reasoningTokens: 7117, clock: "episode",
+            // The social captions Qwen3.8-27B wrote for this talk in the podcast-ready acceptance (10 Oct,
+            // 10:24 pm); their times and numbers ("8 p.m. Pacific", "thousands of hours") were found in the transcript by hand.
+            captions: ["The teacher walks through Yoga Marga's next chapter: lineage, coaching, business, and a new yin yoga schedule.",
+                       "The teacher traces the school's practice back to Sri Krishnamacharya and Sri BNS Iyengar, then shares how Yoga Marga is splitting into a coaching track led by Serenity and a new business group focused on sales and marketing for yoga teachers.",
+                       "A weekly yin yoga class returns to the Yoga Marga schedule on Mondays and Wednesdays at 8 p.m. Pacific. The teacher also walks through the online platform, where thousands of hours of curriculum, from asana to Samkhya philosophy, are available to enrolled students."],
+            leftOutCaptions: 0).json()
+        talk13.podcastReadyJSON = podcastReady13(talk13).json()
         context.insert(talk13)
         talk13.source = studio
         addRun(context, to: talk13, start: date(2026, 10, 9, 16, 15, 11), trigger: .fileEvent, outcome: .ready,
