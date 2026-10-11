@@ -39,8 +39,8 @@ enum Capability: String, CaseIterable, Sendable {
 }
 
 enum Capabilities {
-    /// What this build does. Only `help` until the next part switches its own capability on.
-    static let built: Set<Capability> = [.help]
+    /// What this build does: Help (M2a) and the welcome window (M2b). Each later part switches its own on.
+    static let built: Set<Capability> = [.help, .welcome]
 
     /// Every capability, for the test that every article and every block is visible once all are built.
     static let all = Set(Capability.allCases)

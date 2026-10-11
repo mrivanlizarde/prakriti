@@ -23,9 +23,12 @@ episode 1 still needs before it is uploaded.
 fixtures` builds the shared test files every v2 check uses from the two talks and `say`, `make accept`
 no longer reads a class, `make regress` runs the regression set, and every v1 acceptance named by the
 v2 plan was run again on this code. No app code changed.
-**Then part M1, the new icons** (the last section, "v2 part M1"): the cut disc in the Dock and Finder,
+**Then part M1, the new icons** ("v2 part M1"): the cut disc in the Dock and Finder,
 and the same mark in the menu bar with one shape per state, its working frames turning every 0.7 s
-only while work runs (measured in the real menu bar) and never with Reduce Motion.
+only while work runs (measured in the real menu bar) and never with Reduce Motion. **Then parts M2a,
+Help in the app ("v2 part M2a"), and M2b, the welcome window** (the last section, "v2 part M2b"): five
+panels that open once by itself and from Help, Welcome to Prakriti, each row shown only once its feature
+is built, and the notification button that asks macOS only after saying why.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -2548,3 +2551,194 @@ snapshot pictures in `screens/mac/v2-m2a/`.
   is shorter than the v2 drafts. Say what reads wrong, and whether "What Prakriti does" and "Privacy and
   students" are the names you want until the people features arrive.
 - Nothing is blocked on you. The swift-markdown yes was already given (PLAN section 11).
+
+## v2 part M2b: the welcome window. Sun 11 Oct 2026
+
+The fourth part of v2 (`docs/v2/PLAN.md`, M2, part M2b; REQUEST item 2, "a startup screen that gives
+initial instructions on usage tips for the app, including how to capture the best video"): the welcome
+window and its five panels, rows shown only once their feature exists, and the notification button.
+Nothing from a later part was built. Built on `main`, as this run's instructions said (the plan's rule
+2.1.1 names a `v2-m2b` branch). No package was added.
+
+### What was built
+
+- **The welcome window** (`Window` id `welcome`, `Views/Welcome/WelcomeWindow.swift`): a 720 by 600 pt
+  panel, not resizable, centered, its title bar hidden (no title; the close, minimize buttons kept), so
+  the window measures 720 by 632 pt. Each panel: its symbol at 48 pt in the text accent (#2337C6 light,
+  #7D8BFF dark, design spec C7), the title at 28 pt semibold, one line at 17 pt secondary, then its rows:
+  a 28 pt symbol beside a 17 pt semibold headline and a 17 pt sentence, read as one paragraph so six rows
+  fit. "1 of 5" in words at 15 pt (VoiceOver: "Panel 1 of 5"), Back (Command-Left) and Continue (Return),
+  the last panel's button Start Using Prakriti (closes the welcome and brings the main window forward);
+  Escape and the close button close it. The title is an accessibility heading.
+- **The five panels** (`Views/Welcome/WelcomeContent.swift`), the design spec's structure (4.2) with the
+  help track's wording where shorter (PLAN section 5, item 4): Welcome to Prakriti; Record for the Best
+  Results (frame at eye level; 4K or 1080p at 30 fps and Hybrid MP4, never MKV; a microphone per speaker
+  on its own track; light the face; students out of frame; a 10-second test with headphones) with "More in
+  Help: Capture the best video"; How Outputs Work (numbered steps); Privacy, with "More in Help: Privacy and
+  students"; Get Started.
+- **Rows shown only once their feature exists.** Every row names the capabilities it describes
+  (`requires`); a sentence true only until a part lands names that part (`unless`) and has its v2 twin
+  (`<id>-v2`) beside it. The panel's line counts the rows it shows in words ("in three steps"). With
+  `help` and `welcome` built, panel 1 lists finding recordings, the podcast and "nothing is posted without
+  you" (you listen, then approve), as the plan asks; panel 3 has three steps (found and made, or Ask me
+  first; listen, trim and cut, Make Again; Approve copies to the Approved folder with a receipt); panel 4
+  says what v1 does (only a talk with one teacher speaking can be approved and a class is never made
+  ready; notices never show a file name or a title; recordings never leave the Mac, and with a Claude API
+  key only words are sent, never from a class or a recording that names Serenity). The v2 copy (the
+  edit, shorts, timelines, the Viewer, People, Direction, blurring, the gallery, Anthropic and OpenAI) is
+  written and hidden.
+- **Get Started** (panel 5): **Choose Folder...** opens the system's Open panel without stopping the app
+  (`NSOpenPanel.begin`, never `runModal`), then watches the folder as Add Folder does (Ask me first) and
+  says on the row what happened: "Added <name>. It is set to Ask me first.", already watched, or the
+  development refusal with its reason (no alert: it would land on the main window behind). Before a choice
+  the row says "Watching now: <folders>." **Notifications:** the button reads macOS's answer first: never
+  asked, **Turn On Notifications** asks macOS now; turned off, **Open Notification Settings...** opens System
+  Settings at Prakriti's own page and the row says "Off. Click Open Notification Settings, then turn on
+  Allow notifications."; on, the row says "On." **Find help:** Open Help. Where models run joins with M5b.
+- **When it opens by itself:** at the first launch made by hand, once (`welcomeSeenVersion` in each
+  mode's own preferences, `WelcomeContent.version` = 2). It counts as seen the moment it is shown at such
+  a launch, and the log says "Welcome shown at first launch (version 2)". At a launch macOS makes at login
+  it is neither shown nor counted (the app closes every window it opens at login; the welcome resolves
+  whether it may stay once the delegate knows the launch, `launchFinished(atLogin:)`). At later launches
+  the log says "Welcome: seen before (version 2), so it is not shown." Never under `--sample-data` unless
+  `--show=welcome`, never for a second copy, never restored, never under tests. At the launch that shows
+  it, the main window opens too, behind it (left automatic, SwiftUI opened the welcome alone: measured).
+- **Help, Welcome to Prakriti** opens it at the first panel at any time (between Prakriti Help and Show
+  Log in Finder).
+- **Notifications at launch:** macOS is not asked at the launch that shows the welcome ("Notifications:
+  not asked at launch; the welcome asks when Turn On Notifications is clicked."); at any other launch v1's
+  rule holds. **Settings' Open Notification Settings... opens Prakriti's own page too**
+  (`Notifier.openSystemSettings`, `x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=<bundle id>`).
+- **The window measures itself:** the space each panel needs against 600 pt, written to the log once per
+  panel ("Welcome panel 2 of 5 fits: needs 530 pt of 600 pt.") for a window capture, and in any mode if a
+  panel ever does not fit.
+- **Capture flags** (`--sample-data` only): `--show=welcome` opens the welcome alone (the main window is
+  suppressed) at `--welcome-panel=<1 to 5>`, with `--welcome-folder=<path>` chosen on the last panel
+  (in memory; the watcher is stopped around the call, warning 83).
+- **Help:** the `welcome` capability is on (`Capabilities.built` = help, welcome). Article 01's Tip shows,
+  rewritten to what was built; articles 01 and 10 say "turn on Allow notifications", the switch on the
+  page Open Notification Settings now opens; article 10 gains a `:::requires welcome` block naming the
+  last panel as a second way.
+- **Checks:** `WelcomeTests` (14), `SnapshotTests.testRenderWelcome` (23 pictures, each panel's needed
+  height asserted against 600 pt), `HelpTests` updated for the new capability; `make accept-help` extended
+  with the welcome; `make accept-first-launch` (new, `capture-window.swift --first-launch`). `mainWindowID`
+  in the capture script now takes the widest window (warning 84).
+- **Docs:** START_HERE (the M2b line, Day to day's welcome, the commands and what they do, a Where things
+  live row, the tests row, warnings 80 to 84), CHANGELOG, README (one line), `docs/v2/help/README.md`,
+  `docs/v2/help-notes/welcome-panels.md` (status after M2b; the copy below it is history), and the notes
+  of articles 01 and 10.
+
+### Checks run, with results (PLAN M2, the checks part M2b runs: 1 for the welcome's strings, 2 and 3 for the panels, 5, 6)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `make test`: no welcome string holds an em or en dash, "we" as a word, "Processing" or "tap"; every SF Symbol the welcome names exists | **PASS. 178 tests, 0 failures, 8 skipped by design** (the acceptance methods and the migration check), 511.9 s, on the final code (14:12 to 14:21); **0 compiler warnings** (the only "warning" lines are the `appintentsmetadataprocessor` tool line W4 describes and XCTest's main-thread Keychain note). `WelcomeTests.testEveryWelcomeStringKeepsTheCopyRules` reads every title, line, headline and sentence of every panel, visible or not, and every string literal in the three welcome files (buttons, statuses, the log lines), none breaking a rule; the test needs more than 80 strings read, so it cannot pass by reading nothing. `testEverySymbolTheWelcomeUsesExists`: the 19 symbols the panels and rows name, `1.circle` to `6.circle` for the steps, and the two status symbols, each found by `NSImage(systemSymbolName:)` on macOS 27.2. **Proved by breaking it** (14:21, then restored, `cmp` identical): "opens in the Viewer" added to a visible row, the `unless` taken off panel 2's Hybrid MP4 row, an em dash in the light row, `headphones.wings` as a symbol, and three more rows on panel 2, all at once: **34 failures**, each naming its cause (the Viewer by row, "2 of today's and the v2 sentence shown" at 10 stages, the dash by line in the source scan and in the copy test, the symbol, "These nine things", panel 2 needing 689 pt and 782 pt) |
+| 2 | Capability test: with only what is built, no visible text of any panel names a feature of an unbuilt part; with every capability on, every panel is visible | **PASS.** `testOnlyWhatIsBuiltIsVisibleInThePanels`: `Capabilities.built` is help and welcome; the 36 feature names of `HelpTests.unbuiltNames` found **0 times** in the visible titles, lines, rows and Help links; panel 1 is exactly "finds", "podcast", "yours"; rows per panel **3, 6, 3, 3, 3**; no `-v2` row visible; the same check over every row finds unbuilt names (the check works). `testWithEveryCapabilityEveryPanelIsVisible`: **5 of 5 panels**, each with 3 to 6 rows, five steps on panel 3, none of today's replaced sentences left. `testEveryStageOfTheBuildShowsAWholeWelcome`: at each of the 13 stages of the plan's build order, 5 panels, 2 to 6 rows each, and every today/v2 pair shows exactly once |
+| 3 | `make accept-help MILESTONE=v2-m2b` adds the five panels: `--show=welcome`, each panel captured light and dark, no scroll needed on any | **PASS, 34 of 34 lines** (final code, 14:22 to 14:24; first run 13:44 to 13:46 also all PASS). The 8 Help captures as in M2a (960 by 720, alone). **Welcome panels 1 to 5, light and dark, plus the last panel after Choose Folder added a folder and after the development refusal: 14 captures, each the only window, 720 by 632 pt (1440 by 1264 px)**; each panel's own measurement read from the log: **panel 1 needs 322 pt of 600, panel 2 530, panel 3 320, panel 4 381, panel 5 387 (444 with the refusal's reason)**. Through Accessibility by process id: **the Help menu lists Prakriti Help, Welcome to Prakriti, Show Log in Finder**; Welcome to Prakriti opened the welcome at 1 of 5 ("Welcome shown (Help, Welcome to Prakriti)."); **Continue to 2 of 5, Return to 3 of 5, Command-Left to 2 of 5, Back to 1 of 5, Escape closed it**; opened again, **More in Help: Capture the best video** turned the Help window from "Prakriti Help" to "Capture the best video"; **Start Using Prakriti** at 5 of 5 closed the welcome and opened the main window. The Help menu's search: OBS, notifications and privacy put set-up-obs-for-prakriti, troubleshooting and people-and-privacy first. **Every PNG looked at** (contact sheets of four): body 17 pt (in the real panel 2 capture, lines 40 to 41 px apart at 2x and glyphs 31 to 32 px tall; the title line 40 px; "2 of 5" 19 px), nothing clipped, the accent symbols and links readable in both appearances, Continue filled with the accent in the real window. Also the 23 snapshots of `testRenderWelcome` (the five panels light and dark, the last panel with notifications off and not yet asked, with a folder added and refused, and the five panels with every part built) and the changed Help articles (01's Tip, 10's notifications), all looked at |
+| 5 | First launch is made: the development `welcomeSeenVersion` deleted, the built app launched twice in `--development`; the welcome on the first launch only ("Welcome shown"), the watcher's first look within 5 s both times | **PASS** (`make accept-first-launch MILESTONE=v2-m2b`, final code 14:22; also 13:49, 13:50, 13:51, all PASS). Deleted `studio.therowan.prakriti.app.development welcomeSeenVersion` (then "not set"). **Launch 1:** "Welcome shown at first launch (version 2)"; the welcome's window 720 by 632 pt, **in front of the main window** (window list, front to back: the welcome, a 1180 pt window); "Notifications: not asked at launch"; **"Checked 1 folder. Nothing new." 1 s after the app's first line** (the log counts whole seconds); the preference then 2. On the same launch, in the real window: Continue four times reached 5 of 5; **Choose Folder... opened the system's Open panel, Cancel closed it**; **Open Notification Settings... opened System Settings at the page "Prakriti"** (macOS has a no for Prakriti, so this was the button shown; Turn On Notifications is never pressed by a check), and System Settings, not open before, was quit again. **Launch 2:** "Welcome: seen before (version 2), so it is not shown."; no "Welcome shown" line, no welcome window, the main window alone; **"Checked 1 folder." 0 s after the app's first line.** The live preference: not set before, not set after |
+| 6 | Regression set | **PASS** (`make regress MILESTONE=v2-m2b`, 13:54 to 14:10, exit 0): **`make test` 178 tests, 0 failures, 8 skipped** (512.5 s); **`make accept` PASS** (282.1 s): 13 Sep **-16.8 LUFS** (-16.82 by loudnorm's meter), true peak **-1.7 dBFS** (-1.68 dBTP), 2,948 words reaching 15:47 of 15:48, 137 captions for 137 sentences, 0 differing; **`silent-60s` Needs a decision** at -91 dB, nothing made; the 30 s clip filed as a test; 6 Sep -16.7 LUFS (-16.72), -1.4 dBFS (-1.43 dBTP), 9,952 words reaching 55:38 of 55:39, 555 captions; **`grep -c 2026-09-14 acceptance.txt`: 0**. **`make accept-edits` PASS** (178.4 s): the approved episode **38.82 s shorter (expected 38.82)**, the same SHA-256 as the made one, **0 of 73** cut runs heard and 189 of 201 from the minute after, a class refused. One Help article changed after (a blank line in article 10), so `make test` ran again on the final code (check 1) |
+
+**Also run:** `make look MILESTONE=v2-m2b` (14:11): every main screen, light and dark, PASS with the capture
+script's new widest-window rule, and the refusal alert in both; **0 "Welcome" lines in the development log
+across its 15 sample-data launches** (never under sample data unless asked).
+
+**The originals:** unchanged, by `stat` before (13:54) and after (14:10): the 13 Sep talk 730,464,600 bytes,
+modified 1789350092; the 6 Sep talk 2,578,079,009 bytes, 1788746532.
+
+**Ship gate.** `make migrate-check` **PASS** (14:23; no SwiftData model changed, run anyway; the new
+preference is in UserDefaults): the live store's copy opens, 11 recordings (2 ready), 2 folders, 30 output
+settings, 309 Activity lines, titles on in 0 folders. **`make install`** at 14:24:02: BUILD SUCCEEDED, the
+old copy (pid 78010) quit cleanly ("Quit." 14:24:03), **new pid 90080, "Prakriti 0.1 (1) opened. Mode: live.
+Store: ~/Library/Application Support/Prakriti/Prakriti.store"** (no fallback store), login item on,
+`codesign --verify --deep --strict` passes, the installed bundle holds the 11 articles. At that launch the
+live log says "Notifications: not asked at launch; the welcome asks when Turn On Notifications is clicked."
+and **"Welcome shown at first launch (version 2)."**; the live `welcomeSeenVersion` went from not set to 2,
+and the window list showed the welcome in front of the main window. **"Checked 2 folders. Nothing new." at
+14:24:04 and again at 14:29:24**, still pid 90080. The live `~/Prakriti/Outputs`, `Approved` and `Drop`: the
+same 12 files with the same SHA-256 before the install and after the second heartbeat.
+
+### What the runs caught and fixed
+
+- **The hidden title bar keeps its band.** With `.windowStyle(.hiddenTitleBar)` the window measured 720 by
+  632 pt, the panel under a 32 pt band holding the close button. Running the panel under the band
+  (`ignoresSafeArea`) moved it up but left the window 632 pt tall with an empty band at the bottom, so it
+  was taken back: the panel is 720 by 600 under the band, and the snapshot renders the same 720 by 632.
+- **Left automatic, the main window did not open at the first launch:** the window list showed the welcome
+  alone (13:49). At the launch that shows the welcome the main window is now presented too, and the list
+  reads the welcome in front, the main window behind (13:50).
+- **Panel 2's microphone row ended on a line holding one word ("well.")** in the first capture; the
+  sentence was shortened: panel 2 went from 582 pt to 562 pt needed (with the first, taller top margin; 530 pt
+  in the final layout).
+- **A capture of the last panel with a folder added would have let the watcher look through the sample
+  folders,** and the sample data names the real studio folder with Make outputs automatically. Found by
+  reading `addSource` before the capture first ran; the watcher is stopped around the call (warning 83).
+- **The capture script's "main window" was the first window wider than 600 pt,** which a development copy
+  with an unseen welcome could have answered with the welcome. It is now the widest window (warning 84).
+- **Accessibility names SwiftUI's buttons by description, not title, in one path,** so the first read of
+  the notification button found none; the check reads both.
+- **The first-launch timing printed -0.2 s** (the log counts whole seconds); it is measured from the start of
+  the second now.
+- **Article 10's welcome block joined the paragraph before it;** it is its own paragraph.
+
+### Decisions, each with its reason
+
+1. **Rows name `requires` and `unless`, with v2 twins (`<id>-v2`), and the line counts what it shows.**
+   Reason: the welcome needs the same "only what is built" rule as Help (M2a's `:::unless`), and each
+   later part then changes one row in the same commit as its feature; the stage test catches a twin left
+   behind.
+2. **Seen when shown at a launch made by hand; at a login launch neither shown nor counted.** Reason: the
+   app closes every window it opens at login, so a welcome counted then would never be read; marking it on
+   being shown (not on closing) means quitting with it open does not bring it back at every launch.
+3. **The main window opens behind it at that launch.** Reason: the design spec puts it in front of the main
+   window, and closing the welcome should leave the app on screen.
+4. **macOS is not asked about notifications at the launch that shows the welcome; at any other launch v1's
+   rule stands.** Reason: the HIG and the design spec want the reason before the system's question, and a
+   welcome closed without clicking must not leave notifications unasked forever.
+5. **Open Notification Settings goes to Prakriti's own page, from the welcome and from Settings.** Reason:
+   measured on macOS 27.2, the address with the app's id opens the page with Allow notifications, one
+   click from done; without it, the list of every app.
+6. **Panel 2's sixth row is the 10-second test with headphones,** not the design spec's "leave a few
+   seconds at each end". Reason: the spec marked that one unverified and v1 trims silence at the ends; the
+   test row is in the help track's panel and catches a missing track.
+7. **The last panel's third row is Find help (Open Help).** Reason: "Choose where models run" needs M5a's
+   hardware check and M5b's providers; Help is where the HIG says a skipped welcome's content must stay
+   easy to find.
+8. **The privacy panel names Serenity in v1's lock sentence.** Reason: that is v1's rule as it is (articles
+   07 and 09 say the same); the design spec's C4 is about the per-recording lock line, and the v2 sentence
+   that replaces this one names no one.
+9. **No Skip button and no Settings item.** Reason: the close button and Escape close it (design spec
+   4.1); "Show the Welcome Window Again" belongs to the Settings window, which is M3a's (design spec 3.13),
+   and Help, Welcome to Prakriti is the way back until then.
+10. **Headline and sentence as one paragraph; every title 28 pt.** Reason: six rows fit 600 pt only that way
+    (530 pt measured); the spec's 34 pt for panel 1 was a proposal, and one size keeps the panels steady.
+
+### Looked at (D1)
+
+No video frame, face or recording was made or looked at in this part: the welcome shows none. Looked at: the
+14 real welcome captures, `welcome-from-help-menu.png`, `first-launch-welcome.png`, `first-launch-panel-5.png`
+and the 8 Help captures in `screens/mac/v2-m2b/real/`; the 23 welcome snapshots and the changed Help
+articles' snapshots in `screens/mac/v2-m2b/`; one capture of System Settings at Prakriti's Notifications page
+(13:38, to measure the address), deleted afterwards because it showed Ivan's account name.
+
+### What does not work yet, or was not seen working
+
+- **Turn On Notifications was never pressed in the real app:** macOS already has a no for Prakriti, and
+  pressing it would put macOS's question on Ivan's screen for the permission the live copy shares. Its
+  "never asked" path is proved by tests with a stand-in for macOS; the real path pressed was Open
+  Notification Settings.
+- **A folder was not chosen through the Open panel by hand:** the panel was opened and cancelled in the
+  real app; watching a folder from the panel's path is tested and captured (`--welcome-folder`).
+- **A login launch was not made** (it needs a log out and in); its rule is unit-tested.
+- **VoiceOver was not run;** the titles are headings and "1 of 5" reads "Panel 1 of 5" by code, not by ear.
+- **Increase Contrast was not measured** for the accent symbols.
+- **Quick Help and TipKit** still wait for M3.
+
+### For Ivan
+
+- [ ] **The welcome is on your screen** (the install opened it at 14:24, in front of the main window). Read
+  the five panels and say what to change. If five feel long, the fallback is one panel of rows with "Capture
+  the Best Video" opening in Help (PLAN M2b, Needs Ivan).
+- [ ] **Notifications are still off for Prakriti.** On the last panel click **Open Notification Settings...**,
+  then turn on **Allow notifications** on the page that opens. (Help, Welcome to Prakriti brings the panel
+  back.)
+- Nothing is blocked on you.

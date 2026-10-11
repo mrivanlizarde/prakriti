@@ -564,6 +564,14 @@ capability on, and a test fails if a feature name of an unbuilt part is visible.
 `docs/v2/help/` to `mac/Prakriti/Resources/Help/`, their builder notes to `docs/v2/help-notes/`, and each
 was rewritten to describe v1 with the podcast-ready episode as it is today. See `docs/BUILD-LOG.md`, "v2
 part M2a".
+**v2 part M2b (the welcome window), Sun 11 Oct:** five panels open once by itself, in front of the main
+window, at the first launch made by hand, and again from Help, Welcome to Prakriti: what Prakriti does, how
+to record for the best results, how outputs work, privacy, and Get Started (choose a folder to watch,
+notifications, where Help is). Like Help, every row names the parts it describes and shows only once they
+are built, so today's welcome describes v1 with the podcast-ready episode; a later part's sentence is
+written beside today's and replaces it in the commit that builds it. macOS is not asked about
+notifications at that launch: the last panel asks after saying why, or, when notifications are off, opens
+System Settings at Prakriti's own page. See `docs/BUILD-LOG.md`, "v2 part M2b".
 
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
@@ -613,6 +621,9 @@ folders, beside the live one.
 - **Help.** Help, Prakriti Help (Command-?) opens the Help window; typing in the Help menu's search field
   finds an article too. Help, Show Log in Finder shows today's log. Help describes only what the app does
   today.
+- **The welcome.** It opened once by itself (after the v2 part M2b install). Help, Welcome to Prakriti opens
+  it again; its last panel is the quickest way to turn on notifications (Open Notification Settings goes
+  straight to Prakriti's page in System Settings: turn on Allow notifications).
 - **Pause it.** Pause All (the window's toolbar, the menu bar, or Settings). A recording already
   running finishes; nothing new is found or started until Resume All.
 - **Stop it.** The mark in the menu bar, Quit Prakriti (or Command-Q with the window in front). It stays stopped
@@ -690,6 +701,12 @@ cd ~/Code/prakriti/mac && make accept-help MILESTONE=v2-m2a
 ```
 ```bash
 cd ~/Code/prakriti/mac && make snapshots MILESTONE=v2-m2a ONLY=help
+```
+```bash
+cd ~/Code/prakriti/mac && make snapshots MILESTONE=v2-m2b ONLY=welcome
+```
+```bash
+cd ~/Code/prakriti/mac && make accept-first-launch MILESTONE=v2-m2b
 ```
 ```bash
 cd ~/Code/prakriti/mac && build/Build/Products/Debug/Prakriti.app/Contents/MacOS/Prakriti --debug-help-search=OBS
@@ -775,13 +792,27 @@ the approved transcript and by transcribing the approved episode again, then mar
 refused; it writes `acceptance-edits.txt` and pictures of each state. `make snapshots ONLY=recording`
 draws only the recording pages, for a quick look, and `ONLY=help` only the Help window: every article
 this build shows, light and dark, each screenful of a long one, and a search's results. `make
-accept-help` (v2 part M2a, about half a minute, takes the screen's focus) opens the **real** Help window
-on its own (`--sample-data --show=help`, at `--help-article=<id>` or `--help-search=<words>`) at three
+accept-help` (v2 parts M2a and M2b, about two minutes, takes the screen's focus) opens the **real** Help
+window on its own (`--sample-data --show=help`, at `--help-article=<id>` or `--help-search=<words>`) at three
 articles and a search in light and dark, captures each into `screens/mac/<milestone>/real/`, checks only
-the Help window opened, then runs the Help menu's search handler for OBS, notifications and privacy
-through the debug switch `--debug-help-search=<words>` (it prints the article ids and quits; Debug builds
-only, never read by the installed copy) and needs the expected article first in each; it writes
-`acceptance-help.txt`. `make accept-models` is milestone 6's check on the
+the Help window opened; then the **real** welcome on its own (`--show=welcome --welcome-panel=<1 to 5>`, and
+`--welcome-folder=<path>` for the last panel after Choose Folder) at each panel, light and dark, each the
+only window and fitting without scrolling (the window measures itself and writes "Welcome panel N of 5
+fits: needs X pt of 600 pt." to the development log, which the check reads); then, through Accessibility by
+process id, Help, Welcome to Prakriti, Continue, Return, Command-Left, Back and Escape on the welcome, its
+"More in Help" link and Start Using Prakriti; then runs the Help menu's search handler for OBS,
+notifications and privacy through the debug switch `--debug-help-search=<words>` (it prints the article
+ids and quits; Debug builds only, never read by the installed copy) and needs the expected article first in
+each; it writes `acceptance-help.txt`. `make accept-first-launch` (v2 part M2b, about half a minute, takes
+the screen's focus) deletes the **development** preference `welcomeSeenVersion` (never the live one, which
+it reads before and after), opens the built app twice with `--development`, and needs the welcome at the
+first launch only ("Welcome shown" in the log and its window, in front of the main window) and the
+watcher's first look within 5 s of both launches; on the first it also clicks through to the last panel,
+opens and cancels Choose Folder, and presses Open Notification Settings only when macOS already has a no
+(never Turn On Notifications: the live copy shares the permission), then quits System Settings if it was
+not open before; it writes `acceptance-first-launch.txt`. `make snapshots ONLY=welcome` draws the five
+panels light and dark, the last panel's states, and the five panels as they will read once every part is
+built, and fails if any needs more than 600 pt. `make accept-models` is milestone 6's check on the
 **real 13 Sep talk** with the **real models** (about 11 to 15 minutes, nearly all of it Qwen3.8-27B
 thinking; it needs LM Studio's server running at the Models screen's address with the model
 downloaded): writing is set to the Claude API on purpose, so the privacy lock must hand it to LM Studio
@@ -812,7 +843,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 |---|---|
 | Project definition (source of truth) | `mac/project.yml`; `make generate` rebuilds `Prakriti.xcodeproj`, and both are committed |
 | App code | `mac/Prakriti/App` (launch, paths, settings, log, `PipelineRunner`, `Watcher`, `Notices`, `LoginItem` with the instance lock, `EngineV0Import`, `StatusSummary` and the menu bar's `WorkingTicker`), `Engine` (the pipeline: `Subprocess`, `Readiness`, `Measurements`, `Pipeline` with `Mastering`, `Report`; the watcher's `FolderScan` and `EventStream`), `Model` (vocabulary, SwiftData models, store), `Views`, `Fixtures` |
-| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `RecordingPageTests` (milestone 5: edits, the episode's clock, typed times, the cut's words gone through Parakeet with the Mac's voice, six sentences of Parakeet's real misplaced tokens, what the report names, the page's player, Approve and its refusals), `EditsAcceptanceTests` (the 13 Sep talk trimmed, cut, made again and approved, `make accept-edits` only), `StoreMigrationTests` (`make migrate-check` only), `HelpTests` (v2 part M2a: the articles, the capability blocks, links, the copy rules, what only Help may show, search, the Help menu's handler, Show Me), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share, the main window and the Help window) |
+| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `RecordingPageTests` (milestone 5: edits, the episode's clock, typed times, the cut's words gone through Parakeet with the Mac's voice, six sentences of Parakeet's real misplaced tokens, what the report names, the page's player, Approve and its refusals), `EditsAcceptanceTests` (the 13 Sep talk trimmed, cut, made again and approved, `make accept-edits` only), `StoreMigrationTests` (`make migrate-check` only), `HelpTests` (v2 part M2a: the articles, the capability blocks, links, the copy rules, what only Help may show, search, the Help menu's handler, Show Me), `WelcomeTests` (v2 part M2b: the welcome's words and symbols, what each stage of the build shows, the first-launch rule, the notification button, Choose Folder), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share, the main window and the Help window) |
 | Real-window capture | `mac/scripts/capture-window.swift` (run by `make look` and `make check`); also `--analyze <png>` to check any capture, `--window <app> <png>` to capture the running app as it is, `--app-icon <app> <folder>` to draw the app's icon as Finder gets it at 512 and 32 px and measure its cut, and `--menu-bar <app> <seconds> <folder>` to read every Prakriti mark in the real menu bar over time (v2 part M1) |
 | Real-app pipeline check | `mac/scripts/process-in-app.sh <file> <folder>` |
 | The writing models (milestone 6) | `mac/Prakriti/Writing/`: `ModelClients.swift` (the request and reply, LM Studio with its load at 65,536 tokens, Ollama, the Claude API), `AppleOnDevice.swift` (Foundation Models, guided generation for tags and summaries), `Keychain.swift` (the Claude API key), `Writer.swift` (prompts, the privacy lock, tries, `WritingCheck`, `WrittenPackage` and `show-notes.md`); `App/ModelActions.swift` (test buttons, the key, Write Again, Use This Title); `Views/ModelsView.swift`, `Views/WritingSection.swift`; the pipeline step `.writing` and `PipelineRunner.write` (Write Again); tests `WritingTests` (in `make test`) and `ModelsAcceptanceTests` (`make accept-models`) |
@@ -837,6 +868,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | Working folders, development mode | `~/Prakriti/Dev/Drop`, `~/Prakriti/Dev/Outputs`, `~/Prakriti/Dev/Approved` |
 | App icon | `mac/Prakriti/Resources/AppIcon.icon`, an Icon Composer document (two glass layers on stone; default, dark, clear and tinted), copied from the master `docs/v2/icons/source/Prakriti.icon`. `actool` compiles it into `Assets.car` and `AppIcon.icns`, and Info.plist gets `CFBundleIconName` by itself. Design, sources and previews: `docs/v2/icons/` (since v2 part M1; v1's `make_icon.swift` is retired) |
 | Prakriti Help (v2 part M2a) | The articles: `mac/Prakriti/Resources/Help/00-index.md` to `10-troubleshooting.md` (user text only, copied into the app as `Contents/Resources/Help`); their notes: `docs/v2/help-notes/`; how to write one: `docs/v2/help/README.md`. Code: `mac/Prakriti/Help/` (`Capabilities` (what is built), `HelpArticle` (front matter), `HelpLibrary` (loading, the `:::` pass, links, places), `HelpRenderer` (swift-markdown to blocks), `HelpSearch`, `HelpMenuSearch` (the Help menu's search field), `HelpModel` (the open article, Back and Forward, Show Me)), `Views/Help/` (`HelpWindow`, `HelpArticleView`), `App/DebugSwitches.swift` (`--debug-help-search`); the Help menu in `App/PrakritiApp.swift`; tests `HelpTests` and `SnapshotTests.testRenderHelp` |
+| The welcome window (v2 part M2b) | `mac/Prakriti/Views/Welcome/`: `WelcomeContent.swift` (the five panels' words, each row with the capabilities it describes, `requires` and `unless`; `WelcomeContent.version`), `WelcomeModel.swift` (the open panel, the first-launch rule, Choose Folder), `WelcomeWindow.swift` (the window, its rows and buttons, its own fit measurement); the scene and Help, Welcome to Prakriti in `App/PrakritiApp.swift`; `welcomeSeenVersion` in `App/AppSettings.swift`; Turn On Notifications and `Notifier.openSystemSettings` in `App/Notices.swift`; the copy source and its status: `docs/v2/help-notes/welcome-panels.md`; tests `WelcomeTests` and `SnapshotTests.testRenderWelcome` |
 | Swift packages | `swift-markdown` 0.9.0 (21 Sep 2026, with `swift-cmark` 0.9.0), pinned in `mac/project.yml` and `mac/Prakriti.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, both committed (v2 part M2a) |
 | Menu bar mark | Seven template image sets in `Assets.xcassets` (`prakriti-menubar`, `-working-1`, `-working-2`, `-waiting`, `-problem`, `-paused`, `-not-watching`), copied from `docs/v2/icons/source/menubar/imagesets/`; which one each state draws is `StatusSummary.Icon.menuBarAsset`; the working frames are turned by `App/WorkingTicker.swift` |
 
@@ -1245,6 +1277,36 @@ top and its end. Reading the code is not verification, and neither is a passing 
     name, even when asked `whose unix id is`, and the live and development copies are both named Prakriti.
     Reason: in v2 part M2a two "Prakriti Help" clicks meant for a development copy went to the live app
     (two "Help isn't available" alerts there), and its menu was misread as the new build's.
+
+80. **The welcome opens by itself at one launch only: the first one made by hand, and it counts as seen the
+    moment it is shown there** (`welcomeSeenVersion`, `AppModel.welcomeAppeared`, `launchFinished`). At a
+    launch macOS makes at login it is neither shown nor counted. Reason: Prakriti closes every window it
+    opens at login (`AppDelegate`), so a welcome counted then would never have been read, and one shown at
+    every launch would be in Ivan's way. A later "What's New" raises `WelcomeContent.version`. The check
+    deletes only the **development** domain's preference
+    (`defaults delete studio.therowan.prakriti.app.development welcomeSeenVersion`), never the live one.
+81. **The welcome follows `Capabilities` like Help: every row names what it describes (`requires`), and a
+    sentence true only until a part lands names that part (`unless`), with its v2 twin (`<id>-v2`) beside
+    it.** A part that switches a capability on reads every row naming it and makes each sentence true of
+    what it built. `WelcomeTests.testEveryStageOfTheBuildShowsAWholeWelcome` walks the plan's build order
+    and fails if a twin pair shows both or neither, and `HelpTests.unbuiltNames` is checked against the
+    panels too. Reason: the welcome is the first thing anyone reads, and copy that promises an unbuilt
+    feature is PLAN R16.
+82. **macOS is never asked about notifications at the launch that shows the welcome, and the welcome's
+    button never asks twice:** it reads macOS's answer first; never asked, it asks; turned off, it opens
+    System Settings at Prakriti's own page
+    (`x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=<bundle id>`, measured on
+    macOS 27.2 to open the page with Allow notifications). **No check ever presses Turn On Notifications
+    in a development copy:** both copies share the bundle id and so the permission, and the question would
+    land on Ivan's screen for the live app. Reason: v1 found notifications off for Prakriti, and once macOS
+    has a no a second request shows nothing; the HIG asks for the reason before the system's question.
+83. **Nothing in a window capture may let the watcher look through the folders.** A capture flag that adds
+    a folder (`--welcome-folder`) stops the watcher around the call. Reason: the sample data names the real
+    studio folder with Make outputs automatically, so a look in a capture would take its files in and could
+    start work on a class. Found before the capture first ran (v2 part M2b).
+84. **A capture finds the main window as the widest one** (`mainWindowID`), and the welcome as the 720 pt
+    one. Reason: since v2 part M2b a development copy with an unseen welcome opens it beside the main
+    window, and "the first window wider than 600 pt" could have captured the welcome instead.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

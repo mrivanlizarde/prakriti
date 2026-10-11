@@ -81,6 +81,9 @@ final class AppModel {
     let help: HelpModel
     /// The Help menu's search field handler, registered at launch (AppDelegate).
     @ObservationIgnored private(set) var helpMenuSearch: HelpMenuSearch?
+    /// The welcome window: its panels, the open one, and whether this launch opens it (v2 part M2b).
+    /// A snapshot test swaps in one built for every capability, to see that the v2 copy fits too.
+    var welcome = WelcomeModel()
 
     var selection: SidebarItem? = .today {
         didSet { if oldValue != selection { path = [] } }
@@ -152,7 +155,20 @@ final class AppModel {
             let model = Fixtures.model(mode: paths.mode, log: AppLog(directory: AppPaths(mode: .development).logs))
             model.selection = launch.screen
             current = model
-            model.log.write("Opened with sample data for a window capture, showing \(launch.showsHelp ? "Help" : launch.screen.title). Nothing is saved.")
+            model.log.write("Opened with sample data for a window capture, showing \(launch.showsHelp ? "Help" : launch.showsWelcome ? "the welcome" : launch.screen.title). Nothing is saved.")
+            // The welcome alone (v2 part M2b): never under sample data unless asked for, at one panel, and
+            // optionally with a folder chosen on the last panel (in memory, through the panel's own path).
+            if launch.showsWelcome {
+                model.welcome.presentsAtLaunch = true
+                model.welcome.panel = launch.welcomePanel - 1
+                if let folder = launch.welcomeFolder {
+                    // Never a look through the folders here: the sample data names the real studio
+                    // folder, and a look would take its files in. The watcher only shows as running.
+                    model.watcher.isRunning = false
+                    model.watchFolderFromWelcome(at: URL(fileURLWithPath: folder, isDirectory: true))
+                    model.watcher.isRunning = true
+                }
+            }
             // Help alone (v2 part M2a): the Help window opens instead of the main window, at one article
             // or with a search filled in, so the capture finds one window.
             if launch.showsHelp {
@@ -204,6 +220,9 @@ final class AppModel {
         let model = AppModel(container: container, paths: paths, settings: .forMode(paths.mode), log: log)
         model.lock = lock
         current = model
+        // The welcome opens by itself until it has been shown once (v2 part M2b). Decided before
+        // anything else starts, because the notifier does not ask macOS at a launch that shows it.
+        model.welcome.presentsAtLaunch = model.welcomeIsDue
         model.didLaunch()
         return model
     }
@@ -616,7 +635,8 @@ final class AppModel {
 /// How the real-window capture opens the app: `--sample-data`, optionally `--show=<screen>`,
 /// `--appearance=light|dark`, `--add-folder=<path>` (tries to add that folder, as Add Folder
 /// does, so a refusal can be seen), `--open=ready` (the sample talk's page) and `--sample-edits`
-/// (with a trim and a cut on it, not made yet). Used only by scripts/capture-window.swift. Each flag is one word with
+/// (with a trim and a cut on it, not made yet), `--show=help` and `--show=welcome` (one window alone).
+/// Used only by scripts/capture-window.swift. Each flag is one word with
 /// its value after "=": a value passed as a separate word reads to macOS as a file to open, and an
 /// app launched to open a file does not open its window.
 struct CaptureLaunch {
@@ -630,6 +650,11 @@ struct CaptureLaunch {
     var showsHelp = false
     var helpArticle: String?
     var helpSearch: String?
+    /// `--show=welcome`: the welcome window opens on its own, without the main window (v2 part M2b), at
+    /// `--welcome-panel=<1 to 5>`, and with `--welcome-folder=<path>` chosen on the last panel.
+    var showsWelcome = false
+    var welcomePanel = 1
+    var welcomeFolder: String?
 
     static var current: CaptureLaunch? {
         let args = CommandLine.arguments
@@ -646,7 +671,9 @@ struct CaptureLaunch {
         return CaptureLaunch(screen: screen, colorScheme: colorScheme, addFolder: value("--add-folder"),
                              openReady: value("--open") == "ready", sampleEdits: args.contains("--sample-edits"),
                              showsHelp: value("--show") == "help", helpArticle: value("--help-article"),
-                             helpSearch: value("--help-search"))
+                             helpSearch: value("--help-search"), showsWelcome: value("--show") == "welcome",
+                             welcomePanel: value("--welcome-panel").flatMap(Int.init) ?? 1,
+                             welcomeFolder: value("--welcome-folder"))
     }
 }
 

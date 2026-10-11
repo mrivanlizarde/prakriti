@@ -4,7 +4,7 @@ title: What Prakriti does
 summary: What Prakriti makes from a recording, in five steps, and what it never does.
 section: get-started
 order: 1
-keywords: [overview, getting started, how it works, steps, what it does, approve, publish, upload, notifications]
+keywords: [overview, getting started, how it works, steps, what it does, approve, publish, upload, notifications, welcome window, first launch]
 related: [capture-the-best-video, set-up-obs-for-prakriti, sources-and-watching, reviewing-and-approving]
 ---
 
@@ -55,10 +55,11 @@ call.
    matter most.
 2. [Set up OBS for Prakriti](03-set-up-obs-for-prakriti.md): the settings, once.
 3. Turn on notifications so you know when a recording is ready for your yes: click Settings in the
-   sidebar, click Open Notification Settings, then turn on notifications for Prakriti.
+   sidebar, click Open Notification Settings, then turn on Allow notifications.
    [Show Me](prakriti://show/settings)
 4. Record a 10-second test and play it back with headphones before the first session.
 
 :::requires welcome
-**Tip:** To see the welcome screens again, choose Help > Welcome to Prakriti.
+**Tip:** The welcome window opens once by itself. To see it again, choose Help > Welcome to Prakriti.
+Its last panel can choose a folder to watch and turn on notifications.
 :::

@@ -115,9 +115,8 @@ struct SettingsView: View {
         }
     }
 
+    /// Prakriti's own page in System Settings, Notifications (the same one the welcome opens).
     private func openNotificationSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
-            NSWorkspace.shared.open(url)
-        }
+        Notifier.openSystemSettings()
     }
 }

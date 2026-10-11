@@ -55,12 +55,20 @@
 #                 is only read) into build/store-copy and open the COPY with this build's models.
 #                 Run it before `make install` whenever the models change
 # make run        build, then open the app
-# make accept-help  v2 part M2a's check of Prakriti Help in the REAL app: the Help window opened on its own
-#                 with sample data at three articles and a search, light and dark, captured to
-#                 ../screens/mac/$(MILESTONE)/real/; then the Help menu's search handler run for OBS,
-#                 notifications and privacy (the debug switch --debug-help-search), each needing its
-#                 expected article first. Writes acceptance-help.txt (takes the screen's focus for about
-#                 half a minute)
+# make accept-help  v2 parts M2a and M2b: Prakriti Help and the welcome in the REAL app. The Help window
+#                 opened on its own with sample data at three articles and a search, light and dark; the
+#                 welcome opened on its own at each of its five panels (and the last panel after Choose
+#                 Folder added a folder, and refused one), light and dark, each fitting without scrolling;
+#                 all captured to ../screens/mac/$(MILESTONE)/real/. Then Help, Welcome to Prakriti chosen
+#                 through Accessibility, the welcome driven by Continue, Return, Command-Left, Back and
+#                 Escape, and the Help menu's search handler run for OBS, notifications and privacy (the
+#                 debug switch --debug-help-search), each needing its expected article first. Writes
+#                 acceptance-help.txt (takes the screen's focus for about two minutes)
+# make accept-first-launch  v2 part M2b's first-launch check in the REAL app: deletes the DEVELOPMENT
+#                 preference welcomeSeenVersion (never the live one), opens the built app twice with
+#                 --development, and needs the welcome at the first launch only and the watcher's first
+#                 look within 5 s both times. Writes acceptance-first-launch.txt and the welcome's picture
+#                 (takes the screen's focus for about half a minute)
 # make look       open the REAL app on sample data, capture every screen light and dark to
 #                 ../screens/mac/$(MILESTONE)/real/, and check the selected sidebar row (takes the
 #                 screen's focus for about a minute; do not touch the Mac while it runs)
@@ -80,7 +88,7 @@ MODE      ?= development
 ONLY      ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: generate build test snapshots fixtures accept regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-help migrate-check run look check install drop
+.PHONY: generate build test snapshots fixtures accept regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -123,6 +131,9 @@ accept-episode-text:
 
 accept-help: build
 	swift scripts/capture-window.swift --help $(APP) ../screens/mac/$(MILESTONE)/real
+
+accept-first-launch: build
+	swift scripts/capture-window.swift --first-launch $(APP) ../screens/mac/$(MILESTONE)/real
 
 STORE_COPY = $(CURDIR)/$(DERIVED)/store-copy/Prakriti.store
 

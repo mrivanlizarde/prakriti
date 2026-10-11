@@ -259,7 +259,7 @@ final class HelpTests: XCTestCase {
     }
 
     func testOnlyWhatIsBuiltIsVisible() {
-        XCTAssertEqual(Capabilities.built, [.help], "v2 part M2a builds Help only; each later part adds its own capability")
+        XCTAssertEqual(Capabilities.built, [.help, .welcome], "v2 parts M2a and M2b build Help and the welcome; each later part adds its own capability")
         let library = built
         XCTAssertEqual(unbuiltNamesFound(in: library, built: library.capabilities), [])
         XCTAssertNil(library.visibleArticle(id: "editorial-direction"), "editorial direction waits for the house style (M9)")

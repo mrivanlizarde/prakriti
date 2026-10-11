@@ -214,6 +214,8 @@ final class Notifier {
 
     var permission: Permission = .unknown
     @ObservationIgnored weak var model: AppModel?
+    /// Reads and asks for macOS's permission, and opens its settings. Tests replace it.
+    @ObservationIgnored var authority: NotificationAuthority = .system
     /// Nil means notices are only written to the log (tests, sample data).
     @ObservationIgnored var poster: NoticePoster?
     /// Every notice built, newest last, for tests and for the log.
@@ -231,7 +233,46 @@ final class Notifier {
                                    hiddenPreviewsBodyPlaceholder: event.hiddenPreview, options: [])
         }))
         poster = SystemNoticePoster()
-        Task { await refreshPermission(askIfNeeded: true) }
+        // At a launch that shows the welcome, macOS is not asked: the welcome's last panel asks when
+        // Ivan clicks Turn On Notifications, after saying why (docs/v2/design-spec.md 4.2), so the
+        // alert is expected. At any other launch a question never answered is asked, as in v1.
+        let welcomeAsks = model?.welcome.presentsAtLaunch ?? false
+        if welcomeAsks { model?.log.write("Notifications: not asked at launch; the welcome asks when Turn On Notifications is clicked.") }
+        Task { await refreshPermission(askIfNeeded: !welcomeAsks) }
+    }
+
+    /// The welcome's Turn On Notifications (v2 part M2b). Reads macOS's current answer first, because a
+    /// second request shows nothing once Ivan has said no (v1 found notifications off for Prakriti):
+    /// never asked, it asks now, after the panel said why; turned off, it opens System Settings at
+    /// Prakriti's own Notifications page; allowed, nothing is left to do.
+    func turnOn() async {
+        let status = await authority.status()
+        switch status {
+        case .notDetermined:
+            model?.log.write("Notifications: asking macOS for permission (alert and sound), from the welcome.")
+            do {
+                let granted = try await authority.request()
+                setPermission(granted ? .allowed : .denied,
+                              note: granted ? "Notifications: allowed by Ivan." : "Notifications: Ivan chose Don't Allow.")
+            } catch {
+                model?.log.write("Notifications: the request did not complete: \(error.localizedDescription)")
+            }
+        case .denied:
+            setPermission(.denied, note: "Notifications: turned off for Prakriti in System Settings.")
+            authority.openSettings()
+            model?.log.write("Notifications: opened System Settings at Prakriti's Notifications page, from the welcome.")
+        default:
+            setPermission(.allowed, note: "Notifications: allowed.")
+        }
+    }
+
+    /// System Settings at Prakriti's own Notifications page, where Allow notifications is (measured on
+    /// macOS 27.2, 11 Oct: the `id` names the page; without it the list of every app opens).
+    static func openSystemSettings() {
+        let id = Bundle.main.bundleIdentifier ?? "studio.therowan.prakriti.app"
+        if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=\(id)") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     func refreshPermission(askIfNeeded: Bool) async {
@@ -304,6 +345,19 @@ final class Notifier {
         model.log.write("Opened from a notice.")
         model.openRecording(id: id)
     }
+}
+
+/// How the notifier reads macOS's answer, asks for permission and opens its settings. The real one
+/// talks to UserNotifications and System Settings; tests hand in their own, so no test asks macOS.
+struct NotificationAuthority: Sendable {
+    var status: @MainActor @Sendable () async -> UNAuthorizationStatus
+    var request: @MainActor @Sendable () async throws -> Bool
+    var openSettings: @MainActor @Sendable () -> Void
+
+    static let system = NotificationAuthority(
+        status: { await UNUserNotificationCenter.current().notificationSettings().authorizationStatus },
+        request: { try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) },
+        openSettings: { Notifier.openSystemSettings() })
 }
 
 /// UserNotifications calls its delegate off the main thread; this hands what matters to the main actor.

@@ -45,6 +45,13 @@ final class SnapshotRenderer {
                    size: HelpWindow.size, title: "Prakriti Help", appearance: appearance, name: name)
     }
 
+    /// The welcome window (v2 part M2b) at whatever panel `model.welcome` holds: its 720 by 600 panel under
+    /// the hidden title bar's 32 pt band, as the real window draws it. It has no sidebar.
+    func renderWelcome(model: AppModel, appearance: NSAppearance.Name, name: String) throws {
+        try render(root: AnyView(WelcomeWindow().environment(model).modelContainer(model.container)),
+                   sidebar: nil, size: WelcomeWindow.windowSize, title: "Welcome to Prakriti", appearance: appearance, name: name)
+    }
+
     /// The window's sidebar, drawn again on its own over the glass column (see `composite`). Help's
     /// rows are titles without icons, so only their labels are checked for contrast.
     struct SidebarDrawing {
@@ -52,7 +59,7 @@ final class SnapshotRenderer {
         let rowsHaveIcons: Bool
     }
 
-    private func render(root: AnyView, sidebar: SidebarDrawing, size: CGSize, title: String,
+    private func render(root: AnyView, sidebar: SidebarDrawing?, size: CGSize, title: String,
                         appearance: NSAppearance.Name, name: String) throws {
         let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -136,11 +143,11 @@ final class SnapshotRenderer {
     /// sidebar column painted with the system window background, then the real sidebar view (the
     /// same SwiftUI rows, fonts and counts) drawn on top, then the title bar controls again. What
     /// the PNG cannot show is the glass material itself; open the app to see that.
-    private func composite(frameView: NSView, window: NSWindow, sidebar drawing: SidebarDrawing) throws -> NSBitmapImageRep {
+    private func composite(frameView: NSView, window: NSWindow, sidebar drawing: SidebarDrawing?) throws -> NSBitmapImageRep {
         let bounds = frameView.bounds
         let base = try XCTUnwrap(frameView.bitmapImageRepForCachingDisplay(in: bounds))
         frameView.cacheDisplay(in: bounds, to: base)
-        guard let sidebar = firstView(in: frameView, where: { $0.contains("SidebarStyleContext") }),
+        guard let drawing, let sidebar = firstView(in: frameView, where: { $0.contains("SidebarStyleContext") }),
               let baseImage = base.cgImage else { return base }
 
         let scale = CGFloat(base.pixelsWide) / bounds.width

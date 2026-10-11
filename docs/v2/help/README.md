@@ -49,9 +49,18 @@ them.
 - **Copy rules (tested):** no em or en dashes, no "we", no "Processing", "click" never "tap", and none
   of the feature names a capability not yet built introduces (the list is in `HelpTests`).
 
+## The welcome window follows the same rule
+
+Its words are in `mac/Prakriti/Views/Welcome/WelcomeContent.swift`, not in Markdown. Every row names the
+capabilities it describes (`requires`), and a sentence true only until a part lands names that part
+(`unless`), with its `-v2` twin beside it. `WelcomeTests` checks the copy rules, the symbols, the same
+unbuilt feature names as Help, and every stage of the build. The copy source and its status:
+`docs/v2/help-notes/welcome-panels.md`.
+
 ## When a part builds a feature
 
 In the same commit: switch its capability on in `Capabilities.built`, read every block that requires it
-and make each sentence true of what was built (rename to the build's own words), delete the `:::unless`
+and make each sentence true of what was built (rename to the build's own words), do the same for every
+welcome row that names it, delete the `:::unless`
 text it replaces, add its keywords, and move what the notes in `docs/v2/help-notes/` said was assumed
 into what was measured. `make test` then runs the Help test with the new capability on.

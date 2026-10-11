@@ -31,3 +31,11 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
   Allow notifications") `[unverified on macOS 27 wording]`.
 - Five steps mirror SCOPE's life of a recording; the "flagged the same day" line is the 14 Sep silent
   class lesson (`Pipeline.swift`: loudest point at or below -60 dB, Needs a decision, nothing made).
+
+## Status after v2 part M2b (Sun 11 Oct 2026)
+
+- The `welcome` capability is built: the Tip at the end shows, rewritten to what was built ("The welcome
+  window opens once by itself. To see it again, choose Help > Welcome to Prakriti. Its last panel can
+  choose a folder to watch and turn on notifications."). Keywords gained "welcome window" and "first launch".
+- "Start here" step 3 now ends "then turn on Allow notifications": Open Notification Settings opens
+  System Settings at Prakriti's own page since M2b (measured on macOS 27.2), where that switch is.

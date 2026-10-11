@@ -31,3 +31,9 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
   version that carries every feature it needs, and test an import in both apps.
 - The sync offset advice uses OBS's "Sync Offset" label (Advanced Audio Properties, OBS locale).
 - macOS privacy path "Privacy & Security > Microphone" `[unverified on macOS 27 wording]`.
+
+## Status after v2 part M2b (Sun 11 Oct 2026)
+
+- "If you don't get notifications": Open Notification Settings opens System Settings at Prakriti's own page
+  (the address carries the app's id; measured on macOS 27.2), so the step is now "turn on Allow
+  notifications". A `:::requires welcome` block adds the welcome's last panel as a second way.

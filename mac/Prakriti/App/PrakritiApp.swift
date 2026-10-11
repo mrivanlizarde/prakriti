@@ -18,8 +18,7 @@ struct PrakritiApp: App {
         }
         .defaultSize(width: MainWindow.size.width, height: MainWindow.size.height)
         .windowResizability(.contentMinSize)
-        // A capture of Help alone (--sample-data --show=help) opens only the Help window.
-        .defaultLaunchBehavior(CaptureLaunch.current?.showsHelp == true ? .suppressed : .automatic)
+        .defaultLaunchBehavior(mainLaunchBehavior)
         .commands { AppCommands(model: model) }
 
         // Prakriti Help (v2 part M2a): opened from the Help menu, its search, or a capture.
@@ -34,6 +33,21 @@ struct PrakritiApp: App {
         // Never reopened by itself at the next launch: Prakriti opens at login, and Help is asked for.
         .restorationBehavior(.disabled)
 
+        // The welcome (v2 part M2b): five panels, opened by itself only at the first launch made by hand
+        // (`welcomeSeenVersion`), and from Help, Welcome to Prakriti. Never under sample data unless a
+        // capture asks for it, never restored at a later launch, and never in the way of the watcher.
+        Window("Welcome to Prakriti", id: WelcomeWindow.id) {
+            WelcomeWindow()
+                .environment(model)
+                .modelContainer(model.container)
+                .preferredColorScheme(CaptureLaunch.current?.colorScheme)
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
+        .defaultLaunchBehavior(model.welcome.presentsAtLaunch ? .presented : .suppressed)
+        .restorationBehavior(.disabled)
+
         MenuBarExtra(isInserted: Binding(get: { model.settings.showInMenuBar },
                                          set: { model.settings.showInMenuBar = $0 })) {
             MenuBarMenu()
@@ -45,6 +59,16 @@ struct PrakritiApp: App {
                 .modelContainer(model.container)
         }
         .menuBarExtraStyle(.menu)
+    }
+}
+
+extension PrakritiApp {
+    /// A capture of Help or the welcome alone (--sample-data --show=help or --show=welcome) opens only that
+    /// window. At a launch that shows the welcome, the main window opens too, behind it (measured: left
+    /// automatic, SwiftUI opened the welcome alone), so the app is there when the welcome closes.
+    var mainLaunchBehavior: SceneLaunchBehavior {
+        if let capture = CaptureLaunch.current, capture.showsHelp || capture.showsWelcome { return .suppressed }
+        return model.welcome.presentsAtLaunch ? .presented : .automatic
     }
 }
 
@@ -98,6 +122,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let atLogin = Self.launchedAsLoginItem
         model.log.write("Finished launching\(atLogin ? " at login" : ""). Mode: \(model.paths.mode.rawValue). Menu bar item: \(model.settings.showInMenuBar ? "shown" : "hidden").")
+        // The welcome counts as seen only at a launch made by hand (v2 part M2b): at login every window
+        // is closed below, the welcome too, and it waits for the next launch Ivan makes himself.
+        model.launchFinished(atLogin: atLogin)
         if atLogin {
             // Opened by macOS at login: the watcher starts, and no window jumps up on every login.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -177,14 +204,19 @@ struct AppCommands: Commands {
                 model.setPaused(!model.settings.isPaused)
             }
         }
-        // The Help menu (v2 part M2a). macOS adds its own search field at the top, which also lists
-        // Help articles through HelpMenuSearch. Welcome to Prakriti joins these with the welcome window.
+        // The Help menu (v2 parts M2a and M2b). macOS adds its own search field at the top, which also
+        // lists Help articles through HelpMenuSearch.
         CommandGroup(replacing: .help) {
             Button("Prakriti Help") {
                 openWindow(id: HelpWindow.id)
                 NSApp.activate()
             }
             .keyboardShortcut("?", modifiers: .command)
+            Button("Welcome to Prakriti") {
+                model.prepareWelcomeFromMenu()
+                openWindow(id: WelcomeWindow.id)
+                NSApp.activate()
+            }
             Divider()
             Button("Show Log in Finder") { model.showLogInFinder() }
         }

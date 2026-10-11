@@ -5,6 +5,36 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-11, Sun: v2 part M2b, the welcome window
+
+- **A welcome window of five panels opens once by itself, and again from Help, Welcome to Prakriti:**
+  what Prakriti does, how to record for the best results, how outputs work, privacy, and three things to
+  set now (a folder to watch, notifications, where Help is). "1 of 5" in words, Back and Continue, Return,
+  Command-Left and Escape; every panel fits 720 by 600 pt at 17 pt without scrolling. Why: Ivan asked
+  for a startup screen with usage tips, including how to capture the best video (REQUEST item 2).
+- **Each row names the parts it describes, as Help's blocks do, so the welcome shows only what is
+  built.** Today panel 1 lists finding recordings, the podcast and "nothing is posted without you";
+  panel 3 has three steps, not five; the privacy panel describes v1's real protections. A sentence that a
+  later part replaces is written twice (today's, and v2's), and a test walks every stage of the 31-part
+  build to prove exactly one shows. Why: a welcome that promises a viewer, faces or an edited video
+  before they exist is the copy drifting from the build (PLAN R16), and it is the first thing anyone reads.
+- **It counts as seen when it is shown, at a launch made by hand.** At a launch macOS makes at login it
+  is neither shown nor counted, and the first-launch check deletes only the development copy's preference.
+  Why: Prakriti closes every window it opens at login, so a welcome counted then would never have been
+  read; and a check must never touch the live app's preferences.
+- **macOS is not asked about notifications at the launch that shows the welcome; the last panel asks,
+  after saying why.** Its button reads macOS's answer first: never asked, it asks; turned off, it reads
+  Open Notification Settings and opens System Settings at Prakriti's own page (measured: the page's
+  address takes the app's id); on, it says On. Settings' own button now opens the same page. Why: v1 found
+  notifications off for Prakriti, and once macOS has a no a second request shows nothing; the HIG asks for
+  the reason before the system's question.
+- **Choose Folder on the last panel uses a panel that does not stop the app,** and says on the row what
+  happened (added and set to Ask me first, already watched, or refused and why). Why: nothing in the
+  welcome may hold up the watcher, and an alert would land on the main window behind it.
+- **A capture that adds a folder never lets the watcher look through the folders.** Why: the sample data
+  names the real studio folder, so a look in a window capture would have taken its files in (found while
+  building the capture of the last panel, before it ran).
+
 ## 2026-10-11, Sun: v2 part M2a, Help in the app
 
 - **Prakriti Help is a window in the app (Help, Prakriti Help, Command-?):** the articles by section in a

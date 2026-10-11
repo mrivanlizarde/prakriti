@@ -15,9 +15,13 @@ enum AppFont {
     /// Paths and timecodes: monospaced digits, never smaller than secondary.
     static let numbers = Font.system(size: 15).monospacedDigit()
     static let path = Font.system(size: 15, design: .monospaced)
+    /// The welcome window (v2 part M2b, docs/v2/design-spec.md 4.1): each panel's symbol at 48 pt, and
+    /// each row's symbol at 28 pt beside 17 pt text.
+    static let welcomeSymbol = Font.system(size: 48)
+    static let welcomeRowSymbol = Font.system(size: 28)
 
     /// Every size used above, for the test that enforces the 12 pt floor.
-    static let sizes: [CGFloat] = [28, 21, 17, 17, 15, 15, 13, 15, 15]
+    static let sizes: [CGFloat] = [28, 21, 17, 17, 15, 15, 13, 15, 15, 48, 28]
 }
 
 enum Metrics {

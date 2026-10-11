@@ -22,8 +22,8 @@ final class SnapshotTests: XCTestCase {
         // `make snapshots ONLY=recording` draws just the recording pages, for quick looks while
         // working on them; the full set is the milestone's check.
         let only = ProcessInfo.processInfo.environment["PRAKRITI_SNAPSHOT_ONLY"].flatMap { $0.isEmpty ? nil : $0 }
-        // ONLY=help draws only the Help window (testRenderHelp).
-        if only == "help" { return }
+        // ONLY=help draws only the Help window (testRenderHelp), ONLY=welcome only the welcome (testRenderWelcome).
+        if only == "help" || only == "welcome" { return }
         for (index, item) in SidebarItem.allCases.enumerated() where only == nil {
             for (scheme, appearance) in appearances {
                 let model = Fixtures.model()
@@ -187,5 +187,52 @@ final class SnapshotTests: XCTestCase {
         }
         print("Help snapshots written to \(renderer.outputFolder.path): \(written.count)")
         XCTAssertEqual(written.count, library.visible.count * 2 + 2)
+    }
+
+    /// v2 part M2b: the welcome window at each of its five panels, light and dark; the last panel with
+    /// notifications off and not yet asked, and after Choose Folder added a folder or was refused; and,
+    /// light only, the five panels as they will read once every part is built (for the look, and to
+    /// see the v2 copy fits). Every panel must fit the 600 pt window without scrolling
+    /// (docs/v2/design-spec.md 4.1), measured as it was drawn.
+    ///
+    ///   cd ~/Code/prakriti/mac && make snapshots MILESTONE=v2-m2b ONLY=welcome
+    func testRenderWelcome() throws {
+        let only = ProcessInfo.processInfo.environment["PRAKRITI_SNAPSHOT_ONLY"].flatMap { $0.isEmpty ? nil : $0 }
+        guard only == nil || only == "welcome" else { return }
+        let renderer = try SnapshotRenderer(outputFolder: SnapshotRenderer.milestoneFolder())
+        var written: [String] = []
+        func draw(_ name: String, _ appearance: NSAppearance.Name, capabilities: Set<Capability> = Capabilities.built,
+                  panel: Int, _ change: (AppModel) -> Void = { _ in }) throws {
+            let model = Fixtures.model()
+            model.welcome = WelcomeModel(capabilities: capabilities)
+            model.welcome.panel = panel - 1
+            change(model)
+            try renderer.renderWelcome(model: model, appearance: appearance, name: name)
+            let needed = try XCTUnwrap(model.welcome.needed[panel], "\(name): the panel was measured as it was drawn")
+            XCTAssertLessThanOrEqual(needed, Double(WelcomeWindow.size.height), "\(name) needs \(needed) pt: it would not fit without scrolling")
+            print("Welcome \(name): needs \(Int(needed.rounded())) pt of \(Int(WelcomeWindow.size.height))")
+            written.append(name)
+        }
+        for panel in 1...5 {
+            for (scheme, appearance) in appearances {
+                try draw("welcome-\(panel)-\(scheme)", appearance, panel: panel)
+            }
+        }
+        for (scheme, appearance) in appearances {
+            try draw("welcome-5-notifications-off-\(scheme)", appearance, panel: 5) { $0.notifier.permission = .denied }
+            try draw("welcome-5-notifications-not-asked-\(scheme)", appearance, panel: 5) { $0.notifier.permission = .waitingForAnswer }
+            try draw("welcome-5-folder-added-\(scheme)", appearance, panel: 5) { $0.welcome.folderChoice = .added(name: "Studio B") }
+            try draw("welcome-5-folder-refused-\(scheme)", appearance, panel: 5) { model in
+                // The development copy's refusal, word for word (the live copy owns the studio folder).
+                let development = AppPaths(mode: .development)
+                model.welcome.folderChoice = .refused(name: "Studio Recordings",
+                                                      reason: development.refusal(for: development.studioRecordings, isFolder: true) ?? "")
+            }
+        }
+        for panel in 1...5 {
+            try draw("welcome-every-part-built-\(panel)-light", .aqua, capabilities: Capabilities.all, panel: panel)
+        }
+        print("Welcome snapshots written to \(renderer.outputFolder.path): \(written.count)")
+        XCTAssertEqual(written.count, 10 + 8 + 5)
     }
 }

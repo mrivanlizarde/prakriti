@@ -22,6 +22,7 @@ final class AppSettings {
         static let eventDevice = "eventDevice"
         static let engineV0ImportedAt = "engineV0ImportedAt"
         static let helpLastArticle = "helpLastArticle"
+        static let welcomeSeenVersion = "welcomeSeenVersion"
     }
 
     /// Stops finding and processing recordings until turned back on.
@@ -50,6 +51,11 @@ final class AppSettings {
     var engineV0ImportedAt: Date? { didSet { defaults.set(engineV0ImportedAt, forKey: Key.engineV0ImportedAt) } }
     /// The Help article open last, so Help opens where Ivan left it (v2 part M2a).
     var helpLastArticle: String? { didSet { defaults.set(helpLastArticle, forKey: Key.helpLastArticle) } }
+    /// The welcome window's version once it has been shown (v2 part M2b); 0 until then. The window opens
+    /// by itself only while this is lower than `WelcomeContent.version`. Each mode keeps its own, so the
+    /// first-launch check can delete the development one (`defaults delete` on the development domain)
+    /// and never touch the live one.
+    var welcomeSeenVersion: Int { didSet { defaults.set(welcomeSeenVersion, forKey: Key.welcomeSeenVersion) } }
 
     nonisolated static let defaultLMStudioAddress = "http://localhost:1235/v1"
     nonisolated static let defaultLMStudioModel = "qwen/qwen3.8-27b"
@@ -80,6 +86,7 @@ final class AppSettings {
         eventDevice = defaults.string(forKey: Key.eventDevice) ?? ""
         engineV0ImportedAt = defaults.object(forKey: Key.engineV0ImportedAt) as? Date
         helpLastArticle = defaults.string(forKey: Key.helpLastArticle)
+        welcomeSeenVersion = defaults.integer(forKey: Key.welcomeSeenVersion)
     }
 
     /// Each mode keeps its own preferences. Reason: from the switch-over a development copy can run

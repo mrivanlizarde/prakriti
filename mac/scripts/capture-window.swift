@@ -163,9 +163,98 @@ func layerZeroWindows(pid: pid_t) -> [(CGWindowID, CGRect)] {
     }
 }
 
-/// The app's main window: wider than any alert.
+/// The app's main window: the widest one, wider than any alert. The widest, because since v2 part M2b a
+/// development copy can show the welcome (720 pt) beside the main window (1180 pt).
 func mainWindowID(pid: pid_t) -> (CGWindowID, CGRect)? {
-    layerZeroWindows(pid: pid).first { $0.1.width > 600 }
+    layerZeroWindows(pid: pid).filter { $0.1.width > 600 }.max { $0.1.width < $1.1.width }
+}
+
+/// The welcome window (v2 part M2b): 720 pt wide, so never the main window (1180) or Help (960).
+func welcomeWindows(pid: pid_t) -> [(CGWindowID, CGRect)] {
+    layerZeroWindows(pid: pid).filter { abs($0.1.width - 720) < 2 }
+}
+
+/// The development log, and its lines from a given count on (each launch is read from where the log
+/// stood before it). Every development copy and every capture writes here (warning 26).
+let developmentLog = FileManager.default.homeDirectoryForCurrentUser
+    .appending(path: "Library/Logs/Prakriti/Development")
+func developmentLogLines() -> [String] {
+    let f = DateFormatter()
+    f.locale = Locale(identifier: "en_US_POSIX")
+    f.dateFormat = "yyyy-MM-dd"
+    let file = developmentLog.appending(path: f.string(from: Date()) + ".log")
+    return ((try? String(contentsOf: file, encoding: .utf8)) ?? "").split(separator: "\n").map(String.init)
+}
+/// A log line's time ("2026-10-11 13:39:34  ...").
+func logTime(_ line: String) -> Date? {
+    let f = DateFormatter()
+    f.locale = Locale(identifier: "en_US_POSIX")
+    f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+    return f.date(from: String(line.prefix(19)))
+}
+
+// Accessibility, always by process id: System Events finds a process by name, and the live and the
+// development copies are both named Prakriti (warning 79).
+func axChildren(_ element: AXUIElement) -> [AXUIElement] {
+    var value: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &value)
+    return (value as? [AXUIElement]) ?? []
+}
+func axString(_ element: AXUIElement, _ attribute: String) -> String? {
+    var value: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, attribute as CFString, &value)
+    return value as? String
+}
+func axAll(_ element: AXUIElement, depth: Int = 0) -> [AXUIElement] {
+    guard depth < 25 else { return [] }
+    return [element] + axChildren(element).flatMap { axAll($0, depth: depth + 1) }
+}
+/// The titles of the items in one of the app's menus, read through its menu bar.
+func menuItems(pid: pid_t, menu title: String) -> [(title: String, element: AXUIElement)] {
+    let app = AXUIElementCreateApplication(pid)
+    var bar: CFTypeRef?
+    AXUIElementCopyAttributeValue(app, kAXMenuBarAttribute as CFString, &bar)
+    guard let bar, CFGetTypeID(bar) == AXUIElementGetTypeID() else { return [] }
+    let barElement = bar as! AXUIElement
+    for item in axChildren(barElement) where axString(item, kAXTitleAttribute) == title {
+        for menu in axChildren(item) {
+            return axChildren(menu).compactMap { child in
+                axString(child, kAXTitleAttribute).flatMap { $0.isEmpty ? nil : ($0, child) }
+            }
+        }
+    }
+    return []
+}
+/// The welcome window's "N of 5", read from its text, or nil when no welcome is open.
+func welcomePosition(pid: pid_t) -> String? {
+    let app = AXUIElementCreateApplication(pid)
+    for element in axAll(app) {
+        for attribute in [kAXValueAttribute, kAXDescriptionAttribute, kAXTitleAttribute] {
+            if let text = axString(element, attribute), let range = text.range(of: #"\d of \d"#, options: .regularExpression) {
+                return String(text[range])
+            }
+        }
+    }
+    return nil
+}
+/// Presses the button with this title in the app's windows.
+@discardableResult
+func pressButton(pid: pid_t, _ title: String) -> Bool {
+    let app = AXUIElementCreateApplication(pid)
+    for element in axAll(app) where axString(element, kAXRoleAttribute) == kAXButtonRole as String
+        && (axString(element, kAXTitleAttribute) == title || axString(element, kAXDescriptionAttribute) == title) {
+        return AXUIElementPerformAction(element, kAXPressAction as CFString) == .success
+    }
+    return false
+}
+/// One key, with modifiers, sent to the app's own event queue.
+func sendKey(pid: pid_t, _ key: CGKeyCode, flags: CGEventFlags = []) {
+    for down in [true, false] {
+        let event = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: down)
+        event?.flags = flags
+        event?.postToPid(pid)
+        Thread.sleep(forTimeInterval: 0.05)
+    }
 }
 
 // MARK: Main
@@ -409,16 +498,20 @@ if args.first == "--menu-bar", args.count == 4, let seconds = Double(args[2]) {
 }
 // Prakriti Help (v2 part M2a): the REAL Help window, opened on its own with sample data
 // (`--sample-data --show=help`) at three articles and at a search, in light and dark, each captured with
-// `screencapture -l`; then the Help menu's own search handler, run through the debug switch
-// `--debug-help-search` for three words, must list the expected article first. Writes
-// acceptance-help.txt in the folder above the pictures. Help shows no recording, so no picture of anyone
-// is made.
+// `screencapture -l`. The welcome (v2 part M2b): each of its five panels opened on its own
+// (`--show=welcome --welcome-panel=N`), light and dark, plus the last panel after Choose Folder added a
+// folder and after the development refusal, each alone and fitting without scrolling (the window's own
+// measurement, read from the log); Help, Welcome to Prakriti chosen through Accessibility; Continue,
+// Return, Command-Left, Back and Escape on the welcome it opened. Then the Help menu's own search handler,
+// run through the debug switch `--debug-help-search` for three words, must list the expected article
+// first. Writes acceptance-help.txt in the folder above the pictures. Neither window shows a recording, so
+// no picture of anyone is made.
 //   cd ~/Code/prakriti/mac && make accept-help MILESTONE=v2-m2a
 if args.first == "--help", args.count == 3 {
     let app = URL(fileURLWithPath: args[1]).standardizedFileURL
     let out = URL(fileURLWithPath: args[2]).standardizedFileURL
     try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
-    var report: [String] = ["Prakriti Help, real window and Help menu search (v2 part M2a)", "App: \(app.path)", ""]
+    var report: [String] = ["Prakriti Help and the welcome, real windows and the Help menu (v2 parts M2a and M2b)", "App: \(app.path)", ""]
     var failures = 0
     func say(_ line: String) { print(line); report.append(line) }
     quitAll(app)
@@ -461,6 +554,148 @@ if args.first == "--help", args.count == 3 {
             quitAll(app)
         }
     }
+    // The welcome (v2 part M2b): each of its five panels alone (`--sample-data --show=welcome`), light and
+    // dark, then the last panel after Choose Folder added a folder and after the development refusal. Each
+    // must be the only window open, and its panel must fit without scrolling, as the window itself
+    // measured it and wrote to the log. The welcome shows no recording, so no picture of anyone is made.
+    say("")
+    let addedFolder = FileManager.default.temporaryDirectory.appending(path: "Welcome check folder", directoryHint: .isDirectory)
+    try? FileManager.default.createDirectory(at: addedFolder, withIntermediateDirectories: true)
+    let studio = FileManager.default.homeDirectoryForCurrentUser.path + "/Documents/Design Work/Galindo x Lizarde/Studio Recordings "
+    var welcomePages: [(name: String, panel: Int, flags: [String])] = (1...5).map { ("welcome-\($0)", $0, []) }
+    welcomePages.append(("welcome-5-folder-added", 5, ["--welcome-folder=" + addedFolder.path]))
+    // --development: the refusal belongs to a test copy. Refused, so nothing is added, even in memory.
+    welcomePages.append(("welcome-5-folder-refused", 5, ["--development", "--welcome-folder=" + studio]))
+    for appearance in appearances {
+        for page in welcomePages {
+            let name = "\(page.name)-\(appearance)"
+            let mark = developmentLogLines().count
+            run("/usr/bin/open", ["-n", app.path, "--args", "--sample-data", "--show=welcome", "--welcome-panel=\(page.panel)",
+                                  "--appearance=" + appearance] + page.flags)
+            var windows: [(CGWindowID, CGRect)] = []
+            var pid: pid_t = 0
+            let deadline = Date().addingTimeInterval(15)
+            while windows.isEmpty && Date() < deadline {
+                Thread.sleep(forTimeInterval: 0.3)
+                if let first = pids(of: app).first { pid = first; windows = welcomeWindows(pid: pid) }
+            }
+            guard let window = windows.first else {
+                say("FAIL  \(name): the welcome did not appear within 15 s"); failures += 1; quitAll(app); continue
+            }
+            NSRunningApplication(processIdentifier: pid)?.activate()
+            Thread.sleep(forTimeInterval: 2.0)
+            let all = layerZeroWindows(pid: pid)
+            let png = out.appending(path: name + ".png")
+            let (status, text) = run("/usr/sbin/screencapture", ["-x", "-o", "-l", String(window.0), png.path])
+            let lines = developmentLogLines().dropFirst(mark)
+            let fit = lines.first { $0.contains("Welcome panel \(page.panel) of 5") }
+            let fits = fit?.contains(" fits: ") ?? false
+            if status != 0 {
+                say("FAIL  \(name): screencapture said \(text.trimmingCharacters(in: .whitespacesAndNewlines))"); failures += 1
+            } else {
+                let size = NSImageRep(contentsOf: png).map { "\($0.pixelsWide)x\($0.pixelsHigh) px" } ?? "unreadable"
+                let settled = all.first { $0.0 == window.0 }?.1 ?? window.1
+                let ok = all.count == 1 && fits
+                if !ok { failures += 1 }
+                say("\(ok ? "PASS" : "FAIL")  \(name): \(Int(settled.width))x\(Int(settled.height)) pt window, \(all.count) window(s) open, "
+                    + "\(fit.map { String($0.dropFirst(21)) } ?? "no fit line in the log"), saved \(png.lastPathComponent) (\(size))")
+            }
+            quitAll(app)
+        }
+    }
+    try? FileManager.default.removeItem(at: addedFolder)
+
+    // Help, Welcome to Prakriti, chosen through Accessibility in a copy showing Help alone; then the
+    // welcome it opened is driven by its buttons and keys: Continue, Return, Command-Left, Back, Escape.
+    say("")
+    run("/usr/bin/open", ["-n", app.path, "--args", "--sample-data", "--show=help", "--appearance=light"])
+    var helpPid: pid_t = 0
+    let helpDeadline = Date().addingTimeInterval(15)
+    while helpPid == 0 && Date() < helpDeadline {
+        Thread.sleep(forTimeInterval: 0.3)
+        if let first = pids(of: app).first, !layerZeroWindows(pid: first).isEmpty { helpPid = first }
+    }
+    if helpPid == 0 {
+        say("FAIL  the Help window did not appear for the Help menu check"); failures += 1
+    } else {
+        NSRunningApplication(processIdentifier: helpPid)?.activate()
+        Thread.sleep(forTimeInterval: 1.5)
+        let items = menuItems(pid: helpPid, menu: "Help")
+        let titles = items.map(\.title)
+        let listed = titles.contains("Prakriti Help") && titles.contains("Welcome to Prakriti") && titles.contains("Show Log in Finder")
+        if !listed { failures += 1 }
+        say("\(listed ? "PASS" : "FAIL")  the Help menu lists: \(titles.joined(separator: ", "))")
+        let mark = developmentLogLines().count
+        if let item = items.first(where: { $0.title == "Welcome to Prakriti" }) {
+            AXUIElementPerformAction(item.element, kAXPressAction as CFString)
+        }
+        var welcome: [(CGWindowID, CGRect)] = []
+        let deadline = Date().addingTimeInterval(10)
+        while welcome.isEmpty && Date() < deadline { Thread.sleep(forTimeInterval: 0.3); welcome = welcomeWindows(pid: helpPid) }
+        let shownLine = developmentLogLines().dropFirst(mark).first { $0.contains("Welcome shown (Help, Welcome to Prakriti)") }
+        let opened = !welcome.isEmpty && shownLine != nil
+        if !opened { failures += 1 }
+        say("\(opened ? "PASS" : "FAIL")  Help, Welcome to Prakriti opened the welcome (\(welcome.first.map { "\(Int($0.1.width))x\(Int($0.1.height)) pt" } ?? "no window")) at \(welcomePosition(pid: helpPid) ?? "no panel"); log: \(shownLine.map { String($0.dropFirst(21)) } ?? "nothing")")
+        if let window = welcome.first {
+            run("/usr/sbin/screencapture", ["-x", "-o", "-l", String(window.0), out.appending(path: "welcome-from-help-menu.png").path])
+            NSRunningApplication(processIdentifier: helpPid)?.activate()
+            Thread.sleep(forTimeInterval: 1.0)
+            var steps: [(String, String, String?)] = []
+            func step(_ what: String, expect: String?, _ act: () -> Void) {
+                act()
+                Thread.sleep(forTimeInterval: 0.8)
+                let now = welcomeWindows(pid: helpPid).isEmpty ? nil : welcomePosition(pid: helpPid)
+                steps.append((what, expect ?? "closed", now ?? (welcomeWindows(pid: helpPid).isEmpty ? "closed" : "open, position unread")))
+            }
+            step("Continue clicked", expect: "2 of 5") { pressButton(pid: helpPid, "Continue") }
+            step("Return pressed", expect: "3 of 5") { sendKey(pid: helpPid, 36) }
+            step("Command-Left pressed", expect: "2 of 5") { sendKey(pid: helpPid, 123, flags: .maskCommand) }
+            step("Back clicked", expect: "1 of 5") { pressButton(pid: helpPid, "Back") }
+            step("Escape pressed", expect: nil) { sendKey(pid: helpPid, 53) }
+            for (what, expected, got) in steps {
+                let ok = expected == got
+                if !ok { failures += 1 }
+                say("\(ok ? "PASS" : "FAIL")  \(what): \(got ?? "nothing") (expected \(expected))")
+            }
+
+            // Opened again from the Help menu: the panel 2 link opens its article in Help, and Start Using
+            // Prakriti on the last panel closes the welcome and opens the main window.
+            func helpTitle() -> String? {
+                let list = (CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]) ?? []
+                return list.first { ($0[kCGWindowOwnerPID as String] as? Int).map(pid_t.init) == helpPid
+                    && ($0[kCGWindowBounds as String] as? NSDictionary).flatMap { CGRect(dictionaryRepresentation: $0) }.map { abs($0.width - 960) < 2 } == true }
+                    .flatMap { $0[kCGWindowName as String] as? String }
+            }
+            if let item = menuItems(pid: helpPid, menu: "Help").first(where: { $0.title == "Welcome to Prakriti" }) {
+                AXUIElementPerformAction(item.element, kAXPressAction as CFString)
+                Thread.sleep(forTimeInterval: 1.0)
+            }
+            pressButton(pid: helpPid, "Continue")
+            Thread.sleep(forTimeInterval: 0.6)
+            let helpBefore = helpTitle() ?? "no Help window"
+            let linkPressed = pressButton(pid: helpPid, "More in Help: Capture the best video")
+            Thread.sleep(forTimeInterval: 1.0)
+            let helpAfter = helpTitle() ?? "no Help window"
+            let linkOK = linkPressed && helpAfter == "Capture the best video"
+            if !linkOK { failures += 1 }
+            say("\(linkOK ? "PASS" : "FAIL")  More in Help: Capture the best video, on panel 2: the Help window went from \"\(helpBefore)\" to \"\(helpAfter)\"")
+            for _ in 0..<3 { pressButton(pid: helpPid, "Continue"); Thread.sleep(forTimeInterval: 0.5) }
+            let lastPanel = welcomePosition(pid: helpPid) ?? "unread"
+            pressButton(pid: helpPid, "Start Using Prakriti")
+            var mainOpened = false
+            let mainDeadline = Date().addingTimeInterval(8)
+            while !mainOpened && Date() < mainDeadline {
+                Thread.sleep(forTimeInterval: 0.3)
+                mainOpened = layerZeroWindows(pid: helpPid).contains { abs($0.1.width - 1180) < 2 }
+            }
+            let welcomeClosed = welcomeWindows(pid: helpPid).isEmpty
+            let startOK = lastPanel == "5 of 5" && mainOpened && welcomeClosed
+            if !startOK { failures += 1 }
+            say("\(startOK ? "PASS" : "FAIL")  Start Using Prakriti at \(lastPanel): the welcome \(welcomeClosed ? "closed" : "stayed open"), the main window \(mainOpened ? "opened" : "did not open")")
+        }
+    }
+    quitAll(app)
+
     // The Help menu's search handler, through the debug switch: it prints the article ids it returns.
     let binary = app.appending(path: "Contents/MacOS/Prakriti")
     say("")
@@ -472,9 +707,173 @@ if args.first == "--help", args.count == 3 {
         say("\(ok ? "PASS" : "FAIL")  --debug-help-search=\(words): \(ids.isEmpty ? "nothing" : ids.joined(separator: ", ")) (expected \(expected) first; exit \(status))")
     }
     say("")
-    say(failures == 0 ? "PASS: Help opened alone at every article and search, light and dark, and the Help menu's search put the expected article first"
+    say(failures == 0 ? "PASS: Help opened alone at every article and search, light and dark, and the Help menu's search put the expected article first; the welcome opened alone at every panel, light and dark, each fitting without scrolling, and from the Help menu, and answered its buttons and keys"
                       : "FAIL: \(failures) check(s) failed")
     let file = out.deletingLastPathComponent().appending(path: "acceptance-help.txt")
+    try? (report.joined(separator: "\n") + "\n").write(to: file, atomically: true, encoding: .utf8)
+    print("      wrote \(file.path)")
+    exit(failures == 0 ? 0 : 1)
+}
+// The first launch (v2 part M2b, docs/v2/PLAN.md M2 check 5), made rather than assumed: the development
+// preference `welcomeSeenVersion` is deleted (`defaults delete` on the development domain, never the live
+// one), then the built app is opened twice with `--development`, its own store, log and folders. The
+// welcome must appear at the first launch only ("Welcome shown" in the log, and its 720 pt window), and the
+// watcher's first look ("Checked ...") must come within 5 s of each launch. The live preference is read
+// before and after to prove it was not touched. Writes acceptance-first-launch.txt.
+//   cd ~/Code/prakriti/mac && make accept-first-launch MILESTONE=v2-m2b
+if args.first == "--first-launch", args.count == 3 {
+    let app = URL(fileURLWithPath: args[1]).standardizedFileURL
+    let out = URL(fileURLWithPath: args[2]).standardizedFileURL
+    try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+    var report: [String] = ["The welcome at the first launch, and only then (v2 part M2b)", "App: \(app.path)", ""]
+    var failures = 0
+    func say(_ line: String) { print(line); report.append(line) }
+    let developmentDomain = "studio.therowan.prakriti.app.development"
+    let liveDomain = "studio.therowan.prakriti.app"
+    func preference(_ domain: String) -> String {
+        let (status, text) = run("/usr/bin/defaults", ["read", domain, "welcomeSeenVersion"])
+        return status == 0 ? text.trimmingCharacters(in: .whitespacesAndNewlines) : "not set"
+    }
+    /// The last panel's buttons in the real window, on the first launch's welcome: Continue to panel 5;
+    /// Choose Folder... must open the system's Open panel (Cancel closes it, nothing is added); and the
+    /// notification button is pressed only when it reads Open Notification Settings... (macOS already has
+    /// a no), never Turn On Notifications, which would put macOS's own question on Ivan's screen for the
+    /// permission the live copy shares. System Settings must then open at Prakriti's page; it is quit
+    /// again only if it was not open before.
+    func lastPanelButtons(pid: pid_t, window: CGWindowID) {
+        NSRunningApplication(processIdentifier: pid)?.activate()
+        for _ in 0..<4 { pressButton(pid: pid, "Continue"); Thread.sleep(forTimeInterval: 0.6) }
+        let position = welcomePosition(pid: pid) ?? "unread"
+        let atLast = position == "5 of 5"
+        if !atLast { failures += 1 }
+        let png = out.appending(path: "first-launch-panel-5.png")
+        run("/usr/sbin/screencapture", ["-x", "-o", "-l", String(window), png.path])
+        say("\(atLast ? "PASS" : "FAIL")  Continue four times reached \(position); saved \(png.lastPathComponent)")
+
+        let before = layerZeroWindows(pid: pid).count
+        let pressedChoose = pressButton(pid: pid, "Choose Folder…")
+        var panelOpened = false
+        let deadline = Date().addingTimeInterval(8)
+        while !panelOpened && Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.3)
+            panelOpened = layerZeroWindows(pid: pid).count > before
+        }
+        let cancelled = panelOpened && pressButton(pid: pid, "Cancel")
+        Thread.sleep(forTimeInterval: 0.8)
+        let closedAgain = layerZeroWindows(pid: pid).count == before
+        let chooseOK = pressedChoose && panelOpened && cancelled && closedAgain
+        if !chooseOK { failures += 1 }
+        say("\(chooseOK ? "PASS" : "FAIL")  Choose Folder… opened the system's Open panel (\(panelOpened ? "a window more" : "no new window")), and Cancel closed it\(closedAgain ? "" : ": a window is still open")")
+
+        let titles = axAll(AXUIElementCreateApplication(pid))
+            .filter { axString($0, kAXRoleAttribute) == kAXButtonRole as String }
+            .compactMap { button in [kAXTitleAttribute, kAXDescriptionAttribute].lazy.compactMap { axString(button, $0) }.first { !$0.isEmpty } }
+        guard let notificationButton = titles.first(where: { $0.contains("Notification") }) else {
+            say("      the notification row shows no button (notifications are on): nothing to press"); return
+        }
+        guard notificationButton == "Open Notification Settings…" else {
+            say("      the notification button reads \(notificationButton): not pressed, so macOS asks nothing on Ivan's screen"); return
+        }
+        let settingsWasOpen = !run("/usr/bin/pgrep", ["-f", "System Settings.app/Contents/MacOS/System Settings"]).1.isEmpty
+        let mark = developmentLogLines().count
+        pressButton(pid: pid, notificationButton)
+        var page: String?
+        let settingsDeadline = Date().addingTimeInterval(10)
+        while page == nil && Date() < settingsDeadline {
+            Thread.sleep(forTimeInterval: 0.4)
+            let list = (CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]) ?? []
+            page = list.first { ($0[kCGWindowOwnerName as String] as? String) == "System Settings" && ($0[kCGWindowLayer as String] as? Int) == 0 }
+                .flatMap { $0[kCGWindowName as String] as? String }
+        }
+        let logged = developmentLogLines().dropFirst(mark).first { $0.contains("opened System Settings at Prakriti's Notifications page") }
+        let ok = page == "Prakriti" && logged != nil
+        if !ok { failures += 1 }
+        say("\(ok ? "PASS" : "FAIL")  Open Notification Settings… opened System Settings at the page \(page.map { "\"\($0)\"" } ?? "(none)"); log: \(logged.map { String($0.dropFirst(21)) } ?? "nothing")")
+        if !settingsWasOpen {
+            run("/usr/bin/osascript", ["-e", "quit app \"System Settings\""])
+            say("      System Settings was not open before, so it was quit again")
+        }
+    }
+
+    quitAll(app)
+    // Another development copy (from a clone, say) would hold the development lock, and this launch
+    // would quit as its duplicate: stop rather than measure the wrong thing.
+    let (_, listing) = run("/usr/bin/pgrep", ["-fl", "Prakriti.app/Contents/MacOS/Prakriti"])
+    let others = listing.split(separator: "\n").filter { $0.contains("--development") && !$0.contains("--sample-data") }
+    if !others.isEmpty {
+        say("FAIL  another development copy is running and holds the development lock: \(others.joined(separator: " | "))")
+        exit(1)
+    }
+    let liveBefore = preference(liveDomain)
+    run("/usr/bin/defaults", ["delete", developmentDomain, "welcomeSeenVersion"])
+    say("Deleted \(developmentDomain) welcomeSeenVersion: now \(preference(developmentDomain)). Live preference: \(liveBefore).")
+    for launch in 1...2 {
+        let mark = developmentLogLines().count
+        // The log counts whole seconds, so the launch is timed from the start of its second.
+        let opened = Date(timeIntervalSince1970: Date().timeIntervalSince1970.rounded(.down))
+        run("/usr/bin/open", ["-n", app.path, "--args", "--development"])
+        var pid: pid_t = 0
+        var welcome: [(CGWindowID, CGRect)] = []
+        var checked: String?
+        var lines: [String] = []
+        let deadline = Date().addingTimeInterval(launch == 1 ? 25 : 15)
+        while Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.3)
+            if pid == 0, let first = pids(of: app).first { pid = first }
+            if pid != 0, welcome.isEmpty { welcome = welcomeWindows(pid: pid) }
+            lines = Array(developmentLogLines().dropFirst(mark))
+            checked = lines.first { $0.contains("  Checked ") && $0.contains(" folder") }
+            let settled = checked != nil && lines.contains { $0.contains("Welcome shown at first launch") || $0.contains("Welcome: seen before") }
+            if settled && (launch == 2 || !welcome.isEmpty) { break }
+        }
+        Thread.sleep(forTimeInterval: launch == 2 ? 2.0 : 0.5)
+        lines = Array(developmentLogLines().dropFirst(mark))
+        if pid != 0, welcome.isEmpty { welcome = welcomeWindows(pid: pid) }
+        let start = lines.first { $0.contains("opened. Mode: development") }
+        let shown = lines.first { $0.contains("Welcome shown") }
+        let seenBefore = lines.first { $0.contains("Welcome: seen before") }
+        let noAsk = lines.first { $0.contains("Notifications: not asked at launch") }
+        let firstLook = start.flatMap(logTime).flatMap { begin in checked.flatMap(logTime).map { $0.timeIntervalSince(begin) } }
+        // Seconds are whole in the log; the time from `open` to the first look is measured here too.
+        let fromOpen = checked.flatMap(logTime).map { $0.timeIntervalSince(opened) }
+        let lookOK = (firstLook ?? 99) <= 5 && (fromOpen ?? 99) <= 6
+        say("")
+        say("Launch \(launch) (pid \(pid)):")
+        say("      \(start.map { String($0.prefix(19)) } ?? "?")  opened in development mode")
+        say("\(lookOK ? "PASS" : "FAIL")  the watcher's first look: \(checked.map { String($0.dropFirst(21)) } ?? "none"), "
+            + "\(firstLook.map { String(format: "%.0f s", $0) } ?? "?") after the app's first line, \(fromOpen.map { String(format: "%.0f s", $0) } ?? "?") after open (both in whole seconds)")
+        if !lookOK { failures += 1 }
+        if launch == 1 {
+            let ok = shown != nil && !welcome.isEmpty
+            if !ok { failures += 1 }
+            say("\(ok ? "PASS" : "FAIL")  the welcome appeared: \(shown.map { String($0.dropFirst(21)) } ?? "no Welcome shown line"); window \(welcome.first.map { "\(Int($0.1.width))x\(Int($0.1.height)) pt" } ?? "none")")
+            say("      \(noAsk.map { String($0.dropFirst(21)) } ?? "no line about the notification ask")")
+            if let window = welcome.first {
+                let png = out.appending(path: "first-launch-welcome.png")
+                run("/usr/sbin/screencapture", ["-x", "-o", "-l", String(window.0), png.path])
+                say("      saved \(png.lastPathComponent)")
+                lastPanelButtons(pid: pid, window: window.0)
+            }
+        } else {
+            let ok = shown == nil && welcome.isEmpty && seenBefore != nil
+            if !ok { failures += 1 }
+            say("\(ok ? "PASS" : "FAIL")  the welcome did not appear: \(seenBefore.map { String($0.dropFirst(21)) } ?? "no seen-before line"); "
+                + "\(shown == nil ? "no Welcome shown line" : "a Welcome shown line"), \(welcome.isEmpty ? "no welcome window" : "a welcome window")")
+        }
+        // Which window is in front: the window list runs front to back.
+        let order = layerZeroWindows(pid: pid).map { abs($0.1.width - 720) < 2 ? "the welcome" : "a \(Int($0.1.width)) pt window" }
+        say("      windows, front to back: \(order.isEmpty ? "none" : order.joined(separator: ", "))")
+        say("      development preference after launch \(launch): welcomeSeenVersion \(preference(developmentDomain))")
+        quitAll(app)
+    }
+    let liveAfter = preference(liveDomain)
+    let liveOK = liveAfter == liveBefore
+    if !liveOK { failures += 1 }
+    say("")
+    say("\(liveOK ? "PASS" : "FAIL")  the live preference was not touched: before \(liveBefore), after \(liveAfter)")
+    say(failures == 0 ? "PASS: the welcome appeared at the first launch only, and the watcher looked within 5 s both times"
+                      : "FAIL: \(failures) check(s) failed")
+    let file = out.deletingLastPathComponent().appending(path: "acceptance-first-launch.txt")
     try? (report.joined(separator: "\n") + "\n").write(to: file, atomically: true, encoding: .utf8)
     print("      wrote \(file.path)")
     exit(failures == 0 ? 0 : 1)

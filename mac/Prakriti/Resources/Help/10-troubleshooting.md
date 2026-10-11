@@ -34,9 +34,15 @@ log" below).
 
 ### If you don't get notifications
 
-Click Settings in the sidebar, then Open Notification Settings, and turn on notifications for Prakriti.
-[Show Me](prakriti://show/settings) Choose Banners, and turn on sound for its notifications. Also check
-that a Focus is not hiding them. The Settings screen says whether macOS allows Prakriti's notices.
+Click Settings in the sidebar, then Open Notification Settings. System Settings opens at Prakriti's own
+page: turn on Allow notifications. [Show Me](prakriti://show/settings) Choose Banners, and turn on sound
+for its notifications. Also check that a Focus is not hiding them. The Settings screen says whether macOS
+allows Prakriti's notices.
+
+:::requires welcome
+The last panel of the welcome window does the same: choose Help > Welcome to Prakriti, click Continue to
+the last panel, then click Turn On Notifications, or Open Notification Settings if they are off.
+:::
 
 ### If a recording says it is silent or has no sound
 

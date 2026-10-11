@@ -89,7 +89,9 @@ Neither page is listed in search engines.
   against Apple's published rules, so Ivan can upload it by hand. Since Sun 11 Oct each recording's
   page has a Copy button for the title, the show notes and a caption for Instagram, LinkedIn and X,
   each with a quote in the teacher's own words. Nothing is uploaded by Prakriti. Also since Sun 11
-  Oct the app has its own Help (Help, Prakriti Help), which describes only what the app does today.
+  Oct the app has its own Help (Help, Prakriti Help), which describes only what the app does today,
+  and a welcome window of five short panels that opens once by itself (what it does, how to record,
+  how outputs work, privacy, and three things to set) and again from Help, Welcome to Prakriti.
   Progress is in `docs/BUILD-LOG.md`.
 - Prakriti is named, researched and planned. The front page and roadmap are written; they go live
   on Ivan's yes. The web app behind sign-in is not built yet.

@@ -8,6 +8,43 @@ related: [01-welcome, 02-capture-the-best-video]
 
 # Welcome panels
 
+## Status after v2 part M2b (Sun 11 Oct 2026)
+
+This file was the copy source. **The build's words are in `mac/Prakriti/Views/Welcome/WelcomeContent.swift`**,
+and the copy below is history: it was written before the build, for v2 as planned.
+
+- **Structure taken from the design spec (4.1, 4.2), not from this file,** as docs/v2/PLAN.md section 5
+  (item 4) decided: five panels titled Welcome to Prakriti, Record for the Best Results, How Outputs Work,
+  Privacy and Get Started; a 48 pt symbol, a 28 pt title, one 17 pt line, rows of a 28 pt symbol beside a
+  17 pt semibold headline and a 17 pt sentence (read as one paragraph so six rows fit); "1 of 5" in words,
+  not dots; Back and Continue, the last button Start Using Prakriti; Return, Command-Left, Escape. No Skip
+  button: the close button and Escape close it, and closing counts as seen.
+- **Taken from this file where it was shorter or truer:** the 10-second test with headphones (panel 2's
+  sixth row, in place of the design spec's "leave a few seconds at each end", which the spec marked
+  unverified and v1's silence trim covers); "Hybrid MP4, never MKV" (and Hybrid MOV with the capture check,
+  M4b, as PLAN section 5 fixed it); Help, Welcome to Prakriti; the notification ask on the last panel.
+- **What a reader sees at M2b,** each row true of v1 with the podcast-ready episode:
+  - Panel 1: finds your recordings; makes the podcast episode; nothing is posted without you (you
+    listen, then approve).
+  - Panel 2: six capture rows; "vertical clips", the blur sentence and Hybrid MOV wait for their parts.
+  - Panel 3: three steps (found and made, or Ask me first; listen, trim and cut, Make Again; Approve
+    copies to the Approved folder with a receipt). People and Direction join as steps 3 and 4 with M6 and
+    M9; the Viewer and the upload checklist replace steps 2 and 5 with M3b and M8, and M11b.
+  - Panel 4: only a talk with one teacher speaking can be approved and a class is never made ready;
+    notices never show a file name or a title; recordings never leave the Mac, and with a Claude API key
+    only words are sent, never from a class or a recording that names Serenity (v1's lock). The blur,
+    "remembered only if agreed" and the Anthropic or OpenAI rows wait for M6, M7 and M5b.
+  - Panel 5: Choose a folder to watch (Choose Folder..., then "Added <name>. It is set to Ask me first.",
+    or the refusal); Get a notice (Turn On Notifications when never asked; Open Notification Settings...
+    when off, which opens System Settings at Prakriti's own page; "On." when on); Find help (Open Help).
+    "Choose where models run" joins with M5b (the hardware check's verdict line is M5a).
+- **How a later part changes it:** every row names its capabilities (`requires`, and `unless` for a
+  sentence true only until a part lands, with its `-v2` twin beside it). The part that switches a
+  capability on reads every row naming it, makes each sentence true of what it built, and runs
+  `WelcomeTests`, which walk every stage of the build. M13 writes the final copy.
+- **Measured:** every panel fits 720 by 600 pt at 17 pt; panel 2 needs 530 pt today and 570 pt with every
+  part built; the window is 720 by 632 pt with its hidden title bar's band.
+
 Five panels, shown once, at the first launch. Each has a headline of five words or fewer and a body of
 under 40 words. Copy is final unless the build renames a feature.
 
