@@ -6,10 +6,16 @@
 # make test       run every unit test (includes the snapshot render)
 # make snapshots  render every screen, light and dark, to ../screens/mac/$(MILESTONE)/
 #                 (ONLY=recording draws just the recording pages, for a quick look)
-# make accept     milestone 2's acceptance on REAL recordings through the app's pipeline: the 13 Sep
-#                 talk, the silent 14 Sep class, a 30 s clip, the 6 Sep talk. Writes episodes to
-#                 ~/Prakriti/Dev/Outputs and pictures plus acceptance.txt to ../screens/mac/$(MILESTONE)/
-#                 (takes about 4 to 5 minutes)
+# make fixtures   build the shared test files of v2 (docs/v2/PLAN.md section 4) from the 13 Sep and
+#                 6 Sep talks and macOS `say` into ~/Prakriti/Dev/Fixtures, every time from scratch;
+#                 prints each file's SHA-256 and whether it is the SAME as the last run (about 15 s)
+# make accept     milestone 2's acceptance through the app's pipeline: the REAL 13 Sep talk, the
+#                 silent-60s fixture (65 s of the 13 Sep picture with digital silence; never a class),
+#                 a 30 s clip, the REAL 6 Sep talk. Builds the fixtures first if any is missing. Writes
+#                 episodes to ~/Prakriti/Dev/Outputs and pictures plus acceptance.txt to
+#                 ../screens/mac/$(MILESTONE)/ (takes about 4 to 5 minutes)
+# make regress    the regression set every v2 part runs: make test, make accept, make accept-edits,
+#                 in that order, stopping at the first failure (about 15 minutes)
 # make accept-outputs  milestone 4's acceptance on the REAL 13 Sep talk: the standard choices, the
 #                 Outputs screen's loudness changed to -19 and made again, the transcript turned off
 #                 on the recording's page and made again, then everything off (must equal engine v0
@@ -68,7 +74,7 @@ MODE      ?= development
 ONLY      ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: generate build test snapshots accept accept-outputs accept-edits accept-models accept-podcast accept-episode-text migrate-check run look check install drop
+.PHONY: generate build test snapshots fixtures accept regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -82,8 +88,17 @@ test:
 snapshots:
 	TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) TEST_RUNNER_PRAKRITI_SNAPSHOT_ONLY=$(ONLY) $(XCB) test -only-testing:PrakritiTests/SnapshotTests
 
+fixtures:
+	./scripts/make-fixtures.sh
+
 accept:
+	./scripts/make-fixtures.sh --if-missing
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=1 TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/PipelineAcceptanceTests
+
+regress:
+	$(MAKE) test MILESTONE=$(MILESTONE) DERIVED=$(DERIVED)
+	$(MAKE) accept MILESTONE=$(MILESTONE) DERIVED=$(DERIVED)
+	$(MAKE) accept-edits MILESTONE=$(MILESTONE) DERIVED=$(DERIVED)
 
 accept-outputs:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=outputs TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/OutputsAcceptanceTests

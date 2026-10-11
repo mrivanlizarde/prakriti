@@ -19,8 +19,12 @@ ready. Passed on the 13 Sep talk with Qwen3.8-27B. **Both were re-checked by ind
 and passed; the handoff is the last section, "Podcast-ready episode: the handoff"**: what works, the
 one claim corrected, what is MISSING by design and how to set it, where episode 1's file is, and what
 episode 1 still needs before it is uploaded.
-Prakriti for Mac, installed in `~/Applications` (the build of `c91058b` since 03:02 Sun 11 Oct), is
-the only thing watching the studio folder and `~/Prakriti/Drop`. Titles, show notes and chapters, and
+**v2 began the same morning with part M0, the baseline** (the last section, "v2 part M0"): `make
+fixtures` builds the shared test files every v2 check uses from the two talks and `say`, `make accept`
+no longer reads a class, `make regress` runs the regression set, and every v1 acceptance named by the
+v2 plan was run again on this code. No app code changed.
+Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
+`~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
 
 ---
@@ -2012,3 +2016,167 @@ session; the others by the builder or a verifier.
    equivalent.
 5. If Ivan hears riding or the room in the pauses: an expander for the pauses, measured against v0 on
    13 Sep first.
+
+---
+
+## v2 part M0: the baseline. Sun 11 Oct 2026
+
+The first part of v2 (`docs/v2/PLAN.md`, M0): start v2 from a committed, verified v1 that includes the
+podcast-ready episode, with a test suite that never reads a class. The podcast-ready run had landed
+(`c91058b`, its handoff `2765203`) and was the installed build (03:02 Sun 11 Oct, pid 2200); the v2
+plan was committed as `aa6a3e6`. **No app code changed in this part**: `git diff aa6a3e6 -- mac/Prakriti`
+is empty. Built on `main`, as the run's instructions said (the plan's rule 2.1.1 names a `v2-m0`
+branch; the orchestrating run asked for `main`).
+
+### What was built
+
+- **`make fixtures`** (`mac/scripts/make-fixtures.sh`; the texts `say` reads and the made-up talk in
+  `mac/scripts/fixtures/`). Builds every fixture in PLAN section 4 into `~/Prakriti/Dev/Fixtures`, from
+  scratch each time, from the 13 Sep and 6 Sep talks (read only, size and date checked unchanged at
+  the end) and macOS `say`. Each file is made in a hidden staging folder, checked (its streams, its
+  length, its last 5 s decoded), and only then moved into place. `SHA256SUMS` records the run, and a
+  rerun prints SAME or CHANGED for each file; `RECIPES.txt` records the ffmpeg and macOS versions.
+  `--if-missing` builds only when a fixture is missing (what `make accept` runs first).
+
+  | Fixture | What it is | Size |
+  |---|---|---|
+  | `13sep-90s.mp4` | The 13 Sep talk from 5:00 for 90 s, streams copied (H.264 1920 by 1080, AAC stereo 48 kHz) | 69.8 MB |
+  | `silent-60s.mp4` | The 13 Sep picture from 5:00 for 65 s, sound replaced by digital silence (AAC stereo). 65 s because under 60 s is a test clip and never reaches the sound check | 49.2 MB |
+  | `two-people-mixed.mp4` | `13sep-90s` with the 6 Sep picture (from 3:00) in the lower right corner at 30% (576 by 324) from 0:20 to 0:60, and a second voice (`say -v Samantha` reading `second-voice.txt`, 18.7 s padded to 20) mixed into the single dual-mono track from 0:30 to 0:50, about the talk's loudness. H.264 CRF 18, AAC 160 kbps | 40.0 MB |
+  | `two-people-tracks.mov` | The same picture (copied); track 1 the mix, track 2 the 13 Sep voice alone, track 3 the second voice alone, each mono AAC 192 kbps (the OBS layout of help 03) | 42.0 MB |
+  | `ums-and-retake.wav` | 30.000 s, 48 kHz mono 16-bit: `say` (Samantha, 150 words a minute) reading `ums-and-retake.txt`: a false start and "let me start over", the restart, "Um", "uh", a stutter "So so", a parallel pair | 2.9 MB |
+  | `synthetic-transcript.json` | A made-up talk (4,023 words, 325 sentences, 28 paragraphs, 30.9 minutes at 130 words a minute), naming no real person, in Parakeet's JSON shape, times on its 80 ms frame | 0.8 MB |
+  | `ums-and-retake.txt`, `second-voice.txt` | The exact words `say` read, so later checks know the right answer | |
+  | `ivan-plus-13sep.mov` | Made only once Ivan's own `ivan-clip.mov` is in the folder: his clip in the lower left from 0:10, his voice on track 3 | not made |
+
+- **`make accept` no longer reads a class.** `PipelineAcceptanceTests` reads only the 13 Sep and 6 Sep
+  talks from the studio folder; the silent case is `silent-60s.mp4`; the test fails if any of its files
+  has a 2026-09-14 path, and says to run `make fixtures` if one is missing. The picture of the silent
+  recording is now `m2-recording-silent-60s-*`.
+- **`make regress`**: `make test`, `make accept`, `make accept-edits`, in order, stopping at the first
+  failure (the regression set of PLAN rule 2.1.4).
+- **`PodcastReadyAcceptanceTests` fixed** (found by this part's check 2, below): it still looked for
+  the 10 Oct text file's headings ("SHOW AND EPISODE", "CHAPTERS"), which `Episode text.txt` replaced
+  on 11 Oct; nobody had run `make accept-podcast` since. It now looks for the episode text's headings
+  and its chapters line. A test change only; the app's text file was right.
+- **Docs:** START_HERE warning 17 ("the 13 Sep and 6 Sep talks only"), the `make accept` paragraph,
+  the commands, the fixtures row in Where things live, new warning 71 (fixtures are made only by `make
+  fixtures`, and why), and a line for v2 part M0; CHANGELOG. No help article changes: the in-app Help
+  arrives in M2a.
+
+### Checks run, with results (PLAN M0, every check)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `make test` (fresh build in its own folder, 04:47 to 04:54) | **136 tests, 0 failures, 8 skipped by design** (the seven acceptance methods and the migration check), 400.6 s. **0 compiler warnings**: the only lines with "warning" are the `appintentsmetadataprocessor` tool line W4 describes and XCTest's runtime note that a Keychain test runs on the main thread |
+| 2 | `make accept-podcast MILESTONE=v2-m0`, LM Studio running, run twice | **First run (04:35 to 05:27, before the test fix): FAIL on two stale text-file headings** (above); every measured line of the 6 Sep talk passed; stopped during the 13 Sep talk. **Second run, final code (05:35:48 to 07:35:04): PASS, 2 tests, 0 failures, 7,154 s.** **6 Sep (3,012 s):** the podcast-ready MP3 **-16.02 LUFS, true peak -1.20 dBTP** (loudnorm's meter; ebur128 -16.0, -1.2), loudnorm **linear** (v0's chain: dynamic), loudness range 4.7 LU against v0's 5.2; **the last 5 s decode**; **ID3v2.4 frames read back: TIT2 TDRC TCON COMM CTOC and 5 CHAP**, 5 chapters read back by Prakriti and by ffprobe, the first at 0:00; the 10 s trim moved caption 101 by 7.143 s (expected 7.143); **checklist 0 FAIL, 7 MISSING, 17 PASS: Loudness, True peak, Plays to the end, Tags and Chapters PASS**; the seventh MISSING is Social captions, because the copy rules left out the LinkedIn caption (it said "cost"), as they should. Writing: try 1 passed in 1,657 s (12,362 thinking tokens). **13 Sep (4,142 s):** **-16.03 LUFS, true peak -1.78 dBTP**, linear, range 3.7 LU against 4.2; the last 5 s decode; **TIT2 TDRC TCON COMM CTOC and 3 CHAP** read back, 3 chapters by both readers; the 10 s trim moved caption 41 by 8.818 s (expected 8.818); **checklist 0 FAIL, 6 MISSING (show name, episode title, host, artwork, show notes, speakers: all Ivan's), 18 PASS**. Writing: **try 1 cut off at its 16,383-token limit, all of it thinking, after about 31 min; try 2 passed** in 1,648 s (13,163 thinking). **Measured again by this session** with its own script on both MP3s (loudnorm's meter, ebur128, the tail, ffprobe's tags and chapters, and the ID3 frame ids parsed from the bytes): the same numbers. 0 em or en dashes in either talk's `Episode text.txt`, `.md` or checklist. LM Studio left with nothing loaded |
+| 3 | `make fixtures` twice (final recipe, 05:47; about 15 s a run, 130 s of CPU) | **PASS. Every SHA-256 the same both times**, by the script's SAME lines and by an independent `shasum -a 256` of all eight files after each run (`diff`: identical). Earlier, every recipe change was run twice too (SAME each time, and CHANGED shown for exactly the files a change touched). `ffprobe`: `13sep-90s.mp4` H.264 High 1920 by 1080 30000/1001 BT.709 + AAC stereo 48 kHz, 90.12 s; `silent-60s.mp4` the same video + AAC stereo, 65.13 s, **loudest point -91.0 dB**; `two-people-mixed.mp4` H.264 High 1920 by 1080 + **1 AAC stereo track**, 90.06 s, L minus R no signal at all; **`two-people-tracks.mov` H.264 + 3 AAC mono tracks, 48 kHz**, 90.06 s; `ums-and-retake.wav` PCM 16-bit mono 48 kHz, **30.000000 s**. Each file's last 5 s decode with no error (the script). **Measured, not looked at:** Vision on `two-people-mixed` every 2 s: **2 faces at every sample from 0:21 to 0:59 and at 20.1 s and 59.9 s, the second one in the lower right (x 1,562 to 1,603 px, y 816 to 842, about 98 px wide); 1 face at every sample before 20 s and after 60 s (19.9, 60.1)**; track 3 of the tracks file: -91.0 dB mean from 0 to 30 s, **-26.3 dB mean from 30 to 50 s**, -91.0 dB from 50 to 90 s; Parakeet on track 3 heard the paragraph word for word but one ("the countdown" for "the count down") |
+| 4 | `make accept MILESTONE=v2-m0` (05:27:49 to 05:32:36, the test 281.9 s) | **PASS.** 13 Sep: **-16.8 LUFS** (ebur128), -16.82 by loudnorm's meter; **true peak -1.7 dBFS**, -1.68 dBTP by loudnorm; transcript 2,948 words reaching 15:47 of 15:48; 137 captions for 137 sentences, 0 differing from Parakeet's. **`silent-60s`: Needs a decision**, "No usable sound: the loudest point is -91 dB. Nothing was made from it.", sound check failed in 0.1 s, every later step not run, **no output folder** (`ls ~/Prakriti/Dev/Outputs/silent-60s`: no such file). The 30 s clip filed as a test. 6 Sep: -16.7 LUFS (-16.72), -1.4 dBFS (-1.43 dBTP), reaches 55:38 of 55:39, 555 captions for 555 sentences. **`grep -c "2026-09-14" acceptance.txt`: 0** |
+| 5 | `make accept-edits MILESTONE=v2-m0` (05:32:41 to 05:35:40, the test 175.7 s) | **PASS, the same numbers as v1:** the approved episode 907.732 s against 946.550 s, **38.82 s shorter (expected 38.82)**; its SHA-256 the same as the made one; the sentences inside the trim and the cut absent from the approved transcript; Parakeet on the approved episode heard **0 of 73** five-word runs said only in the cut and 189 of 201 from the minute after; marked a class, Approve refused and the approval taken back |
+| 6 | The originals' size and modification date | **Unchanged**, by `stat` before the first run (04:32) and after the last (07:50): the 13 Sep talk 730,464,600 bytes, modified 18:41:32 Sun 13 Sep (1789350092); the 6 Sep talk 2,578,079,009 bytes, 19:02:12 Sun 6 Sep (1788746532). Each acceptance and every `make fixtures` run checked them too |
+| 7 | *Ship gate:* `make migrate-check`, then `make install`, then "Checked 2 folders." twice | **`make migrate-check` PASS** (07:50): the live store's copy opens with this build: 11 recordings (2 ready), 2 folders, 30 output settings, 228 Activity lines; titles and the podcast-ready episode on in 0 folders. **`make install`** (07:50:36 to 07:50:38): BUILD SUCCEEDED, the old copy (pid 2200, running since 03:02) quit cleanly ("Quit." at 07:50:37), replaced whole, `codesign --verify --deep --strict` passes, **reopened as pid 37063: "Prakriti 0.1 (1) opened. Mode: live. Store: ~/Library/Application Support/Prakriti/Prakriti.store"** (no fallback store), login item on, "Caught up on changes made while Prakriti was closed: 0 events". **"Checked 2 folders. Nothing new." at 07:50:38 and again at 07:55:38**, still pid 37063, both also in the live store's Activity lines (read only with `sqlite3`). The live `~/Prakriti/Outputs`, `Approved` and `Drop`: the same 12 files with the same SHA-256 before and after the install, and no file there changed after 04:30 (Approved and Drop empty) |
+
+**Also run:** `make regress MILESTONE=v2-m0` on the final code (07:35:41 to 07:50:07), the new target
+itself: **`make test` 136 tests, 0 failures, 8 skipped, 390.4 s, 0 compiler warnings; `make accept`
+passed (282.4 s; 13 Sep -16.8 LUFS, -1.7 dBFS; `silent-60s` Needs a decision at -91 dB with no output
+folder; `grep -c 2026-09-14 acceptance.txt` 0); `make accept-edits` passed (175.8 s; 38.82 s shorter,
+0 of 73 runs heard)**; exit 0.
+
+### What the runs caught and fixed
+
+- **The corner of `two-people-mixed` had no face for most of its 40 s.** The first recipe took the 6 Sep
+  picture from 10:00; Vision found the corner face at 0:21 and 0:25 and not at 0:35 to 0:59. Measured on
+  the 6 Sep talk itself every 10 s: one face at every sample from 2:00 to 8:10, none from 10:12 to 10:40.
+  The corner now starts at 3:00 (one face at every 2 s sample from 3:00 to 3:42).
+- **The mixed track's two channels drifted apart.** The studio's single track is one microphone copied to
+  both channels (L minus R: no signal at all, measured on the 13 Sep clip). ffmpeg's AAC encoder at its
+  defaults (intensity stereo, noise substitution) left the two channels up to -14.5 dB apart; coded
+  mid and side with those off, the difference is no signal at all again, as the studio's.
+- **Parakeet heard the planted stutter "The the" as "that the"**, so a rough cut test could never find
+  it. Five phrasings were tried; "So so" is written as said. Parakeet now hears every planted item in
+  `ums-and-retake.wav`: "it let me start over", "um", "we uh notice", "so so the body", and both halves
+  of the parallel pair, speech from 0.32 to 29.44 s.
+- **`make accept-podcast` failed on the 6 Sep talk** on two text-file headings that had been renamed on
+  11 Oct (above). Every measured line had passed; the run was stopped during the 13 Sep talk, the test
+  fixed, and the whole acceptance run again on the final code.
+- An orphaned Parakeet process from the stopped run was found (parent gone) and stopped, and its
+  staging folder in `~/Prakriti/Dev/Outputs` removed; LM Studio had nothing loaded.
+
+### Decisions, each with its reason
+
+1. **Each track of `two-people-tracks.mov` is mono.** PLAN M4b's check asks for "three tracks, each with
+   its own loudness, none dual mono". OBS with Mono on writes each microphone as stereo with the voice
+   in both ears, which a per-track check would call dual mono; a mono track is one microphone and cannot
+   be. M4b's capture check should say "dual mono" only of a stereo track whose channels are identical.
+2. **`two-people-mixed.mp4` stays dual mono**, like the studio files it stands for, so the diarizer path
+   is tested on the real problem.
+3. **The second voice is brought 10 dB down** (`say` writes -16.5 LUFS; the 13 Sep talk measures -26.7),
+   so neither voice buries the other. In the tracks file: track 1 -27.4 LUFS, track 2 -28.8, track 3
+   -26.6.
+4. **The synthetic transcript is generated from a committed text,** not by `say` and Parakeet: the same
+   text gives the same bytes, and the times are honest about being made (80 ms frames, a stated model).
+   Its words are whole-word tokens with punctuation as its own token; real Parakeet also splits long
+   words into pieces, which `EpisodeTranscript` reads the same way. It names no person, has no em or en
+   dash, and passes the copy rules' patterns (no money, enrollment or offer words), so a cloud test on it
+   tests the provider, not the screen.
+5. **`ivan-plus-13sep.mov` is written into the recipe now and made only when Ivan's clip exists.** Tested
+   once with a stand-in clip (a test pattern and a computer voice, no face or person): three mono tracks,
+   track 3 silent to 9.9 s (-91 dB) and the voice from 10 s; the stand-in and its product were deleted
+   and the fixtures rebuilt, SAME as before.
+6. **Fixture files hold no prints.** They are pictures and sound of Gabriel cut from his own talks, in
+   the development folder, which is what v1's clips already were; no face or voice print is computed or
+   stored (D2).
+
+### Looked at, and what was measured instead (D1)
+
+No picture of a face was made or looked at in this part. The fixtures that show Gabriel were checked by
+measurement only (face counts, pixel positions, loudness by window, Parakeet's words). The snapshots
+looked at show no video frame (the player draws as a black pill in a bitmap, W43): `02-recordings-light`,
+`06-activity-dark` (sample data), `m2-recordings-dark`, `m2-recording-silent-60s-light`,
+`m2-recording-silent-60s-dark-end` (the silent fixture: Needs a decision, the steps, the file in
+`~/Prakriti/Dev/Fixtures`), `m5-talk-3-made-again-light`, all in `screens/mac/v2-m0/`. **For Ivan, if he
+wants to see the fixtures with his own eyes:** `~/Prakriti/Dev/Fixtures/two-people-mixed.mp4` (the
+corner from 0:20 to 0:60, the second voice from 0:30) and `two-people-tracks.mov`.
+
+### What does not work yet, or was not seen working
+
+- The fixtures are byte-identical on this Mac with ffmpeg 9.0.1 and macOS 27.2's Samantha voice. A
+  verifier on another ffmpeg or after a voice update will see CHANGED: the recipe is the same, the
+  bytes are not.
+- `synthetic-transcript.json` has not been read by the app yet (M5 is its first reader); its shape was
+  compared with Parakeet's own (`transcript.json` of a 13 Sep clip): the same keys at every level, the
+  same types, each sentence's text with its leading space, the top text the sentences joined, tokens
+  spelling each sentence.
+- `ivan-plus-13sep.mov` waits for Ivan's clip (M7, optional).
+
+### For Ivan
+
+Nothing is needed for this part (PLAN M0: "Needs Ivan: nothing"). Three things worth knowing:
+
+- [ ] **The file to listen to has a new home.** The handoff above points at
+  `~/Prakriti/Dev/Outputs/2026-09-06 18-06-33/Podcast-ready/2026-09-06.mp3`, but every acceptance run
+  clears that development folder (this part's runs remade it and cleared it again). A copy now lives
+  where no check touches it: **`~/Prakriti/Dev/Listen/2026-09-06 podcast-ready/2026-09-06.mp3`**, made
+  06:24 Sun 11 Oct by the same chain (-16.02 LUFS, -1.20 dBTP, range 4.7 LU), with its text and
+  checklist. Listen to it against engine v0's `~/Prakriti/Outputs/2026-09-06 18-06-33/episode.mp3`, as
+  the handoff asks, before Fri 23 Oct.
+- [ ] **Notices are still off for Prakriti** in System Settings (the live log says so at every launch):
+  System Settings, Notifications, Prakriti. Nothing new in this part; still the first item of the
+  Finish line checklist.
+- Optional, for v2's M7 only: a 2-minute clip of yourself (your face and voice, recorded on this Mac,
+  saved as `~/Prakriti/Dev/Fixtures/ivan-clip.mov`) lets `make fixtures` build `ivan-plus-13sep.mov`. It
+  waits for D2 (a signed release, even for yourself). Nothing blocks on it.
+
+### For the next part
+
+1. **The writing model's thinking now runs out on 13 Sep one try in three.** Today's tries on the 13 Sep
+   talk: 10,766, 11,218 and 13,036 thinking tokens passing, then one empty answer at 14,823 (03:47), one
+   pass at 11,545, then **one cut off at the 16,383-token limit** (07:01), then a pass at 13,163. Each
+   failed try costs about 25 to 30 minutes. Episode 1 passed first time in both runs (12,994 and 12,362).
+   It is v1's budget (`max_tokens` 16,384, LOCAL-MODEL.md rule 2), not this part's to change; the part
+   that next touches `Writing/` (M5a) should raise the budget or split the request, and measure it.
+2. `two-people-tracks.mov` is the clean case: three mono tracks. M4b's capture check should call a
+   track "dual mono" only when it is stereo with identical channels (decision 1 above), or OBS's own
+   Mono setting will be flagged as the studio's problem.
+3. `make accept-podcast` takes about 2 hours now with the episode text on both talks (51 and 69 minutes
+   today); plan for it when a part touches its code.

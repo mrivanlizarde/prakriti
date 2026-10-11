@@ -542,6 +542,11 @@ Finder. **A class is never made ready:** the pipeline refuses both podcast-ready
 Podcast-Ready Files refuses it, and the page says why. Numbering (not numbered, episode numbers, or
 seasons and episode numbers) is on the Outputs screen. See `docs/BUILD-LOG.md`, "Episode text and Ready
 to upload".
+**v2 begins, part M0 (baseline), Sun 11 Oct:** the v2 build (`docs/v2/PLAN.md`, 31 parts) starts from
+v1 with the podcast-ready episode, checked again, and a test suite that never reads a class. `make
+fixtures` builds the shared test files every v2 check uses, from the two talks and `say`; `make accept`
+uses `silent-60s.mp4` where it read the silent 14 Sep class; `make regress` runs the regression set. No
+app code changed. See `docs/BUILD-LOG.md`, "v2 part M0".
 
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
@@ -625,7 +630,13 @@ cd ~/Code/prakriti/mac && make run
 cd ~/Code/prakriti/mac && make look MILESTONE=m1
 ```
 ```bash
+cd ~/Code/prakriti/mac && make fixtures
+```
+```bash
 cd ~/Code/prakriti/mac && make accept MILESTONE=m2
+```
+```bash
+cd ~/Code/prakriti/mac && make regress MILESTONE=v2-m0
 ```
 ```bash
 cd ~/Code/prakriti/mac && ./scripts/process-in-app.sh "$HOME/Prakriti/Dev/Clips/2026-09-13 clip 90s.mp4" ../screens/mac/m2/real
@@ -676,11 +687,24 @@ is refused with an alert. It takes the screen's focus for about a minute: leave 
 running 15 seconds later, then runs `make look`'s capture. `make accept` is milestone 2's check on
 **real recordings** through the app's own pipeline and runner (about 4 to 5 minutes): the 13 Sep talk
 must come out between -17 and -15 LUFS with its true peak at or under -1.0 dBFS, a transcript
-reaching within 120 s of the end and a REPORT.md; the silent 14 Sep class must be Needs a decision
-with nothing made; the 30 s clip in `~/Prakriti/Dev/Drop` must be filed as a test; the 6 Sep talk
-runs too. It writes to `~/Prakriti/Dev/Outputs`, draws Recordings, Today, Activity and each
-recording's page from what was really measured into `screens/mac/<milestone>/`, and writes the
-numbers to `acceptance.txt` there. `scripts/process-in-app.sh` checks the **real app**: it opens
+reaching within 120 s of the end and a REPORT.md; the `silent-60s.mp4` fixture (65 s of the 13 Sep
+picture with digital silence) must be Needs a decision with nothing made; the 30 s clip in
+`~/Prakriti/Dev/Drop` must be filed as a test; the 6 Sep talk runs too. Until v2 part M0 (Sun 11 Oct)
+the silent recording was the 14 Sep class; the rule is now never a class, so `acceptance.txt` names no
+2026-09-14 file. It builds the fixtures first if any is missing, writes to `~/Prakriti/Dev/Outputs`,
+draws Recordings, Today, Activity and each recording's page from what was really measured into
+`screens/mac/<milestone>/`, and writes the numbers to `acceptance.txt` there. `make fixtures` builds
+the shared test files of v2 (`docs/v2/PLAN.md`, section 4) into `~/Prakriti/Dev/Fixtures` from the 13
+Sep and 6 Sep talks and macOS `say`, from scratch every time (about 15 s), and prints each file's
+SHA-256 with SAME or CHANGED against the last run: `13sep-90s.mp4`, `silent-60s.mp4`,
+`two-people-mixed.mp4` (a second face in the corner from 0:20 to 0:60 and a second voice, `say`, from
+0:30 to 0:50, on one dual-mono track), `two-people-tracks.mov` (the same picture; track 1 the mix,
+track 2 the talk alone, track 3 the second voice alone, each mono), `ums-and-retake.wav` (planted
+fillers, a stutter, a restart and a parallel pair, with its text beside it), `second-voice.txt` and
+`synthetic-transcript.json` (a made-up 4,023-word talk in Parakeet's JSON shape, naming no real person,
+for cloud tests). `ivan-plus-13sep.mov` is made only once Ivan has put his own `ivan-clip.mov` there.
+`make regress` is the regression set every v2 part runs: `make test`, `make accept`, `make
+accept-edits`, in order, stopping at the first failure. `scripts/process-in-app.sh` checks the **real app**: it opens
 Prakriti with Process File on one file (launch flag `--process-file=`), waits for the result in the
 log, and captures the real window on Recordings and on that recording's page. `make install`
 builds, quits the installed copy cleanly, replaces `~/Applications/Prakriti.app` whole and opens
@@ -748,6 +772,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | The Yoga Marga word list | `mac/Prakriti/Engine/Lexicon.swift` (each word as written, how it has been misheard, and what it is); shown on the Outputs screen |
 | Output settings | Which outputs: each folder's switches (Sources), else the Outputs screen's (files added by hand). How: the Outputs screen. A recording's own choices (its page) override both: `OutputResolver` in `Model/Store.swift` |
 | Test clips | `~/Prakriti/Dev/Drop/2026-09-13 clip 30s.mp4` (a test) and `~/Prakriti/Dev/Clips/2026-09-13 clip 90s.mp4` (a full run), cut with `ffmpeg -c copy` from the 13 Sep talk |
+| v2 test fixtures | `~/Prakriti/Dev/Fixtures/` (made by `make fixtures`, never by hand): the files, `SHA256SUMS` from the last run, `RECIPES.txt` (the ffmpeg and macOS versions they were made with). The recipes: `mac/scripts/make-fixtures.sh`, with the texts `say` reads and the made-up talk in `mac/scripts/fixtures/` |
 | The built app | `mac/build/Build/Products/Debug/Prakriti.app` (gitignored) |
 | The live app | `~/Applications/Prakriti.app` (from `make install`), the login item |
 | Store, live | `~/Library/Application Support/Prakriti/Prakriti.store`; the watcher lock beside it (`watcher.lock`) |
@@ -830,11 +855,15 @@ top and its end. Reading the code is not verification, and neither is a passing 
 16. **A test clip or a silent recording makes nothing:** no output folder at all. The tests check
     the folder does not exist, and `make accept` clears its own output folders first so an old run
     cannot hide a new mistake. Reason: v0's rule, and a silent file once went unnoticed for 24 days.
-17. **The acceptance test is the only code that reads the Studio Recordings folder in development,**
-    and only the three files it names (13 Sep talk, silent 14 Sep class, 6 Sep talk), read-only; it
-    checks each original's size and date are unchanged afterwards. Everywhere else development mode
-    refuses that folder (warning 1). Reason: the folder holds the classes, which may not be processed
-    (student privacy), and the live Prakriti owns it.
+17. **The acceptance tests and `make fixtures` are the only code that reads the Studio Recordings
+    folder in development, and only the 13 Sep and 6 Sep talks, read-only;** each checks the
+    originals' size and date are unchanged afterwards. Everywhere else development mode refuses that
+    folder (warning 1). Anything a check needs that the two talks cannot show (silence, a second face,
+    a second voice, a second microphone track) is a fixture made from them by `make fixtures`, never
+    another studio file. Reason: the folder holds the classes, which may not be processed (student
+    privacy), and the live Prakriti owns it. Until v2 part M0 (Sun 11 Oct) `make accept` also read the
+    silent 14 Sep class; `silent-60s.mp4` replaced it, and the test fails if a 2026-09-14 path comes
+    back.
 18. **Never list a `-vertical.` rendition, and keep the folder listing engine v0's**
     (`FolderScan`: hidden names, three levels, v0's media types, no symbolic links). Reason: v0
     never listed the vertical files, so its state.json does not know them; with the rule removed
@@ -1094,6 +1123,18 @@ top and its end. Reading the code is not verification, and neither is a passing 
     and the chapters they list are the ones written into the MP3 (`PodcastPackage.chapters`, the first at
     0:00).** Reason: what Ivan copies must be what the file says, and a chapter time that is not in the
     finished file would send a listener to the wrong moment.
+71. **Fixtures are made only by `make fixtures`, from the 13 Sep and 6 Sep talks and macOS `say`, into
+    `~/Prakriti/Dev/Fixtures`, and the same recipe gives the same bytes** (metadata stripped, written
+    bit-exact; `SHA256SUMS` records the last run, and a rerun says SAME or CHANGED for each file).
+    Never add a fixture by hand or from any other studio file, and never let a check depend on a
+    fixture's hash without `RECIPES.txt`'s versions beside it. Reason: the v2 checks need a second face,
+    a second voice, silence and a second microphone track, which the two talks do not have, and the
+    only other studio files with those are classes (student privacy); a hand-made file cannot be made
+    again on the verifier's clone. A CHANGED with no recipe change means ffmpeg or the macOS voice
+    changed (measured identical across runs on ffmpeg 9.0.1 and macOS 27.2, Sun 11 Oct). The corner
+    picture starts at 3:00 of the 6 Sep talk because Vision finds no face from 10:12 on for half a
+    minute, and two-people-mixed's sound is coded mid and side because ffmpeg's default AAC let the two
+    identical channels drift apart by up to -14.5 dB (both measured).
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

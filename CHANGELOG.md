@@ -5,6 +5,43 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-11, Sun: v2 part M0, the baseline (no class in any check)
+
+- **`make fixtures` (`mac/scripts/make-fixtures.sh`, recipes in `mac/scripts/fixtures/`) builds the
+  shared test files every v2 part uses**, into `~/Prakriti/Dev/Fixtures`, from the 13 Sep and 6 Sep
+  talks and macOS `say` only: a 90 s clip, 65 s of picture with digital silence, a second face and a
+  second voice on one mixed track, the same with each voice on its own microphone track, 30 s of
+  planted fillers and a restart, and a made-up 4,023-word talk in Parakeet's JSON shape. Why: v2's
+  checks need silence, a second person and a second microphone, which the two talks do not have, and
+  the only studio files that do are classes, which no check may read (student privacy).
+- **Every fixture comes out byte for byte the same on a second run,** and the script says SAME or
+  CHANGED against the last one. Why: an independent verifier rebuilds them on its own clone, and a
+  check is only repeatable if its input is.
+- **Three recipe choices were changed by measuring, not by looking:** the corner picture starts at
+  3:00 of the 6 Sep talk, not 10:00, because Vision found no face there from 10:12 on; the mixed track
+  is coded so its two channels stay identical, as the studio's one microphone is (ffmpeg's default let
+  them drift by up to -14.5 dB); the stutter is "So so", because Parakeet heard "The the" as "that the".
+  Why: a fixture that does not show what its name says would pass a check for the wrong reason.
+- **`make accept` uses `silent-60s.mp4` where it read the silent 14 Sep class,** builds the fixtures
+  first if any is missing, and fails if a 2026-09-14 path comes back. START_HERE warning 17 now reads
+  "the 13 Sep and 6 Sep talks only". Why: the v2 plan's rule is never a class, and v1's own acceptance
+  was the one place that still read one.
+- **`make regress`** runs the regression set every v2 part must pass (`make test`, `make accept`, `make
+  accept-edits`). Why: one command a verifier cannot run half of.
+- **`make accept-podcast` looked for headings the episode text renamed on 11 Oct** ("SHOW AND EPISODE",
+  "CHAPTERS") and failed on the 6 Sep talk with every measurement passing; nobody had run it since. The
+  test now reads the episode text's headings, and the whole acceptance passed on both talks. Why: the
+  v2 plan's regression set leans on these acceptances, and one that fails for a stale reason teaches
+  people to ignore it.
+- **The episode 1 file Ivan is asked to listen to now has a copy at `~/Prakriti/Dev/Listen/`.** Why:
+  every acceptance run clears the development output folder the handoff pointed at, and v2's parts will
+  run them many times before Fri 23 Oct.
+- **Raised, not changed:** on the 13 Sep talk the writing model ran out of thinking one try in three
+  today (one cut off at its 16,384-token limit, one empty), each failed try costing about half an hour.
+  Why it is written down: the budget is v1's, the first part to touch the writing (M5a) should fix it.
+- No app code changed; the live app was reinstalled from this code only after every M0 check passed
+  (see `docs/BUILD-LOG.md`, "v2 part M0").
+
 ## 2026-10-11, Sun: the podcast-ready handoff, and one claim taken back
 
 - **`docs/BUILD-LOG.md` ends with "Podcast-ready episode: the handoff":** what the independent

@@ -6,24 +6,33 @@ import XCTest
 
 /// Milestone 2's acceptance, on real recordings, through the app's own pipeline and runner (not
 /// engine v0): the 13 Sep talk becomes an episode at podcast loudness with a transcript that reaches
-/// the end and a report; the silent 14 Sep class is refused as Needs a decision with nothing made;
-/// a 30 s clip is filed as a test. Then the Recordings screen and each recording's page are drawn
-/// with what was really measured.
+/// the end and a report; a silent recording is refused as Needs a decision with nothing made; a 30 s
+/// clip is filed as a test. Then the Recordings screen and each recording's page are drawn with what
+/// was really measured.
 ///
-///   cd ~/Code/prakriti/mac && make accept MILESTONE=m2
+///   cd ~/Code/prakriti/mac && make accept MILESTONE=v2-m0
 ///
-/// Skipped unless PRAKRITI_ACCEPTANCE=1 (make accept sets it): it reads about 6 GB of video and
+/// The silent recording is `silent-60s.mp4` from `make fixtures` (65 s of the 13 Sep picture with
+/// digital silence), not the silent 14 Sep class it was until v2 part M0: the rule is never a class
+/// (docs/v2/PLAN.md, M0). `make accept` builds the fixtures first if any is missing.
+///
+/// Skipped unless PRAKRITI_ACCEPTANCE=1 (make accept sets it): it reads about 3.4 GB of video and
 /// takes a few minutes. Outputs go to ~/Prakriti/Dev/Outputs; the store is in memory; the run log
 /// lines go to the development log. The originals are only read, never changed.
 @MainActor
 final class PipelineAcceptanceTests: XCTestCase {
-    /// The only studio files this test may read, each named in the build prompt. Never the 16, 20
-    /// or 23 Sep classes, never the archive (student privacy).
+    /// The only studio files this test may read: the 13 Sep and 6 Sep talks, Gabriel's, read only.
+    /// Never a class (the 14 Sep class was read here until v2 part M0), never the archive (student
+    /// privacy). Anything else a check needs is a fixture made from these two (`make fixtures`).
     private static let allowedStudioFiles = [
         "2026-09-13/2026-09-13 18-25-44.mp4", // the 13 Sep talk, Gabriel only
-        "2026-09-14/2026-09-14 20-00-09.mp4", // the 14 Sep class, recorded with no usable sound
         "2026-09-06/2026-09-06 18-06-33.mp4", // the 6 Sep talk (episode 1)
     ]
+
+    /// 65 s of the 13 Sep picture with its sound replaced by digital silence (`make fixtures`).
+    static var silentFixture: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appending(path: "Prakriti/Dev/Fixtures/silent-60s.mp4")
+    }
 
     func testMilestoneTwoOnRealRecordings() async throws {
         let environment = ProcessInfo.processInfo.environment
@@ -39,12 +48,15 @@ final class PipelineAcceptanceTests: XCTestCase {
         model.log.write("Acceptance test for milestone 2 started (in-memory store, outputs to \(paths.outputs.path)).")
 
         let studio = Self.allowedStudioFiles.map { paths.studioRecordings.appending(path: $0) }
-        let talk13 = studio[0], class14 = studio[1], talk06 = studio[2]
+        let talk13 = studio[0], talk06 = studio[1]
+        let silent60 = Self.silentFixture
         let clip30 = paths.drop.appending(path: "2026-09-13 clip 30s.mp4")
-        let files = [clip30, class14, talk13, talk06]
+        let files = [clip30, silent60, talk13, talk06]
         for file in files {
-            XCTAssertTrue(FileManager.default.fileExists(atPath: file.path), "missing test media: \(file.path)")
+            XCTAssertTrue(FileManager.default.fileExists(atPath: file.path),
+                          "missing test media: \(file.path) (the fixtures: cd ~/Code/prakriti/mac && make fixtures)")
         }
+        XCTAssertFalse(files.contains { $0.path.contains("2026-09-14") }, "never the 14 Sep class")
 
         // An output folder left by an earlier run would hide "nothing made": clear this test's own
         // folders first, only inside ~/Prakriti/Dev/Outputs.
@@ -100,13 +112,14 @@ final class PipelineAcceptanceTests: XCTestCase {
         report += summary("13 Sep talk", talk, folder: talkFolder, remeasured: again)
         report += try captionsFollowParakeet("13 Sep talk", folder: talkFolder)
 
-        // 2. The silent 14 Sep class: Needs a decision, nothing made.
-        let silent = try XCTUnwrap(recordings[class14])
+        // 2. The silent fixture (65 s, so not a test clip): Needs a decision, nothing made.
+        let silent = try XCTUnwrap(recordings[silent60])
         XCTAssertEqual(silent.status, .needsADecision, silent.statusReason ?? "")
-        XCTAssertLessThanOrEqual(silent.loudestDB ?? -.infinity, -60)
+        XCTAssertEqual(silent.kind, .unknown, "65 s is not a test clip, so the sound check is what refuses it")
+        XCTAssertLessThanOrEqual(silent.loudestDB ?? 0, -60)
         XCTAssertNil(silent.outputFolder)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: outputFolder(class14).path), "something was made from the silent class")
-        report += summary("14 Sep class", silent, folder: nil, remeasured: nil)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: outputFolder(silent60).path), "something was made from the silent recording")
+        report += summary("silent-60s fixture", silent, folder: nil, remeasured: nil)
 
         // 3. The 30 s clip: filed as a test, nothing made.
         let clip = try XCTUnwrap(recordings[clip30])
@@ -146,7 +159,7 @@ final class PipelineAcceptanceTests: XCTestCase {
                 try renderer.render(model: model, appearance: appearance, name: name)
                 drawn.append(name)
             }
-            for (slug, file) in [("talk-13-sep", talk13), ("class-14-sep", class14), ("clip-30s", clip30), ("talk-6-sep", talk06)] {
+            for (slug, file) in [("talk-13-sep", talk13), ("silent-60s", silent60), ("clip-30s", clip30), ("talk-6-sep", talk06)] {
                 model.open(try XCTUnwrap(recordings[file]))
                 let name = "m2-recording-\(slug)-\(scheme)"
                 try renderer.render(model: model, appearance: appearance, name: name)

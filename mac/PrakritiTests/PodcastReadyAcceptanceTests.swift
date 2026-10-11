@@ -182,7 +182,11 @@ final class PodcastReadyAcceptanceTests: XCTestCase {
         for (file, body) in [("checklist", checklist), ("text", text)] {
             XCTAssertFalse(body.contains("\u{2014}") || body.contains("\u{2013}"), "an em or en dash in the \(file)")
         }
-        for heading in ["EPISODE TITLE", "SHOW AND EPISODE", "SHOW NOTES", "CHAPTERS", "SOCIAL CAPTIONS"] {
+        // The headings of `Episode text.txt` (11 Oct), which replaced the 10 Oct text file and its
+        // "SHOW AND EPISODE" and "CHAPTERS" headings: the chapters now follow the show notes, and the
+        // show's details are under "FOR THE HOST'S FORM" (EpisodeTextAcceptanceTests checks the rest).
+        // This list still named the old headings until v2 part M0 ran this acceptance again.
+        for heading in ["EPISODE TITLE", "SHOW NOTES", "\nChapters\n0:00 ", "KEYWORDS", "SOCIAL CAPTIONS", "FOR THE HOST'S FORM"] {
             XCTAssertTrue(text.contains(heading), heading)
         }
         report += ["", "The checklist (\(PodcastPackage.checklistName)):", checklist, "The text file (\(PodcastPackage.textName)):", text]
