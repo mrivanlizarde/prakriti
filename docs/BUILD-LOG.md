@@ -23,6 +23,9 @@ episode 1 still needs before it is uploaded.
 fixtures` builds the shared test files every v2 check uses from the two talks and `say`, `make accept`
 no longer reads a class, `make regress` runs the regression set, and every v1 acceptance named by the
 v2 plan was run again on this code. No app code changed.
+**Then part M1, the new icons** (the last section, "v2 part M1"): the cut disc in the Dock and Finder,
+and the same mark in the menu bar with one shape per state, its working frames turning every 0.7 s
+only while work runs (measured in the real menu bar) and never with Reduce Motion.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -60,7 +63,8 @@ the podcast-ready episode, can be made but are off for every folder until Ivan t
     its sound described, the model choices, and where the files are.
 - **The menu bar menu** (a menu, not a popover): the status line, Open Prakriti, Pause All or
   Resume All, Settings (Command-Comma), Quit Prakriti. The icon is an abstract ring whose shape
-  changes with the state (idle, not watching, working, waiting for you, problem, paused).
+  changes with the state (idle, not watching, working, waiting for you, problem, paused). *(Replaced
+  in v2 part M1 by the cut disc, one shape per state; see "v2 part M1".)*
 - **The app keeps running with its window closed:** the app delegate returns false from
   `applicationShouldTerminateAfterLastWindowClosed`, and automatic and sudden termination are off.
 - **The data layer** (`mac/Prakriti/Model`): SwiftData models `Source`, `Recording`,
@@ -70,7 +74,9 @@ the podcast-ready episode, can be made but are off for every folder until Ivan t
 - **The log file:** one line per event in `~/Library/Logs/Prakriti/Development/<date>.log`, in
   local time like engine v0's `log.txt`, also mirrored to the unified log.
 - **The app icon:** the front door's mark (ultramarine dot on stone), drawn by
-  `mac/scripts/make_icon.swift`. Accent color: the front door's ultramarine.
+  `mac/scripts/make_icon.swift`. Accent color: the front door's ultramarine. *(Replaced in v2 part M1:
+  the dot cut across its middle, from an Icon Composer document; `make_icon.swift` is deleted. The
+  accent color is unchanged.)*
 
 ### Checks run, with results
 
@@ -2180,3 +2186,167 @@ Nothing is needed for this part (PLAN M0: "Needs Ivan: nothing"). Three things w
    Mono setting will be flagged as the studio's problem.
 3. `make accept-podcast` takes about 2 hours now with the episode text on both talks (51 and 69 minutes
    today); plan for it when a part touches its code.
+
+---
+
+## v2 part M1: the new icons. Sun 11 Oct 2026
+
+The second part of v2 (`docs/v2/PLAN.md`, M1; REQUEST item 12, "a better icon for both the dock and
+menu bar"): "Recomposed", the design in `docs/v2/icons/README.md` (IC), put in the app exactly as IC's
+"Putting it in the app" steps 1 to 6 say. Built on `main`, as this run's instructions said (the plan's
+rule 2.1.1 names a `v2-m1` branch). Nothing from a later part was built.
+
+### What was built
+
+- **The app icon** is `mac/Prakriti/Resources/AppIcon.icon`, IC's Icon Composer document copied
+  unchanged (two glass layers, the upper half in front, on stone; dark, clear and tinted looks).
+  XcodeGen files it as `wrapper.icon` in Copy Bundle Resources; `actool` compiles it into `Assets.car`
+  and `AppIcon.icns`, and Info.plist gets `CFBundleIconName` and `CFBundleIconFile` = `AppIcon` by
+  itself (the build setting `ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon` was already there).
+  `AppIcon.appiconset` and `mac/scripts/make_icon.swift` are deleted.
+- **The menu bar mark**: IC's seven template image sets (`prakriti-menubar`, `-working-1`,
+  `-working-2`, `-waiting`, `-problem`, `-paused`, `-not-watching`, 18 by 18 pt SVG, vector kept)
+  copied into `Assets.xcassets` unchanged. `StatusSummary.Icon` gains `menuBarAsset` (one glyph per
+  state) and `workingFrames`, and becomes `CaseIterable`; its raw values stay the SF Symbols that Today
+  draws inside the window. `MenuBarIcon` draws `Image(asset)` and keeps its accessibility label
+  ("Prakriti: " and the status line).
+- **`WorkingTicker`** (`mac/Prakriti/App/WorkingTicker.swift`, held by `AppModel.ticker`): flips which
+  working frame shows every 0.7 s. The menu bar label tells it when it shows the working state
+  (`onChange(of:initial:)`, and `onDisappear` when the item is hidden in Settings); the timer exists
+  only then, and never with Reduce Motion on (it holds the first frame; turning Reduce Motion on mid-work
+  stops it at once, through `NSWorkspace.accessibilityDisplayOptionsDidChangeNotification`). The clock
+  is injected: the app's is a Foundation timer on the main run loop in the common modes, 10% tolerance.
+- **Tests** in `RulesTests`: `testEveryMenuBarStateHasItsOwnGlyph` (six distinct names; each of the
+  seven loads from the app's own catalog as an 18 by 18 pt template image; the seven drawings, at 2x,
+  differ pairwise in at least 20 pixels), `testWorkingTickerTurnsOnlyWhileWorking`,
+  `testWorkingTickerNeverStartsWithReduceMotion` (both on a clock the test moves by hand),
+  `testSystemTickerClockTicksAndStops` (the real timer ticks, and stops on cancel). The old "each menu
+  bar state has its own shape" assertion still passes.
+- **Two checks anyone can run** (`mac/scripts/capture-window.swift`): `--app-icon <app> <folder>` draws
+  the icon the way Finder and the Dock get it (`NSWorkspace.icon(forFile:)`) at 512 and 32 px, plus the
+  32 px one magnified 8 times, and measures the mark (the empty rows of the cut; how far the upper half
+  sits right of the lower). `--menu-bar <app> <seconds> <folder>` captures the system's menu bar window
+  (`screencapture -l`, no click) about three times a second, finds each Prakriti mark by comparing every
+  item with the seven glyphs, and prints what each showed and when it changed. It needs Screen
+  Recording permission for whatever runs it; this session had it through the app it ran in
+  (`CGPreflightScreenCaptureAccess` true). The plan assumed the menu bar could not be captured, which is
+  why its check 5 is Ivan's look.
+- **Docs:** START_HERE (the M1 line, Day to day's "ring" now "its mark", the App icon row replaced and a
+  Menu bar mark row added, the capture commands, warnings 72 and 73, and the stale Dock badge reason
+  marked stale), CHANGELOG, the two v1 milestone 1 lines here marked replaced, and the help source
+  `docs/v2/help/10-troubleshooting.md`, which said "its ring is in the menu bar" (the in-app Help
+  arrives in M2a and copies these files, so the source must already say what is built).
+
+### Checks run, with results (PLAN M1, every check)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `make build`: 0 warnings; `Assets.car` lists `AppIcon`; Info.plist `CFBundleIconName` = `AppIcon` | **PASS.** BUILD SUCCEEDED; the only "warning:" line in the build log is the `appintentsmetadataprocessor` tool line W4 describes: **0 compiler warnings**. `assetutil --info` on the built `Contents/Resources/Assets.car`: **`AppIcon`** as an IconImageStack (3 entries), a MultiSized Image and 7 Icon Images, with its two layer groups (`foreground-upper-half`, `mid-lower-half`, 3 each) and their vectors; the seven `prakriti-menubar*` sets, each one Vector and two Images (1x, 2x). Info.plist: **`CFBundleIconName` AppIcon**, `CFBundleIconFile` AppIcon; `AppIcon.icns` beside `Assets.car`. The same in the installed copy |
+| 2 | `make test`: the new glyph test passes, and "each menu bar state has its own shape" still passes | **PASS. 140 tests, 0 failures, 8 skipped by design** (the acceptance methods and the migration check), 390.4 s (inside `make regress`, 10:48 to 10:54; a first full run at 10:26 gave the same, 391.8 s). `testEveryMenuBarStateHasItsOwnGlyph`: 6 distinct names, all 7 glyphs load from the app's catalog as **18 by 18 pt template images**, every pair of drawings differs in at least 20 of 1,296 pixels. `testStatusLineSaysWhatIsHappening` (the "own shape" assertion) passes. **Proved by breaking it:** paused given the idle glyph failed ("5 is not equal to 6"); the problem set without its template setting failed ("must be a template image"). Snapshots `01-today-light` and `-dark` looked at: Today still draws the SF Symbol beside the status line, as intended |
+| 3 | `WorkingTicker` on an injected clock: flips every 0.7 s while working, `timer` nil while idle, never starts with Reduce Motion | **PASS.** `testWorkingTickerTurnsOnlyWhileWorking`: idle, `timer` nil and nothing scheduled; working, one timer at 0.7 s and **10 flips in 7 s, each at exactly n times 0.7 s** (none between); a second "working" adds no timer; work ends, the timer is cancelled, `timer` nil, the first frame back, no flip up to 20 s. `testWorkingTickerNeverStartsWithReduceMotion`: **nothing ever scheduled with Reduce Motion on**, the first frame held; turned off mid-work it starts, turned on again it stops at once. `testSystemTickerClockTicksAndStops`: the real Foundation timer ticks 3 times and not after cancel. **Proved by breaking it:** with the Reduce Motion guard removed, 5 assertions failed; with the timer never cleared, "no timer once nothing works" failed |
+| 4 | The built app's icon drawn by `NSWorkspace.icon(forFile:)` at 512 and 32 px into `screens/mac/v2-m1/`, looked at beside `sheet-app-icon.png`: the cut disc, not the plain dot | **PASS.** `swift scripts/capture-window.swift --app-icon` on the built app: **512 px: the cut is 10 empty rows across the middle, the upper half 36.8 px right of the lower** (IC's geometry predicts 92/1024 of a 412 px icon body, 37.0); **32 px: 1.4 px right, the cut a light line.** Looked at beside the sheet (`app-icon-512.png`, `app-icon-32-x8.png`): the same mark, upper half right, glass edges, stone ground. **Negative control:** v1's icon (the live copy before the install) measures 0 empty rows and 0.0 px and FAILs. **The installed copy first drew v1's dot at 512 px** although its bundle held the cut disc (read straight from its `Assets.car`): fixed in `install.sh` (above), after which it PASSes with the same numbers (`installed/`) |
+| 5 | *Ivan:* the Dock shows the cut disc; the menu bar mark alternates while a 90 s clip is made and shows the outline under Pause All; in Dark, and with Icon and widget style Tinted | **Ivan's look; part measured here.** In the real menu bar (`--menu-bar`, the system's own menu bar window, no click): a development copy given a fresh 90 s clip from the 13 Sep talk (`make drop MODE=development`, PASS: found, made and ready in 73 s with no clicks) showed **the waiting glyph for 14.5 s, then the working frames alternating 92 times, one every 0.70 s on average, for the 65 s it worked, then the waiting glyph held still** (the log's found and ready times match the switches); under Pause All (the development preference set, then removed) **the outline held still for 6.2 s**; the live copy after the install showed **the waiting glyph** (2 recordings wait for Ivan). The magnified captures match `sheet-menubar.png`. **Not seen:** the Dock (it hides itself on this Mac), the Dark, Clear and Tinted looks, the menu open |
+
+**Regression set** (`make regress MILESTONE=v2-m1`, 10:47:59 to 11:02:24, exit 0): `make test` as above;
+**`make accept` PASS** (285.3 s): 13 Sep **-16.8 LUFS** (-16.82 by loudnorm's meter), true peak **-1.7
+dBFS** (-1.68 dBTP), 2,948 words reaching 15:47 of 15:48, 137 captions for 137 sentences, 0 differing;
+**`silent-60s` Needs a decision** at -91 dB with **no output folder**; the 30 s clip filed as a test; 6 Sep
+-16.7 LUFS (-16.72), -1.4 dBFS (-1.43 dBTP), 555 for 555; **`grep -c 2026-09-14 acceptance.txt`: 0**.
+**`make accept-edits` PASS** (175.9 s): the approved episode **38.82 s shorter (expected 38.82)**, the same
+SHA-256 as the made one, **0 of 73** cut runs heard and 189 of 201 from the minute after, a class refused.
+The longer acceptances (`accept-outputs`, `accept-models`, `accept-podcast`) were not run: this part
+touches none of their code (the icon, the menu bar label and its ticker only).
+
+**The originals:** unchanged, by `stat` before (10:47) and after (11:02): the 13 Sep talk 730,464,600
+bytes, modified 1789350092; the 6 Sep talk 2,578,079,009 bytes, 1788746532.
+
+**Ship gate.** `make migrate-check` **PASS** (11:02; no SwiftData model changed, run anyway): the live
+store's copy opens, 11 recordings (2 ready), 2 folders, 30 output settings, 266 Activity lines, titles
+on in 0 folders. **`make install`** at 11:02:53: the old copy (pid 37063, running since 07:50) quit
+cleanly ("Quit." 11:02:54), new pid 62466; then, with the date fix, **`make install` again at 11:04:03**:
+"Quit." 11:04:04, **pid 62658, "Prakriti 0.1 (1) opened. Mode: live. Store: ~/Library/Application
+Support/Prakriti/Prakriti.store"** (no fallback store), login item on, `codesign --verify --deep --strict`
+passes (Apple Development, team LD587PB2H8, hardened runtime), **"Checked 2 folders. Nothing new." at
+11:04:05 and again at 11:09:24**, still pid 62658, both also the newest lines of the live store's
+Activity (read from a `sqlite3 .backup` copy, then deleted). The live `~/Prakriti/Outputs`, `Approved` and
+`Drop`: the same 12 files with the same SHA-256 before the first install and after the second.
+
+### What the runs caught and fixed
+
+- **After the first install, Finder's icon for the live copy was still v1's dot** (check 4), while the
+  bundle's own `Assets.car` drew the cut disc. `ditto` copies the build folder's date onto the
+  installed bundle (Sat 10 Oct 12:14 here, unchanged by any build since), and macOS keeps an app's icon
+  cached against that date. `scripts/install.sh` now touches the installed bundle after moving it into
+  place (the signature covers the contents, not the folder's date, and still verifies); installed again
+  with it, the icon drew as the cut disc. START_HERE warning 73 says why.
+- **`make drop MODE=development` failed twice before it ran: "Prakriti quit while working"**, with no
+  app at fault. The script decides whether a development copy is running with `pgrep -f` on the
+  app's binary path, and the shell this session ran it from had that same path in its own command line
+  (a wait loop), so `pgrep` found the shell, the script started no app, and then reported the shell's
+  exit as a quit. The two clips it moved in were made by the development copy once it was started by
+  hand; nothing in the app changed. **For a verifier:** never put the binary path in the same command
+  line as `make drop`; write the pattern as `Debug/Prakriti[.]app` if a loop must wait for the app.
+- **"No Screen Recording permission needed" was not true of the menu bar.** `capture-window.swift`'s
+  header says its window captures need none; the menu bar is another process's window, and this
+  session could read it only because it had the permission. The new mode says so, and fails with the
+  permission named if the bar comes back empty.
+
+### Decisions, each with its reason
+
+1. **The ticker follows what the menu bar shows, not the runner.** It runs when the summary's icon is
+   `.working`, so a recording still finishing under Pause All shows the still outline, and a blocked
+   folder shows the problem glyph, without a timer behind either. Reason: IC's "stop the timer
+   whenever nothing is working"; the shown state is the only one that needs the frames.
+2. **`WorkingTicker` has its own file** (the plan lists `AppModel.swift` for it); the model holds it as
+   `ticker`. Reason: it brings a clock protocol and two small timer types, which do not belong in a
+   628-line model file.
+3. **Reduce Motion is read live** (the notification), not only at start. Reason: "never under Reduce
+   Motion" should hold when the setting changes during a long make, not only for the next one.
+4. **The timer runs in the common run loop modes with a 0.07 s tolerance.** Reason: in the default
+   mode the frames would freeze while the menu is open; the tolerance lets macOS group the wake-ups
+   with others.
+5. **IC's assets are copied byte for byte** (`diff -r` against `docs/v2/icons/source`: identical).
+   Reason: IC is the design and was proved there; any change belongs in IC first (warning 73).
+6. **No Dock badge**, as PLAN section 5 says; START_HERE's reason for "never badge" is marked stale
+   rather than removed. Reason: the decision is Ivan's.
+
+### Looked at (D1)
+
+No video frame was made or looked at in this part: the icon and the menu bar show no face. Looked at:
+`screens/mac/v2-m1/app-icon-512.png` and `app-icon-32-x8.png` beside
+`docs/v2/icons/previews/sheet-app-icon.png` (the same mark at both sizes, the upper half right, the
+cut a light line at 32 px as in the sheet's magnified 32 px); v1's icon drawn the same way (a plain
+disc, for the negative control); the real menu bar items `menubar-sample-working/...-working-2.png`,
+`menubar-drop-dev/...-waiting.png` and `menubar-paused-dev/...-paused.png` (each the glyph IC's
+`sheet-menubar.png` shows for that state); and the snapshots named in check 2.
+
+### What does not work yet, or was not seen working
+
+- **Not seen:** the Dock itself, and the Dark, Clear and Tinted looks of the Dock icon (the system's
+  icon style is a system setting; drawing in a dark appearance gives the default look). The problem and
+  not-watching glyphs in the real menu bar (only in the tests: they load, are templates and differ).
+  Reduce Motion in the real menu bar (turning it on is a system setting this session does not change;
+  the tests cover the ticker). The highlighted look with the menu open.
+- `capture-window.swift --menu-bar` needs Screen Recording permission (above), so an unattended
+  verifier without it cannot run the menu bar check.
+- The website's favicon is still the plain dot (IC: a separate decision for the site).
+- IC's trademark or likeness search for a split-disc mark has not been done; it matters only before
+  the mark goes anywhere public.
+
+### For Ivan
+
+- [ ] **Look at the Dock once.** It should show the cut disc. If it still shows the plain dot, its own
+  cache is stale (Finder's was, and `make install` now fixes that one):
+
+  ```bash
+  cd ~ && killall Dock
+  ```
+
+- [ ] **Look at the menu bar once in each look you use:** System Settings, Appearance, Dark; then Icon
+  and widget style, Tinted (and Clear). The mark should stay visible in each (IC's
+  `docs/v2/icons/previews/appearances/` shows what to expect), and in the menu bar once with its menu
+  open. The alternation and the Pause All outline were measured here; your eye is the check for the
+  looks.
+- Three decisions this part raised, none urgent: a Dock badge counting what waits for your yes (the
+  old reason against one is gone); the website's favicon matching the cut disc; a trademark or likeness
+  search before the mark goes anywhere public.

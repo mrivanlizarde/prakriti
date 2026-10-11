@@ -5,6 +5,41 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-11, Sun: v2 part M1, the new icons
+
+- **The Dock and Finder show "Recomposed": the ultramarine dot cut across its middle, the halves set
+  apart** (`docs/v2/icons/README.md`), as an Icon Composer document with default, dark, clear and tinted
+  looks, in place of v1's plain dot. Why: Ivan asked for a better icon (REQUEST item 12), a dot on a
+  light square reads as a record button, and a cut and re-set mark says what the app does without
+  drawing film or a waveform.
+- **v1's `make_icon.swift` and its icon set are deleted, not kept beside the new icon.** Why: two
+  sources for one icon is how a stale one comes back; the master is now `docs/v2/icons/source/Prakriti.icon`
+  (START_HERE warning 73).
+- **The menu bar shows the same cut disc as a template glyph, one shape per state,** in place of the
+  SF Symbols ring. Why: the Dock and the menu bar should read as one app, and a state is a shape, never
+  a color, because macOS already dims the whole menu bar on a display that is not active.
+- **While work runs, the two halves light in turn every 0.7 s, turned by a `WorkingTicker` on the
+  model; the timer exists only while the menu bar shows working, and never with Reduce Motion.** Why: a
+  menu bar label is drawn once, so it cannot animate itself (measured by the icon track), and a timer
+  left running would wake Prakriti all day for nothing (START_HERE warning 72).
+- **Checked in the real menu bar, not only in tests:** `capture-window.swift --menu-bar` reads the
+  system's menu bar window with no click. While a 90 s clip was made in a development copy, its mark
+  went from the waiting glyph to 92 alternations one every 0.70 s, and back to waiting when the clip was
+  ready; under Pause All it showed the outline. `--app-icon` draws the icon as Finder gets it and
+  measures the cut. Why: the plan left the menu bar to Ivan's eye because capturing it needs Screen
+  Recording permission; this session had that permission, so the animation is measured as well.
+- **Tests that fail on the bug:** every glyph an 18 by 18 pt template and the seven drawings different,
+  and the ticker driven on a clock the test moves by hand (flips on the 0.7 s, no timer while idle,
+  never with Reduce Motion). Each was proved by breaking the code it guards.
+- **`make install` now gives the installed app a new date.** Why: after the first install Finder's
+  icon for the live copy was still v1's dot while the bundle held the cut disc; `ditto` had kept the
+  build folder's 10 Oct date, and macOS keeps an app's icon cached against it. With a new date
+  Finder's icon is read again (measured both ways; the Dock hides itself here and was not measured).
+- **Stale truth fixed:** START_HERE gave "the engine has no Dock icon" as the reason notices never use
+  a badge. Prakriti for Mac has had a Dock icon since v1; v2 still shows no badge by choice, and a badge
+  is now Ivan's decision. The help article on troubleshooting described the menu bar "ring"; it now
+  describes the mark.
+
 ## 2026-10-11, Sun: v2 part M0, the baseline (no class in any check)
 
 - **`make fixtures` (`mac/scripts/make-fixtures.sh`, recipes in `mac/scripts/fixtures/`) builds the

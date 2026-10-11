@@ -63,6 +63,8 @@ final class AppModel {
     let watcher = Watcher()
     /// Posts the notices and asks for permission once.
     let notifier = Notifier()
+    /// Turns the menu bar's working frames while work runs (the label cannot animate itself).
+    let ticker = WorkingTicker()
     /// Whether Prakriti opens at login (SMAppService.mainApp).
     var loginItem: LoginItemState = .unknown
     /// Another copy holds this mode's lock: this one says so and quits (AppDelegate).

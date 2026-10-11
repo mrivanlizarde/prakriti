@@ -12,8 +12,9 @@ related: [02-capture-the-best-video, 03-set-up-obs-for-prakriti, 04-sources-and-
 
 ### If a new recording doesn't appear
 
-- Make sure Prakriti is open: its ring is in the menu bar. If not, open Prakriti from the
-  Applications folder.
+- Make sure Prakriti is open: its mark, a disc cut across the middle, is in the menu bar. While it
+  works on a recording, the two halves light in turn. If the mark is not there, open Prakriti from
+  the Applications folder.
 - Check that Pause All is not on. If it is, click Resume All.
 - Click Sources and look at the folder. If it shows a warning, click Open Privacy Settings and turn
   Prakriti on.

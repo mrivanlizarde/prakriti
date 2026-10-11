@@ -547,6 +547,13 @@ v1 with the podcast-ready episode, checked again, and a test suite that never re
 fixtures` builds the shared test files every v2 check uses, from the two talks and `say`; `make accept`
 uses `silent-60s.mp4` where it read the silent 14 Sep class; `make regress` runs the regression set. No
 app code changed. See `docs/BUILD-LOG.md`, "v2 part M0".
+**v2 part M1 (the new icons), Sun 11 Oct:** the Dock and Finder show "Recomposed", the brand's
+ultramarine dot cut across its middle with the halves set apart (`docs/v2/icons/README.md`), from an
+Icon Composer document with default, dark, clear and tinted looks. The menu bar shows the same cut disc
+as a black-and-clear template glyph, one shape per state: the mark when idle, the halves lit in turn
+every 0.7 s while working (held still with Reduce Motion on), a dot when something waits, an
+exclamation mark for a problem, an outline when paused, a dashed outline when not watching. v1's
+drawn dot (`make_icon.swift`) and its icon set are gone. See `docs/BUILD-LOG.md`, "v2 part M1".
 
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
@@ -556,7 +563,7 @@ folders, beside the live one.
 ### Day to day (for Ivan)
 
 - **Open it.** It opens by itself when you log in and keeps watching with its window closed. To see
-  the window, click the ring in the menu bar and choose Open Prakriti, or:
+  the window, click its mark in the menu bar (a disc cut across the middle) and choose Open Prakriti, or:
 
   ```bash
   cd ~ && open ~/Applications/Prakriti.app
@@ -595,7 +602,7 @@ folders, beside the live one.
   the one command that copies it aside before you do.
 - **Pause it.** Pause All (the window's toolbar, the menu bar, or Settings). A recording already
   running finishes; nothing new is found or started until Resume All.
-- **Stop it.** Menu bar ring, Quit Prakriti (or Command-Q with the window in front). It stays stopped
+- **Stop it.** The mark in the menu bar, Quit Prakriti (or Command-Q with the window in front). It stays stopped
   until you open it again or log in again. To stop it opening at login: System Settings, General,
   Login Items, switch Prakriti off. **If it crashes, nothing restarts it until the next login** (engine
   v0 restarted itself): Activity going quiet, no "Checked 2 folders" line for more than 5 minutes, is
@@ -637,6 +644,12 @@ cd ~/Code/prakriti/mac && make accept MILESTONE=m2
 ```
 ```bash
 cd ~/Code/prakriti/mac && make regress MILESTONE=v2-m0
+```
+```bash
+cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --app-icon build/Build/Products/Debug/Prakriti.app ../screens/mac/v2-m1
+```
+```bash
+cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --menu-bar build/Build/Products/Debug/Prakriti.app 10 ../screens/mac/v2-m1/menubar
 ```
 ```bash
 cd ~/Code/prakriti/mac && ./scripts/process-in-app.sh "$HOME/Prakriti/Dev/Clips/2026-09-13 clip 90s.mp4" ../screens/mac/m2/real
@@ -704,11 +717,21 @@ fillers, a stutter, a restart and a parallel pair, with its text beside it), `se
 `synthetic-transcript.json` (a made-up 4,023-word talk in Parakeet's JSON shape, naming no real person,
 for cloud tests). `ivan-plus-13sep.mov` is made only once Ivan has put his own `ivan-clip.mov` there.
 `make regress` is the regression set every v2 part runs: `make test`, `make accept`, `make
-accept-edits`, in order, stopping at the first failure. `scripts/process-in-app.sh` checks the **real app**: it opens
+accept-edits`, in order, stopping at the first failure. `capture-window.swift --app-icon` draws the
+app's icon the way Finder and the Dock get it (`NSWorkspace`) at 512 and 32 px, plus the 32 px one
+magnified 8 times, and measures the mark: the empty rows of the cut and how far the upper half sits
+right of the lower one (it FAILs v1's plain dot). `--menu-bar` reads the real menu bar for the given
+seconds without clicking anything: it captures the system's menu bar window about three times a second,
+finds every Prakriti mark by comparing each item with the seven glyphs, saves the first look at each,
+magnified, and prints what each showed and when it changed; it PASSes when the working frames turned
+every 0.7 s and every other state held still. It needs Screen Recording permission for whatever runs
+it (the session that built v2 part M1 had it through the app it ran in; without it the bar comes back
+empty and the check says so). Run it while a development copy works (`make drop MODE=development`) to
+see the frames turn. `scripts/process-in-app.sh` checks the **real app**: it opens
 Prakriti with Process File on one file (launch flag `--process-file=`), waits for the result in the
 log, and captures the real window on Recordings and on that recording's page. `make install`
-builds, quits the installed copy cleanly, replaces `~/Applications/Prakriti.app` whole and opens
-it: **run it after every code change**, or the live watcher keeps running the old code. `make drop`
+builds, quits the installed copy cleanly, replaces `~/Applications/Prakriti.app` whole, gives it a
+new date (so Finder reads its icon again) and opens it: **run it after every code change**, or the live watcher keeps running the old code. `make drop`
 is milestone 3's check in the real app: it cuts a fresh 90 s clip from the 13 Sep talk into
 `~/Prakriti/Dev/Clips`, moves it into the drop folder (development: `~/Prakriti/Dev/Drop` with a
 `--development` copy; live: `~/Prakriti/Drop` with the installed copy), touches nothing else, and
@@ -758,9 +781,9 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | What | Where |
 |---|---|
 | Project definition (source of truth) | `mac/project.yml`; `make generate` rebuilds `Prakriti.xcodeproj`, and both are committed |
-| App code | `mac/Prakriti/App` (launch, paths, settings, log, `PipelineRunner`, `Watcher`, `Notices`, `LoginItem` with the instance lock, `EngineV0Import`), `Engine` (the pipeline: `Subprocess`, `Readiness`, `Measurements`, `Pipeline` with `Mastering`, `Report`; the watcher's `FolderScan` and `EventStream`), `Model` (vocabulary, SwiftData models, store), `Views`, `Fixtures` |
+| App code | `mac/Prakriti/App` (launch, paths, settings, log, `PipelineRunner`, `Watcher`, `Notices`, `LoginItem` with the instance lock, `EngineV0Import`, `StatusSummary` and the menu bar's `WorkingTicker`), `Engine` (the pipeline: `Subprocess`, `Readiness`, `Measurements`, `Pipeline` with `Mastering`, `Report`; the watcher's `FolderScan` and `EventStream`), `Model` (vocabulary, SwiftData models, store), `Views`, `Fixtures` |
 | Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `RecordingPageTests` (milestone 5: edits, the episode's clock, typed times, the cut's words gone through Parakeet with the Mac's voice, six sentences of Parakeet's real misplaced tokens, what the report names, the page's player, Approve and its refusals), `EditsAcceptanceTests` (the 13 Sep talk trimmed, cut, made again and approved, `make accept-edits` only), `StoreMigrationTests` (`make migrate-check` only), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share) |
-| Real-window capture | `mac/scripts/capture-window.swift` (run by `make look` and `make check`); also `--analyze <png>` to check any capture, and `--window <app> <png>` to capture the running app as it is |
+| Real-window capture | `mac/scripts/capture-window.swift` (run by `make look` and `make check`); also `--analyze <png>` to check any capture, `--window <app> <png>` to capture the running app as it is, `--app-icon <app> <folder>` to draw the app's icon as Finder gets it at 512 and 32 px and measure its cut, and `--menu-bar <app> <seconds> <folder>` to read every Prakriti mark in the real menu bar over time (v2 part M1) |
 | Real-app pipeline check | `mac/scripts/process-in-app.sh <file> <folder>` |
 | The writing models (milestone 6) | `mac/Prakriti/Writing/`: `ModelClients.swift` (the request and reply, LM Studio with its load at 65,536 tokens, Ollama, the Claude API), `AppleOnDevice.swift` (Foundation Models, guided generation for tags and summaries), `Keychain.swift` (the Claude API key), `Writer.swift` (prompts, the privacy lock, tries, `WritingCheck`, `WrittenPackage` and `show-notes.md`); `App/ModelActions.swift` (test buttons, the key, Write Again, Use This Title); `Views/ModelsView.swift`, `Views/WritingSection.swift`; the pipeline step `.writing` and `PipelineRunner.write` (Write Again); tests `WritingTests` (in `make test`) and `ModelsAcceptanceTests` (`make accept-models`) |
 | Written files | Beside the episode: `show-notes.md` (titles, notes, chapters, tags, summary, the checklist for review, what the checks changed, and placeholders for what is not chosen yet) and `titles-notes-chapters.json` (the checked package plus the model's own answer; never approved). On the recording: `writtenJSON` (the package without the raw answer) and `writingProblem` |
@@ -782,7 +805,8 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | Store, development mode | `~/Library/Application Support/Prakriti/Development/Prakriti.store` |
 | Log, development mode | `~/Library/Logs/Prakriti/Development/<date>.log`, one line per event |
 | Working folders, development mode | `~/Prakriti/Dev/Drop`, `~/Prakriti/Dev/Outputs`, `~/Prakriti/Dev/Approved` |
-| App icon | Drawn by `mac/scripts/make_icon.swift` from the front door's mark (an ultramarine dot on stone) |
+| App icon | `mac/Prakriti/Resources/AppIcon.icon`, an Icon Composer document (two glass layers on stone; default, dark, clear and tinted), copied from the master `docs/v2/icons/source/Prakriti.icon`. `actool` compiles it into `Assets.car` and `AppIcon.icns`, and Info.plist gets `CFBundleIconName` by itself. Design, sources and previews: `docs/v2/icons/` (since v2 part M1; v1's `make_icon.swift` is retired) |
+| Menu bar mark | Seven template image sets in `Assets.xcassets` (`prakriti-menubar`, `-working-1`, `-working-2`, `-waiting`, `-problem`, `-paused`, `-not-watching`), copied from `docs/v2/icons/source/menubar/imagesets/`; which one each state draws is `StatusSummary.Icon.menuBarAsset`; the working frames are turned by `App/WorkingTicker.swift` |
 
 ### Load-bearing warnings for the Mac app
 
@@ -1135,6 +1159,28 @@ top and its end. Reading the code is not verification, and neither is a passing 
     picture starts at 3:00 of the 6 Sep talk because Vision finds no face from 10:12 on for half a
     minute, and two-people-mixed's sound is coded mid and side because ffmpeg's default AAC let the two
     identical channels drift apart by up to -14.5 dB (both measured).
+72. **The menu bar mark is a template image from the asset catalog, one shape per state
+    (`StatusSummary.Icon.menuBarAsset`), and the working frames are turned by the model's `WorkingTicker`,
+    never by a `TimelineView` or a symbol effect inside the label.** The ticker's timer exists only while
+    the menu bar shows the working state, and never with Reduce Motion on (it then holds the first frame
+    still, and stops at once if Reduce Motion is turned on mid-work). Reason: a `MenuBarExtra` label is
+    drawn once and kept, so a `TimelineView` in it never ticks (measured 10 Oct, one render in 5 s),
+    while a change to an `@Observable` value redraws it (in v2 part M1 the real menu bar alternated 92
+    times, one every 0.70 s, while a 90 s clip was made, then held still). A glyph that is not a
+    template stays black on a dark menu bar, and a timer left running wakes Prakriti all day for
+    nothing. `RulesTests` check every glyph is an 18 by 18 pt template and that the seven drawings
+    differ, and drive the ticker on a clock the test moves by hand; both were proved by breaking them.
+73. **The app icon is the Icon Composer document `Resources/AppIcon.icon`; it keeps the name `AppIcon`
+    (the build setting `ASSETCATALOG_COMPILER_APPICON_NAME`), and no `AppIcon.appiconset` comes back.**
+    Its master copy is `docs/v2/icons/source/Prakriti.icon`. If Ivan changes the icon in Icon Composer,
+    his saved file becomes the master: copy it to both places, and never run
+    `docs/v2/icons/tools/make_icons.py` again, because it rewrites the master. Reason: two sources for
+    one icon is how a stale one comes back, and the generator would quietly undo Ivan's change. Check a
+    change by drawing it (`swift scripts/capture-window.swift --app-icon`), not by reading the JSON.
+    **`make install` touches the installed bundle** (`scripts/install.sh`). Reason: `ditto` keeps the
+    build folder's date on the bundle (10 Oct), and macOS keeps an app's icon cached against that date,
+    so after the first M1 install Finder's icon for `~/Applications/Prakriti.app` was still v1's dot
+    while the bundle held the cut disc (measured 11 Oct); with a new date it read the cut disc.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 
@@ -1171,7 +1217,9 @@ part it names:
   Reason: D13 promises autonomy you can trust, and a corrupt file must park as Couldn't finish, not
   loop.
 - **Notification permission is alert and sound only,** never provisional and never badge, because the
-  engine has no Dock icon. A click opens the review address carried in `userInfo` with `NSWorkspace`
+  engine has no Dock icon. **That reason is stale:** Prakriti for Mac has had a Dock icon since v1 (and
+  the cut disc since v2 part M1). v2 still shows no badge by choice (`docs/v2/PLAN.md` section 5); a
+  badge counting the recordings that wait for Ivan's yes is now possible, and is his decision. A click opens the review address carried in `userInfo` with `NSWorkspace`
   (SCOPE §8.5); check it by clicking one notice on the engine Mac.
 - **Events go through a local outbox** in the same SQLite transaction as the change they report, with
   a sequence per (engine, token epoch) (SCOPE §6.4). Reason: one lost event once froze the sequence for

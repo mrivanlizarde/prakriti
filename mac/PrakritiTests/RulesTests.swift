@@ -116,6 +116,143 @@ final class RulesTests: XCTestCase {
                        "each menu bar state has its own shape")
     }
 
+    // MARK: The menu bar mark (v2 part M1, docs/v2/icons/README.md)
+
+    /// Six states, six glyphs: distinct names, each loading from the app's own asset catalog as an
+    /// 18 by 18 pt template image (black on clear, so macOS colors it for a light or dark menu bar),
+    /// and each drawing a different shape. The second working frame loads the same way.
+    func testEveryMenuBarStateHasItsOwnGlyph() throws {
+        let states = StatusSummary.Icon.allCases
+        XCTAssertEqual(states.count, 6)
+        let names = states.map(\.menuBarAsset)
+        XCTAssertEqual(Set(names).count, 6, "six distinct menu bar glyph names: \(names)")
+        XCTAssertEqual(StatusSummary.Icon.working.menuBarAsset, "prakriti-menubar-working-1")
+
+        var drawings: [String: [UInt8]] = [:]
+        for name in names + [StatusSummary.Icon.workingFrames[1]] {
+            let image = try XCTUnwrap(NSImage(named: name), "\(name) is not in the app's asset catalog")
+            XCTAssertEqual(image.size, NSSize(width: 18, height: 18), "\(name) is drawn for an 18 pt square")
+            XCTAssertTrue(image.isTemplate, "\(name) must be a template image, or it stays black on a dark menu bar")
+            drawings[name] = Self.alphaMask(image, pixels: 36)
+        }
+        // The shapes themselves differ, not only their names: every pair differs in at least 20 of
+        // the 1,296 pixels of a 2x drawing (a dimmed half or a badge changes far more than that).
+        let keys = drawings.keys.sorted()
+        for (i, a) in keys.enumerated() {
+            XCTAssertGreaterThan(drawings[a]!.filter { $0 > 127 }.count, 100, "\(a) draws something")
+            for b in keys[(i + 1)...] {
+                let differing = zip(drawings[a]!, drawings[b]!).filter { abs(Int($0) - Int($1)) > 127 }.count
+                XCTAssertGreaterThanOrEqual(differing, 20, "\(a) and \(b) look the same (\(differing) px differ)")
+            }
+        }
+    }
+
+    /// The image's coverage (alpha) at `pixels` by `pixels`, one byte per pixel.
+    private static func alphaMask(_ image: NSImage, pixels: Int) -> [UInt8] {
+        var bytes = [UInt8](repeating: 0, count: pixels * pixels)
+        bytes.withUnsafeMutableBytes { buffer in
+            guard let context = CGContext(data: buffer.baseAddress, width: pixels, height: pixels, bitsPerComponent: 8,
+                                          bytesPerRow: pixels, space: CGColorSpaceCreateDeviceGray(),
+                                          bitmapInfo: CGImageAlphaInfo.alphaOnly.rawValue) else { return }
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
+            image.draw(in: NSRect(x: 0, y: 0, width: pixels, height: pixels))
+            NSGraphicsContext.restoreGraphicsState()
+        }
+        return bytes
+    }
+
+    /// The working frames turn every 0.7 s while work runs, there is no timer while nothing works,
+    /// and Reduce Motion holds the first frame still. Driven on a clock the test moves by hand.
+    func testWorkingTickerTurnsOnlyWhileWorking() {
+        let clock = ManualTickerClock()
+        let ticker = WorkingTicker(clock: clock, reduceMotion: { false }, reduceMotionChanges: nil)
+
+        // Idle: nothing scheduled, the first frame.
+        XCTAssertNil(ticker.timer, "no timer while idle")
+        XCTAssertTrue(clock.scheduled.isEmpty)
+        XCTAssertEqual(ticker.frame, "prakriti-menubar-working-1")
+
+        // Working: one timer, every 0.7 s, flipping exactly on the interval.
+        ticker.setWorking(true)
+        XCTAssertNotNil(ticker.timer)
+        XCTAssertEqual(clock.scheduled.count, 1)
+        XCTAssertEqual(clock.scheduled.first?.interval, 0.7)
+        var flips: [TimeInterval] = []
+        var last = ticker.odd
+        for step in 1...100 {   // 0.07 s steps over 7 s
+            clock.advance(to: Double(step) * 0.07)
+            if ticker.odd != last { flips.append(clock.now); last = ticker.odd }
+        }
+        XCTAssertEqual(flips.count, 10, "ten flips in 7 s: \(flips)")
+        for (n, time) in flips.enumerated() {
+            XCTAssertEqual(time, Double(n + 1) * 0.7, accuracy: 1e-9, "flip \(n + 1) on the interval")
+        }
+        XCTAssertFalse(ticker.odd, "an even number of flips: back on the first frame")
+        clock.advance(to: 7.35)
+        XCTAssertFalse(ticker.odd, "no flip between intervals")
+        clock.advance(to: 7.7)
+        XCTAssertTrue(ticker.odd)
+        XCTAssertEqual(ticker.frame, "prakriti-menubar-working-2")
+
+        // Working again while working: still one timer.
+        ticker.setWorking(true)
+        XCTAssertEqual(clock.scheduled.count, 1, "never two timers")
+
+        // Work ends: the timer is cancelled and gone, the first frame comes back, and time moving on
+        // flips nothing.
+        let scheduled = clock.scheduled[0]
+        ticker.setWorking(false)
+        XCTAssertNil(ticker.timer, "no timer once nothing works")
+        XCTAssertTrue(scheduled.cancelled)
+        XCTAssertFalse(ticker.odd)
+        clock.advance(to: 20)
+        XCTAssertFalse(ticker.odd)
+    }
+
+    func testWorkingTickerNeverStartsWithReduceMotion() {
+        let clock = ManualTickerClock()
+        let reduceMotion = Box(true)
+        let ticker = WorkingTicker(clock: clock, reduceMotion: { reduceMotion.value }, reduceMotionChanges: nil)
+
+        ticker.setWorking(true)
+        XCTAssertNil(ticker.timer, "Reduce Motion on: no timer")
+        XCTAssertTrue(clock.scheduled.isEmpty, "Reduce Motion on: nothing ever scheduled")
+        clock.advance(to: 10)
+        XCTAssertEqual(ticker.frame, "prakriti-menubar-working-1", "the first frame, held still")
+
+        // Turned off while working (macOS posts a change): the frames start turning.
+        reduceMotion.value = false
+        ticker.refresh()
+        XCTAssertNotNil(ticker.timer)
+        clock.advance(to: 10.7)
+        XCTAssertTrue(ticker.odd)
+
+        // Turned on again while working: stopped at once, on the first frame.
+        reduceMotion.value = true
+        ticker.refresh()
+        XCTAssertNil(ticker.timer)
+        XCTAssertTrue(clock.scheduled[0].cancelled)
+        XCTAssertEqual(ticker.frame, "prakriti-menubar-working-1")
+    }
+
+    /// The app's own clock schedules a real timer and stops it: proved with a 0.05 s interval on the
+    /// main run loop.
+    func testSystemTickerClockTicksAndStops() {
+        let clock = SystemTickerClock()
+        let ticks = Box(0)
+        let ticked = expectation(description: "three ticks")
+        let timer = clock.every(0.05) {
+            ticks.value += 1
+            if ticks.value == 3 { ticked.fulfill() }
+        }
+        wait(for: [ticked], timeout: 2)
+        timer.cancel()
+        let after = ticks.value
+        RunLoop.main.run(until: Date().addingTimeInterval(0.25))
+        XCTAssertEqual(ticks.value, after, "no tick after cancel")
+    }
+
     // MARK: Copy and type rules, read from the source files
 
     private var appSourceFiles: [URL] {
@@ -189,5 +326,47 @@ final class RulesTests: XCTestCase {
         }
         XCTAssertTrue(AppFont.sizes.allSatisfy { $0 >= 12 }, "nothing under 12 pt")
         XCTAssertTrue(AppFont.sizes.contains(17), "body text is 17 pt")
+    }
+}
+
+/// A value a main-actor closure can read and the test can change.
+@MainActor
+private final class Box<Value> {
+    var value: Value
+    init(_ value: Value) { self.value = value }
+}
+
+/// A clock the test moves by hand: each scheduled timer fires once for every whole interval passed.
+@MainActor
+final class ManualTickerClock: TickerClock {
+    final class Scheduled: TickerTimer {
+        let interval: TimeInterval
+        var next: TimeInterval
+        let tick: @MainActor @Sendable () -> Void
+        private(set) var cancelled = false
+        init(interval: TimeInterval, next: TimeInterval, tick: @escaping @MainActor @Sendable () -> Void) {
+            self.interval = interval
+            self.next = next
+            self.tick = tick
+        }
+        func cancel() { cancelled = true }
+    }
+
+    private(set) var now: TimeInterval = 0
+    private(set) var scheduled: [Scheduled] = []
+
+    func every(_ interval: TimeInterval, _ tick: @escaping @MainActor @Sendable () -> Void) -> any TickerTimer {
+        let timer = Scheduled(interval: interval, next: now + interval, tick: tick)
+        scheduled.append(timer)
+        return timer
+    }
+
+    func advance(to time: TimeInterval) {
+        while let due = scheduled.filter({ !$0.cancelled && $0.next <= time + 1e-9 }).min(by: { $0.next < $1.next }) {
+            now = due.next
+            due.next += due.interval
+            due.tick()
+        }
+        now = time
     }
 }

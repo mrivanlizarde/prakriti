@@ -19,6 +19,8 @@ import CoreGraphics
 import Foundation
 
 let screens = ["today", "recordings", "sources", "outputs", "models", "activity", "settings"]
+/// WorkingTicker.interval in the app: how long each working frame shows.
+let workingFrameSeconds = 0.7
 let appearances = ["light", "dark"]
 
 struct RowCheck {
@@ -189,6 +191,220 @@ if args.first == "--window", args.count == 3 {
     let size = NSImageRep(contentsOf: png).map { "\($0.pixelsWide)x\($0.pixelsHigh) px" } ?? "unreadable"
     print("      saved \(png.path), \(size)")
     exit(0)
+}
+// The app icon as Finder and the Dock get it (NSWorkspace, which reads the built bundle's compiled
+// icon), drawn at 512 and 32 px, with a 32 px copy magnified 8 times for looking. It measures the
+// mark too: the rows of the cut (where the ultramarine almost vanishes across the middle) and how far
+// the upper half sits right of the lower half. The cut disc has both; v1's plain dot has neither.
+//   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --app-icon build/Build/Products/Debug/Prakriti.app ../screens/mac/v2-m1
+if args.first == "--app-icon", args.count == 3 {
+    let app = URL(fileURLWithPath: args[1]).standardizedFileURL
+    let out = URL(fileURLWithPath: args[2]).standardizedFileURL
+    try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+    let icon = NSWorkspace.shared.icon(forFile: app.path)
+    var cut = true
+    for pixels in [512, 32] {
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: pixels, pixelsHigh: pixels, bitsPerSample: 8,
+                                         samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                                         bytesPerRow: 0, bitsPerPixel: 0) else { exit(1) }
+        rep.size = NSSize(width: pixels, height: pixels)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        icon.draw(in: NSRect(x: 0, y: 0, width: pixels, height: pixels), from: .zero, operation: .copy, fraction: 1)
+        NSGraphicsContext.restoreGraphicsState()
+        let png = out.appending(path: "app-icon-\(pixels).png")
+        try? rep.representation(using: .png, properties: [:])?.write(to: png)
+        // The mark: clearly blue pixels (ultramarine is about rgb(35, 55, 198); dark is rgb(68, 89, 232)).
+        var rows: [(count: Int, sumX: Int)] = Array(repeating: (0, 0), count: pixels)
+        for y in 0..<pixels {
+            for x in 0..<pixels {
+                guard let c = rep.colorAt(x: x, y: y)?.usingColorSpace(.sRGB) else { continue }
+                let (r, g, b) = (Int(c.redComponent * 255), Int(c.greenComponent * 255), Int(c.blueComponent * 255))
+                if b > r + 60 && b > g + 60 && c.alphaComponent > 0.5 { rows[y].count += 1; rows[y].sumX += x }
+            }
+        }
+        let marked = rows.indices.filter { rows[$0].count > 0 }
+        guard let top = marked.first, let bottom = marked.last else { print("FAIL  \(pixels) px: no ultramarine mark found"); cut = false; continue }
+        let widest = rows.map(\.count).max() ?? 1
+        let middle = (top + (bottom - top) * 3 / 10)...(top + (bottom - top) * 7 / 10)
+        let gap = middle.filter { rows[$0].count * 10 < widest }
+        // The thinnest row in the middle splits the mark into its two halves.
+        let split = gap.isEmpty ? middle.min { rows[$0].count < rows[$1].count }! : gap[gap.count / 2]
+        func centre(_ range: ClosedRange<Int>) -> Double {
+            let n = range.reduce(0) { $0 + rows[$1].count }, sx = range.reduce(0) { $0 + rows[$1].sumX }
+            return n == 0 ? 0 : Double(sx) / Double(n)
+        }
+        let shift = centre(top...split) - centre(split...bottom)   // image rows run top down
+        let dip = Double(rows[split].count) / Double(widest)
+        print(String(format: "      %d px: mark rows %d to %d, widest %d px; cut: %d empty rows, thinnest middle row %.0f%% of the widest; upper half %.1f px right of the lower half; saved %@",
+                     pixels, top, bottom, widest, gap.count, dip * 100, shift, png.lastPathComponent))
+        let threshold = Double(pixels) / 512 * 20
+        if shift < threshold || (pixels >= 256 && gap.isEmpty) { cut = false }
+        if pixels <= 64 {
+            // Magnified 8 times, pixel for pixel, for looking at a small size.
+            let big = pixels * 8
+            if let zoom = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: big, pixelsHigh: big, bitsPerSample: 8,
+                                           samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                                           bytesPerRow: 0, bitsPerPixel: 0) {
+                NSGraphicsContext.saveGraphicsState()
+                let context = NSGraphicsContext(bitmapImageRep: zoom)
+                context?.imageInterpolation = .none
+                NSGraphicsContext.current = context
+                rep.draw(in: NSRect(x: 0, y: 0, width: big, height: big), from: .zero, operation: .copy, fraction: 1,
+                         respectFlipped: false, hints: [.interpolation: NSNumber(value: NSImageInterpolation.none.rawValue)])
+                NSGraphicsContext.restoreGraphicsState()
+                try? zoom.representation(using: .png, properties: [:])?.write(to: out.appending(path: "app-icon-\(pixels)-x8.png"))
+            }
+        }
+    }
+    print(cut ? "PASS  the cut disc: a cut across the middle and the halves set apart" : "FAIL  not the cut disc (no cut, or the halves are not set apart)")
+    exit(cut ? 0 : 1)
+}
+// The menu bar, as the Window Server draws it, read for every Prakriti mark it shows. It captures the
+// system's own menu bar window again and again for the given number of seconds, finds each Prakriti
+// item by comparing every item in the bar with the seven glyphs in the app's asset catalog (their
+// coverage, so a dim half counts), and prints, per item, which glyph it showed and when it changed:
+// the working frames must alternate every 0.7 s, and every other state must hold still. Saves the
+// first capture of each Prakriti item, magnified 8 times, to the folder. Read only: it clicks nothing.
+// It needs Screen Recording permission for whatever runs it (the v2 part M1 session had it, through
+// the app it ran in; CGPreflightScreenCaptureAccess said yes).
+//   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --menu-bar build/Build/Products/Debug/Prakriti.app 10 ../screens/mac/v2-m1/menubar
+if args.first == "--menu-bar", args.count == 4, let seconds = Double(args[2]) {
+    let app = URL(fileURLWithPath: args[1]).standardizedFileURL
+    let out = URL(fileURLWithPath: args[3]).standardizedFileURL
+    try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+    let names = ["prakriti-menubar", "prakriti-menubar-working-1", "prakriti-menubar-working-2", "prakriti-menubar-waiting",
+                 "prakriti-menubar-problem", "prakriti-menubar-paused", "prakriti-menubar-not-watching"]
+    guard let bundle = Bundle(url: app) else { print("FAIL  cannot open \(app.path)"); exit(1) }
+    let list = (CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]]) ?? []
+    guard let bar = list.first(where: { ($0[kCGWindowName as String] as? String) == "Menubar" && ($0[kCGWindowOwnerName as String] as? String) == "Window Server" }),
+          let barNumber = bar[kCGWindowNumber as String] as? Int,
+          let barBounds = (bar[kCGWindowBounds as String] as? NSDictionary).flatMap({ CGRect(dictionaryRepresentation: $0) }) else {
+        print("FAIL  no menu bar window found"); exit(1)
+    }
+    let shot = FileManager.default.temporaryDirectory.appending(path: "prakriti-menubar-\(getpid()).png")
+    /// One capture of the menu bar: its coverage (alpha, 0 to 1) per pixel.
+    func capture() -> (alpha: [Float], width: Int, height: Int, rep: NSBitmapImageRep)? {
+        let (status, _) = run("/usr/sbin/screencapture", ["-x", "-o", "-l", String(barNumber), shot.path])
+        guard status == 0, let rep = NSBitmapImageRep(data: (try? Data(contentsOf: shot)) ?? Data()) else { return nil }
+        var alpha = [Float](repeating: 0, count: rep.pixelsWide * rep.pixelsHigh)
+        var p = [Int](repeating: 0, count: 4)
+        for y in 0..<rep.pixelsHigh { for x in 0..<rep.pixelsWide { rep.getPixel(&p, atX: x, y: y); alpha[y * rep.pixelsWide + x] = Float(p[rep.samplesPerPixel - 1]) / 255 } }
+        return (alpha, rep.pixelsWide, rep.pixelsHigh, rep)
+    }
+    guard let first = capture() else { print("FAIL  the menu bar could not be captured (screencapture)"); exit(1) }
+    let scale = Int((Double(first.height) / barBounds.height).rounded())
+    let side = 18 * scale
+    // Each glyph's coverage at the capture's scale.
+    var glyphs: [(name: String, alpha: [Float])] = []
+    for name in names {
+        guard let image = bundle.image(forResource: name) else { print("FAIL  \(name) is not in \(app.lastPathComponent)"); exit(1) }
+        var bytes = [UInt8](repeating: 0, count: side * side)
+        bytes.withUnsafeMutableBytes { buffer in
+            guard let context = CGContext(data: buffer.baseAddress, width: side, height: side, bitsPerComponent: 8, bytesPerRow: side,
+                                          space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.alphaOnly.rawValue) else { return }
+            // A bitmap context's first row in memory is the top of the picture, as in the capture.
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
+            image.draw(in: NSRect(x: 0, y: 0, width: side, height: side), from: .zero, operation: .copy, fraction: 1)
+            NSGraphicsContext.restoreGraphicsState()
+        }
+        glyphs.append((name, bytes.map { Float($0) / 255 }))
+    }
+    /// The bar's items: runs of columns with something drawn, split by gaps of at least 3 pt.
+    func items(_ c: (alpha: [Float], width: Int, height: Int, rep: NSBitmapImageRep)) -> [ClosedRange<Int>] {
+        var columns = [Bool](repeating: false, count: c.width)
+        for x in 0..<c.width { for y in 0..<c.height where c.alpha[y * c.width + x] > 0.04 { columns[x] = true; break } }
+        var runs: [ClosedRange<Int>] = [], start = -1, lastOn = -100
+        for x in 0..<c.width where columns[x] {
+            if x - lastOn > 3 * scale { if start >= 0 { runs.append(start...lastOn) }; start = x }
+            lastOn = x
+        }
+        if start >= 0 { runs.append(start...lastOn) }
+        return runs.filter { $0.count <= side + 2 * scale && $0.count >= 8 * scale }
+    }
+    /// The glyph an item shows and how far it is from it: the mean coverage difference over the
+    /// glyph's square at the best placement near the item's centre (0 is identical).
+    func classify(_ c: (alpha: [Float], width: Int, height: Int, rep: NSBitmapImageRep), _ item: ClosedRange<Int>) -> (name: String, distance: Float, x: Int, y: Int) {
+        var best: (String, Float, Int, Int) = ("", .infinity, 0, 0)
+        let cx = (item.lowerBound + item.upperBound) / 2 - side / 2, cy = (c.height - side) / 2
+        for glyph in glyphs {
+            for dx in -3 * scale...3 * scale { for dy in -2 * scale...2 * scale {
+                let x0 = cx + dx, y0 = cy + dy
+                guard x0 >= 0, y0 >= 0, x0 + side <= c.width, y0 + side <= c.height else { continue }
+                var sum: Float = 0
+                for y in 0..<side { for x in 0..<side { sum += abs(c.alpha[(y0 + y) * c.width + x0 + x] - glyph.alpha[y * side + x]) } }
+                let mean = sum / Float(side * side)
+                if mean < best.1 { best = (glyph.name, mean, x0, y0) }
+            } }
+        }
+        return best
+    }
+    let prakriti: [(range: ClosedRange<Int>, first: (name: String, distance: Float, x: Int, y: Int))] =
+        items(first).map { ($0, classify(first, $0)) }.filter { $0.1.distance < 0.06 }
+    guard !prakriti.isEmpty else {
+        // Other apps' items come back only with Screen Recording permission for whatever runs this.
+        print("FAIL  no Prakriti mark in the menu bar (\(items(first).count) items read; Screen Recording permission for this process: \(CGPreflightScreenCaptureAccess() ? "yes" : "no, so the bar may come back empty"))")
+        exit(1)
+    }
+    for (n, item) in prakriti.enumerated() {
+        // Magnified 8 times over mid grey, so the glyph and its dim half can be seen.
+        let zoom = 8, w = side * zoom
+        guard let png = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: w, pixelsHigh: w, bitsPerSample: 8, samplesPerPixel: 3, hasAlpha: false,
+                                         isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { continue }
+        for y in 0..<side { for x in 0..<side {
+            let a = first.alpha[(item.first.y + y) * first.width + item.first.x + x]
+            var p = [Int(110 + 145 * a), Int(110 + 145 * a), Int(110 + 145 * a)]
+            for zy in 0..<zoom { for zx in 0..<zoom { png.setPixel(&p, atX: x * zoom + zx, y: y * zoom + zy) } }
+        } }
+        try? png.representation(using: .png, properties: [:])?.write(to: out.appending(path: "menubar-item-\(n + 1)-\(item.first.name).png"))
+    }
+    // The timeline: capture again and again, and note every change of glyph per item.
+    let started = Date()
+    var timeline: [[(t: Double, name: String)]] = prakriti.map { [(0, $0.first.name)] }
+    var captures = 1
+    while Date().timeIntervalSince(started) < seconds {
+        guard let c = capture() else { continue }
+        captures += 1
+        let t = Date().timeIntervalSince(started)
+        for (n, item) in prakriti.enumerated() {
+            let now = classify(c, item.range)
+            if now.distance < 0.06, now.name != timeline[n].last?.name { timeline[n].append((t, now.name)) }
+        }
+    }
+    let elapsed = Date().timeIntervalSince(started)
+    print(String(format: "      %d captures of the menu bar in %.1f s (one every %.2f s), from %@", captures, elapsed,
+                 elapsed / Double(captures), started.formatted(date: .omitted, time: .standard)))
+    // Read per item as a run of segments: the working frames alternating, or one state held still.
+    var animatedRight = true, sawTurning = false
+    for (n, item) in prakriti.enumerated() {
+        let x = Double(item.range.lowerBound) / Double(scale) + barBounds.minX
+        print(String(format: "      item %d at x %.0f pt (its first glyph %.3f from the asset):", n + 1, x, item.first.distance))
+        var changes = timeline[n][...]
+        while let head = changes.first {
+            let isWorking = head.name.contains("working")
+            let run = isWorking ? changes.prefix { $0.name.contains("working") } : changes.prefix(1)
+            changes = changes.dropFirst(run.count)
+            let end = changes.first?.t ?? elapsed
+            let label = head.name.replacingOccurrences(of: "prakriti-menubar", with: "mark")
+            if isWorking && run.count >= 3 {
+                let mean = (run.last!.t - run.first!.t) / Double(run.count - 1)
+                sawTurning = true
+                print(String(format: "        %5.1f to %5.1f s: the working frames alternating, %d changes, one every %.2f s on average",
+                             head.t, end, run.count - 1, mean))
+                if abs(mean - workingFrameSeconds) > 0.1 { animatedRight = false; print("        FAIL  not every 0.7 s") }
+            } else if isWorking && end - head.t > 2 * workingFrameSeconds {
+                print(String(format: "        %5.1f to %5.1f s: one working frame held still (Reduce Motion on, or the ticker stopped)", head.t, end))
+            } else {
+                print(String(format: "        %5.1f to %5.1f s: %@, held still", head.t, end, isWorking ? "working frames" : label))
+            }
+        }
+    }
+    try? FileManager.default.removeItem(at: shot)
+    print(!animatedRight ? "FAIL  the working frames did not turn every 0.7 s (see above)"
+          : sawTurning ? "PASS  the working frames turned every 0.7 s, and every other state held still"
+          : "PASS  every state held still (nothing was working during the capture)")
+    exit(animatedRight ? 0 : 1)
 }
 if args.first == "--analyze" {
     let ok = args.dropFirst().map { describe(($0 as NSString).lastPathComponent, analyze(URL(fileURLWithPath: $0))) }

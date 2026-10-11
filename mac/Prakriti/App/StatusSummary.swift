@@ -3,13 +3,34 @@ import Foundation
 /// The one sentence that says what Prakriti is doing, used by the menu bar and Today.
 /// Never "Processing...": the step is named.
 struct StatusSummary: Equatable, Sendable {
-    enum Icon: String, Sendable {
+    /// The state's shape. The raw values are SF Symbols, which Today draws inside the window, where
+    /// SF Symbols belong; the menu bar draws `menuBarAsset` instead.
+    enum Icon: String, CaseIterable, Sendable {
         case idle = "circle"
         case notWatching = "circle.dashed"
         case working = "circle.dotted"
         case waitingForYou = "circle.inset.filled"
         case problem = "exclamationmark.circle"
         case paused = "pause.circle"
+
+        /// The menu bar's template glyph for this state: the app icon's cut disc, one shape per state
+        /// (docs/v2/icons/README.md, "The menu bar"). A shape, never a color, tells the states apart,
+        /// and paused and not watching are outlines rather than dimmed, because macOS already dims
+        /// the menu bar on a display that is not active.
+        var menuBarAsset: String {
+            switch self {
+            case .idle: "prakriti-menubar"
+            case .notWatching: "prakriti-menubar-not-watching"
+            // The first of the two working frames; `WorkingTicker` swaps in the second every 0.7 s.
+            case .working: Self.workingFrames[0]
+            case .waitingForYou: "prakriti-menubar-waiting"
+            case .problem: "prakriti-menubar-problem"
+            case .paused: "prakriti-menubar-paused"
+            }
+        }
+
+        /// The two frames of the working state: the halves lit in turn.
+        static let workingFrames = ["prakriti-menubar-working-1", "prakriti-menubar-working-2"]
     }
 
     let line: String

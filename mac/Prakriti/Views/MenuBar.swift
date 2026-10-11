@@ -34,8 +34,10 @@ struct MenuBarMenu: View {
     }
 }
 
-/// The menu bar icon: an abstract mark whose shape changes with the state (idle ring, dotted
-/// while working, filled when something waits, exclamation for a problem, pause when paused).
+/// The menu bar icon: the app icon's cut disc as a template glyph, whose shape changes with the
+/// state (the mark when idle, the halves lit in turn while working, a dot when something waits, an
+/// exclamation mark for a problem, an outline when paused, a dashed outline when not watching).
+/// The working frames are turned by the model's `WorkingTicker`, because a label cannot animate.
 struct MenuBarIcon: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
@@ -44,8 +46,12 @@ struct MenuBarIcon: View {
 
     var body: some View {
         let summary = model.statusSummary(recordings: recordings, sources: sources)
-        Image(systemName: summary.icon.rawValue)
+        let working = summary.icon == .working
+        Image(working ? model.ticker.frame : summary.icon.menuBarAsset)
             .accessibilityLabel("Prakriti: \(summary.line)")
             .onAppear { model.openMainWindow = { openWindow(id: MainWindow.id) } }
+            .onChange(of: working, initial: true) { _, isWorking in model.ticker.setWorking(isWorking) }
+            // Hidden from the menu bar (Settings): nothing to animate.
+            .onDisappear { model.ticker.setWorking(false) }
     }
 }

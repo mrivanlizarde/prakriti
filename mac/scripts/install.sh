@@ -26,6 +26,11 @@ rm -rf "$DEST.new"
 ditto "$BUILT" "$DEST.new"
 rm -rf "$DEST"
 mv "$DEST.new" "$DEST"
+# The bundle folder keeps the build folder's date (ditto copies it), and macOS keeps an app's icon
+# cached against that date: after v2 part M1 changed the icon, Finder's icon for the installed copy was
+# still v1's dot until the date changed (measured 11 Oct). A new date makes Finder read the icon again
+# (the Dock was not measured). The signature covers the contents, not the folder's date.
+touch "$DEST"
 codesign --verify --deep --strict "$DEST" && echo "Installed and signed: $DEST"
 open "$DEST"
 for _ in $(seq 1 30); do pgrep -f "$BIN" > /dev/null && break; sleep 0.5; done
