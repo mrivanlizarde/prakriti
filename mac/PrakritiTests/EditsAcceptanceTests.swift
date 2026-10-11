@@ -145,6 +145,35 @@ final class EditsAcceptanceTests: XCTestCase {
             XCTAssertFalse(approvedText.contains(sentence), "a cut sentence is in the approved transcript: \(sentence)")
         }
         for sentence in afterCut { XCTAssertTrue(approvedText.contains(sentence), "a kept sentence is missing: \(sentence)") }
+        // Every sentence the trim and cut leave whole reads as Parakeet wrote it, in the .txt and
+        // as one caption of the .srt, and no caption starts with punctuation. Parakeet lists a few
+        // tokens out of order (13 Sep: 5 of 137 sentences); joined as listed, the approved files read
+        // "at that point. , And as you guys remember we were" (verifier, 10 Oct).
+        let approvedCaptions = TranscriptFiles.cues(srt: try String(contentsOf: approved.appending(path: "transcript.srt"), encoding: .utf8)).map(\.text)
+        let keptWhole = heard.filter { sentence in
+            (sentence.tokens ?? []).filter { EpisodeTranscript.isWord($0.text) }.allSatisfy {
+                let at = EpisodeTranscript.position(start: $0.start, end: $0.end)
+                return at >= 10 && (at < 300 || at > 330)
+            }
+        }.map { Lexicon.apply($0.text.trimmingCharacters(in: .whitespaces)).text }
+        let missingFromText = keptWhole.filter { !approvedText.contains($0) }
+        let missingCaptions = keptWhole.filter { !approvedCaptions.contains($0) }
+        let stray = approvedCaptions.filter { EpisodeTranscript.isClosingPunctuation(String($0.prefix(1))) }
+        XCTAssertEqual(missingFromText, [], "sentences kept whole that the approved .txt does not read word for word")
+        XCTAssertEqual(missingCaptions, [], "sentences kept whole that are not one caption of the approved .srt")
+        XCTAssertEqual(stray, [], "approved captions starting with punctuation")
+        for misplaced in ["And as you guys remember, we were doing a lot.", "You can always have access to the Fathom", "we realize is that in our platform"] {
+            XCTAssertTrue(approvedText.contains(misplaced), "Parakeet misplaced this sentence's tokens: \(misplaced)")
+        }
+        // The approved REPORT.md names only what is in the folder, and lists no fix inside the trim or cut.
+        let approvedReport = try String(contentsOf: approved.appending(path: "REPORT.md"), encoding: .utf8).components(separatedBy: "\n")
+        let transcriptRow = approvedReport.first { $0.hasPrefix("| Transcript |") } ?? ""
+        XCTAssertFalse(transcriptRow.contains(TranscriptFiles.asHeard), transcriptRow)
+        XCTAssertTrue(approvedReport.contains { $0.hasPrefix("| Words as heard | `transcript.json`, every word with its time, is kept in the Outputs folder only.") })
+        let fixTimes = approvedReport.drop { $0 != "## Word list fixes" }.dropFirst().prefix { !$0.hasPrefix("## ") }
+            .compactMap { $0.split(separator: "|").last.map { $0.trimmingCharacters(in: .whitespaces) } }.compactMap(TimeText.seconds)
+        XCTAssertFalse(fixTimes.isEmpty, "the report lists the fixes in the files")
+        XCTAssertEqual(fixTimes.filter { $0 < 10 || ($0 >= 300 && $0 <= 330) }, [], "a word list fix inside the trim or the cut is listed")
         let retold = try transcribe(approved.appending(path: "episode.mp3"), in: work)
         // Every word said inside the cut (by Parakeet's own word times, not only whole sentences),
         // as five-word runs. Only runs said nowhere else in the talk count: a phrase Gabriel repeats
@@ -161,6 +190,8 @@ final class EditsAcceptanceTests: XCTestCase {
         XCTAssertGreaterThan(Double(afterFound), Double(afterGrams.count) * 0.5, "the talk after the cut is there")
         report += ["", "The cut, checked gone",
                    "  sentences wholly inside 5:00 to 5:30: \(inCut.count); inside the first 10 s: \(inTrim.count). None is in the approved transcript.txt.",
+                   "  sentences kept whole: \(keptWhole.count); read word for word in the approved .txt: \(keptWhole.count - missingFromText.count); one caption each in the approved .srt: \(keptWhole.count - missingCaptions.count); captions starting with punctuation: \(stray.count)",
+                   "  approved REPORT.md: transcript.json in the files row: \(transcriptRow.contains(TranscriptFiles.asHeard) ? "YES" : "no"); word list fixes listed: \(fixTimes.count), inside the trim or cut: \(fixTimes.filter { $0 < 10 || ($0 >= 300 && $0 <= 330) }.count)",
                    "  the approved episode transcribed again by Parakeet: \(cutFound) of \(cutGrams.count) five-word runs said in the cut (and nowhere else) heard; \(afterFound) of \(afterGrams.count) from the minute after it heard"]
 
         try draw("talk-4-approved")

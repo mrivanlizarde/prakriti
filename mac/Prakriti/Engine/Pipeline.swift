@@ -182,6 +182,9 @@ struct PipelineResult: Sendable {
     /// The transcript files were rewritten to follow the episode, and how many words they lost.
     var transcriptFollowsEpisode = false
     var wordsLeftOut: Int?
+    /// How many of the word list's fixes were in the parts taken out, so are in no file (and not
+    /// in `corrections`, which then lists only the fixes in the files that follow the episode).
+    var fixesLeftOut = 0
     var introDuration: Double?
     var outroDuration: Double?
     /// The word list's fixes, each with its time in the original recording.
@@ -666,12 +669,19 @@ struct Pipeline: Sendable {
                     if clock.isIdentity(duration: ready.duration) {
                         await finish(.episodeTranscript, "Nothing was taken out or added, so its times already match the episode.")
                     } else {
-                        let left = try followEpisode(in: staging, clock: clock, label: label, fileName: file.lastPathComponent)
+                        let made = try followEpisode(in: staging, clock: clock, label: label, fileName: file.lastPathComponent)
+                        let left = made.removedWords
                         result.transcriptFollowsEpisode = true
                         result.wordsLeftOut = left
+                        if options.applyLexicon {
+                            // The report lists the fixes in the files, never one inside a cut.
+                            result.fixesLeftOut = max(0, result.corrections.count - made.corrections.count)
+                            result.corrections = made.corrections
+                        }
+                        let fixesGone = result.fixesLeftOut > 0 ? " (with \(Format.count(result.fixesLeftOut, "word list fix", "word list fixes")))" : ""
                         let shift = clock.intro - (clock.segments.first?.start ?? 0)
                         await finish(.episodeTranscript, "Times match the episode"
-                                     + (left > 0 ? "; \(Format.count(left, "word")) in the parts taken out are left out." : String(format: " (%.1f s %@).", abs(shift), shift >= 0 ? "later" : "earlier"))
+                                     + (left > 0 ? "; \(Format.count(left, "word")) in the parts taken out are left out\(fixesGone)." : String(format: " (%.1f s %@).", abs(shift), shift >= 0 ? "later" : "earlier"))
                                      + " transcript.json keeps every word as heard.")
                     }
                 }
@@ -819,8 +829,10 @@ struct Pipeline: Sendable {
 
     /// Rewrites the chosen readable formats (.txt, .srt, .vtt, .md) from transcript.json so they
     /// follow the episode: the words inside anything taken out are dropped, and every time is the
-    /// episode's. Returns how many words were left out. The .txt is rewritten only when words were.
-    private func followEpisode(in folder: URL, clock: EpisodeClock, label: String, fileName: String) throws -> Int {
+    /// episode's. Returns how many words were left out and the word list's fixes in what is left.
+    /// The .txt is rewritten only when words were left out.
+    private func followEpisode(in folder: URL, clock: EpisodeClock, label: String, fileName: String) throws
+        -> (removedWords: Int, corrections: [Lexicon.Correction]) {
         guard let data = try? Data(contentsOf: folder.appending(path: TranscriptFiles.asHeard)),
               let sentences = EpisodeTranscript.sentences(json: data) else {
             throw PipelineFailure(step: .episodeTranscript, reason: "The transcript could not be matched to the episode: Parakeet's words with their times (transcript.json) could not be read.")
@@ -842,7 +854,7 @@ struct Pipeline: Sendable {
         } catch {
             throw PipelineFailure(step: .episodeTranscript, reason: "The transcript could not be matched to the episode.", detail: error.localizedDescription)
         }
-        return made.removedWords
+        return (made.removedWords, made.corrections)
     }
 
     /// Writes the .md when it is chosen and removes the formats that are not. transcript.json stays.

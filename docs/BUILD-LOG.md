@@ -1010,3 +1010,95 @@ Then Recordings, Sun 13 Sep.
   local model.
 - The receipt (`APPROVAL.md`) is where written titles and show notes belong once they exist; any
   change to them takes the approval back, as the title does now.
+
+## Milestone 5 fixes: the transcript reads as it was said. Sat 10 Oct 2026
+
+The independent verifier found one regression and two smaller faults in milestone 5. Each is fixed
+at its cause and re-measured on the real recordings below.
+
+### What was wrong, and why
+
+1. **The transcript files that follow the episode carried misplaced punctuation and words**
+   (medium; it touched Episode 1's deliverable). Since milestone 5 (decision 5), every make that
+   takes anything out, including the default silence trim with no edits of Ivan's, rebuilds the
+   .srt, .vtt and .md (and the .txt when words drop) from `transcript.json`. Each cue was Parakeet's
+   tokens joined in the order listed. **That order is not the order they were said:** Parakeet writes
+   a sentence's text in the order it heard the words, then sorts the sentence's tokens by start time
+   (parakeet_mlx `alignment.py`, `AlignedSentence.__post_init__`, read on this Mac). Where its
+   listening chunks meet, every 105 s (224.84, 329.6, 644.84, 854.84, 959.84 s ...), a few tokens
+   carry a wrong, too-early time, most often a sentence's last full stop, so the sort moves them.
+   Measured over transcript.json: **13 Sep 5 of 137 sentences, 6 Sep 21 of 555.** The 6 Sep .srt
+   had 8 captions starting with "." or "?" (". But the problem was that again, we spent $100 for the
+   venue"), plus "when we you, know, really", "the You can always have access to Fathom" and
+   "room. I don't want to share a with someone"; engine v0's had none, because it shipped Parakeet's
+   own sentence text.
+2. **The approved REPORT.md disagreed with the approved folder** (low): its Transcript row listed
+   `transcript.json`, which Approve never copies, and its word list table listed "yoga marga" at
+   5:20, inside the 5:00 to 5:30 cut. The report is written once in Outputs and copied as it is.
+3. **START_HERE's map said "Milestones 1 to 3 landed"** (low, stale truth) after 4 and 5 had.
+
+### What was changed
+
+- **`EpisodeTranscript.sentences(json:)` reads each sentence in the order it was said**
+  (`mac/Prakriti/Engine/EpisodeEdits.swift`). `spelling` finds the order of the tokens that spells
+  the sentence's own text byte for byte (a search that tries first the token next in time, so a
+  sentence's repeated " and" or "," keep their own times; it gives up after 20,000 steps and leaves
+  the sentence as it was). `retimed` keeps the tokens whose times already run in order (the most of
+  them, a word counting double, the later times winning a tie, since a misplaced time is the
+  too-early one) and gives each other token a time between its neighbours. The sentence's start and
+  end come from them, so the page's line for "Or what if you just exponentially increase that,
+  right?" starts at its first word (963.32 s), not at the misplaced question mark (959.84 s). Every reader of transcript.json goes
+  through this: the episode's files, the page's lines and their cut state, and the acceptance checks.
+- **A sentence kept whole is written as Parakeet's own sentence text;** only a sentence a trim or
+  cut goes through is built from its words, and that part never opens with a comma or full stop
+  (`isClosingPunctuation`). So even tokens that cannot spell their text could not reach a file
+  misordered unless a cut splits that very sentence.
+- **A word is kept or dropped whole** (`words`): the token that starts with a space and the pieces
+  and punctuation after it (" Jer", "se", "y", "."), placed by `position` as before. Before, each
+  piece was placed alone, so a cut could keep half a word.
+- **The word list's fixes follow the episode too.** `cues` returns the fixes it made, each at its time
+  in the original; when the transcript follows the episode, the report lists those and counts the
+  rest: "1 more fix fell in the parts taken out of the episode, so it is in no file and not listed."
+  The step line says "(with 1 word list fix)".
+- **REPORT.md says only what is true in both folders** (`Engine/Report.swift`): the Transcript row lists
+  the readable formats ("`transcript.txt`, `.srt`, `.vtt`, `.md`; 2948 words heard"), and a new row,
+  "Words as heard", says `transcript.json` is kept in the Outputs folder only and Approve never
+  copies it.
+- START_HERE: the `mac/` row (milestones 1 to 5), warnings 37, 39 and 40 amended, warning 45 added
+  (read transcript.json only through `sentences(json:)`, with the reason and the numbers).
+
+### Checks run, with results
+
+| Check | Result |
+|---|---|
+| Build | `BUILD SUCCEEDED`, 0 compiler warnings |
+| `make test MILESTONE=m5-fix` | **92 tests, 0 failures, 4 skipped by design** (RecordingPageTests run again, 13 of 13, after the fixture's second sentence was swapped for an Episode 1 one, so the repo carries no personal fact about anyone but the speaker) (the three acceptances and the migration check). New: `testParakeetsMisplacedTokensAreReadInTheOrderTheyWereSaid` (six sentences of Parakeet's real tokens copied verbatim from the 13 Sep and 6 Sep transcript.json: each spells its text, its times run in order, each misplaced token lands between its neighbours, e.g. the "." of "for the venue" at 335.08 s, not 329.6 s; with the silence trim every cue is the sentence word for word; cuts through three of them give "And as you guys remember," / "doing a lot." / "we spent $100 for the venue." / "just exponentially increase that, right?"; tokens that cannot spell their text fall back to Parakeet's text), `testTheReportNamesOnlyWhatTheFilesHold`, and the cut-fix assertions added to `testTheEpisodeTranscriptLosesTheWordsOfACut` |
+| The same rule modelled in Python (a scratch check, not shipped), both talks' transcript.json | All 26 misordered sentences: every one spelled, every one's times in order, none given up; the Swift run agrees (the acceptance rows below) |
+| **`make accept MILESTONE=m5-fix`** (13 Sep, 14 Sep class, 30 s clip, 6 Sep) | 13 Sep: -16.8 LUFS, peak -1.7 dBFS, reaches 15:47 of 15:48; **.srt and .vtt: 137 captions for 137 sentences, 0 start with punctuation, 0 differ from Parakeet's sentence.** 14 Sep: Needs a decision, nothing made (loudest -91 dB). 30 s clip: a test, nothing made. 6 Sep (Episode 1): -16.7 LUFS, peak -1.4 dBFS, reaches 55:38 of 55:39; **.srt and .vtt: 555 captions for 555 sentences, 0 start with punctuation, 0 differ.** These caption checks are now part of `make accept` |
+| **The verifier's reproduction** | `grep -cE '^[,.;:!?] '` on `~/Prakriti/Dev/Outputs/2026-09-06 18-06-33/transcript.srt`: **0** (was 8); .vtt 0; 13 Sep .srt and .vtt 0. **The 555 caption texts of the new 6 Sep .srt are identical to engine v0's** (`~/Prakriti/Outputs`), compared one by one; captions now read "...we spent $100 for the venue.", "Or what if you just exponentially increase that, right?", "when we, you know, really" |
+| **`make accept-edits MILESTONE=m5-fix`** (13 Sep: 0:10 trim, 5:00 to 5:30 cut, Make Again, Approve) | Approved episode **907.732 s by ffprobe, 38.82 s shorter than the first (expected 38.82), 40.05 s shorter than the 947.780 s recording**; SHA-256 `320122f6...`, the made one's. **131 sentences kept whole: 131 read word for word in the approved .txt and 131 are one caption each in the approved .srt; 0 captions start with punctuation.** The approved .txt reads "at that point. And as you guys remember, we were doing a lot.", "You can always have access to the Fathom" and "we realize is that in our platform"; the verifier's three bad strings: 0 each. Parakeet run again on the approved MP3: 0 of 73 five-word runs from the cut heard, 189 of 201 from the minute after. Class refusal unchanged |
+| **The approved REPORT.md** | Transcript row: "`transcript.txt`, `.srt`, `.vtt`, `.md`; 2948 words heard; reaches 15:47 of 15:48; Yoga Marga word list: 14 fixes"; no `transcript.json` among the files; "Words as heard" row present; **14 fixes listed, none inside the trim or the cut** (5:20 gone), "1 more fix fell in the parts taken out" |
+| Regression: `make accept-outputs MILESTONE=m5-fix` | -16.8 LUFS, -19.1 after the change to -19, no transcript file left with it off, and with the trim off the decoded audio md5 **69658a8c... identical to engine v0's** |
+| Pictures | `screens/mac/m5-fix/` (gitignored): every sample screen light and dark from `make test`, and the real 13 Sep and 6 Sep pages from the acceptances. Looked at: the 6 Sep page (light), the 13 Sep page made again (dark) and approved (light) with its cut lines struck through and the kept lines unchanged. No view code changed |
+| **Installed live** (`make install`, 18:22:12, and again at 18:28:05 with the final commit's build) | Quit cleanly, replaced, opened: "Mode: live. Store: ...Prakriti.store", login item on, "Checked 2 folders. Nothing new.", still running (pid 1771). The live build with the fault (17:26 to 18:22) made nothing: `~/Prakriti/Outputs` holds only engine v0's two folders from 8 and 9 Oct |
+| Em and en dashes | 0 in `mac/` |
+
+### Decisions, each with its reason
+
+1. **Restore Parakeet's order rather than only patch the symptoms** (the verifier's suggested
+   direction was to use the sentence text when whole and drop stray leading punctuation). Both
+   guards are in, but the order is fixed where transcript.json is read. Reason: misplaced tokens also
+   carry wrong times, and those times decide which words a cut takes, where a line starts on the page
+   and whether it reads "Partly cut"; "the You can always" had a word timed 5 s early.
+2. **A misplaced token gets a time between its neighbours, never its own.** Reason: its own time is
+   the chunk boundary's, seconds off; between its neighbours is right to a fraction of a second in
+   every case measured.
+3. **The report keeps the full word count ("2948 words heard") and counts, never names, a fix inside
+   a cut.** Reason: the count is a number about the recording; a term from a cut is cut content.
+4. **Installed the fix live** (milestone 5 had installed the faulty build). Reason: the live app
+   would have written misordered captions for the next recording with silence to trim.
+
+### For Ivan
+
+Nothing new to do. Episode 1's files in `~/Prakriti/Outputs` are still engine v0's and were never
+affected; if you Make Again on it, its captions now match v0's word for word.

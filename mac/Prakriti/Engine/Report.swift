@@ -39,8 +39,8 @@ enum Report {
         if options.makeTranscript {
             let formats = TranscriptFormat.allCases.filter(options.transcriptFormats.contains)
             let named = formats.enumerated().map { $0.offset == 0 ? "`\(TranscriptFiles.fileName($0.element))`" : "`.\($0.element.rawValue)`" }
-            var transcript = (named.isEmpty ? "" : named.joined(separator: ", ") + ", and ")
-                + "`\(TranscriptFiles.asHeard)` (the words as heard, with their times), \(result.wordCount.map(String.init) ?? "?") words"
+            var transcript = (named.isEmpty ? "" : named.joined(separator: ", ") + "; ")
+                + "\(result.wordCount.map(String.init) ?? "?") words heard"
             if let reaches = result.transcriptReaches, let length = result.duration {
                 let gap = length - reaches
                 transcript += result.coverageOK == true
@@ -51,6 +51,10 @@ enum Report {
                 ? "; Yoga Marga word list: \(Format.count(result.corrections.count, "fix", "fixes"))"
                 : "; the Yoga Marga word list was off"
             rows.append(("Transcript", transcript))
+            // This report is copied into the approved folder, where transcript.json never goes, so
+            // it says where the words as heard are rather than listing them among the files.
+            rows.append(("Words as heard", "`\(TranscriptFiles.asHeard)`, every word with its time, is kept in the Outputs folder only. "
+                         + "Approve never copies it: it keeps the words of anything taken out."))
         }
 
         var text = "# \(label): \(file.lastPathComponent)\n\n"
@@ -60,7 +64,11 @@ enum Report {
 
         if options.makeTranscript && options.applyLexicon && !result.corrections.isEmpty {
             text += "\n## Word list fixes\n\nThe Yoga Marga word list changed these in the .txt, .srt, .vtt and .md. "
-                + "`\(TranscriptFiles.asHeard)` keeps what was heard. Times are in the original recording.\n\n| Now reads | Was heard as | At |\n|---|---|---|\n"
+                + "`\(TranscriptFiles.asHeard)`, in the Outputs folder only, keeps what was heard. Times are in the original recording."
+                + (result.fixesLeftOut > 0
+                   ? " \(Format.count(result.fixesLeftOut, "more fix", "more fixes")) fell in the parts taken out of the episode, so \(result.fixesLeftOut == 1 ? "it is" : "they are") in no file and not listed."
+                   : "")
+                + "\n\n| Now reads | Was heard as | At |\n|---|---|---|\n"
             for fix in result.corrections.prefix(60) {
                 text += "| \(fix.written) | \(fix.heard) | \(fix.at.map { Format.timecode($0) } ?? "") |\n"
             }
@@ -70,7 +78,7 @@ enum Report {
             let left = result.wordsLeftOut ?? 0
             text += "\nThe transcript files follow the episode: their times match `episode.mp3`"
                 + (left > 0 ? ", and the \(Format.count(left, "word")) in the parts taken out are left out of them" : "")
-                + ". `\(TranscriptFiles.asHeard)` keeps every word as heard, timed from the start of the original recording.\n"
+                + ". `\(TranscriptFiles.asHeard)`, in the Outputs folder only, keeps every word as heard, timed from the start of the original recording.\n"
         }
 
         let timed = steps.filter { $0.state == .done && $0.seconds != nil }

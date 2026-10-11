@@ -98,6 +98,7 @@ final class PipelineAcceptanceTests: XCTestCase {
         let markdown = try String(contentsOf: talkFolder.appending(path: "REPORT.md"), encoding: .utf8)
         XCTAssertTrue(markdown.contains(String(format: "%.1f LUFS", lufs)), "the report carries the measured loudness")
         report += summary("13 Sep talk", talk, folder: talkFolder, remeasured: again)
+        report += try captionsFollowParakeet("13 Sep talk", folder: talkFolder)
 
         // 2. The silent 14 Sep class: Needs a decision, nothing made.
         let silent = try XCTUnwrap(recordings[class14])
@@ -123,6 +124,7 @@ final class PipelineAcceptanceTests: XCTestCase {
         XCTAssertLessThanOrEqual(long.truePeakDBFS ?? 0, -1.0)
         XCTAssertLessThanOrEqual((long.duration ?? 0) - (long.transcriptReaches ?? 0), 120)
         report += summary("6 Sep talk", long, folder: outputFolder(talk06), remeasured: longAgain)
+        report += try captionsFollowParakeet("6 Sep talk", folder: outputFolder(talk06))
 
         // The originals were only read.
         for file in files {
@@ -159,6 +161,29 @@ final class PipelineAcceptanceTests: XCTestCase {
     }
 
     // MARK: Helpers
+
+    /// The .srt and .vtt that follow the episode (milestone 5) must read as Parakeet wrote each
+    /// sentence. Parakeet lists a few tokens out of the order they were said (about 4% of
+    /// sentences); joined as listed they gave captions like ". But the problem was that again, we
+    /// spent $100 for the venue" (verifier, 10 Oct: 8 in the 6 Sep .srt, 0 in engine v0's). With only
+    /// the silence trim, every caption is one of Parakeet's sentences, word for word, word list applied.
+    private func captionsFollowParakeet(_ title: String, folder: URL) throws -> [String] {
+        let sentences = try XCTUnwrap(EpisodeTranscript.sentences(json: Data(contentsOf: folder.appending(path: TranscriptFiles.asHeard))))
+        let expected = Set(sentences.map { Lexicon.apply($0.text.trimmingCharacters(in: .whitespacesAndNewlines)).text })
+        var lines: [String] = []
+        for format in [TranscriptFormat.srt, .vtt] {
+            let text = try String(contentsOf: folder.appending(path: TranscriptFiles.fileName(format)), encoding: .utf8)
+            let captions = format == .srt ? TranscriptFiles.cues(srt: text).map(\.text)
+                : text.components(separatedBy: "\n\n").dropFirst().compactMap { $0.components(separatedBy: "\n").dropFirst().first }
+            let stray = captions.filter { EpisodeTranscript.isClosingPunctuation(String($0.prefix(1))) }
+            let unlike = captions.filter { !expected.contains($0) }
+            XCTAssertEqual(captions.count, sentences.count, "\(title) .\(format.rawValue): one caption per sentence")
+            XCTAssertEqual(stray, [], "\(title) .\(format.rawValue): captions starting with punctuation")
+            XCTAssertEqual(unlike, [], "\(title) .\(format.rawValue): captions that are not Parakeet's sentence")
+            lines.append("  .\(format.rawValue): \(captions.count) captions for \(sentences.count) sentences; \(stray.count) start with punctuation; \(unlike.count) differ from Parakeet's sentence")
+        }
+        return lines + [""]
+    }
 
     private func summary(_ title: String, _ recording: Recording, folder: URL?, remeasured: (lufs: Double, peak: Double)?) -> [String] {
         var lines = ["\(title): \(recording.fileName)",

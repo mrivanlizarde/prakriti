@@ -178,8 +178,19 @@ enum TimeText {
 /// from transcript.json, Parakeet's words with their own times, so a cut through the middle of a
 /// sentence takes out exactly the words inside it. Reason: a cut is how a student's question or a
 /// name comes out of an episode, and the transcript that ships with it must lose those words too.
+///
+/// Load-bearing: Parakeet's token list is NOT in the order the words were said. Parakeet writes a
+/// sentence's text in the order it heard the words, then sorts the sentence's tokens by their start
+/// times (parakeet_mlx alignment.py, `AlignedSentence.__post_init__`). Where two of the chunks it
+/// listens in meet (every 105 s), a few tokens carry a wrong, too-early time, most often a
+/// sentence's last full stop, so the sort moves them: about 4% of sentences (13 Sep: 5 of 137;
+/// 6 Sep: 21 of 555). Joined as listed, they read ". But the problem was that again, we spent $100
+/// for the venue" and "the You can always have access to Fathom", which shipped in milestone 5's
+/// files (verifier, 10 Oct). `sentences(json:)` therefore puts the tokens back in the order the text spells and
+/// gives each misplaced token a time between its neighbours (`said`), and a sentence kept whole
+/// is written as Parakeet's own text.
 enum EpisodeTranscript {
-    struct Token: Decodable, Sendable {
+    struct Token: Decodable, Equatable, Sendable {
         let text: String
         let start: Double
         let end: Double
@@ -207,16 +218,117 @@ enum EpisodeTranscript {
         text.contains { $0.isLetter || $0.isNumber }
     }
 
-    /// The sentences of a transcript.json, or nil when it cannot be read.
+    /// Punctuation that closes what comes before it, alone in a token: never the start of a line.
+    static func isClosingPunctuation(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty && trimmed.allSatisfy { ",.;:!?…".contains($0) }
+    }
+
+    /// The sentences of a transcript.json, each with its tokens in the order they were said (`said`),
+    /// or nil when it cannot be read.
     static func sentences(json: Data) -> [Sentence]? {
-        (try? JSONDecoder().decode(Payload.self, from: json))?.sentences
+        (try? JSONDecoder().decode(Payload.self, from: json))?.sentences?.map(said)
+    }
+
+    /// The sentence with its tokens in the order its text spells them, each misplaced token given a
+    /// time between its neighbours, and its start and end taken from them. A sentence whose tokens
+    /// already spell its text comes back as it is; so does one they cannot spell (then `cues` still
+    /// writes Parakeet's text for it when it is kept whole).
+    static func said(_ sentence: Sentence) -> Sentence {
+        guard let tokens = sentence.tokens, !tokens.isEmpty, tokens.map(\.text).joined() != sentence.text,
+              let order = spelling(sentence.text, with: tokens) else { return sentence }
+        let timed = retimed(order.map { tokens[$0] })
+        return Sentence(text: sentence.text, start: timed[0].start, end: timed.map(\.end).max() ?? sentence.end, tokens: timed)
+    }
+
+    /// The order of `tokens` that spells `text` exactly, or nil when none does (or the search runs
+    /// long). Each step tries first the token that comes next in time, so the identical tokens a
+    /// sentence repeats (" and", ",") keep their own times.
+    static func spelling(_ text: String, with tokens: [Token]) -> [Int]? {
+        let target = Array(text.utf8)
+        let pieces = tokens.map { Array($0.text.utf8) }
+        guard pieces.reduce(0, { $0 + $1.count }) == target.count else { return nil }
+        var used = [Bool](repeating: false, count: tokens.count)
+        var order: [Int] = []
+        order.reserveCapacity(tokens.count)
+        var budget = 20_000
+        func fits(_ index: Int, at position: Int) -> Bool {
+            let piece = pieces[index]
+            return position + piece.count <= target.count && target[position..<(position + piece.count)].elementsEqual(piece)
+        }
+        func search(_ position: Int) -> Bool {
+            if order.count == tokens.count { return position == target.count }
+            budget -= 1
+            guard budget > 0 else { return false }
+            let after = order.last.map { tokens[$0].start } ?? -Double.infinity
+            let candidates = tokens.indices.filter { !used[$0] && fits($0, at: position) }.sorted { a, b in
+                let aNext = tokens[a].start >= after, bNext = tokens[b].start >= after
+                if aNext != bNext { return aNext }
+                if tokens[a].start != tokens[b].start { return aNext ? tokens[a].start < tokens[b].start : tokens[a].start > tokens[b].start }
+                return a < b
+            }
+            for candidate in candidates {
+                used[candidate] = true
+                order.append(candidate)
+                if search(position + pieces[candidate].count) { return true }
+                used[candidate] = false
+                order.removeLast()
+            }
+            return false
+        }
+        return search(0) ? order : nil
+    }
+
+    /// Tokens in the order they were said, with the times that break that order replaced. The
+    /// tokens whose times already run in order are kept as they are (the most of them, words
+    /// counting double, later times winning a tie, since a misplaced time is the too-early one);
+    /// each other token starts where the token before it ends, and ends by the next kept start.
+    static func retimed(_ tokens: [Token]) -> [Token] {
+        let count = tokens.count
+        guard count > 1 else { return tokens }
+        var score = [(weight: Int, time: Double)](repeating: (0, 0), count: count)
+        var back = [Int](repeating: -1, count: count)
+        for k in 0..<count {
+            let weight = isWord(tokens[k].text) ? 2 : 1
+            score[k] = (weight, tokens[k].start)
+            for j in 0..<k where tokens[j].start <= tokens[k].start {
+                let candidate = (weight: score[j].weight + weight, time: score[j].time + tokens[k].start)
+                if candidate > score[k] { score[k] = candidate; back[k] = j }
+            }
+        }
+        var kept = [Bool](repeating: false, count: count)
+        var k = (0..<count).max { score[$0] < score[$1] } ?? count - 1
+        while k >= 0 { kept[k] = true; k = back[k] }
+        var out = tokens
+        for k in 0..<count where !kept[k] {
+            let next = ((k + 1)..<count).first { kept[$0] }.map { tokens[$0].start }
+            let start = k > 0 ? min(out[k - 1].end, next ?? .infinity) : (next ?? tokens[k].start)
+            let end = min(start + max(0, tokens[k].end - tokens[k].start), next ?? .infinity)
+            out[k] = Token(text: tokens[k].text, start: start, end: max(start, end))
+        }
+        return out
+    }
+
+    /// A sentence's tokens as words: a word starts at a token that begins with a space (or at the
+    /// sentence's first token) and takes the pieces and punctuation that follow it, so " Jer",
+    /// "se", "y", "." is one word and a cut keeps or drops it whole.
+    static func words(_ tokens: [Token]) -> [[Token]] {
+        var words: [[Token]] = []
+        for token in tokens {
+            if words.isEmpty || token.text.first?.isWhitespace == true { words.append([token]) } else { words[words.count - 1].append(token) }
+        }
+        return words
     }
 
     /// The episode's cues: every word said in a kept part (`position`), timed on the episode's
-    /// clock, with the word list applied when it is on. A sentence a cut goes through becomes two
-    /// cues. `removedWords` counts the words left out.
-    static func cues(_ sentences: [Sentence], clock: EpisodeClock, applyLexicon: Bool) -> (cues: [TranscriptFiles.Cue], removedWords: Int) {
+    /// clock, with the word list applied when it is on. A sentence kept whole is Parakeet's own
+    /// text; a sentence a cut goes through becomes two cues, never starting with a stray comma or
+    /// full stop. `removedWords` counts the words left out; `corrections` are the word list's fixes
+    /// in the cues, each at its time in the original recording.
+    static func cues(_ sentences: [Sentence], clock: EpisodeClock, applyLexicon: Bool)
+        -> (cues: [TranscriptFiles.Cue], removedWords: Int, corrections: [Lexicon.Correction]) {
         var cues: [TranscriptFiles.Cue] = []
+        var corrections: [Lexicon.Correction] = []
         var removed = 0
         func segmentIndex(_ t: Double) -> Int? { clock.segments.firstIndex { t >= $0.start && t <= $0.end } }
         for sentence in sentences {
@@ -225,34 +337,44 @@ enum EpisodeTranscript {
             var runSegment: Int?
             func flush() {
                 defer { run = []; runSegment = nil }
-                guard let first = run.first, let last = run.last, let index = runSegment else { return }
+                guard let index = runSegment else { return }
+                let whole = run.count == tokens.count
+                // Part of a sentence never opens with the punctuation that closed the words before it.
+                let pieces = whole ? run[...] : run.drop { Self.isClosingPunctuation($0.text) }
+                guard let first = pieces.first, let last = pieces.last else { return }
                 let segment = clock.segments[index]
-                var text = run.map(\.text).joined().trimmingCharacters(in: .whitespacesAndNewlines)
+                var text = (whole ? sentence.text : pieces.map(\.text).joined()).trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !text.isEmpty else { return }
-                if applyLexicon { text = Lexicon.apply(text).text }
-                let start = clock.episodeTime(min(max(first.start, segment.start), segment.end)).time
+                let at = min(max(first.start, segment.start), segment.end)
+                if applyLexicon {
+                    let fixed = Lexicon.apply(text, at: at)
+                    text = fixed.text
+                    corrections += fixed.corrections
+                }
+                let start = clock.episodeTime(at).time
                 let end = clock.episodeTime(min(max(last.end, segment.start), segment.end)).time
                 cues.append(TranscriptFiles.Cue(start: start, end: max(start, end), text: text))
             }
             var previous: Int?? = .none
-            for (position, token) in tokens.enumerated() {
-                // A comma or full stop goes with the word before it: Parakeet often places a
+            for word in Self.words(tokens) {
+                guard let first = word.first, let last = word.last else { continue }
+                let spoken = word.contains { Self.isWord($0.text) }
+                // Punctuation on its own goes with the word before it: Parakeet often places a
                 // sentence's last full stop after the pause that follows it (measured 10 Oct).
-                let index: Int? = if !Self.isWord(token.text), let previous { previous } else { segmentIndex(Self.position(start: token.start, end: token.end)) }
+                let index: Int? = if !spoken, let previous { previous } else { segmentIndex(Self.position(start: first.start, end: last.end)) }
                 previous = .some(index)
                 if index == nil {
-                    // A token that starts with a space (or opens the sentence) starts a word.
-                    if (position == 0 || token.text.first?.isWhitespace == true) && Self.isWord(token.text) { removed += 1 }
+                    if spoken { removed += 1 }
                     flush()
                     continue
                 }
                 if index != runSegment { flush() }
                 runSegment = index
-                run.append(token)
+                run.append(contentsOf: word)
             }
             flush()
         }
-        return (cues, removed)
+        return (cues, removed, corrections)
     }
 
     /// "00:15:46,160"

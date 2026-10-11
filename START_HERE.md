@@ -79,7 +79,7 @@ If something listed here does not exist yet, that work has not landed. Check `CH
 | `web/public/` | **The only folder served to the internet**: `index.html` (the front door), `roadmap.html`, `404.html`, `robots.txt`, `assets/`. Written Thu 8 Oct, not deployed | Anything placed here is public |
 | `scripts/shoot.mjs` | Renders pages to PNGs in headless Chrome and reports console errors, failed loads and sideways overflow | The verification step for anything visual. Caps a full-page capture at 16,000px (warning 26) |
 | `screens/` | Where screenshots land | Gitignored |
-| `mac/` | **Prakriti for Mac**, the native app (SwiftUI, SwiftData). Milestones 1 to 3 landed Sat 10 Oct: window and menu bar, the pipeline in Swift, the watcher and notifications. **Since Sat 10 Oct it is the live engine**, installed in `~/Applications`, opening at login | Read "Prakriti for Mac" below, then `docs/BUILD-LOG.md` |
+| `mac/` | **Prakriti for Mac**, the native app (SwiftUI, SwiftData). Milestones 1 to 5 landed Sat 10 Oct: window and menu bar, the pipeline in Swift, the watcher and notifications, outputs and settings, and the recording page (trim, cuts, Make Again, Approve). Milestone 6 (the writing models) is next. **Since Sat 10 Oct it is the live engine**, installed in `~/Applications`, opening at login | Read "Prakriti for Mac" below, then `docs/BUILD-LOG.md` |
 | `docs/BUILD-LOG.md` | One dated entry per milestone of the Mac app: what was built, every check with its measured result, decisions, and what Ivan must do | A new session resumes from its last entry |
 
 Later, from the Up Next template: `migrations/`, `test/`, `scripts/smoke.mjs` (production refusals
@@ -607,7 +607,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 |---|---|
 | Project definition (source of truth) | `mac/project.yml`; `make generate` rebuilds `Prakriti.xcodeproj`, and both are committed |
 | App code | `mac/Prakriti/App` (launch, paths, settings, log, `PipelineRunner`, `Watcher`, `Notices`, `LoginItem` with the instance lock, `EngineV0Import`), `Engine` (the pipeline: `Subprocess`, `Readiness`, `Measurements`, `Pipeline` with `Mastering`, `Report`; the watcher's `FolderScan` and `EventStream`), `Model` (vocabulary, SwiftData models, store), `Views`, `Fixtures` |
-| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `RecordingPageTests` (milestone 5: edits, the episode's clock, typed times, the cut's words gone through Parakeet with the Mac's voice, the page's player, Approve and its refusals), `EditsAcceptanceTests` (the 13 Sep talk trimmed, cut, made again and approved, `make accept-edits` only), `StoreMigrationTests` (`make migrate-check` only), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share) |
+| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `RecordingPageTests` (milestone 5: edits, the episode's clock, typed times, the cut's words gone through Parakeet with the Mac's voice, six sentences of Parakeet's real misplaced tokens, what the report names, the page's player, Approve and its refusals), `EditsAcceptanceTests` (the 13 Sep talk trimmed, cut, made again and approved, `make accept-edits` only), `StoreMigrationTests` (`make migrate-check` only), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share) |
 | Real-window capture | `mac/scripts/capture-window.swift` (run by `make look` and `make check`); also `--analyze <png>` to check any capture, and `--window <app> <png>` to capture the running app as it is |
 | Real-app pipeline check | `mac/scripts/process-in-app.sh <file> <folder>` |
 | The recording page (milestone 5) | `mac/Prakriti/Views/RecordingPage.swift` (player, transcript lines, trim and cuts, title and notes, Approve), `App/RecordingActions.swift` (what its buttons do), `App/Approval.swift` (who may be approved, the copy and its receipt), `Engine/EpisodeEdits.swift` (the edits, the episode's clock, typed times, the transcript that follows the episode); tests `RecordingPageTests` (in `make test`) and `EditsAcceptanceTests` (`make accept-edits`) |
@@ -783,7 +783,12 @@ top and its end. Reading the code is not verification, and neither is a passing 
 37. **Approve never copies `transcript.json`,** and copies through a hidden `.approving <name>` folder,
     replacing only Prakriti's own names (`Approval.knownNames`). Reason: transcript.json keeps every
     word as heard, including the words of a cut; and a file Ivan keeps in the approved folder must
-    survive approving again (tested).
+    survive approving again (tested). **`REPORT.md` is copied as it is, so it must be true in both
+    folders:** its Transcript row lists only the readable formats, a "Words as heard" row says
+    transcript.json is kept in Outputs only, and once the transcript follows the episode its word list
+    table lists only the fixes in the files (a fix inside a cut is counted, never named). Reason: the
+    verifier found the approved report listing transcript.json and a 5:20 fix from inside the 5:00 to
+    5:30 cut (10 Oct); cut content must not reach the approved folder, not even a term.
 38. **Any change to an approved recording takes the approval back** (`changedAfterApproval`: title,
     notes, what it is, trim, cuts, Make Again); the approved copy stays as it was until he approves
     again. Reason: SCOPE 9.1 #6, a yes is void once anything it covered changes.
@@ -795,11 +800,15 @@ top and its end. Reading the code is not verification, and neither is a passing 
     with it must lose those words too, and captions must line up with the audio. This replaces
     milestone 4's decision 9 (times on the original's clock), which left the captions 1.2 s late after
     the silence trim. With nothing removed or added (trim off, no intro), the files are Parakeet's own
-    (with the word list applied), as before.
-40. **A word's place is `min(middle, start + 0.15 s)`, and punctuation goes with the word before it**
-    (`EpisodeTranscript.position`, `isWord`). Reason: measured 10 Oct, Parakeet stretches the last word
-    before a pause across the pause and puts a sentence's full stop after it; by the middle, a line
-    wholly inside a cut read "Partly cut", and a lone "." could have been kept after a cut.
+    (with the word list applied), as before. A sentence kept whole is written as Parakeet's own
+    sentence text; only a sentence a trim or cut goes through is built from its words (warning 45).
+40. **A word's place is `min(middle, start + 0.15 s)`, a word is kept or dropped whole, and
+    punctuation goes with the word before it** (`EpisodeTranscript.position`, `words`, `isWord`). A word
+    is the token that starts with a space and the pieces and punctuation after it (" Jer", "se", "y",
+    "."). Reason: measured 10 Oct, Parakeet stretches the last word before a pause across the pause
+    and puts a sentence's full stop after it; by the middle, a line wholly inside a cut read "Partly
+    cut", and a lone "." could have been kept after a cut. Part of a sentence never opens with a comma
+    or full stop (`isClosingPunctuation`).
 41. **Edits are seconds on the original recording's clock, and each make stores the episode's map**
     (`episodeParts`, `episodeIntro`, read as `Recording.episodeClock`). Reason: the transcript lines,
     "Use Player Time" and the Original player all speak the original's clock, and a line must play the
@@ -815,6 +824,18 @@ top and its end. Reading the code is not verification, and neither is a passing 
     media controls.
 44. **The original is looked at off the main thread** before the player opens it. Reason: it lives in
     the studio folder inside `~/Documents` (warning 24); a first read there can wait on a macOS prompt.
+45. **Parakeet's token list is not in the order the words were said: read `transcript.json` only
+    through `EpisodeTranscript.sentences(json:)`, never by joining its tokens as listed.** Parakeet
+    writes each sentence's text in the order it heard the words, then sorts the sentence's tokens by
+    start time (parakeet_mlx `alignment.py`, `AlignedSentence`). Where its listening chunks meet
+    (every 105 s) a few tokens carry a wrong, too-early time, most often a sentence's last full stop,
+    so the sort moves them: 13 Sep 5 of 137 sentences, 6 Sep 21 of 555. Joined as listed they read
+    ". But the problem was that again, we spent $100 for the venue" and "the You can always have
+    access to Fathom". `sentences(json:)` puts the tokens back in the order the text spells
+    (`spelling`) and times each misplaced one between its neighbours (`retimed`). Reason: milestone 5
+    shipped those joins in every file that follows the episode, including after the default silence
+    trim with no edits (8 captions of the 6 Sep .srt began with "." or "?"; engine v0's had none).
+    `make accept` and `make accept-edits` now check every caption against Parakeet's sentence text.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

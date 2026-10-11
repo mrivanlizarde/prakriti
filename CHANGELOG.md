@@ -5,6 +5,23 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-10, Sat: Prakriti for Mac, milestone 5 fixes (the transcript reads as it was said)
+
+- **The transcript files that follow the episode now read exactly as Parakeet wrote each sentence.**
+  Since milestone 5 they were rebuilt by joining Parakeet's word pieces in the order Parakeet lists
+  them, and that order is not the order they were said: Parakeet sorts them by time, and a few carry
+  a wrong time where its listening chunks meet. About 4% of sentences came out as ". But the problem
+  was that again, we spent $100 for the venue" or "the You can always have access to Fathom", and
+  because the default silence trim counts as taking something out, Episode 1's captions had 8 of
+  those with no edits at all. Why it matters: Episode 1 ships Fri 23 Oct with these captions. The
+  pieces are now put back in the order of the sentence's own text, and a sentence kept whole is
+  written as Parakeet's text.
+- **The approved REPORT.md no longer lists `transcript.json`** (Approve never copies it; the report
+  now says it stays in Outputs) **and no longer names a word list fix from inside a cut.** Why: the
+  approved folder is what goes out, and cut content must not reach it, not even a term.
+- START_HERE's map said milestones 1 to 3; it now says 1 to 5.
+- Checks and measured results: `docs/BUILD-LOG.md`, "Milestone 5 fixes".
+
 ## 2026-10-10, Sat: Prakriti for Mac, milestone 5 (the recording page)
 
 - **Each recording now has a page Ivan can review and approve from.** Approve at the top; the
