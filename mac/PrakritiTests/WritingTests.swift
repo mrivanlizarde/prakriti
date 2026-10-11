@@ -346,10 +346,10 @@ final class WritingTests: XCTestCase {
         // A talk whose transcript says "Serenity": the same.
         let (serenity, _, claude2, _) = try await run(kind: .talk, text: Self.text + " Serenity taught this last week.", providers: allCloud)
         XCTAssertEqual(claude2.requests.count, 0)
-        XCTAssertEqual(serenity?.lockReason, "Serenity is in this recording")
-        XCTAssertTrue(serenity?.stepLine.contains("Privacy lock: Serenity is in this recording, so LM Studio did") == true,
+        XCTAssertEqual(serenity?.lockReason, "This recording mentions Serenity")
+        XCTAssertTrue(serenity?.stepLine.contains("Privacy lock: This recording mentions Serenity, so LM Studio did") == true,
                       "her name keeps its capital: \(serenity?.stepLine ?? "")")
-        XCTAssertTrue(serenity?.markdown(label: "Sun 13 Sep", fileName: "x.mp4").contains("Serenity is in this recording, so it was written by a model on this Mac only.") == true)
+        XCTAssertTrue(serenity?.markdown(label: "Sun 13 Sep", fileName: "x.mp4").contains("This recording mentions Serenity, so it was written by a model on this Mac only.") == true)
 
         // A talk without her, writing on the Claude API: it is used (nothing else forbids it).
         let (open, _, claude3, _) = try await run(kind: .talk, text: Self.text, providers: [.writing: .claudeAPI])
@@ -488,7 +488,7 @@ final class WritingTests: XCTestCase {
                                      checklist: [CheckedClaim(claim: "A claim.", quote: "Notice how the mind settles", at: 331)],
                                      writtenBy: "Qwen3.8-27B in LM Studio", writingProvider: "lmStudio", writtenAt: Fixtures.now,
                                      seconds: 300, attempts: 1, writingSeconds: 290, leftOutQuotes: ["x y z w"], clock: "episode", modelAnswer: "{}")
-        package.lockReason = "Serenity is in this recording"
+        package.lockReason = "This recording mentions Serenity"
         let markdown = package.markdown(label: "Sun 13 Sep", fileName: "2026-09-13 18-25-44.mp4")
         XCTAssertFalse(markdown.contains("\u{2014}") || markdown.contains("\u{2013}"))
         XCTAssertTrue(markdown.contains("1. One\n2. Two\n3. Three"))

@@ -270,7 +270,7 @@ struct RecordingDetailView: View {
     private var lockLine: String {
         recording.kind == .lesson
             ? "This is a class, so only models on this Mac may read it."
-            : "Serenity is in this recording, so only models on this Mac may read it."
+            : "This recording mentions Serenity, so only models on this Mac may read it."
     }
 
     private var hasResults: Bool {

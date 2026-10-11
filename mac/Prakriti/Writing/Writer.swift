@@ -29,11 +29,11 @@ enum Privacy {
     }
 
     /// Why a recording may only be read on this Mac, written to sit inside a sentence ("this is a
-    /// class", "Serenity is in this recording"; capitalize it to start one), or nil. Never lowercased
+    /// class", "This recording mentions Serenity"; capitalize it to start one), or nil. Never lowercased
     /// whole: her name keeps its capital (10 Oct: the page read "serenity is in this recording").
     static func lockReason(kind: RecordingKind, serenity: Bool) -> String? {
         if kind == .lesson { return "this is a class" }
-        if serenity { return "Serenity is in this recording" }
+        if serenity { return "This recording mentions Serenity" }
         return nil
     }
 }
@@ -167,7 +167,7 @@ struct WrittenPackage: Codable, Equatable, Sendable {
     var writingProvider: String
     var taggedBy: String?
     var summarizedBy: String?
-    /// "Serenity is in this recording", "This is a class", or nil.
+    /// "This recording mentions Serenity", "This is a class", or nil.
     var lockReason: String?
     /// The tasks whose chosen provider was the Claude API but ran on this Mac because of the lock.
     var lockedTasks: [String] = []

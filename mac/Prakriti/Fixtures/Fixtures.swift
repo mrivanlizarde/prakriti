@@ -96,7 +96,7 @@ enum Fixtures {
                 + "It details the restructuring of the curriculum into coaching and mindset support alongside a new business-focused program. The session covers "
                 + "updates to the online schedule, including the return of weekly yin yoga classes and access to existing educational materials.",
             writtenBy: "Qwen3.8-27B in LM Studio", writingProvider: ModelProvider.lmStudio.rawValue,
-            taggedBy: "Apple on-device", summarizedBy: "Apple on-device", lockReason: "Serenity is in this recording", lockedTasks: ["writing"],
+            taggedBy: "Apple on-device", summarizedBy: "Apple on-device", lockReason: "This recording mentions Serenity", lockedTasks: ["writing"],
             writtenAt: date(2026, 10, 10, 19, 41, 49), seconds: 864.7, attempts: 1, writingSeconds: 846.5,
             promptTokens: 5306, completionTokens: 7710, reasoningTokens: 7117, clock: "episode").json()
         context.insert(talk13)

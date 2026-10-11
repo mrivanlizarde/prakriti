@@ -114,7 +114,7 @@ final class ModelsAcceptanceTests: XCTestCase {
         XCTAssertTrue(recording.isPrivacyLocked)
         XCTAssertEqual(claudeCalls.count, 0, "the Claude API must never be asked for a recording with Serenity in it")
         XCTAssertEqual(written.writingProvider, ModelProvider.lmStudio.rawValue)
-        XCTAssertEqual(written.lockReason, "Serenity is in this recording")
+        XCTAssertEqual(written.lockReason, "This recording mentions Serenity")
         XCTAssertEqual(written.lockedTasks, ["writing"])
         XCTAssertTrue(writingStep.detail?.contains("Privacy lock") == true)
         report += ["", "Privacy lock:",
