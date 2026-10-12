@@ -288,6 +288,39 @@ enum Fixtures {
         return model
     }
 
+    /// A make in progress for the snapshots and the window captures (v2 part M4a): the 6 Sep talk (55:39) on
+    /// its episode audio, 40% through that stage, with the 90 s clip waiting in line. Nothing runs: the
+    /// progress is drawn from a tracker on the fixed clock, its stages weighted by this Mac's first measured
+    /// numbers (`StageTimings.firstGuess`), all treated as measured so the time left shows.
+    static func showProgress(_ model: AppModel, paused: Bool = false) {
+        let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
+        guard let talk6 = all.first(where: { $0.status == .working }) else { return }
+        let clip90 = all.first { $0.fileName == "2026-09-13 clip 90s.mp4" }
+        let plan: [PipelineStep] = [.complete, .sound, .speechAudio, .transcript, .coverage, .wordList, .trim, .episode, .loudness, .episodeTranscript, .report]
+        let media = talk6.duration ?? 3339.1
+        var expected: [PipelineStep: Double] = [:]
+        for step in plan { expected[step] = StageTimings().expectedSeconds(step, mediaSeconds: media, stableWait: 60) }
+        let started = now.addingTimeInterval(-160)
+        var tracker = ProgressTracker(recordingID: talk6.id, label: Format.dayLabel(talk6.sessionDate), plan: plan, expected: expected,
+                                      measured: Set(plan), startedAt: started)
+        // What the 13 Sep talk's steps took, scaled to 55:39 by the same rates (seconds after the start).
+        let taken: [(PipelineStep, Double)] = [(.complete, 61), (.sound, 2.2), (.speechAudio, 1.9), (.transcript, 37.9), (.coverage, 0.0),
+                                               (.wordList, 0.0), (.trim, 2.2)]
+        var clock = started
+        for (step, seconds) in taken {
+            tracker.begin(step, at: clock)
+            clock = clock.addingTimeInterval(seconds)
+            tracker.end(step, state: .done, seconds: seconds, at: clock)
+        }
+        tracker.begin(.episode, at: clock)
+        tracker.report(0.4, at: now)
+        tracker.logLine = "Silence at the start and end done in 2.2 s. Trimmed 3.4 s at the start; none at the end."
+        if paused { tracker.pause(at: now) }
+        let fixed = now
+        let job = JobProgress(tracker: tracker, clock: { fixed })
+        model.runner.showSample(job: job, waiting: clip90.map { [$0.id] } ?? [])
+    }
+
     /// The state right after the switch-over, before Ivan has answered macOS's prompt for the
     /// Documents folder: the studio folder cannot be read yet.
     static func waitingForPermission(_ model: AppModel) {

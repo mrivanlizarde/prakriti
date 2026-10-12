@@ -96,13 +96,14 @@ final class WelcomeTests: XCTestCase {
     }
 
     func testOnlyWhatIsBuiltIsVisibleInThePanels() {
-        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer], "v2 part M2b adds the welcome to Help, M3b the Viewer (no panel row needs only the Viewer)")
+        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress], "v2 part M2b adds the welcome to Help, M3b the Viewer, M4a progress")
         XCTAssertEqual(unbuiltNamesFound(in: visibleText(built, capabilities: Capabilities.built), built: Capabilities.built), [])
         // At M2b, panel 1 lists finding recordings, the podcast and "nothing is posted without you".
         XCTAssertEqual(built.map(\.id), ["welcome", "record", "outputs", "privacy", "start"])
         XCTAssertEqual(built[0].rows.map(\.id), ["finds", "podcast", "yours"])
         XCTAssertEqual(built.map(\.rows.count), [3, 6, 3, 3, 3])
-        XCTAssertFalse(built.flatMap(\.rows).contains { $0.id.hasSuffix("-v2") }, "no v2 sentence before its part")
+        // M4a built `progress`, so step 1 of How Outputs Work reads its v2 sentence; no other v2 sentence yet.
+        XCTAssertEqual(built.flatMap(\.rows).filter { $0.id.hasSuffix("-v2") }.map(\.id), ["found-v2"], "no v2 sentence before its part")
 
         // The check finds what it is meant to find: with every row shown, the panels name features that
         // are not built, and it must say so.

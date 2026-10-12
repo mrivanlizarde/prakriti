@@ -64,16 +64,26 @@ struct StatusBlock: View {
 
     var body: some View {
         let check = model.approvalCheck(recording)
+        let progress = model.runner.progress(for: recording)
         VStack(alignment: .leading, spacing: 10) {
             Label {
-                Text(recording.status.title)
+                Text(progress?.isPaused == true ? "Paused" : recording.status.title)
                     .font(AppFont.headline)
             } icon: {
-                Image(systemName: recording.status.symbol)
+                Image(systemName: progress?.isPaused == true ? "pause.circle" : recording.status.symbol)
                     .font(AppFont.headline)
                     .foregroundStyle(recording.status.tint)
             }
-            ForEach(lines, id: \.self) { line in
+            if let progress {
+                // While it is made (v2 part M4a, design spec 3.6.1).
+                ProgressBlock(recording: recording, snapshot: progress)
+            } else if model.runner.isWaiting(recording) {
+                ForEach(lines, id: \.self) { line in
+                    Text(line).font(AppFont.body).fixedSize(horizontal: false, vertical: true)
+                }
+                ProgressButtons(recording: recording)
+            }
+            ForEach(progress != nil || model.runner.isWaiting(recording) ? [] : lines, id: \.self) { line in
                 Text(line)
                     .font(AppFont.body)
                     .fixedSize(horizontal: false, vertical: true)
@@ -127,7 +137,8 @@ struct StatusBlock: View {
     private var lines: [String] {
         var lines: [String] = []
         if model.runner.isWaiting(recording) {
-            lines.append(model.settings.isPaused ? "Waiting to start. Pause All is on; it starts when you resume."
+            lines.append(model.runner.isHeld(recording) ? "Paused in line. It keeps its place and starts once you resume it."
+                         : model.settings.isPaused ? "Waiting to start. Pause All is on; it starts when you resume."
                                                  : "Waiting to start. Another recording is being made first.")
         } else {
             switch recording.status {

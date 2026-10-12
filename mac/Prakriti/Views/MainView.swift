@@ -152,8 +152,14 @@ struct MainToolbar: ToolbarContent {
                 SortMenu()
             }
         }
+        // The Activity button (v2 part M4a, design spec 3.3): the line's percent while anything is made.
         ToolbarItem(placement: .primaryAction) {
-            PauseButton()
+            ActivityButton()
+        }
+        if model.path.isEmpty {
+            ToolbarItem(placement: .primaryAction) {
+                PauseButton()
+            }
         }
         ToolbarItem(placement: .primaryAction) {
             Button { model.inspectorShown.toggle() } label: {
@@ -347,19 +353,4 @@ struct RecordingDestination: View {
         .focused($focused)
         .onAppear { focused = true }
     }
-}
-
-/// Window, Activity (Command-9): v1's list of every look and every step, moved out of the sidebar into
-/// its own window (v2 part M3a, design spec C5). Part M4a adds what is working now and what finished.
-struct ActivityWindow: View {
-    static let id = "activity"
-    static let size = CGSize(width: 720, height: 640)
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        NavigationStack {
-            ActivityView()
-        }
-        .frame(minWidth: 560, minHeight: 420)
-            }
 }

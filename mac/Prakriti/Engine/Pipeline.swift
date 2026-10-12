@@ -435,11 +435,28 @@ struct Pipeline: Sendable {
     let tools: ToolPaths
     let options: PipelineOptions
     let log: AppLog?
+    /// Where the running stage has got to, for the progress the window shows (v2 part M4a). Nil: no
+    /// progress is read (the tests that run the pipeline alone).
+    var meter: ProgressMeter?
 
-    init(tools: ToolPaths = .standard, options: PipelineOptions = PipelineOptions(), log: AppLog?) {
+    init(tools: ToolPaths = .standard, options: PipelineOptions = PipelineOptions(), log: AppLog?, meter: ProgressMeter? = nil) {
         self.tools = tools
         self.options = options
         self.log = log
+        self.meter = meter
+    }
+
+    /// How many ffmpeg passes a stage makes over the recording, when that is known, so each pass is an equal
+    /// share of the stage's progress. Nil: not known ahead (the podcast-ready mastering measures until it is
+    /// right), and each later pass takes half of what is left.
+    func passes(_ step: PipelineStep) -> Int? {
+        switch step {
+        case .sound, .speechAudio, .trim, .loudness: return 1
+        case .episode:
+            let intro = !(options.introPath ?? "").isEmpty, outro = !(options.outroPath ?? "").isEmpty
+            return 2 + (intro ? 1 : 0) + (outro ? 1 : 0) + (intro || outro ? 1 : 0)
+        default: return nil
+        }
     }
 
     /// Every tool gets a time limit: ten minutes plus the recording's own length. A hung tool must
@@ -467,6 +484,7 @@ struct Pipeline: Sendable {
             current = step
             stepStarted = clock.now
             if let i = index(step) { steps[i].state = .running }
+            meter?.begin(step, passes: passes(step))
             await emit()
         }
         func elapsed() -> Double {
@@ -480,7 +498,9 @@ struct Pipeline: Sendable {
                 steps[i].seconds = seconds
                 steps[i].detail = detail
             }
-            log?.write("\(name): \(step.title) \(state == .done ? "done" : "stopped") in \(String(format: "%.1f", seconds)) s." + (detail.map { " " + $0 } ?? ""))
+            let line = "\(step.title) \(state == .done ? "done" : "stopped") in \(String(format: "%.1f", seconds)) s." + (detail.map { " " + $0 } ?? "")
+            log?.write("\(name): " + line)
+            meter?.line(line)
             current = nil
             await emit()
         }
@@ -863,10 +883,22 @@ struct Pipeline: Sendable {
     }
 
     /// Runs one tool for a step, turning a tool's failure into one plain sentence.
+    ///
+    /// ffmpeg is run with `-progress pipe:1` when the make is metered (v2 part M4a): its `out_time_us` lines,
+    /// against the recording's length, are how far the pass is. The option only adds those lines on stdout,
+    /// which no ffmpeg call here reads otherwise; what ffmpeg writes and measures is unchanged.
     func tool(_ step: PipelineStep, _ executable: URL, _ arguments: [String], captureStdout: Bool = true,
                       duration: Double?) async throws -> ToolOutput {
         do {
-            return try await Subprocess.run(executable, arguments, captureStdout: captureStdout, timeout: limit(duration))
+            if let meter, executable == tools.ffmpeg {
+                meter.startPass()
+                let length = max(duration ?? 0, 0.001)
+                return try await Subprocess.run(executable, ["-progress", "pipe:1"] + arguments, captureStdout: captureStdout, timeout: limit(duration),
+                                                onStdoutLine: { line in
+                                                    if let seconds = ProgressMeter.outTime(line) { meter.passProgress(seconds / length) }
+                                                }, control: meter.control)
+            }
+            return try await Subprocess.run(executable, arguments, captureStdout: captureStdout, timeout: limit(duration), control: meter?.control)
         } catch let error as ToolError {
             let reason: String = switch error.kind {
             case .missing:

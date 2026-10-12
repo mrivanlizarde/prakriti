@@ -32,6 +32,12 @@ Choose Window > Activity. [Show Me](prakriti://show/activity) Prakriti writes a 
 Prakriti from the menu bar and open it again. If it keeps happening, send the day's log (see "Find the
 log" below).
 
+:::requires progress
+The lines are under Log in the Activity window, where the search field finds one. Under Now, a step
+that has not moved for a minute says what it is waiting on, such as "Waiting for Parakeet to finish the
+transcript." If it stays that way, click Stop, then Make Outputs to try again.
+:::
+
 ### If you don't get notifications
 
 Choose Prakriti > Settings (Command-comma), click General, then Open Notification Settings. System

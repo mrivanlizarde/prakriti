@@ -3,6 +3,16 @@
 The team's notes for the in-app Help article `mac/Prakriti/Resources/Help/04-sources-and-watching.md` ("Sources and watching").
 Moved out of the article in v2 part M2a so the app bundle holds user text only. Never shown in the app.
 
+## Status after v2 part M4a (Mon 12 Oct 2026)
+
+- `progress` is built: the `:::requires progress` block of "Follow the work" was rewritten to what M4a made (the
+  card's ring and percent, the list's bar, the inspector's Outputs with Step N of M, the latest line, Pause and
+  Stop, the Activity window's Now, Finished and Log, Make Next, the menu bar line), with a Show Me to Activity.
+  "Pause and resume" gained a `:::requires progress` block for Pause and Stop on one recording. Words checked in
+  the code: "Working out the time left" (`TimeLeft`), "Step 5 of 9" (`ProgressBlock`), "Make Next"
+  (`WaitingRow`), "Show Activity" (`MenuBarMenu`), the menu bar line (`ProgressSnapshot.statusLine`).
+- Article 10 gained a `:::requires progress` paragraph: the Log tab's search, and a stalled step's waiting line.
+
 ## Status after v2 part M3b (Mon 12 Oct 2026)
 
 - v1's recording page was retired with the Viewer: every line that sent Ivan to "the recording's page"

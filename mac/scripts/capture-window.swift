@@ -50,7 +50,10 @@ let looks: [Look] = [
     Look(name: "08-search-said", flags: ["--show=all-recordings", "--search=Krishnamacharya"]),
 ] + ["general", "outputs", "models", "privacy", "advanced"].enumerated().map { index, pane in
     Look(name: String(format: "09-settings-%02d-%@", index + 1, pane), flags: ["--show=settings-" + pane], window: .settings)
-} + [Look(name: "10-activity", flags: ["--show=activity"], window: .activity)]
+} + [Look(name: "10-activity", flags: ["--show=activity"], window: .activity),
+      // v2 part M4a: the Activity window's Finished and Log; Now (above) shows the sample make in progress.
+      Look(name: "10-activity-finished", flags: ["--show=activity", "--activity-tab=finished"], window: .activity),
+      Look(name: "10-activity-log", flags: ["--show=activity", "--activity-tab=log"], window: .activity)]
 
 /// The Viewer (v2 part M3b), with sample data: the sample talk opened on each rendition, and with Quick Help on.
 /// The Original plays a test pattern this script makes, never the talk's picture (docs/v2/PLAN.md section 11,
@@ -376,6 +379,33 @@ if args.first == "--window", args.count == 3 {
     guard status == 0 else { print("FAIL  screencapture said \(text)"); finish(1) }
     let size = NSImageRep(contentsOf: png).map { "\($0.pixelsWide)x\($0.pixelsHigh) px" } ?? "unreadable"
     print("      saved \(png.path), \(size)")
+    finish(0)
+}
+// The Activity window of an app that is already running, as it is (v2 part M4a): a development copy making a
+// recording, so the window shows a real make in progress, not sample data.
+//   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --activity-window build/Build/Products/Debug/Prakriti.app out.png
+if args.first == "--activity-window", args.count == 3 {
+    let app = URL(fileURLWithPath: args[1]).standardizedFileURL
+    let png = URL(fileURLWithPath: args[2]).standardizedFileURL
+    try? FileManager.default.createDirectory(at: png.deletingLastPathComponent(), withIntermediateDirectories: true)
+    var found: (CGWindowID, CGRect)?
+    var pid: pid_t = 0
+    let deadline = Date().addingTimeInterval(15)
+    while found == nil && Date() < deadline {
+        if let first = pids(of: app).first {
+            pid = first
+            // The Activity window opens 720 pt wide; the main window is the widest.
+            found = layerZeroWindows(pid: pid).first { abs($0.1.width - 720) < 2 && $0.1.height > 400 }
+        }
+        if found == nil { Thread.sleep(forTimeInterval: 0.3) }
+    }
+    guard let (windowID, bounds) = found else { print("FAIL  no Activity window to capture"); finish(1) }
+    NSRunningApplication(processIdentifier: pid)?.activate()
+    Thread.sleep(forTimeInterval: 1.5)
+    let (status, text) = run("/usr/sbin/screencapture", ["-x", "-o", "-l", String(windowID), png.path])
+    guard status == 0 else { print("FAIL  screencapture said \(text)"); finish(1) }
+    let size = NSImageRep(contentsOf: png).map { "\($0.pixelsWide)x\($0.pixelsHigh) px" } ?? "unreadable"
+    print("      saved \(png.path), \(size), window \(Int(bounds.width))x\(Int(bounds.height)) pt")
     finish(0)
 }
 // The app icon as Finder and the Dock get it (NSWorkspace, which reads the built bundle's compiled

@@ -21,6 +21,20 @@ final class PipelineRunner {
     /// Recordings waiting their turn, and the one being worked on (by Recording.id), for the UI.
     private(set) var waitingIDs: [UUID] = []
     private(set) var currentID: UUID?
+    /// The progress of the make running now (v2 part M4a): stage, percent, time left, the latest line.
+    private(set) var currentJob: JobProgress?
+    /// Waiting recordings Ivan paused: they keep their place in line and are passed over until resumed.
+    private(set) var heldIDs: Set<UUID> = []
+    /// Ends the make running now, so Stop can end it and nothing else (v2 part M4a).
+    @ObservationIgnored private var cancelActive: (() -> Void)?
+    /// Reads the running make's progress twice a second.
+    @ObservationIgnored private var progressTicker: Task<Void, Never>?
+    /// The recording Ivan stopped, so its end is told as his choice rather than a failure.
+    @ObservationIgnored private var stoppedByHand: UUID?
+    /// The status the running recording had before this make, for a Stop that leaves its earlier files.
+    @ObservationIgnored private var statusBefore: RecordingStatus?
+    /// Told of every progress snapshot published (the progress acceptance writes its trace from it).
+    @ObservationIgnored var onProgress: ((ProgressSnapshot) -> Void)?
 
     @ObservationIgnored private var queue: [(recording: Recording, trigger: RunTrigger)] = []
     @ObservationIgnored private var loop: Task<Void, Never>?
@@ -50,12 +64,20 @@ final class PipelineRunner {
     /// The recordings waiting their turn, in the order they will be made (In Progress lists them so).
     var waitingOrder: [UUID] { waitingIDs }
     func isCurrent(_ recording: Recording) -> Bool { currentID == recording.id }
+    func isHeld(_ recording: Recording) -> Bool { heldIDs.contains(recording.id) }
+
+    /// The progress of this recording's make, while it runs.
+    func progress(for recording: Recording) -> ProgressSnapshot? {
+        guard let job = currentJob, job.recordingID == recording.id else { return nil }
+        return job.snapshot
+    }
 
     /// Puts a recording in line. It starts when nothing else is running and Pause All is off.
     func enqueue(_ recording: Recording, trigger: RunTrigger) {
         guard let model, !isCurrent(recording), !isWaiting(recording) else { return }
         queue.append((recording, trigger))
         waitingIDs.append(recording.id)
+        noteUsual(recording)
         if model.settings.isPaused {
             model.record("\(recording.fileName) waits until you resume: Pause All is on.")
         }
@@ -70,7 +92,161 @@ final class PipelineRunner {
     func stopAll() {
         queue.removeAll()
         waitingIDs.removeAll()
+        heldIDs.removeAll()
+        currentJob?.meter.control.resume()
+        cancelActive?()
         loop?.cancel()
+        progressTicker?.cancel()
+    }
+
+    // MARK: Pause, Stop and the order of the line (v2 part M4a, design spec 3.6.3)
+
+    /// Pause on a recording: the make running now holds where it is (its tool is suspended, and the next
+    /// one waits); a waiting recording keeps its place and is passed over. Writing cannot be held: a request
+    /// to a writing model is under way, so Pause is not offered then.
+    func pause(_ recording: Recording) {
+        guard let model else { return }
+        let label = Format.dayLabel(recording.sessionDate)
+        if let job = currentJob, job.recordingID == recording.id {
+            guard job.snapshot.canPause, !job.isPaused else { return }
+            job.meter.control.pause()
+            job.pause()
+            model.record("Paused \(label) (\(recording.fileName)) while \(job.snapshot.stageName.lowercasedFirst). It holds there until you resume it.")
+        } else if isWaiting(recording), !heldIDs.contains(recording.id) {
+            heldIDs.insert(recording.id)
+            model.record("Paused \(label) (\(recording.fileName)) in line. It keeps its place and starts once you resume it.")
+        }
+        model.noteStatusLine()
+    }
+
+    func resume(_ recording: Recording) {
+        guard let model else { return }
+        let label = Format.dayLabel(recording.sessionDate)
+        if let job = currentJob, job.recordingID == recording.id, job.isPaused {
+            job.meter.control.resume()
+            job.resume()
+            model.record("Resumed \(label) (\(recording.fileName)).")
+        } else if heldIDs.contains(recording.id) {
+            heldIDs.remove(recording.id)
+            model.record("Resumed \(label) (\(recording.fileName)) in line.")
+            pump()
+        }
+        model.noteStatusLine()
+    }
+
+    /// Stop on a recording: the make running now ends (the files of its last finished make are as they were,
+    /// Mac warning 29), or a waiting one leaves the line. Nothing restarts it on its own.
+    func stop(_ recording: Recording) {
+        guard let model else { return }
+        let label = Format.dayLabel(recording.sessionDate)
+        if isCurrent(recording), let cancel = cancelActive {
+            stoppedByHand = recording.id
+            currentJob?.meter.control.resume()
+            cancel()
+            model.record("Stopping \(label) (\(recording.fileName)) at your request.")
+        } else if isWaiting(recording) {
+            queue.removeAll { $0.recording.id == recording.id }
+            waitingIDs.removeAll { $0 == recording.id }
+            heldIDs.remove(recording.id)
+            recording.intent = .none
+            recording.statusReason = "Taken out of the line by you. Choose Make Outputs to start it."
+            try? model.context.save()
+            model.record("Took \(label) (\(recording.fileName)) out of the line. Nothing was made; choose Make Outputs to start it.")
+        }
+        model.noteStatusLine()
+    }
+
+    /// Make Next: a waiting recording moves to the front of the line.
+    func makeNext(_ recording: Recording) {
+        guard let model, let index = queue.firstIndex(where: { $0.recording.id == recording.id }), index > 0 else { return }
+        let item = queue.remove(at: index)
+        queue.insert(item, at: 0)
+        waitingIDs.removeAll { $0 == recording.id }
+        waitingIDs.insert(recording.id, at: 0)
+        model.record("\(Format.dayLabel(recording.sessionDate)) (\(recording.fileName)) is next in line.")
+    }
+
+    /// Whether Stop can end this recording's make or take it out of the line.
+    func canStop(_ recording: Recording) -> Bool {
+        (isCurrent(recording) && cancelActive != nil) || isWaiting(recording)
+    }
+
+    /// Whether Pause is offered: the make running now while its stage can be held, or a waiting recording.
+    func canPause(_ recording: Recording) -> Bool {
+        if let job = currentJob, job.recordingID == recording.id { return job.snapshot.canPause && !job.isPaused && cancelActive != nil }
+        return isWaiting(recording) && !heldIDs.contains(recording.id)
+    }
+
+    func canResume(_ recording: Recording) -> Bool {
+        if let job = currentJob, job.recordingID == recording.id { return job.isPaused }
+        return heldIDs.contains(recording.id)
+    }
+
+    // MARK: Time
+
+    /// How long a make of this recording usually takes here, in seconds, or nil when its length is not known.
+    func expectedSeconds(for recording: Recording, timings: StageTimings) -> Double? {
+        guard let duration = recording.duration, duration > 0 else { return nil }
+        let options = options(for: recording)
+        let wait = Double(options.stableWait.components.seconds)
+        return options.plannedSteps.reduce(0) { $0 + timings.expectedSeconds($1, mediaSeconds: duration, stableWait: wait) }
+    }
+
+    /// How long each recording in the line usually takes here, worked out once when it joins the line (and
+    /// again when a make starts), so the toolbar and the Activity window read numbers instead of fetching the
+    /// store each time they draw. Reason (12 Oct): with the fetch in the toolbar's button, `make look`'s
+    /// Command-Option-I check failed 2 of 3 times while a make was shown.
+    @ObservationIgnored private var usualSeconds: [UUID: Double] = [:]
+
+    /// The usual time of a recording in the line, or nil when its length is not known.
+    func usual(for recording: Recording) -> Double? {
+        if let known = usualSeconds[recording.id] { return known }
+        guard let model, let seconds = expectedSeconds(for: recording, timings: StageTimings.load(model.context)) else { return nil }
+        usualSeconds[recording.id] = seconds
+        return seconds
+    }
+
+    private func noteUsual(_ recording: Recording) {
+        usualSeconds[recording.id] = nil
+        _ = usual(for: recording)
+    }
+
+    /// The whole line's progress, for the toolbar's Activity button: the make running now and the ones
+    /// waiting, each weighted by how long it usually takes. Nil when nothing runs.
+    func queueFraction() -> Double? {
+        guard let job = currentJob else { return nil }
+        let runningTotal = usualSeconds[job.recordingID] ?? 1
+        let waitingTotal = waitingIDs.compactMap { usualSeconds[$0] }.reduce(0, +)
+        return (runningTotal * job.snapshot.overall) / max(1, runningTotal + waitingTotal)
+    }
+
+    /// The whole line's time left: the running make's, then each waiting one's usual time. Nil while the
+    /// running make has no time left yet, or a waiting recording's length is not known.
+    func queueTimeLeft() -> Double? {
+        guard let job = currentJob, let running = job.snapshot.timeLeft else { return nil }
+        var total = running
+        for id in waitingIDs where !heldIDs.contains(id) {
+            guard let usual = usualSeconds[id] else { return nil }
+            total += usual
+        }
+        return total
+    }
+
+    // MARK: Sample progress (snapshots and window captures only)
+
+    /// Shows a make in progress and a line of waiting recordings without running anything: the snapshots and
+    /// the window captures draw the progress from it. Never called by the running app.
+    func showSample(job: JobProgress?, waiting: [UUID], held: Set<UUID> = []) {
+        currentJob = job
+        currentID = job?.recordingID
+        // Pause and Stop draw as they do for a real make; in sample data they end nothing.
+        cancelActive = job == nil ? nil : {}
+        if let model {
+            for recording in (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
+            where recording.id == job?.recordingID || waiting.contains(recording.id) { noteUsual(recording) }
+        }
+        waitingIDs = waiting
+        heldIDs = held
     }
 
     private func pump() {
@@ -84,8 +260,8 @@ final class PipelineRunner {
     }
 
     private func takeNext() -> (recording: Recording, trigger: RunTrigger)? {
-        guard let model, !model.settings.isPaused, !queue.isEmpty else { return nil }
-        let next = queue.removeFirst()
+        guard let model, !model.settings.isPaused, let index = queue.firstIndex(where: { !heldIDs.contains($0.recording.id) }) else { return nil }
+        let next = queue.remove(at: index)
         waitingIDs.removeAll { $0 == next.recording.id }
         return next
     }
@@ -169,6 +345,7 @@ final class PipelineRunner {
         let run = Run(startedAt: model.now(), trigger: trigger, steps: options.plannedSteps.map { RunStep(name: $0.title, state: .waiting) })
         model.context.insert(run)
         run.recording = recording
+        statusBefore = recording.status
         recording.status = .working
         recording.statusReason = nil
         recording.currentStep = PipelineStep.complete.doing
@@ -188,12 +365,74 @@ final class PipelineRunner {
 
         model.record("Started \(recording.fileName) (\(trigger.title.lowercased())). "
                      + (options.checksOnly ? "Checking it is complete and has sound; nothing is made." : "Checking it is complete first."), run: run)
-        let pipeline = Pipeline(tools: tools, options: options, log: model.log)
-        let result = await pipeline.run(file: file, outputFolder: folder, label: label) { [weak self] progress in
-            await self?.apply(progress)
+        let job = await startJob(for: recording, label: label, plan: options.plannedSteps, options: options, file: file)
+        let pipeline = Pipeline(tools: tools, options: options, log: model.log, meter: job.meter)
+        let task = Task { [weak self] in
+            await pipeline.run(file: file, outputFolder: folder, label: label) { [weak self] progress in
+                await self?.apply(progress)
+            }
         }
+        cancelActive = { task.cancel() }
+        let result = await task.value
+        cancelActive = nil
+        await endJob(job, steps: result.steps, recording: recording, learn: result.outcome != .test)
         finish(result, recording: recording, run: run, label: label)
         return result
+    }
+
+    /// The progress of a make that starts now: its stages weighted by how long each takes here (measured on
+    /// this Mac when it can be), read twice a second.
+    private func startJob(for recording: Recording, label: String, plan: [PipelineStep], options: PipelineOptions, file: URL?) async -> JobProgress {
+        var media = recording.duration
+        if media == nil, let file {
+            // The length weights the stages. A file that does not open yet (still being written) is weighted as
+            // a minute long; the percent still never goes back.
+            if let probe = try? await Subprocess.run(tools.ffprobe, ["-v", "error", "-show_entries", "format=duration:stream=codec_type", "-of", "json", file.path],
+                                                     timeout: .seconds(20)) {
+                media = Measure.probe(json: probe.stdout)?.duration
+            }
+        }
+        let timings = model.map { StageTimings.load($0.context) } ?? StageTimings()
+        let wait = Double(options.stableWait.components.seconds) + Double(options.stableWait.components.attoseconds) / 1e18
+        var expected: [PipelineStep: Double] = [:]
+        for step in plan { expected[step] = timings.expectedSeconds(step, mediaSeconds: media ?? 0, stableWait: wait) }
+        let measured = Set(plan.filter(timings.isMeasured))
+        let tracker = ProgressTracker(recordingID: recording.id, label: label, plan: plan, expected: expected, measured: measured,
+                                      startedAt: Date())
+        let job = JobProgress(tracker: tracker)
+        usualSeconds[recording.id] = plan.reduce(0) { $0 + (expected[$1] ?? 0) }
+        job.onPublish = { [weak self] snapshot in
+            self?.onProgress?(snapshot)
+            // `--debug-status-log`: each published snapshot's status line, as the menu bar shows it.
+            self?.model?.noteStatusLine()
+        }
+        currentJob = job
+        job.refresh()
+        progressTicker?.cancel()
+        progressTicker = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(500))
+                guard let self, let job = self.currentJob else { return }
+                job.refresh()
+                self.model?.noteStatusLine()
+            }
+        }
+        model?.noteStatusLine()
+        return job
+    }
+
+    /// The make has ended: the progress reads 100% when it finished, and the stages it finished are kept as
+    /// this Mac's measured times (not a stage that was paused, and never the wait for the file).
+    private func endJob(_ job: JobProgress, steps: [RunStep], recording: Recording, learn: Bool) async {
+        job.apply(steps: steps, current: nil)
+        await job.finish()
+        progressTicker?.cancel()
+        progressTicker = nil
+        if learn, let model, let media = recording.duration {
+            StageTimings.record(steps, mediaSeconds: media, at: model.now(), excluding: job.pausedStages, in: model.context)
+        }
+        currentJob = nil
+        model?.noteStatusLine()
     }
 
     /// Write Again: the titles, show notes and chapters written again from the transcript already in
@@ -218,6 +457,8 @@ final class PipelineRunner {
         model.record("Writing the titles, show notes and chapters for \(label) (\(name)) again, from its transcript. Nothing else is made.", run: run)
         let activity = ProcessInfo.processInfo.beginActivity(options: [.userInitiated, .idleSystemSleepDisabled], reason: "Prakriti is writing titles for a recording.")
         defer { ProcessInfo.processInfo.endActivity(activity) }
+        let job = await startJob(for: recording, label: label, plan: [.writing], options: PipelineOptions(), file: nil)
+        job.begin(.writing)
 
         let started = ContinuousClock.now
         var result = PipelineResult()
@@ -228,7 +469,11 @@ final class PipelineRunner {
            let input = WritingInput.from(folder: URL(fileURLWithPath: path, isDirectory: true), clock: recording.episodeClock, duration: recording.duration ?? 0,
                                          applyLexicon: lexicon, label: label, fileName: name, kind: recording.kind, knownSerenity: recording.hasSerenity) {
             do {
-                let outcome = try await Writer(setup: writingSetup(), log: model.log).write(input)
+                let writer = Writer(setup: writingSetup(), log: model.log)
+                let writing = Task { try await writer.write(input) }
+                cancelActive = { writing.cancel() }
+                defer { cancelActive = nil }
+                let outcome = try await writing.value
                 result.mentionsSerenity = outcome.mentionsSerenity
                 if let package = outcome.package {
                     let folder = URL(fileURLWithPath: path, isDirectory: true)
@@ -259,6 +504,12 @@ final class PipelineRunner {
         }
         step.seconds = ModelHTTP.seconds(since: started)
         if step.state != .done { step.detail = (result.writingProblem ?? "") + " The earlier files, if any, are as they were." }
+        if stoppedByHand == recording.id {
+            stoppedByHand = nil
+            result.writingProblem = "Stopped by you before it finished."
+            step.detail = "Stopped by you. The earlier files, if any, are as they were."
+        }
+        await endJob(job, steps: [step], recording: recording, learn: step.state == .done)
         run.steps = [step]
         run.endedAt = model.now()
         recording.currentStep = nil
@@ -309,7 +560,10 @@ final class PipelineRunner {
         recording.status = .working
         recording.currentStep = PipelineStep.podcastPackage.doing
         try? model.context.save()
+        let job = await startJob(for: recording, label: Format.dayLabel(recording.sessionDate), plan: [.podcastPackage], options: PipelineOptions(), file: nil)
+        job.begin(.podcastPackage)
         let (record, step) = await repackage(recording)
+        await endJob(job, steps: [step], recording: recording, learn: false)
         run.steps = [step]
         run.endedAt = model.now()
         recording.currentStep = nil
@@ -387,6 +641,7 @@ final class PipelineRunner {
 
     private func apply(_ progress: PipelineProgress) {
         guard let model, let recording = activeRecording, let run = activeRun else { return }
+        currentJob?.apply(steps: progress.steps, current: progress.current)
         run.steps = progress.steps
         if let current = progress.current { recording.currentStep = current.doing }
         if let duration = progress.duration { recording.duration = duration }
@@ -566,6 +821,19 @@ final class PipelineRunner {
             facts.tries = tries
             facts.stoppedWhile = stoppedIn?.doing
             model.notifier.post(.couldntFinish, facts)
+        case .stopped where stoppedByHand == recording.id:
+            // Ivan's Stop (v2 part M4a): told as his choice, never tried again on its own. A recording with
+            // files from an earlier make keeps them, and its status, as they were (Mac warning 29).
+            stoppedByHand = nil
+            run.outcome = .stopped
+            run.summary = "Stopped by you."
+            recording.intent = .none
+            let kept = statusBefore.flatMap { [.readyForYourYes, .approved].contains($0) ? $0 : nil }
+            recording.status = kept ?? .found
+            recording.statusReason = kept != nil ? "Stopped by you before the new make finished. The files from the last make are as they were."
+                                                 : "Stopped by you before it finished. Nothing was made, and the original is untouched. Choose Make Outputs to start it again."
+            model.record("Stopped \(name) at your request. " + (kept != nil ? "The files from the last make are as they were." : "Nothing was made.") + " The original is untouched.",
+                         run: run)
         case .stopped:
             run.outcome = .stopped
             run.summary = result.reason
@@ -580,6 +848,7 @@ final class PipelineRunner {
             }
             model.record("Stopped \(name) before it finished. The original is untouched.", level: .attention, run: run)
         }
+        if stoppedByHand == recording.id { stoppedByHand = nil }
         try? model.context.save()
     }
 }

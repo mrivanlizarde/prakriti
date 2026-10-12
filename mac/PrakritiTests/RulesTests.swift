@@ -81,34 +81,44 @@ final class RulesTests: XCTestCase {
     // MARK: The status line
 
     func testStatusLineSaysWhatIsHappening() {
-        let notWatching = StatusSummary.make(isWatching: false, isPaused: false, folderNames: ["Test drop folder"], needsYou: 0, problems: 0, working: nil)
+        let notWatching = StatusSummary.make(isWatching: false, isPaused: false, folderNames: ["Test drop folder"], needsYou: 0, problems: 0, workingLine: nil)
         XCTAssertEqual(notWatching.line, AppMode.switchedOver ? "Not watching. New recordings wait until Prakriti watches again."
                                                               : "Not watching yet. The old engine still handles new recordings.")
         XCTAssertEqual(notWatching.icon, .notWatching)
 
-        let paused = StatusSummary.make(isWatching: true, isPaused: true, folderNames: ["A"], needsYou: 3, problems: 1, working: ("Sun 6 Sep", "Transcript"))
+        let paused = StatusSummary.make(isWatching: true, isPaused: true, folderNames: ["A"], needsYou: 3, problems: 1, workingLine: "Making Sun 6 Sep: Writing the transcript, 12%, working out the time left.")
         XCTAssertEqual(paused.icon, .paused, "paused wins over everything")
 
+        // v2 part M4a: the line is the make's own progress (design spec 3.6.2).
+        var snapshot = ProgressSnapshot(recordingID: UUID(), label: "Sun 6 Sep", stage: .episode, stepNumber: 5, stepCount: 9, stageFraction: 0.4,
+                                        overall: 0.648, timeLeft: 372, waitingOn: nil, logLine: nil, isPaused: false, canPause: true, stages: [],
+                                        startedAt: Date(), at: Date())
+        XCTAssertEqual(snapshot.statusLine(waiting: 2), "Making Sun 6 Sep: Making the episode audio, 64%, about 6 min left. 2 waiting.")
         let working = StatusSummary.make(isWatching: true, isPaused: false, folderNames: ["A"], needsYou: 1, problems: 0,
-                                         working: ("Sun 6 Sep", "Making the episode audio"))
-        XCTAssertEqual(working.line, "Working on Sun 6 Sep: making the episode audio")
+                                         workingLine: snapshot.statusLine(waiting: 0))
+        XCTAssertEqual(working.line, "Making Sun 6 Sep: Making the episode audio, 64%, about 6 min left.")
+        XCTAssertEqual(working.icon, .working)
         XCTAssertFalse(working.line.localizedCaseInsensitiveContains("processing"))
+        snapshot.timeLeft = nil
+        XCTAssertEqual(snapshot.statusLine(waiting: 0), "Making Sun 6 Sep: Making the episode audio, 64%, working out the time left.")
+        snapshot.isPaused = true
+        XCTAssertEqual(snapshot.statusLine(waiting: 1), "Paused Sun 6 Sep: Making the episode audio, 64%. 1 waiting.")
 
         let waiting = StatusSummary.make(isWatching: true, isPaused: false, folderNames: ["Studio Recordings", "Drop folder"],
-                                         needsYou: 2, problems: 0, working: nil)
+                                         needsYou: 2, problems: 0, workingLine: nil)
         XCTAssertEqual(waiting.line, "Watching Studio Recordings and Drop folder. 2 recordings need you.")
         XCTAssertEqual(waiting.icon, .waitingForYou)
 
-        let problem = StatusSummary.make(isWatching: true, isPaused: false, folderNames: ["A"], needsYou: 1, problems: 1, working: nil)
+        let problem = StatusSummary.make(isWatching: true, isPaused: false, folderNames: ["A"], needsYou: 1, problems: 1, workingLine: nil)
         XCTAssertEqual(problem.line, "Watching A. 1 recording needs you.")
         XCTAssertEqual(problem.icon, .problem)
 
-        let idle = StatusSummary.make(isWatching: true, isPaused: false, folderNames: ["A", "B", "C"], needsYou: 0, problems: 0, working: nil)
+        let idle = StatusSummary.make(isWatching: true, isPaused: false, folderNames: ["A", "B", "C"], needsYou: 0, problems: 0, workingLine: nil)
         XCTAssertEqual(idle.line, "Watching 3 folders. Nothing waiting.")
         XCTAssertEqual(idle.icon, .idle)
 
         let blocked = StatusSummary.make(isWatching: true, isPaused: false, folderNames: ["Studio Recordings", "Drop folder"],
-                                         blockedFolders: ["Studio Recordings"], needsYou: 0, problems: 0, working: nil)
+                                         blockedFolders: ["Studio Recordings"], needsYou: 0, problems: 0, workingLine: nil)
         XCTAssertEqual(blocked.line, "Watching Studio Recordings and Drop folder. Studio Recordings cannot be read yet: macOS needs your OK. See Sources.")
         XCTAssertEqual(blocked.icon, .problem)
 

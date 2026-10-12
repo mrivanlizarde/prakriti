@@ -2,7 +2,9 @@ import AppKit
 import SwiftData
 import SwiftUI
 
-/// The menu bar menu: a menu, not a popover (HIG). Status first, then Open, Pause, Settings, Quit.
+/// The menu bar menu (design spec 3.14, v2 part M4a): a menu, not a popover (HIG). The status line, with the
+/// make's percent and time left while one runs; how many recordings need you, when any do; Open Prakriti and
+/// Show Activity; Pause All; Settings, Prakriti Help and Quit.
 struct MenuBarMenu: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
@@ -12,12 +14,26 @@ struct MenuBarMenu: View {
 
     var body: some View {
         let summary = model.statusSummary(recordings: recordings, sources: sources)
+        let needsYou = recordings.filter(\.status.needsYou).count
         Text(summary.line)
+        if needsYou > 0 {
+            Button(needsYou == 1 ? "1 recording needs you" : "\(needsYou) recordings need you") {
+                model.open(.group(.needsYou))
+                openWindow(id: MainWindow.id)
+                NSApp.activate()
+            }
+        }
         Divider()
         Button("Open Prakriti") {
             openWindow(id: MainWindow.id)
             NSApp.activate()
         }
+        Button("Show Activity") {
+            openWindow(id: ActivityWindow.id)
+            NSApp.activate()
+        }
+        .keyboardShortcut("9", modifiers: .command)
+        Divider()
         Button(model.settings.isPaused ? "Resume All" : "Pause All") {
             model.setPaused(!model.settings.isPaused)
         }
@@ -27,6 +43,10 @@ struct MenuBarMenu: View {
             NSApp.activate()
         }
         .keyboardShortcut(",", modifiers: .command)
+        Button("Prakriti Help") {
+            openWindow(id: HelpWindow.id)
+            NSApp.activate()
+        }
         Button("Quit Prakriti") {
             NSApp.terminate(nil)
         }

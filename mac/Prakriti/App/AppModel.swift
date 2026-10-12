@@ -114,6 +114,12 @@ final class AppModel {
     /// True while the watcher runs. When false, the status line says so plainly.
     var isWatching = false
 
+    /// The Activity window's tab: Now, Finished or Log (v2 part M4a, design spec 3.6.3).
+    var activityTab: ActivityTab = .now
+    /// `--debug-status-log` is on (Debug builds only): every change of the menu bar's status line is logged.
+    @ObservationIgnored var debugStatusLog = false
+    @ObservationIgnored var lastStatusLine: String?
+
     /// Something Ivan tried that was refused, shown by the main window as an alert.
     var notice: Notice?
 
@@ -179,6 +185,8 @@ final class AppModel {
             let paths = AppPaths(mode: AppMode.current)
             let model = Fixtures.model(mode: paths.mode, log: AppLog(directory: AppPaths(mode: .development).logs))
             current = model
+            // The sample talk's make in progress, as the snapshots draw it (v2 part M4a). Nothing runs.
+            Fixtures.showProgress(model)
             model.go(to: launch.place)
             // The browser and the inspector as the capture asks (v2 part M3a).
             model.browserMode = launch.browserMode
@@ -189,6 +197,7 @@ final class AppModel {
                 }
             }
             if let tab = launch.inspectorTab { model.inspectorTab = tab }
+            if let tab = launch.activityTab { model.activityTab = tab }
             if let search = launch.search {
                 // Typed once the window is up, as the Help capture does, so the field draws in the window's appearance.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { model.search.text = search }
@@ -316,6 +325,9 @@ final class AppModel {
             record("Could not add the new outputs: \(error.localizedDescription)", level: .problem)
         }
         importEngineV0IfNeeded()
+        // How long each stage takes on this Mac, seeded once from the makes already in the store (v2 part M4a).
+        let seeded = StageTimings.seedIfEmpty(context)
+        if seeded > 0 { log.write("Stage times: seeded \(seeded) measured step(s) from the makes already in the store.") }
         let sources = (try? context.fetch(FetchDescriptor<Source>())) ?? []
         log.write("Sources: \(sources.map { "\($0.name) (\($0.mode.rawValue))" }.joined(separator: " | ")).")
         recoverInterruptedWork()
@@ -402,6 +414,7 @@ final class AppModel {
         entry.run = run
         try? context.save()
         log.write(message)
+        noteStatusLine()
         return entry
     }
 
@@ -763,6 +776,8 @@ struct CaptureLaunch {
     /// `--sample-output=<folder>`: the sample talk's output folder, for a capture of the Podcast-ready rendition.
     var sampleOutput: String?
     var quickHelp = false
+    /// `--activity-tab=<now|finished|log>`: the Activity window's tab (v2 part M4a).
+    var activityTab: ActivityTab?
 
     static var current: CaptureLaunch? {
         let args = CommandLine.arguments
@@ -789,7 +804,8 @@ struct CaptureLaunch {
                              rendition: value("--rendition").flatMap(Rendition.init(rawValue:)),
                              sampleOriginal: value("--sample-original"),
                              sampleOutput: value("--sample-output"),
-                             quickHelp: args.contains("--quick-help"))
+                             quickHelp: args.contains("--quick-help"),
+                             activityTab: value("--activity-tab").flatMap(ActivityTab.init(rawValue:)))
     }
 
     /// The window this capture shows, for the log line.

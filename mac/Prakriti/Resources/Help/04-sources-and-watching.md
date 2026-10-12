@@ -4,7 +4,7 @@ title: Sources and watching
 summary: How Prakriti watches folders, when a recording counts as finished, and how to follow its work or pause it.
 section: recording
 order: 3
-keywords: [sources, folders, watch, drop folder, add folder, add file, process file, automatic, ask me first, make outputs, iCloud, keep downloaded, test, vertical, pause all, resume all, menu bar, activity, check now, stop watching]
+keywords: [sources, folders, watch, drop folder, add folder, add file, process file, automatic, ask me first, make outputs, iCloud, keep downloaded, test, vertical, pause all, resume all, menu bar, activity, check now, stop watching, progress, percent, time left, pause, stop, make next]
 related: [set-up-obs-for-prakriti, outputs, troubleshooting]
 ---
 
@@ -87,9 +87,23 @@ and choose Keep Downloaded.
   something needs a decision, and when a recording could not finish.
 :::
 :::requires progress
-- **In Progress** shows every recording being worked on, the step it is on, a progress bar and the time left.
-- **The inspector's Checks** show each step in order, with how long each one took.
-- **The menu bar** shows the current step and how far along it is.
+- **On the recording:** while it is made, its card shows a ring and the percent, and in the list (View >
+  as List) a bar with the percent and the time left, such as "64%, about 6 min left". The percent counts
+  each step by how long it usually takes on this Mac, so a quick check is worth less than making the
+  audio. The time left appears once Prakriti has timed that step, and says "Working out the time left"
+  until then.
+- **The inspector:** select the recording. Outputs shows the step it is on ("Step 5 of 9"), a bar, the
+  percent, the time left and the latest line it wrote, with Pause and Stop. If a step has not moved for a
+  minute, it says what it is waiting on.
+- **The Activity window:** choose Window > Activity (Command-9), click the Activity button in the
+  toolbar, or choose Show Activity in the menu bar menu. [Show Me](prakriti://show/activity)
+  - **Now** shows the recording being made, with every step: how long each finished one took, the
+    running one's time so far, and the usual time of each still to come. Recordings waiting their turn
+    are listed under it, in order. Control-click one and choose Make Next to make it next.
+  - **Finished** lists each recording that ended, by day, with what came of it, Show and Show in Finder.
+  - **Log** has every check and every step, newest first, with a search field.
+- **The menu bar** shows the recording, its step, the percent and the time left, such as "Making Sun 13
+  Sep: Writing the transcript, 64%, about 6 min left."
 - **Notifications** tell you when a recording is found, when it is waiting for your yes, and when
   something needs a decision.
 :::
@@ -98,6 +112,16 @@ and choose Keep Downloaded.
 
 Click Pause All in the toolbar, in the menu bar menu, or in Settings, General. A recording already being made
 finishes. Nothing new is looked for or started until you click Resume All.
+
+:::requires progress
+To pause one recording, click Pause beside it in the Activity window or in the inspector. The recording
+being made holds where it is until you click Resume; one waiting its turn keeps its place in line. Writing
+titles and show notes cannot be paused once it has started.
+
+To stop one, click Stop. A recording being made stops at once: nothing new is kept, the files from its
+last make stay as they were, and it is not started again on its own. One waiting its turn leaves the
+line. Choose Make Outputs to start either again.
+:::
 
 ## Stop watching a folder
 

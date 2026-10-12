@@ -50,13 +50,21 @@ struct ToolError: Error, Sendable {
 /// Runs one tool and waits for it without blocking a thread of the caller's: output is read on
 /// background threads, and the process is stopped if the task is cancelled or runs past `timeout`.
 enum Subprocess {
+    /// - Parameters:
+    ///   - onStdoutLine: each line the tool writes on stdout, as it comes (ffmpeg's `-progress pipe:1`, v2 part
+    ///     M4a). stdout is then always read, and kept only when `captureStdout` is true.
+    ///   - control: pauses and resumes the tool for a make that is paused (v2 part M4a). The tool waits to
+    ///     start while it is paused, and its time limit moves on by the time it spent paused.
     static func run(_ executable: URL, _ arguments: [String], captureStdout: Bool = true,
-                    timeout: Duration? = nil) async throws -> ToolOutput {
+                    timeout: Duration? = nil, onStdoutLine: (@Sendable (String) -> Void)? = nil,
+                    control: ProcessControl? = nil) async throws -> ToolOutput {
         let tool = executable.lastPathComponent
         guard FileManager.default.isExecutableFile(atPath: executable.path) else {
             throw ToolError(kind: .missing, tool: tool, status: -1, stderrTail: executable.path)
         }
-        let job = Job(executable: executable, arguments: arguments, captureStdout: captureStdout)
+        if let control { await control.waitWhilePaused() }
+        try Task.checkCancellation()
+        let job = Job(executable: executable, arguments: arguments, captureStdout: captureStdout, onStdoutLine: onStdoutLine, control: control)
         let output = try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<ToolOutput, Error>) in
                 job.start(timeout: timeout) { result in continuation.resume(with: result) }
@@ -85,17 +93,21 @@ enum Subprocess {
         private let stdoutPipe = Pipe()
         private let stderrPipe = Pipe()
         private let captureStdout: Bool
+        private let onStdoutLine: (@Sendable (String) -> Void)?
+        private let control: ProcessControl?
         private let state = Mutex<(timedOut: Bool, stopped: Bool)>((false, false))
 
-        init(executable: URL, arguments: [String], captureStdout: Bool) {
+        init(executable: URL, arguments: [String], captureStdout: Bool, onStdoutLine: (@Sendable (String) -> Void)?, control: ProcessControl?) {
             self.captureStdout = captureStdout
+            self.onStdoutLine = onStdoutLine
+            self.control = control
             process.executableURL = executable
             process.arguments = arguments
             var environment = ProcessInfo.processInfo.environment
             environment["PATH"] = ToolPaths.searchPath + (environment["PATH"].map { ":" + $0 } ?? "")
             process.environment = environment
             process.standardInput = FileHandle.nullDevice
-            process.standardOutput = captureStdout ? stdoutPipe : FileHandle.nullDevice
+            process.standardOutput = captureStdout || onStdoutLine != nil ? stdoutPipe : FileHandle.nullDevice
             process.standardError = stderrPipe
         }
 
@@ -110,7 +122,11 @@ enum Subprocess {
                 return
             }
             group.enter() // left when the process exits
-            process.terminationHandler = { _ in group.leave() }
+            let control = self.control
+            process.terminationHandler = { finished in
+                control?.detach(finished.processIdentifier)
+                group.leave()
+            }
             do {
                 try process.run()
             } catch {
@@ -118,9 +134,33 @@ enum Subprocess {
                                               status: -1, stderrTail: error.localizedDescription)))
                 return
             }
+            control?.attach(process.processIdentifier)
             // Read both pipes to their end on background threads, so a chatty tool never fills a
             // pipe and stalls.
-            if captureStdout {
+            if let onStdoutLine {
+                // Line by line, as the tool writes them (ffmpeg's progress), kept only when asked.
+                group.enter()
+                let handle = stdoutPipe.fileHandleForReading
+                let keep = captureStdout
+                DispatchQueue.global(qos: .utility).async {
+                    var kept = Data()
+                    var pending = Data()
+                    while true {
+                        let chunk = handle.availableData
+                        if chunk.isEmpty { break }
+                        if keep { kept.append(chunk) }
+                        pending.append(chunk)
+                        while let newline = pending.firstIndex(of: 0x0A) {
+                            let line = String(decoding: pending[pending.startIndex..<newline], as: UTF8.self)
+                            pending.removeSubrange(pending.startIndex...newline)
+                            onStdoutLine(line)
+                        }
+                    }
+                    if !pending.isEmpty { onStdoutLine(String(decoding: pending, as: UTF8.self)) }
+                    outBox.withLock { $0 = kept }
+                    group.leave()
+                }
+            } else if captureStdout {
                 group.enter()
                 let handle = stdoutPipe.fileHandleForReading
                 DispatchQueue.global(qos: .utility).async {
@@ -137,12 +177,7 @@ enum Subprocess {
                 group.leave()
             }
             if let timeout {
-                let seconds = Double(timeout.components.seconds) + Double(timeout.components.attoseconds) / 1e18
-                DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + seconds) { [self] in
-                    guard process.isRunning else { return }
-                    state.withLock { $0.timedOut = true }
-                    process.terminate()
-                }
+                scheduleTimeout(after: timeout, pausedAtStart: control?.pausedTotal ?? .zero)
             }
             let process = self.process
             group.notify(queue: .global(qos: .utility)) {
@@ -152,9 +187,31 @@ enum Subprocess {
             }
         }
 
+        /// The time limit counts only the time the tool ran: time spent paused moves it on (v2 part M4a).
+        private func scheduleTimeout(after delay: Duration, pausedAtStart: Duration) {
+            let seconds = Double(delay.components.seconds) + Double(delay.components.attoseconds) / 1e18
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + seconds) { [self] in
+                guard process.isRunning else { return }
+                let paused = (control?.pausedTotal ?? .zero) - pausedAtStart
+                if paused > .milliseconds(1) {
+                    scheduleTimeout(after: paused, pausedAtStart: pausedAtStart + paused)
+                    return
+                }
+                state.withLock { $0.timedOut = true }
+                terminate()
+            }
+        }
+
+        /// A stopped (paused) process gets SIGTERM only once it runs again, so it is continued first.
+        private func terminate() {
+            guard process.isRunning else { return }
+            kill(process.processIdentifier, SIGCONT)
+            process.terminate()
+        }
+
         func stop() {
             state.withLock { $0.stopped = true }
-            if process.isRunning { process.terminate() }
+            terminate()
         }
     }
 }

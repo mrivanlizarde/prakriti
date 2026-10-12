@@ -72,6 +72,16 @@ struct ViewerBanner: View {
                 if let action = banner.action {
                     Button(action.title, action: action.run)
                 }
+                if banner.controls {
+                    // Pause and Stop, as in the inspector (v2 part M4a).
+                    let runner = model.runner
+                    if runner.canResume(recording) {
+                        Button("Resume") { runner.resume(recording) }
+                    } else {
+                        Button("Pause") { runner.pause(recording) }.disabled(!runner.canPause(recording))
+                    }
+                    Button("Stop") { runner.stop(recording) }.disabled(!runner.canStop(recording))
+                }
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 10)
@@ -87,10 +97,26 @@ struct ViewerBanner: View {
         let run: () -> Void
     }
 
-    private var banner: (symbol: String, line: String, action: Action?)? {
+    private var banner: (symbol: String, line: String, action: Action?, controls: Bool)? {
+        if let base = baseBanner {
+            return (base.symbol, base.line, base.action, model.runner.isCurrent(recording) || model.runner.isWaiting(recording))
+        }
+        return nil
+    }
+
+    private var baseBanner: (symbol: String, line: String, action: Action?)? {
         let viewer = model.viewer
         if model.runner.isWaiting(recording) {
-            return ("hourglass", model.settings.isPaused ? "Waiting to start. Pause All is on; it starts when you resume." : "Waiting to start. Another recording is being made first.", nil)
+            return ("hourglass", model.runner.isHeld(recording) ? "Paused in line. It keeps its place and starts once you resume it."
+                    : model.settings.isPaused ? "Waiting to start. Pause All is on; it starts when you resume." : "Waiting to start. Another recording is being made first.", nil)
+        }
+        if let progress = model.runner.progress(for: recording) {
+            // The inspector's progress on one line (design spec 3.6.1, v2 part M4a).
+            let stage = String(ProgressWords.stage(progress).dropLast())
+            let lead = progress.isPaused ? "Paused: " : "Working: "
+            let waiting = progress.waitingOn.map { " " + $0 } ?? ""
+            let line = lead + stage + ", " + ProgressWords.line(progress) + "." + waiting
+            return (progress.isPaused ? "pause.circle" : "arrow.triangle.2.circlepath", line, nil)
         }
         switch recording.status {
         case .working:

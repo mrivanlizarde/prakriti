@@ -219,7 +219,7 @@ enum WelcomeContent {
                            "Prakriti finds a new recording and makes its outputs, or waits for you if its folder is set to Ask me first. In Progress shows the step it is on.",
                            unless: [.progress]),
                 WelcomeRow("found-v2", symbol: "1.circle",
-                           "Prakriti finds a new recording and starts on its own. Progress shows on the recording and in Activity.",
+                           "Prakriti finds a new recording and makes its outputs, or waits if its folder is set to Ask me first. The recording shows how far along it is and the time left, and Activity lists every step.",
                            requires: [.progress]),
                 WelcomeRow("review-viewer", symbol: "2.circle",
                            "Open it to listen in the Viewer. Select words in the transcript and choose Remove from the Edit, or set where the episode starts and ends in the inspector's Info tab, then choose Make Again.",

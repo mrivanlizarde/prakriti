@@ -606,6 +606,21 @@ inspector's Info; the per-recording output choices moved to Outputs. **Quick Hel
 control under the pointer at the top of the inspector. The window is put back at the next launch (group,
 selection, open recording, rendition, moment, tab). **v1's recording page is retired** (`RecordingPage.swift`
 and `RecordingsView.swift` deleted). See `docs/BUILD-LOG.md`, "v2 part M3b".
+**v2 part M4a, progress and the Activity window, Mon 12 Oct:** a recording being made shows how far along it is,
+everywhere: a ring and the percent on its card ("Working 64%"), a bar with "64%, about 6 min left" in the list, the
+stage, "Step 5 of 9", a bar, the percent, the time left and the latest line in the inspector's Outputs with
+**Pause** and **Stop**, the same on one line in the Viewer's banner, the whole line's percent on the toolbar's
+**Activity** button, and "Making Sun 13 Sep: Writing the transcript, 64%, about 6 min left. 2 waiting." in the menu
+bar. The percent is weighted by how long each stage takes **on this Mac** (each stage's last 10 runs, `StageTiming`,
+seeded from the store's own step history) and never goes back; ffmpeg reports its own progress (`-progress
+pipe:1`); Parakeet and writing are timed and held at 95% until they end; the time left appears only once the
+running stage has a measured rate ("Working out the time left" until then); a stage still for a minute says what
+it waits on. **Pause** suspends the running tool (its time limit moves on by the pause) or holds a waiting
+recording in its place; **Stop** ends the make (the last make's files stay) or takes it out of the line; nothing
+restarts it on its own; **Make Next** moves one to the front. **Window > Activity (Command-9)**: a sentence and Pause
+All, then **Now** (the make with every stage and its time, the line waiting), **Finished** (by day, with the result,
+Show and Show in Finder) and **Log** (v1's lines, with a search field). The menu bar menu has Show Activity, "N
+recordings need you" and Prakriti Help. See `docs/BUILD-LOG.md`, "v2 part M4a".
 
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
@@ -663,8 +678,14 @@ folders, beside the live one.
 - **The welcome.** It opened once by itself (after the v2 part M2b install). Help, Welcome to Prakriti opens
   it again; its last panel is the quickest way to turn on notifications (Open Notification Settings goes
   straight to Prakriti's page in System Settings: turn on Allow notifications).
+- **See how far along it is.** A recording being made shows its percent and time left on its card, in the list,
+  in the inspector and in the menu bar; Window > Activity (Command-9, or the Activity button in the toolbar)
+  shows every step, what waits, what finished and the log. The time left reads "Working out the time left"
+  until Prakriti has timed that step on this Mac (after the first make of each kind, it knows).
 - **Pause it.** Pause All (the window's toolbar, the menu bar, or Settings, General). A recording already
-  running finishes; nothing new is found or started until Resume All.
+  running finishes; nothing new is found or started until Resume All. To hold one recording, click Pause beside
+  it (Activity or the inspector), then Resume; Stop ends it, keeping the last make's files, and it waits for
+  Make Outputs.
 - **Stop it.** The mark in the menu bar, Quit Prakriti (or Command-Q with the window in front). It stays stopped
   until you open it again or log in again. To stop it opening at login: System Settings, General,
   Login Items, switch Prakriti off. **If it crashes, nothing restarts it until the next login** (engine
@@ -760,6 +781,15 @@ cd ~/Code/prakriti/mac && make accept-first-launch MILESTONE=v2-m2b
 cd ~/Code/prakriti/mac && build/Build/Products/Debug/Prakriti.app/Contents/MacOS/Prakriti --debug-help-search=OBS
 ```
 ```bash
+cd ~/Code/prakriti/mac && make accept-progress MILESTONE=v2-m4a
+```
+```bash
+cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --activity-window build/Build/Products/Debug/Prakriti.app ../screens/mac/v2-m4a/real/activity-during-a-run.png
+```
+```bash
+cd ~/Code/prakriti/mac && open -n build/Build/Products/Debug/Prakriti.app --args --development --show=activity --debug-status-log
+```
+```bash
 cd ~/Code/prakriti/mac && make migrate-check
 ```
 ```bash
@@ -775,6 +805,17 @@ cd ~/Code/prakriti/mac && make drop MODE=live MILESTONE=m3
 tail -20 ~/Library/Logs/Prakriti/$(date +%Y-%m-%d).log
 ```
 
+`make accept-progress` (v2 part M4a, about 3 minutes) makes the **real 13 Sep talk** twice in development with
+the podcast-ready episode on, writes every progress snapshot the window would see to `progress-trace.txt` (time,
+stage, percent, time left, and the seconds behind it) and `acceptance-progress.txt`, and passes when each run
+rises from 0 to 100% without going back and with at most two updates in any second, the second run's time left
+at the 50% mark is within 25% of what really remained, and the menu bar's status line, written to the
+development log as `--debug-status-log` writes it ("Status line: ..."), matches the trace at 25, 50 and 75% to
+the second. `--debug-status-log` (Debug builds only, warning 77) writes every change of the menu bar's status line
+to the log. `capture-window.swift --activity-window <app> <png>` captures the Activity window of a copy that is
+already running (a development copy making a dropped clip: `make drop MODE=development` opens it with
+`--show=activity`). `make look` captures the Activity window's Now (the sample talk being made), Finished and Log
+(`--activity-tab=<now|finished|log>`).
 `make test` runs every unit test (data, rules, copy and type checks, and the snapshot render).
 `make snapshots` writes every screen, light and dark, at the window's real size (1440 by 900 since v2
 part M3a) to `screens/mac/<milestone>/` (gitignored): every smart group filled and empty, the list, a folder,
@@ -908,7 +949,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 |---|---|
 | Project definition (source of truth) | `mac/project.yml`; `make generate` rebuilds `Prakriti.xcodeproj`, and both are committed |
 | App code | `mac/Prakriti/App` (launch, paths, settings, log, `PipelineRunner`, `Watcher`, `Notices`, `LoginItem` with the instance lock, `EngineV0Import`, `StatusSummary` and the menu bar's `WorkingTicker`), `Engine` (the pipeline: `Subprocess`, `Readiness`, `Measurements`, `Pipeline` with `Mastering`, `Report`; the watcher's `FolderScan` and `EventStream`), `Model` (vocabulary, SwiftData models, store), `Views`, `Fixtures` |
-| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `RecordingPageTests` (milestone 5: edits, the episode's clock, typed times, the cut's words gone through Parakeet with the Mac's voice, six sentences of Parakeet's real misplaced tokens, what the report names, the page's player, Approve and its refusals), `EditsAcceptanceTests` (the 13 Sep talk trimmed, cut, made again and approved, `make accept-edits` only; since v2 part M3b through the Viewer's Remove and Keep and the inspector's typed trim and cut), `ViewerTests` (v2 part M3b: the transcript as words, sentences and paragraphs, a selection's span, Timeline-lite's spans, Remove, Keep and Restore, the window put back, and a clicked word playing within 0.25 s with Follow Playback moving on, in a real player), `StoreMigrationTests` (`make migrate-check` only), `HelpTests` (v2 part M2a: the articles, the capability blocks, links, the copy rules, what only Help may show, search, the Help menu's handler, Show Me), `WelcomeTests` (v2 part M2b: the welcome's words and symbols, what each stage of the build shows, the first-launch rule, the notification button, Choose Folder), `LibraryTests` (v2 part M3a: the smart groups as predicates, sections and sorts, search, open and back, Remove from Library with the watcher passing over it, places, the lock line, every text color's contrast), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share: the main window with its sidebar and inspector drawn on their own, the Help window, Settings panes, the Activity window) |
+| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `RecordingPageTests` (milestone 5: edits, the episode's clock, typed times, the cut's words gone through Parakeet with the Mac's voice, six sentences of Parakeet's real misplaced tokens, what the report names, the page's player, Approve and its refusals), `EditsAcceptanceTests` (the 13 Sep talk trimmed, cut, made again and approved, `make accept-edits` only; since v2 part M3b through the Viewer's Remove and Keep and the inspector's typed trim and cut), `ProgressTests` (v2 part M4a: the weighted percent, the time left, a stall, twice a second, ffmpeg's progress, Pause and its time limit, Stop, the line, stage times, the status log), `ProgressAcceptanceTests` (the 13 Sep talk made twice, `make accept-progress` only), `ViewerTests` (v2 part M3b: the transcript as words, sentences and paragraphs, a selection's span, Timeline-lite's spans, Remove, Keep and Restore, the window put back, and a clicked word playing within 0.25 s with Follow Playback moving on, in a real player), `StoreMigrationTests` (`make migrate-check` only), `HelpTests` (v2 part M2a: the articles, the capability blocks, links, the copy rules, what only Help may show, search, the Help menu's handler, Show Me), `WelcomeTests` (v2 part M2b: the welcome's words and symbols, what each stage of the build shows, the first-launch rule, the notification button, Choose Folder), `LibraryTests` (v2 part M3a: the smart groups as predicates, sections and sorts, search, open and back, Remove from Library with the watcher passing over it, places, the lock line, every text color's contrast), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share: the main window with its sidebar and inspector drawn on their own, the Help window, Settings panes, the Activity window) |
 | Real-window capture | `mac/scripts/capture-window.swift` (run by `make look` and `make check`); also `--analyze <png>` to check any capture, `--window <app> <png>` to capture the running app as it is, `--app-icon <app> <folder>` to draw the app's icon as Finder gets it at 512 and 32 px and measure its cut, and `--menu-bar <app> <seconds> <folder>` to read every Prakriti mark in the real menu bar over time (v2 part M1) |
 | Real-app pipeline check | `mac/scripts/process-in-app.sh <file> <folder>` |
 | The writing models (milestone 6) | `mac/Prakriti/Writing/`: `ModelClients.swift` (the request and reply, LM Studio with its load at 65,536 tokens, Ollama, the Claude API), `AppleOnDevice.swift` (Foundation Models, guided generation for tags and summaries), `Keychain.swift` (the Claude API key), `Writer.swift` (prompts, the privacy lock, tries, `WritingCheck`, `WrittenPackage` and `show-notes.md`); `App/ModelActions.swift` (test buttons, the key, Write Again, Use This Title); `Views/ModelsView.swift`, `Views/WritingSection.swift`; the pipeline step `.writing` and `PipelineRunner.write` (Write Again); tests `WritingTests` (in `make test`) and `ModelsAcceptanceTests` (`make accept-models`) |
@@ -920,7 +961,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | The podcast-ready episode | `mac/Prakriti/Engine/PodcastReady.swift` (the settings with numbering and the call to action, the chain with the reason for every number, the file name, chapters, `EpisodeCopy` and `PodcastPackage.copy` (the words the text files and the Copy buttons share), the two episode text files, the checklist and the class refusal), `PodcastReadyRun.swift` (the passes ffmpeg makes and the package written and read back), `ID3.swift` (Prakriti's own ID3v2.4 writer and reader), `Artwork.swift` (Apple's artwork rules, read by ImageIO); `Views/PodcastReadyViews.swift` (its settings on Outputs, the Ready to upload section with its Copy buttons and checklist, `Pasteboard`); `Writing/CopyRules.swift` (Ivan's copy rules, read by Swift); `PipelineRunner.packageAgain` (Update Podcast-Ready Files); tests `PodcastReadyTests` and `EpisodeTextTests` (in `make test`), `PodcastReadyAcceptanceTests` (`make accept-podcast`) and `EpisodeTextAcceptanceTests` (`make accept-episode-text`) |
 | The Yoga Marga word list | `mac/Prakriti/Engine/Lexicon.swift` (each word as written, how it has been misheard, and what it is); shown in Settings, Outputs |
 | Output settings | Which outputs: each folder's switches (the inspector, with the folder selected under Sources), else Settings, Outputs (files added by hand). How: Settings, Outputs. A recording's own choices (its page) override both: `OutputResolver` in `Model/Store.swift` |
-| The main window (v2 part M3a) | `mac/Prakriti/Model/Library.swift` (the smart groups and their predicates, `SidebarItem`, the browser's sections and sorts, `LibrarySearch`, `TranscriptIndex`), `App/LibraryActions.swift` (places, open and back, confirmations, a card's menu, Remove from Library), `Views/MainView.swift` (the window, toolbar, Sort menu, sidebar, Activity window), `Views/Library/` (`LibraryView` with the groups, folders, search, empty states and the Needs You status line; `BrowserGrid` with `RecordingCard`, `NeutralTile`, `StatusCapsule`, `RecordingMenu`; `BrowserList`), `Views/Inspector/` (`InspectorView` with the folder and several-selected inspectors; `OutputsTab` with `Deliverable`; `ChecksTab` with `Recording.lockLine` and `setClaim`; `InfoTab`), `Views/Settings/SettingsScene.swift` (the Settings window: General, Outputs = v1's `OutputsView`, Models = v1's `ModelsView`, Privacy, Advanced), `Views/AppColor.swift` (the measured text colors and `.appSecondary`); tests `LibraryTests` and `SnapshotTests.testRenderEveryScreen` |
+| The main window (v2 part M3a) | `mac/Prakriti/Model/Library.swift` (the smart groups and their predicates, `SidebarItem`, the browser's sections and sorts, `LibrarySearch`, `TranscriptIndex`), `App/LibraryActions.swift` (places, open and back, confirmations, a card's menu, Remove from Library), `Views/MainView.swift` (the window, toolbar, Sort menu, sidebar; the Activity window moved to `Views/Activity/` in v2 part M4a), `Views/Library/` (`LibraryView` with the groups, folders, search, empty states and the Needs You status line; `BrowserGrid` with `RecordingCard`, `NeutralTile`, `StatusCapsule`, `RecordingMenu`; `BrowserList`), `Views/Inspector/` (`InspectorView` with the folder and several-selected inspectors; `OutputsTab` with `Deliverable`; `ChecksTab` with `Recording.lockLine` and `setClaim`; `InfoTab`), `Views/Settings/SettingsScene.swift` (the Settings window: General, Outputs = v1's `OutputsView`, Models = v1's `ModelsView`, Privacy, Advanced), `Views/AppColor.swift` (the measured text colors and `.appSecondary`); tests `LibraryTests` and `SnapshotTests.testRenderEveryScreen` |
 | The Viewer (v2 part M3b) | `mac/Prakriti/Views/Viewer/` (`ViewerModel` with `Rendition` and `TimelineSpan`; `ViewerView` with the banner, the picture, `RenditionPicker`, the tip and `SelectedSpanStrip`; `TranscriptView`, an `NSTextView`; `TimelineLite`; `Transcript.swift` with `TranscriptDocument`, `TranscriptLine` and `RecordingTranscript`), `App/ViewerActions.swift` (opening it, Remove and Keep, Restore, the typed cut, `WindowState` restoration, the debug switch), `Views/QuickHelp.swift`, `Views/Inspector/RecordingChoices.swift` (v1's per-recording outputs and step rows, moved), `Views/Inspector/InfoTab.swift` (`CutEntry`, Use Player Time); tests `ViewerTests`, `RecordingPageTests`, `EditsAcceptanceTests`, `SnapshotTests` (`20-viewer-*`) |
 | Test clips | `~/Prakriti/Dev/Drop/2026-09-13 clip 30s.mp4` (a test) and `~/Prakriti/Dev/Clips/2026-09-13 clip 90s.mp4` (a full run), cut with `ffmpeg -c copy` from the 13 Sep talk |
 | v2 test fixtures | `~/Prakriti/Dev/Fixtures/` (made by `make fixtures`, never by hand): the files, `SHA256SUMS` from the last run, `RECIPES.txt` (the ffmpeg and macOS versions they were made with). The recipes: `mac/scripts/make-fixtures.sh`, with the texts `say` reads and the made-up talk in `mac/scripts/fixtures/` |
@@ -936,6 +977,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | App icon | `mac/Prakriti/Resources/AppIcon.icon`, an Icon Composer document (two glass layers on stone; default, dark, clear and tinted), copied from the master `docs/v2/icons/source/Prakriti.icon`. `actool` compiles it into `Assets.car` and `AppIcon.icns`, and Info.plist gets `CFBundleIconName` by itself. Design, sources and previews: `docs/v2/icons/` (since v2 part M1; v1's `make_icon.swift` is retired) |
 | Prakriti Help (v2 part M2a) | The articles: `mac/Prakriti/Resources/Help/00-index.md` to `10-troubleshooting.md` (user text only, copied into the app as `Contents/Resources/Help`); their notes: `docs/v2/help-notes/`; how to write one: `docs/v2/help/README.md`. Code: `mac/Prakriti/Help/` (`Capabilities` (what is built), `HelpArticle` (front matter), `HelpLibrary` (loading, the `:::` pass, links, places), `HelpRenderer` (swift-markdown to blocks), `HelpSearch`, `HelpMenuSearch` (the Help menu's search field), `HelpModel` (the open article, Back and Forward, Show Me)), `Views/Help/` (`HelpWindow`, `HelpArticleView`), `App/DebugSwitches.swift` (`--debug-help-search`); the Help menu in `App/PrakritiApp.swift`; tests `HelpTests` and `SnapshotTests.testRenderHelp` |
 | The welcome window (v2 part M2b) | `mac/Prakriti/Views/Welcome/`: `WelcomeContent.swift` (the five panels' words, each row with the capabilities it describes, `requires` and `unless`; `WelcomeContent.version`), `WelcomeModel.swift` (the open panel, the first-launch rule, Choose Folder), `WelcomeWindow.swift` (the window, its rows and buttons, its own fit measurement); the scene and Help, Welcome to Prakriti in `App/PrakritiApp.swift`; `welcomeSeenVersion` in `App/AppSettings.swift`; Turn On Notifications and `Notifier.openSystemSettings` in `App/Notices.swift`; the copy source and its status: `docs/v2/help-notes/welcome-panels.md`; tests `WelcomeTests` and `SnapshotTests.testRenderWelcome` |
+| Progress and Activity (v2 part M4a) | `mac/Prakriti/Progress/`: `JobProgress.swift` (`ProgressTracker`, the pure arithmetic: weights, the percent that never goes back, the time left only from a measured rate, the stall line; `ProgressSnapshot` with its status line; `TimeLeft`; `JobProgress`, published at most twice a second), `ProgressMeter.swift` (what the pipeline and ffmpeg report, read twice a second; `ProcessControl`, Pause by SIGSTOP and SIGCONT), `StageTimings.swift` (`StageTiming`, a SwiftData model, the last 10 runs of each stage, seeded once from the store; `firstGuess`, measured 12 Oct). `Engine/Subprocess.swift` (`onStdoutLine`, `control`), `Engine/Pipeline.swift` (`meter`, `passes`, ffmpeg's `-progress pipe:1` in `tool`), `App/PipelineRunner.swift` (`currentJob`, `pause`, `resume`, `stop`, `makeNext`, `queueFraction`, `queueTimeLeft`, `showSample`), `App/StatusSummary.swift` (`noteStatusLine`, `--debug-status-log`); views: `Views/Activity/ActivityWindow.swift` (the window, Now, Finished, Log, `ActivityButton`), `Views/ProgressViews.swift` (`ProgressRing`, `ProgressBlock`, `ProgressButtons`), the card's `StatusCapsule`, the list's Status column, `StatusBlock` in `OutputsTab`, `ViewerBanner`, `Views/MenuBar.swift`; `Fixtures.showProgress` (the sample talk being made, for snapshots and captures); tests `ProgressTests` (in `make test`) and `ProgressAcceptanceTests` (`make accept-progress`) |
 | Swift packages | `swift-markdown` 0.9.0 (21 Sep 2026, with `swift-cmark` 0.9.0), pinned in `mac/project.yml` and `mac/Prakriti.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, both committed (v2 part M2a) |
 | Menu bar mark | Seven template image sets in `Assets.xcassets` (`prakriti-menubar`, `-working-1`, `-working-2`, `-waiting`, `-problem`, `-paused`, `-not-watching`), copied from `docs/v2/icons/source/menubar/imagesets/`; which one each state draws is `StatusSummary.Icon.menuBarAsset`; the working frames are turned by `App/WorkingTicker.swift` |
 
@@ -1469,6 +1511,38 @@ top and its end. Reading the code is not verification, and neither is a passing 
     focus set in `onAppear` was not taken, and every playback line read rate 0.00 with the window key and
     frontmost. After the change: 20 of 20 launches played (log line "Playback: key Space in the Viewer").
     Play at the very end starts again from the beginning, because the restored moment can be the end.
+
+100. **The window sees a make's progress at most twice a second, with no exception, and the percent never goes
+    back** (`JobProgress.refresh`; `ProgressTracker.snapshot` keeps the highest shown; `finish` waits out the half
+    second before 100%). Reason: design spec 3.6.1; on 12 Oct a forced last update made three in one second in
+    `make accept-progress`, which now fails on any second with more than two.
+101. **A time left comes only from a measured rate: ffmpeg's own progress on a stage whose passes are known, or the
+    stage's runs measured on this Mac; never from the first guess, and never from the pace of a stage whose passes
+    are not known ahead.** Until then it reads "Working out the time left". Reason: design spec 3.6.1; measured 12
+    Oct, the podcast-ready mastering (it measures until it is right, so its passes are not known) showed 8.5 s left
+    from its pace when 30 s remained. The first guess (`StageTimings.firstGuess`) only weights the bar.
+102. **ffmpeg run by the pipeline gets `-progress pipe:1` and nothing else, and no ffmpeg call reads stdout for
+    data** (`Pipeline.tool`; ffprobe is never given it). Reason: the progress lines take over stdout;
+    `ProgressTests.testFfmpegReportsItsProgressAndMeasuresTheSame` proves what ffmpeg measures is unchanged.
+    Parakeet (0.5.2) prints nothing until it ends when piped (checked 12 Oct), so it is timed, held at 95%.
+103. **Pause suspends the running tool (SIGSTOP) and holds the next one at the gate; its time limit moves on by the
+    time paused; a stopped tool is continued (SIGCONT) before it is terminated.** Writing, a request to a model,
+    cannot be paused, so Pause is not offered then. Reason: Mac warning 14's limit would kill a paused tool, and a
+    stopped process holds SIGTERM until it runs, so Quit or a limit would leave it stopped forever.
+104. **Stop by hand is Ivan's choice, never a failure: the recording's intent is cleared so no look starts it again,
+    a recording with files from an earlier make keeps them and its status (warning 29), and it is not counted as
+    a try.** Reason: an automatic make that stops counts as a try and restarts at the next look within 5 minutes
+    (warning 27), which is not what Stop means.
+105. **`StageTiming` never learns the wait for the file (`.complete`) or a stage that was paused, keeps the last 10
+    runs, and is seeded once from the store's own steps.** Writing is the average of its runs, not per minute.
+    Reason: the wait is 60 s whatever the Mac; a paused stage's seconds include the pause; writing took 1,608 s on
+    15:48 and 1,456 s on 55:39 (BUILD-LOG 11 Oct), so per minute it would be wrong by three times.
+
+106. **The toolbar's Activity button draws its ring as a picture (`ProgressRing.image`) inside a `Label`, never as
+    SwiftUI shapes, and reads cached numbers (`PipelineRunner.usual(for:)`), never the store, while it draws.**
+    Reason: measured 12 Oct in `make look`, with the ring drawn as shapes in the toolbar the second Command-Option-I
+    (show the inspector again) went unheard in 3 of 3 runs while a make was shown; the same build with the ring as
+    an image passed 3 of 3, as did the build before M4a.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

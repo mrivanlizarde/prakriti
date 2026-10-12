@@ -18,6 +18,12 @@
 #                 ../screens/mac/$(MILESTONE)/ (takes about 4 to 5 minutes)
 # make regress    the regression set every v2 part runs: make test, make accept, make accept-edits,
 #                 in that order, stopping at the first failure (about 15 minutes)
+# make accept-progress  v2 part M4a's acceptance: the REAL 13 Sep talk made twice in development with the
+#                 podcast-ready episode on, every progress snapshot written to progress-trace.txt (time, stage,
+#                 percent, time left). Passes when the percent rises from 0 to 100 without going back, the second
+#                 run's time left at 50% is within 25% of what really remained, and the menu bar's status line
+#                 (written to the development log, as --debug-status-log does) matches the trace at three
+#                 moments. Writes acceptance-progress.txt to ../screens/mac/$(MILESTONE)/ (about 3 minutes)
 # make accept-outputs  milestone 4's acceptance on the REAL 13 Sep talk: the standard choices, the
 #                 Outputs screen's loudness changed to -19 and made again, the transcript turned off
 #                 on the recording's page and made again, then everything off (must equal engine v0
@@ -96,7 +102,7 @@ MODE      ?= development
 ONLY      ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: generate build test snapshots fixtures accept regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -125,6 +131,9 @@ regress:
 	$(MAKE) test MILESTONE=$(MILESTONE) DERIVED=$(DERIVED)
 	$(MAKE) accept MILESTONE=$(MILESTONE) DERIVED=$(DERIVED)
 	$(MAKE) accept-edits MILESTONE=$(MILESTONE) DERIVED=$(DERIVED)
+
+accept-progress:
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=progress TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/ProgressAcceptanceTests
 
 accept-outputs:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=outputs TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/OutputsAcceptanceTests

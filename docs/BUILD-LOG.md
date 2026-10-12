@@ -3311,3 +3311,113 @@ events." The live log also says notices are turned off for Prakriti in System Se
 
 J (backward) not measured on the real files; VoiceOver not run over the strip or the transcript; the split between
 picture and transcript is not remembered; the Podcast-ready rendition assumes no intro.
+
+
+## v2 part M4a: progress and the Activity window. Mon 12 Oct 2026
+
+The seventh part of v2 (`docs/v2/PLAN.md`, M4, part M4a; REQUEST item 6, "give me a progress on the recordings as
+it's working on the output"). Built on `main`, as this run's instructions said. No package added. **One SwiftData
+model added (`StageTiming`), an addition:** `make migrate-check` passed on a copy of the live store.
+
+### What was built
+
+- **`Progress/`** (new). `ProgressTracker` (pure, on a clock the caller gives): each stage weighted by how long it
+  takes here, an overall percent that never goes back (highest shown kept; reports only move forward), a time left
+  only from a measured rate, the stall line after 60 s, paused time taken out. `ProgressSnapshot` (stage, step N of
+  M, fractions, time left, waiting line, latest line, paused, the stage list) with its menu bar line.
+  `JobProgress` publishes a snapshot at most every 0.5 s, with no exception; its last one (100%) waits out the half
+  second. `ProgressMeter` is what the pipeline and ffmpeg write into (read twice a second), with `ProcessControl`
+  (Pause: SIGSTOP and SIGCONT, a gate before the next tool, the time limit moved on by the pause). `StageTimings`:
+  the `StageTiming` model, the last 10 runs per stage, seeded once from the store's `RunStep` history, and
+  `firstGuess` (measured on this Mac today) to weight the bar before a stage is measured.
+- **Fraction sources.** ffmpeg runs with `-progress pipe:1`; `out_time_us` against the recording's length, each
+  known pass an equal share of its stage (sound 1, speech audio 1, trim 1, episode 2 plus intro and outro passes,
+  loudness 1); the podcast-ready mastering and package make an unknown number, each taking half of what is left.
+  **Parakeet** is timed against its measured average, held at 95% until it exits: checked today, parakeet-mlx 0.5.2
+  writes nothing on stderr while piped (0 bytes on a 90 s clip) and one line on stdout at the end, so there is no
+  progress to read. **Writing** (LM Studio) is timed the same way, against the average of its runs: the request
+  keeps `stream: false` (Mac warning 47, LOCAL-MODEL.md), so there are no streamed tokens to count. This is a
+  deviation from the plan's token counting, named here.
+- **Where it shows.** The card's capsule: a ring, "Working" and the percent. The list's Status column: a bar and
+  "64%, about 6 min left". The inspector's Outputs: the stage, "Step 8 of 11", a bar, percent and time left, what it
+  waits on, the latest line (15 pt monospaced, one line), Pause or Resume, Stop. The Viewer's banner: the same on one
+  line with Pause and Stop. The toolbar's Activity button: the whole line's percent (the ring as a picture, Mac
+  warning 106), the Activity symbol when idle. The menu bar: "Making Sun 13 Sep: Writing the transcript, 64%, about
+  6 min left. 2 waiting."
+- **Pause, Stop, Make Next** (`PipelineRunner`). Pause holds the running make (its tool suspended) or a waiting one
+  in its place; not offered while writing (an HTTP request). Stop ends the make (Ivan's choice: intent cleared, not a
+  try; a recording with earlier files keeps them and its status) or takes a waiting one out of the line. Make Next
+  moves a waiting one to the front.
+- **The Activity window** (`Views/Activity/ActivityWindow.swift`, Command-9, the toolbar button, the menu bar):
+  header sentence and Pause All; Now (working row with tile, title, stage, bar, percent, time left, line, Pause and
+  Stop, and Steps: each done stage's time, the running one's time so far, the usual time of each to come; then the
+  waiting rows with their place, usual time, Pause, Stop, Make Next); Finished (runs by day, result, when and how
+  long, Show, Show in Finder); Log (v1's Activity sentences with a search field). v1's `ActivityView.swift` deleted.
+- **Menu bar menu** per design spec 3.14: status line, "N recordings need you", Open Prakriti, Show Activity
+  (Command-9), Pause All, Settings..., Prakriti Help, Quit.
+- **`--debug-status-log`** (Debug builds only, warning 77): every change of the menu bar's status line to the log.
+- **`make accept-progress`**, `capture-window.swift --activity-window`, `make look` looks for Activity's Finished and
+  Log (`--activity-tab=`), `Fixtures.showProgress` (sample data shows a make in progress, never a real one).
+- **Help:** `progress` switched on. Article 04's "Follow the work" and "Pause and resume" rewritten to what is built
+  (with a Show Me to Activity); article 10 gained the Log search and the waiting line. Welcome panel 3, step 1 now
+  says the recording shows how far along it is and Activity lists every step. Notes in `docs/v2/help-notes/04`.
+
+### Checks run, with results (PLAN M4, the checks part M4a runs: 1, 2, 4 for Activity, 5)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `make test` including `ProgressTests` | **PASS. 218 tests, 0 failures, 9 skipped by design** (acceptances and the migration check), 721 s, final code (14:10 to 14:22). `make build` **No warnings**. `ProgressTests` (13): weighted percent never goes back (a 1 s stage of 61.2 s is worth 1.6%; a lower report is not shown; a stage ending early jumps forward); time left absent with no measured rate ("Working out the time left"), 12.0 s from a quarter in 4 s, 672 s from a measured stage, none from an uneven stage; the stall line absent at 59 s, present at 61 s ("Waiting for Parakeet to finish the transcript."), absent while paused; **at most two updates a second**: 200 reports in 2 s gave 4 publishes, no three inside one second, and 100% waited 0.401 s then nothing after; ffmpeg with `-progress` measured the same volume as without; a tool waits while paused, and a 3 s tool with a 2 s limit paused 2 s was not stopped (the same unpaused was); Stop, Pause and Resume, the line held, reordered, shortened, on generated tones; stage times seeded (2 of 4 steps: never the wait, never a failed step), last 10 kept; the status log writes a change once. **Proved by breaking it** (restored, `shasum` 0ec4dcc9 before and after): without the half-second rule `testTheWindowSeesAtMostTwoUpdatesASecond` failed; with the forward-only rules removed `testTheOverallPercentIsWeightedAndNeverGoesBack` failed ("0.408 is less than 0.474") |
+| 2 | `make accept-progress MILESTONE=v2-m4a`, the 13 Sep talk twice, podcast-ready on | **PASS** (14:21 to 14:24, final code; three earlier runs today also passed after the fixes below). Run 1: 171 snapshots over 86.2 s, **0 to 100%, backwards 0 times, at most 2 in any second**; run 2 the same. **Time left at the 50% mark** (run 2, 52%, mastering the podcast-ready audio): shown "Under a minute left" from **44.4 s; really remained 44.1 s; off by 0.7%** (limit 25%). Across all of run 2 (an earlier run, 13:15), the worst error wherever more than 5 s remained was 3.9%. **Status line from the development log** (170 lines) matched the trace to the second at 25% ("Making Sun 13 Sep: Making the episode audio, 25%, about 1 min left.", 14:23:44), 52% (14:24:05) and 75% (14:24:14). Original unchanged. Files: `screens/mac/v2-m4a/progress-trace.txt`, `acceptance-progress.txt` |
+| 4 | Snapshots of the Activity window, light and dark, looked at; a real-window capture during a run | **PASS.** `make snapshots` (in `make test`): 597 pictures in `screens/mac/v2-m4a/`. **Looked at:** `11-activity-now` (working row, stage list with times, Pause, Stop; light and dark), `11-activity-now-paused` ("Paused while making the episode audio", "71%, paused", Resume), `11-activity-now-empty` ("Nothing is being made"), `11-activity-finished`, `11-activity-log`, `12-progress-in-progress` (ring and 71% on the card, 69% on the toolbar), `12-progress-list`, `12-progress-inspector`, `12-progress-inspector-waiting`, `12-progress-inspector-paused`, `20-viewer-working` (banner with Pause and Stop), `welcome-3`, `help-04` pages. **Real window, `make look`**: PASS, every sidebar row, the refusal, every key, playback 54.106 to 57.106 s, 3.000 s at rate 1.00; Activity Now, Finished and Log captured and looked at (`real/10-activity-*`); live layout keys "changed by this run: none". **During a run**: a development copy (`--development --show=activity --debug-status-log`) made a 10-minute clip cut from the 13 Sep talk (`-c copy`, 2:00 to 12:00) dropped into `~/Prakriti/Dev/Drop`: `real/activity-during-a-run-1-waiting-for-the-file.png` (Step 1 of 11, 31%, working out the time left, 0:28 so far) and `real/activity-during-a-run-2-working.png` (Making the episode audio, Step 8 of 11, 82%, under a minute left, each done stage's time), looked at; made in 1 min 24 s, waiting for your yes |
+| 5 | Regression set; `make migrate-check` | **PASS.** `make test` above. **`make accept`** (13:38, on the code before the toolbar ring and the empty-state wording changed; nothing in the pipeline or the store changed after): 13 Sep **-16.8 LUFS** (-16.82), true peak -1.7 dBFS (-1.68 dBTP), 15:47 of 15:48; `silent-60s` Needs a decision at -91 dB; the 30 s clip filed as a test; 6 Sep -16.7 LUFS (-16.72), -1.4 dBFS, 55:38 of 55:39; `grep -c 2026-09-14 acceptance.txt`: 0. **`make accept-edits`**: approved episode **38.82 s shorter (expected 38.82)**, 0 of 73 runs from the cut heard, 189 of 201 after it, a class refused. **`make migrate-check`** (13:36): 13 recordings, 2 folders, 40 output settings, 591 Activity lines, the new `StageTiming` table empty on the copy, as an addition should be |
+
+**The originals** by `stat`: 13 Sep 730,464,600 bytes, modified 1789350092 (unchanged); every acceptance checked
+size and date. The 6 Sep talk was read only by `make accept`, which checked it.
+
+### Looked at (D1)
+
+No frame of Gabriel's talks was drawn. Every picture of this part shows neutral tiles (the kind's symbol and the
+date), words and controls; the 10-minute clip was never shown as a picture.
+
+### What the runs caught and fixed
+
+- **Three updates in one second** at the end of each make: the last update was forced. It now waits out the half
+  second (Mac warning 100).
+- **A wrong time left from the mastering's pace**: 8.5 s shown when 30 s remained (run 1) and 13 s when 42 s
+  remained (run 2), because its passes are not known ahead. Its pace no longer gives a rate (warning 101); after the
+  fix run 2's worst error was 3.9%.
+- **A time left before anything started** ("About 1 min left" at 0%): none now until a stage runs.
+- **The acceptance first matched a status line from run 1**; it now matches the same second of run 2.
+- **`make look`'s second Command-Option-I went unheard in 3 of 3 runs** with the ring drawn as shapes in the
+  toolbar (the build before M4a passed 3 of 3; this build without the sample make in progress passed 3 of 3). Drawn
+  as a picture, 3 of 3 passed, and the full `make look` passed (warning 106).
+- **"and found nothing new"** in the empty Now was false right after a make; it now says when Prakriti last looked.
+- **`WelcomeTests` asserted no v2 sentence** in the panels; step 1's v2 sentence is now built, so the test names it.
+
+### Decisions, each with its reason
+
+1. **Writing and Parakeet are timed, not counted.** Reason: Parakeet prints nothing while piped (checked); writing's
+   request stays `stream: false` (pinned). Both are held at 95% until they end.
+2. **The time left needs a measured rate; the first guess only weights the bar.** Reason: design spec 3.6.1. A fresh
+   Mac shows "Working out the time left" for the timed stages of its first make, and times from then on.
+3. **The wait for the file is never learned; writing is learned per run, not per minute.** Reason: the wait is 60 s
+   on any Mac; writing barely grows with the length (warning 105).
+4. **Stop by hand is not a try and is not restarted.** Reason: warning 27's automatic tries are for failures.
+5. **Pause holds the tool, not the clock of the readiness wait or a request to a model.** Reason: SIGSTOP is the only
+   pause that keeps the make's work; Pause is not offered while writing, and the inspector says why.
+6. **The empty Now says when Prakriti last looked**, not "found nothing new". Reason: not always true.
+7. **Pause All is no longer in the Viewer's toolbar** (design spec 3.3: Make Again, Approve, Activity, Inspector);
+   it stays in the browser's toolbar, the menu bar and Settings.
+
+### What does not work yet, or was not seen working
+
+- Waiting rows cannot be dragged to reorder (Make Next only; the plan asks for Make Next).
+- The priority is not lowered while the Viewer plays (design spec 3.6.3 proposal; not in the plan's M4a list).
+- Pause during the readiness wait takes effect at the next tool (the wait itself runs on).
+- VoiceOver was not run over the Activity window (labels set in code).
+
+### For Ivan
+
+- [ ] **Nothing is needed for this part.** Notifications are still off for Prakriti in System Settings (the live log
+  says so): turning them on lets the progress reach you away from the window (PLAN M4, *Ivan*).
+- [ ] Open Window > Activity (Command-9) during the next make and say whether the steps list should start collapsed.

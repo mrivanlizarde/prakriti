@@ -49,16 +49,29 @@ struct BrowserList: View {
             }
             .width(min: 70, ideal: 80)
             TableColumn(Self.heading("Status")) { recording in
-                Label {
-                    Text(recording.status.title)
-                } icon: {
-                    Image(systemName: recording.status.symbol)
-                        .foregroundStyle(recording.status.tint)
+                if let progress = model.runner.progress(for: recording) {
+                    // While it is made (v2 part M4a): a small bar, the percent and the time left.
+                    VStack(alignment: .leading, spacing: 2) {
+                        ProgressView(value: progress.overall)
+                            .accessibilityLabel("Progress")
+                            .accessibilityValue(ProgressWords.spoken(progress))
+                        Text(ProgressWords.line(progress))
+                            .font(AppFont.secondary)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                    }
+                } else {
+                    Label {
+                        Text(recording.status.title)
+                    } icon: {
+                        Image(systemName: recording.status.symbol)
+                            .foregroundStyle(recording.status.tint)
+                    }
+                    .font(AppFont.body)
+                    .lineLimit(1)
                 }
-                .font(AppFont.body)
-                .lineLimit(1)
             }
-            .width(min: 170, ideal: 200)
+            .width(min: 200, ideal: 230)
             TableColumn(Self.heading("Source")) { recording in
                 Text(recording.sourceName)
                     .font(AppFont.body)

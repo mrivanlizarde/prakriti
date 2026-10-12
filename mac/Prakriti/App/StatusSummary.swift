@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 /// The status line for the menu bar and the top of Needs You.
 @MainActor
@@ -6,6 +7,12 @@ extension AppModel {
     func statusSummary(recordings: [Recording], sources: [Source]) -> StatusSummary {
         let working = recordings.first { $0.status == .working }
         let blocked = sources.filter { watcher.states[$0.id]?.isBlocked == true }.map(\.name)
+        let waiting = runner.waitingIDs.count
+        // The make's own progress (v2 part M4a) when it has one; else the step it is on.
+        let line: String? = working.map { recording in
+            if let progress = runner.progress(for: recording) { return progress.statusLine(waiting: waiting) }
+            return "Making \(Format.dayLabel(recording.sessionDate)): \(recording.currentStep ?? "Working")." + (waiting > 0 ? " \(waiting) waiting." : "")
+        }
         return StatusSummary.make(
             isWatching: isWatching,
             isPaused: settings.isPaused,
@@ -13,7 +20,25 @@ extension AppModel {
             blockedFolders: blocked,
             needsYou: recordings.filter(\.status.needsYou).count,
             problems: recordings.filter { $0.status == .couldntFinish }.count,
-            working: working.map { (Format.dayLabel($0.sessionDate), $0.currentStep ?? "Working") })
+            workingLine: line)
+    }
+
+    /// The menu bar's status line now, read from the store (the menu bar reads the same through its queries).
+    func currentStatusLine() -> String {
+        let recordings = (try? context.fetch(FetchDescriptor<Recording>())) ?? []
+        let sources = (try? context.fetch(FetchDescriptor<Source>(sortBy: [SortDescriptor(\.addedAt)]))) ?? []
+        return statusSummary(recordings: recordings, sources: sources).line
+    }
+
+    /// `--debug-status-log` (docs/v2/PLAN.md rule 2.1.10; Debug builds only, never the installed copy, Mac
+    /// warning 77): every change of the menu bar's status line is written to the log, because the menu bar
+    /// itself cannot be captured. Called whenever the progress is published and whenever Activity gets a line.
+    func noteStatusLine() {
+        guard debugStatusLog else { return }
+        let line = currentStatusLine()
+        guard line != lastStatusLine else { return }
+        lastStatusLine = line
+        log.write("Status line: " + line)
     }
 }
 
@@ -56,9 +81,10 @@ struct StatusSummary: Equatable, Sendable {
 
     /// - Parameters:
     ///   - isWatching: the watcher is running (false until milestone 3 builds it).
-    ///   - working: the label and current step of the recording being worked on, if any.
+    ///   - workingLine: the line for the recording being made, if any ("Making Sun 13 Sep: Writing the
+    ///     transcript, 64%, about 6 min left. 2 waiting.", `ProgressSnapshot.statusLine`).
     static func make(isWatching: Bool, isPaused: Bool, folderNames: [String], blockedFolders: [String] = [], needsYou: Int,
-                     problems: Int, working: (label: String, step: String)?) -> StatusSummary {
+                     problems: Int, workingLine: String?) -> StatusSummary {
         if isPaused {
             return StatusSummary(line: "Paused. Nothing new is processed until you resume.", icon: .paused)
         }
@@ -69,8 +95,8 @@ struct StatusSummary: Equatable, Sendable {
                                  + " cannot be read yet: macOS needs your OK. See Sources.", icon: .problem)
         }
         // Work in progress is named even when not watching: Process File runs the pipeline.
-        if let working {
-            return StatusSummary(line: "Working on \(working.label): \(working.step.lowercasedFirst)", icon: .working)
+        if let workingLine {
+            return StatusSummary(line: workingLine, icon: .working)
         }
         if !isWatching {
             return StatusSummary(line: AppMode.switchedOver ? "Not watching. New recordings wait until Prakriti watches again."

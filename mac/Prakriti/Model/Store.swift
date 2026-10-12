@@ -3,7 +3,7 @@ import SwiftData
 
 enum PrakritiStore {
     static var modelTypes: [any PersistentModel.Type] {
-        [Source.self, Recording.self, OutputSetting.self, Run.self, LogEntry.self]
+        [Source.self, Recording.self, OutputSetting.self, Run.self, LogEntry.self, StageTiming.self]
     }
 
     /// The store at `url`, or an in-memory store when `url` is nil (tests and snapshots).

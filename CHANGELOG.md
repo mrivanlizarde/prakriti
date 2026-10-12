@@ -5,6 +5,37 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-12, Mon: v2 part M4a, progress and the Activity window
+
+- **Every recording being made shows its stage, percent and time left: a ring and percent on its card, a bar in
+  the list, the stage, "Step 5 of 9", the latest line, Pause and Stop in the inspector and the Viewer's banner,
+  the line's percent on the toolbar's Activity button, and "Making Sun 13 Sep: Writing the transcript, 64%,
+  about 6 min left." in the menu bar.** Why: REQUEST item 6, "give me a progress on the recordings as it's
+  working"; v1 showed the step's name and nothing about how far along or how long.
+- **The percent is weighted by how long each stage takes on this Mac and never goes back; a time left is shown
+  only once the running stage has a measured rate, else "Working out the time left".** Why: design spec 3.6.1's
+  honesty rules. Measured on the 13 Sep talk made twice: the second run's time left was within 3.9% of what
+  really remained wherever more than 5 s remained. A stage whose ffmpeg passes are not known ahead moves the bar
+  but gives no rate, because measured, the podcast-ready mastering's pace said 8.5 s left when 30 s remained.
+- **Stage times are learned:** each finished stage's seconds per minute of recording, the last 10 runs, in a new
+  `StageTiming` model (an addition), seeded once from the steps already in the store. Why: the plan's
+  `StageTiming`; a fixed guess would be wrong on another Mac and after any change to the pipeline.
+- **ffmpeg reports its own progress (`-progress pipe:1`), Parakeet and writing are timed against their measured
+  average and held at 95% until they end, and a stage that has not moved for a minute says what it waits on.**
+  Why: the plan's fraction sources. Parakeet 0.5.2 was checked: piped, it prints nothing until it ends, so its
+  progress cannot be read. Writing keeps `stream: false` (the request is pinned, LOCAL-MODEL.md), so it is timed
+  rather than counted in tokens.
+- **Pause and Stop per recording, Make Next in the line.** Pause suspends the running tool and moves its time
+  limit on by the pause; Stop ends the make (the last make's files stay, Mac warning 29) and nothing restarts it.
+  Why: design spec 3.6.3; Pause All could only stop new work from starting.
+- **The Activity window is rebuilt: a sentence and Pause All, then Now (the make with every stage, how long each
+  took, the usual time of each to come; the line waiting), Finished (by day, with the result, Show and Show in
+  Finder) and Log (v1's lines with a search field).** Why: design spec 3.6.3, Final Cut Pro's Background Tasks in
+  Prakriti's words. The menu bar menu gains Show Activity, "N recordings need you" and Prakriti Help (design spec
+  3.14).
+- **`--debug-status-log` and `make accept-progress`.** Why: PLAN rule 2.1.10; the menu bar cannot be captured, so
+  the status line is proved from the log, and the acceptance compares it with the trace.
+
 ## 2026-10-12, Mon: v2 part M3b, fixes after the verifier
 
 - **Space, J, K, L and Escape in the Viewer no longer depend on SwiftUI's focus.** Why: the verifier found Space

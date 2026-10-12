@@ -116,7 +116,7 @@ struct RecordingCard: View {
             NeutralTile(recording: recording)
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .overlay(alignment: .topLeading) {
-                    StatusCapsule(status: recording.status).padding(8)
+                    StatusCapsule(status: recording.status, progress: model.runner.progress(for: recording)).padding(8)
                 }
                 .overlay(alignment: .bottomTrailing) {
                     if let duration = recording.duration {
@@ -177,6 +177,7 @@ struct RecordingCard: View {
         var parts = [Format.dayLabel(recording.sessionDate), recording.cardTitle]
         if let duration = recording.duration { parts.append(Format.spokenLength(duration)) }
         parts.append(recording.status.title)
+        if let progress = model.runner.progress(for: recording) { parts.append(ProgressWords.spoken(progress)) }
         return parts.joined(separator: ", ")
     }
 }
@@ -210,16 +211,27 @@ struct NeutralTile: View {
     }
 }
 
-/// A status on a card: its symbol and its words at 13 pt semibold, never color alone.
+/// A status on a card: its symbol and its words at 13 pt semibold, never color alone. While the recording is
+/// made, a ring and the percent take the symbol's place: "Working 64%" (v2 part M4a, design spec 3.6.1).
 struct StatusCapsule: View {
     let status: RecordingStatus
+    var progress: ProgressSnapshot?
 
     var body: some View {
         HStack(spacing: 5) {
-            Image(systemName: status.symbol)
-                .foregroundStyle(status.tint)
-            Text(status.title)
-                .foregroundStyle(.primary)
+            if let progress, status == .working {
+                ProgressRing(fraction: progress.overall, size: 14, lineWidth: 2.5)
+                Text(progress.isPaused ? "Paused" : status.title)
+                    .foregroundStyle(.primary)
+                Text("\(progress.percent)%")
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+            } else {
+                Image(systemName: status.symbol)
+                    .foregroundStyle(status.tint)
+                Text(status.title)
+                    .foregroundStyle(.primary)
+            }
         }
         .font(AppFont.label)
         .padding(.horizontal, 9)

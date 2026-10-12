@@ -10,6 +10,10 @@ import Foundation
 ///
 /// - `--debug-help-search=<words>`: runs the Help menu's search handler for those words, prints the
 ///   article ids it returns, one per line, and quits (v2 part M2a).
+/// - `--debug-playback-log`: the Viewer's player writes its time and rate to the log once a second (v2 part
+///   M3b; `AppModel.startDebugSwitches`).
+/// - `--debug-status-log`: every change of the menu bar's status line is written to the log, "Status line:
+///   Making Sun 13 Sep: Writing the transcript, 64%, about 6 min left." (v2 part M4a; `AppModel.noteStatusLine`).
 enum DebugSwitches {
     /// The installed copy, where the switches are never read.
     static var installedApp: URL {

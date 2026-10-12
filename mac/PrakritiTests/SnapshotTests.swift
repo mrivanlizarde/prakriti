@@ -131,13 +131,64 @@ final class SnapshotTests: XCTestCase {
                 let notAsked = Fixtures.model()
                 Fixtures.waitingForPermission(notAsked)
                 try renderer.renderSettings(model: notAsked, pane: .general, appearance: appearance, name: "10-settings-general-not-asked-\(scheme)")
-                try renderer.renderActivity(model: Fixtures.model(), appearance: appearance, name: "11-activity-\(scheme)")
-                written += ["10-settings-outputs-numbered-\(scheme)", "10-settings-general-not-asked-\(scheme)", "11-activity-\(scheme)"]
+                written += ["10-settings-outputs-numbered-\(scheme)", "10-settings-general-not-asked-\(scheme)"]
+                // The Activity window (v2 part M4a): Now with a make running and one waiting, the same paused, Now
+                // empty, Finished and Log.
+                let activities: [(String, ActivityTab, (AppModel) -> Void)] = [
+                    ("11-activity-now", .now, { Fixtures.showProgress($0) }),
+                    ("11-activity-now-paused", .now, { model in
+                        Fixtures.showProgress(model, paused: true)
+                        if let clip = try? model.context.fetch(FetchDescriptor<Recording>()).first(where: { $0.fileName == "2026-09-13 clip 90s.mp4" }) {
+                            model.runner.showSample(job: model.runner.currentJob, waiting: [clip.id], held: [clip.id])
+                        }
+                    }),
+                    ("11-activity-now-empty", .now, { _ in }),
+                    ("11-activity-finished", .finished, { _ in }),
+                    ("11-activity-log", .log, { _ in }),
+                ]
+                for (name, tab, change) in activities {
+                    let model = Fixtures.model()
+                    change(model)
+                    model.activityTab = tab
+                    try renderer.renderActivity(model: model, appearance: appearance, name: "\(name)-\(scheme)")
+                    written.append("\(name)-\(scheme)")
+                }
+            }
+            // Progress in the main window (v2 part M4a): the ring and percent on the card, the bar in the list, the
+            // inspector's progress with Pause and Stop, a recording waiting in line, and a paused make.
+            func working(_ model: AppModel) throws -> Recording {
+                try XCTUnwrap(try model.context.fetch(FetchDescriptor<Recording>()).first { $0.status == .working })
+            }
+            try draw("12-progress-in-progress") { model in
+                Fixtures.showProgress(model)
+                model.selection = .group(.inProgress)
+            }
+            try draw("12-progress-list") { model in
+                Fixtures.showProgress(model)
+                model.selection = .group(.inProgress)
+                model.browserMode = .list
+                model.selectedRecordings = [try working(model).id]
+            }
+            try draw("12-progress-inspector") { model in
+                Fixtures.showProgress(model)
+                model.selection = .group(.inProgress)
+                model.selectedRecordings = [try working(model).id]
+            }
+            try draw("12-progress-inspector-waiting") { model in
+                Fixtures.showProgress(model)
+                model.selection = .group(.inProgress)
+                let clip = try XCTUnwrap(try model.context.fetch(FetchDescriptor<Recording>()).first { $0.fileName == "2026-09-13 clip 90s.mp4" })
+                model.selectedRecordings = [clip.id]
+            }
+            try draw("12-progress-inspector-paused") { model in
+                Fixtures.showProgress(model, paused: true)
+                model.selection = .group(.inProgress)
+                model.selectedRecordings = [try working(model).id]
             }
         }
         if only == "library" {
             print("Snapshots written to \(outputFolder.path): \(written.count) library and Settings pictures")
-            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 2 * 3 + 2 * 2 + 5 * 2 + 3 * 2)
+            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2)
             return
         }
 
@@ -206,7 +257,15 @@ final class SnapshotTests: XCTestCase {
             recording.filePath = media.pattern.path
             model.open(recording)
         }
-        let viewerCount = 11 * 2
+        // A make in progress, opened in the Viewer: its banner gives the stage, percent and time left, with Pause and Stop.
+        try draw("20-viewer-working") { model in
+            Fixtures.showProgress(model)
+            let recording = try XCTUnwrap(try model.context.fetch(FetchDescriptor<Recording>()).first { $0.status == .working })
+            recording.filePath = media.pattern.path
+            model.open(recording)
+            model.openViewer(recording)
+        }
+        let viewerCount = 12 * 2
 
         if only == "recording" {
             print("Snapshots written to \(outputFolder.path): \(written.count) Viewer pictures")
@@ -216,7 +275,7 @@ final class SnapshotTests: XCTestCase {
 
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 2 * 3 + 2 * 2 + 5 * 2 + 3 * 2 + viewerCount)
+        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2 + viewerCount)
     }
 
     /// v2 part M2a: the Help window, open at every article this build shows, in light and dark, with a

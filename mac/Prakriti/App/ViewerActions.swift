@@ -242,6 +242,12 @@ extension AppModel {
     /// Viewer's player writes its time and rate to the log once a second.
     func startDebugSwitches() {
         #if DEBUG
+        // `--debug-status-log` (v2 part M4a): every change of the menu bar's status line goes to the log.
+        if DebugSwitches.isAllowed(), CommandLine.arguments.contains("--debug-status-log") {
+            debugStatusLog = true
+            log.write("Debug switch: every change of the menu bar's status line is written here.")
+            noteStatusLine()
+        }
         guard DebugSwitches.isAllowed(), CommandLine.arguments.contains("--debug-playback-log") else { return }
         let log = log
         // Muted: a check that plays proves it from the log, and must not play a talk aloud on Ivan's Mac.
