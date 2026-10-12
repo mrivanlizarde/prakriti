@@ -3038,3 +3038,57 @@ app installed again. No feature was added or changed apart from the privacy lock
   on this Mac even with the Claude API chosen; only one marked as a talk can go to the Claude API.
 - The live app is the installed copy again; nothing else is blocked on you.
 
+
+## v2 part M3a, second fix: the build was not warning-free. Mon 12 Oct 2026
+
+The verifier of the first fix (1aafbc0) found one compiler warning in a clean build, against W4 and against the
+builder's "0 warnings" claim, and found that build installed live before any verdict. Fixed at the cause here.
+**Not installed:** PLAN 2.1.3 installs only after an independent PASS, so this fix waits for its verdict.
+
+### What failed, and what changed
+
+1. **One compiler warning, and the setting that should have stopped it did not.** `PrakritiApp.swift:302`
+   read `windowNumber` (main actor) inside the Sendable closure of `NotificationCenter.addObserver(forName:)`.
+   `SWIFT_TREAT_WARNINGS_AS_ERRORS` is YES, yet xcodebuild said BUILD SUCCEEDED. Measured the cause with a
+   three-line file: `swiftc -typecheck -swift-version 6 -warnings-as-errors` printed the same warning and
+   exited 0, so this concurrency diagnostic is not upgraded by the flag. **Fix, two parts:**
+   - The observer is a selector on a `@MainActor` object (`WindowUpdateObserver`), so the window is read on the
+     main actor. The first try (reading the window inside `MainActor.assumeIsolated`) was a build error,
+     "sending 'note' risks causing data races", so it was replaced.
+   - `make build` keeps its output in `build/build-output.log` and runs `scripts/no-warnings.sh`, which fails on
+     any `warning:` line except Apple's `appintentsmetadataprocessor` notice.
+2. **A quit scratch build was still registered with LaunchServices** (`scratchpad/m3a-v2/clone`, built 06:45), and
+   `install.sh` handled only running copies. **Fix:** after registering the installed copy, `install.sh`
+   unregisters every other registered `Prakriti.app`, running or not, and says whether only the installed copy
+   is left. That stray and both verifier clones were unregistered by hand now (no copy under `/private/tmp`
+   is registered); the repo's `build`, `build-m6`, `build/m0` and DerivedData copies go at the next install.
+3. **Ship-gate order.** 1aafbc0 was installed at 07:38 and 07:51 before a verdict (PLAN 2.1.3). This fix is
+   not installed; the live copy stays 1aafbc0 (pid 66737) until the verifier passes it.
+
+### Checks, measured
+
+| Check | Result |
+|---|---|
+| Clean build in a fresh clone (W4) | **PASS.** `git clone` of this code, `make build` 08:27:18 to 08:27:29, 92 app sources compiled (PrakritiApp.swift among them), BUILD SUCCEEDED, `no-warnings.sh`: "No warnings." The only `warning:` line is `appintentsmetadataprocessor` |
+| The guard proved by breaking it | The original closure put back in the clone: xcodebuild **BUILD SUCCEEDED** with the warning at `PrakritiApp.swift:310:54`, and `make build` **failed (exit 2)**, "FAIL: the build has warnings". The same script on the verifier's log (`scratchpad/v/build.log`) fails with the line-302 warning |
+| `make look` in the clone (exercises `LayoutAutosave`) | **PASS, 36 of 36, 0 FAIL** (08:27:50 to 08:30:44): "5 layout keys read before; changed by this run: none; all as before now." `defaults export` of the live domain before and after: **identical**; the live plist's date unchanged (07:21:46). Looked at `04-all-recordings-light.png`: the real window, sidebar, grid of six cards, inspector |
+| `make test` in the clone | **PASS. 194 tests, 8 skipped by design, 0 failures**, 709.3 s (08:30:54 to 08:42:56) |
+| LaunchServices | After the hand unregistering: 0 copies under `/private/tmp`; the installed copy and the four repo and DerivedData builds remain |
+| Live app | Untouched: `pgrep` shows only pid 66737, `~/Applications/Prakriti.app` |
+| No dash in any added line | `git diff` added lines: **0** em or en dashes |
+
+### Decisions
+
+1. **The build log is the warning gate, not the compiler setting alone.** Reason: the setting let a warning through
+   (measured above); the log shows every warning the compiler prints.
+2. **Install waits for the verdict.** Reason: PLAN 2.1.3, and the last fix broke that order.
+
+### Not changed, noted (unchanged from the first fix)
+
+- The selected Grid/List segment draws blank in bitmap snapshots (glass); only `make look` shows it.
+- The inspector's Outputs tab runs to about 12 screenfuls in the snapshots.
+- The writing section's stored lock reason still names Serenity; M5a rewrites it.
+
+### For Ivan
+
+- Nothing to do. After the verifier passes this fix: `cd ~/Code/prakriti/mac && make install`.

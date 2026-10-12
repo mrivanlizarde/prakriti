@@ -936,10 +936,15 @@ top and its end. Reading the code is not verification, and neither is a passing 
    sandbox,** set in `project.yml`. Reason: macOS ties folder permission to the signature, and an
    ad-hoc build loses it silently (SCOPE 7.17). No sandbox because the app runs ffmpeg and Parakeet
    and reads Ivan's folders.
-4. **A compiler warning fails the build** (`SWIFT_TREAT_WARNINGS_AS_ERRORS`). Reason: "builds
-   clean" is a milestone gate, and an ignored warning becomes noise nobody reads. The one
-   `appintentsmetadataprocessor ... warning` line in xcodebuild's output is the tool talking, not
-   the compiler, and does not fail anything.
+4. **A compiler warning fails the build** (`SWIFT_TREAT_WARNINGS_AS_ERRORS`, and `make build` reads its own
+   output with `scripts/no-warnings.sh`). Reason: "builds clean" is a milestone gate, and an ignored warning
+   becomes noise nobody reads. The setting alone is not enough: on 12 Oct a main-actor property read in a
+   Sendable NotificationCenter closure stayed a warning, `xcodebuild` said BUILD SUCCEEDED, and that build was
+   installed live with a "0 warnings" claim. So `make build` saves `build/build-output.log` and fails on any
+   `warning:` line. The one `appintentsmetadataprocessor ... warning` line is the tool talking, not the
+   compiler, and is the only line exempt. A warning prints only when its file compiles, so W4 is judged on a
+   clean build in a fresh clone, never an incremental one. For AppKit notifications on the main actor, use a
+   selector on a `@MainActor` object (`WindowUpdateObserver`), not the closure form.
 5. **Every font comes from `AppFont`** (17 pt body, nothing under 12 pt), and a test fails on any
    other font, any sidebar badge, any small control and any tooltip (`.help`). Reason: macOS text
    styles are 10 to 13 pt and tooltips draw at 11 (measured), and Ivan's floor is 12 with a 17 pt
@@ -1404,10 +1409,13 @@ top and its end. Reading the code is not verification, and neither is a passing 
     at every exit through `finish(_:)` (Swift scripts do not run `atexit`, measured). Reason: on 11 Oct `make
     look` changed `NSSplitView Subview Frames main` and the Settings window's frame in the live domain.
 93. **Only the copy in `~/Applications` may run live.** `make install` asks any other copy running without
-    `--development` or `--sample-data` to quit, unregisters its bundle from LaunchServices, and registers the
-    installed one. A verifier that builds a clone must `lsregister -u` it when done. Reason: from 20:13 on 11
-    Oct the live watcher was a Debug build in a verifier's clone under `/private/tmp`, picked by bundle
-    identifier, running on the live store with no login item.
+    `--development` or `--sample-data` to quit, registers the installed one, then unregisters **every other
+    registered copy, running or not** (repo builds, DerivedData, scratch clones), and prints "Only the installed
+    copy is registered." A verifier that builds a clone must `lsregister -u` it when done, because Xcode
+    registers every build it makes. Reason: from 20:13 on 11 Oct the live watcher was a Debug build in a
+    verifier's clone under `/private/tmp`, picked by bundle identifier, running on the live store with no login
+    item; on 12 Oct, after the running-copy fix, a quit scratch build was still registered and could be picked
+    the same way.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

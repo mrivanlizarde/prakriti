@@ -288,7 +288,7 @@ struct AppCommands: Commands {
 /// `scripts/capture-window.swift` also puts back any layout key a run changed, and fails if it cannot.
 @MainActor
 enum LayoutAutosave {
-    private static var observer: NSObjectProtocol?
+    private static var observer: WindowUpdateObserver?
 
     static var applies: Bool { CaptureLaunch.current != nil || AppMode.current == .development }
 
@@ -298,12 +298,14 @@ enum LayoutAutosave {
         // Every window as soon as AppKit updates it, before a size it gets can be saved; SwiftUI can name a
         // split view after the window first draws, so this is checked again at each update (cheap: a few
         // views, and only in these two modes).
-        observer = NotificationCenter.default.addObserver(forName: NSWindow.didUpdateNotification, object: nil, queue: .main) { note in
-            let number = (note.object as? NSWindow)?.windowNumber
-            MainActor.assumeIsolated {
-                if let number, let window = NSApp.window(withWindowNumber: number) { forget(window) }
-            }
-        }
+        // A selector on a main-actor object, not a closure. Reason (12 Oct, W4 fail): the closure form is
+        // Sendable, so reading the window's `windowNumber` in it was a warning that warnings-as-errors did not
+        // stop, and passing the notification into `MainActor.assumeIsolated` is an error (sending 'note').
+        // AppKit posts this notification on the main thread.
+        let updates = WindowUpdateObserver()
+        NotificationCenter.default.addObserver(updates, selector: #selector(WindowUpdateObserver.windowDidUpdate(_:)),
+                                               name: NSWindow.didUpdateNotification, object: nil)
+        observer = updates
     }
 
     static func forget(_ window: NSWindow) {
@@ -315,6 +317,14 @@ enum LayoutAutosave {
         guard let view else { return }
         if let split = view as? NSSplitView, split.autosaveName != nil { split.autosaveName = nil }
         for subview in view.subviews { clearSplitViews(in: subview) }
+    }
+}
+
+/// Receives `NSWindow.didUpdateNotification` for `LayoutAutosave` on the main actor.
+@MainActor
+final class WindowUpdateObserver: NSObject {
+    @objc func windowDidUpdate(_ note: Notification) {
+        if let window = note.object as? NSWindow { LayoutAutosave.forget(window) }
     }
 }
 

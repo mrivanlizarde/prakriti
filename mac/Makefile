@@ -98,8 +98,12 @@ XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debu
 generate:
 	xcodegen generate
 
+# The output is kept and read for warnings, because warnings-as-errors misses some (scripts/no-warnings.sh).
+# A warning shows only when its file compiles, so the W4 check is a clean build in a fresh clone.
 build:
-	$(XCB) build
+	@mkdir -p $(DERIVED)
+	bash -o pipefail -c "$(XCB) build 2>&1 | tee $(DERIVED)/build-output.log"
+	./scripts/no-warnings.sh $(DERIVED)/build-output.log
 
 test:
 	TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test

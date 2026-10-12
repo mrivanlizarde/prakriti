@@ -5,6 +5,20 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-12, Mon: v2 part M3a, second fix (the build was not warning-free)
+
+- **`make build` now fails on any compiler warning by reading its own output.** Why: the commit that kept
+  layout out of the live preferences (1aafbc0) added a Swift concurrency warning, `SWIFT_TREAT_WARNINGS_AS_ERRORS`
+  did not turn it into an error, the build said it succeeded, the report said 0 warnings, and that build was
+  installed live. The compiler setting cannot be trusted alone, so the log is the judge.
+- **The window observer behind that warning is a selector on a main-actor object.** Why: the closure form is
+  Sendable, so it could not touch the window without either the warning or a data-race error.
+- **`make install` unregisters every other copy LaunchServices knows, running or not.** Why: the first fix only
+  caught copies that were running, and a quit scratch build was still registered, ready to be picked by
+  bundle identifier.
+- **Not installed by this fix.** Why: PLAN 2.1.3 installs only after an independent PASS, and 1aafbc0 was
+  installed before one; this fix waits for the verdict.
+
 ## 2026-10-12, Mon: v2 part M3a, fixed after verification
 
 - **The privacy lock fails closed: only a recording marked as a talk, without Serenity, can reach the Claude

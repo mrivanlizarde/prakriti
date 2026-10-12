@@ -56,6 +56,19 @@ touch "$DEST"
 codesign --verify --deep --strict "$DEST" && echo "Installed and signed: $DEST"
 # Registered again by path, so a launch by bundle identifier (a notice, the login item) finds this copy.
 "$LSREGISTER" -f "$DEST" || true
+# Every OTHER registered copy is forgotten too, running or not. Reason (12 Oct, M3a verdict): after the
+# running-stray fix above, LaunchServices still held a verifier's Debug build under /private/tmp plus
+# the repo's build, build-m6, build/m0 and Xcode's DerivedData copies. Xcode registers every build it
+# makes, and a launch by bundle identifier can pick any of them, so a quit copy is as dangerous as a
+# running one. Unregistering only removes the record; no file is touched. A later build registers its
+# own copy again, which is why this runs at every install.
+while IFS= read -r other; do
+  [ -n "$other" ] && [ "$other" != "$DEST" ] || continue
+  echo "Unregistering another copy: $other"
+  "$LSREGISTER" -u "$other" 2>/dev/null || true
+done < <("$LSREGISTER" -dump 2>/dev/null | sed -n 's/^path: *\(.*Prakriti\.app\) (0x[0-9a-f]*)$/\1/p' | sort -u)
+LEFT=$("$LSREGISTER" -dump 2>/dev/null | sed -n 's/^path: *\(.*Prakriti\.app\) (0x[0-9a-f]*)$/\1/p' | sort -u | grep -vx "$DEST" || true)
+[ -z "$LEFT" ] && echo "Only the installed copy is registered." || echo "WARNING: still registered: $LEFT"
 open "$DEST"
 for _ in $(seq 1 30); do pgrep -f "$BIN" > /dev/null && break; sleep 0.5; done
 pgrep -f "$BIN" > /dev/null && echo "Running: $(pgrep -f "$BIN")" || { echo "FAIL: it did not start"; exit 1; }
