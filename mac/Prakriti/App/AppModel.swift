@@ -195,6 +195,7 @@ final class AppModel {
             }
             model.log.write("Opened with sample data for a window capture, showing \(launch.title). Nothing is saved.")
             model.startDebugSwitches()
+            ViewerKeys.install(model)
             // A capture never plays sound aloud.
             model.viewer.player.isMuted = true
             if let path = launch.sampleOriginal {
@@ -321,6 +322,7 @@ final class AppModel {
         restoreWindowState()
         LaunchOptions.current.apply(to: self)
         startDebugSwitches()
+        ViewerKeys.install(self)
         loginItem = paths.mode == .live ? LoginItem.ensureRegistered(log: log, home: paths.home) : .notInstalled
         if paths.mode == .development { log.write("Login item: not registered in development mode.") }
         notifier.setUp()

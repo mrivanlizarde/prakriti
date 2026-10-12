@@ -28,7 +28,7 @@ Prakriti's look is its own. It does not use anyone else's logos, fonts, music or
 
 ## Choose a preset
 
-On a recording's page, under Direction, choose a preset:
+In the inspector's Direction tab, choose a preset:
 
 - **Clear:** the house style. The starting point for every recording.
 - **Energetic:** a faster pace, more frequent cuts and zooms, more text on screen.
@@ -65,7 +65,7 @@ Direction. To go back to the house style, choose Clear and delete the text.
 Sometimes a point made in one recording is supported by something the same person said in another.
 Prakriti can find those moments. It never adds one on its own.
 
-1. On the recording's page, click Moments From Other Recordings.
+1. In the inspector's Direction tab, click Moments From Other Recordings.
 2. Prakriti lists moments where the same person makes a related point, each with its words, its
    recording and its date.
 3. Play a moment to hear it. To use it, click Add and choose where it goes.

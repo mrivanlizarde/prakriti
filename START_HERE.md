@@ -1438,7 +1438,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
     the same way.
 94. **The Viewer's player never takes the keyboard focus** (`UnfocusedPlayerView`, `acceptsFirstResponder` false).
     Reason: in `make look` on 12 Oct, with `AVPlayerView` focused after Return opened a recording, Escape stayed in
-    the Viewer; the Viewer handles Space, J, K and L itself, and the player's buttons still take clicks.
+    the Viewer; the Viewer handles Space, J, K and L itself (warning 99), and the player's buttons still take clicks.
 95. **The transcript is AppKit text (`TranscriptTextView`, an `NSTextView`), and the snapshots never page through
     it** (`SnapshotRenderer` skips a scroll view whose document is `PlayableTextView`). Reason: a word must be
     clickable on its own and a selection must cross lines in up to about 10,000 words, with the system's Find;
@@ -1460,6 +1460,15 @@ top and its end. Reading the code is not verification, and neither is a passing 
     (`TranscriptDocument.span(of:)`). Reason: Parakeet stretches the last word before a pause across the next
     word's start, and a cut to its end took the next word too (`ViewerTests.testASelectionTakesExactlyItsWords`);
     and an approved recording must lose its approval on any change (warning 38).
+99. **The Viewer's keys (Space, J, K, L, Escape) are read from the app's event stream (`ViewerKeys`, a local
+    `keyDown` monitor installed once at launch), never through SwiftUI's `.onKeyPress` on a `.focused` view.**
+    They are taken only while the main window is key with no sheet, the Viewer is open, and the first responder
+    is not text (a field being typed in, or the transcript, which handles the same keys itself) nor a control
+    reached with Full Keyboard Access. Reason: on 12 Oct the M3b verifier saw Space do nothing in 2 of 5 real
+    launches, and the fixer measured 4 of 5 before the change: when the window put the Viewer back at launch, the
+    focus set in `onAppear` was not taken, and every playback line read rate 0.00 with the window key and
+    frontmost. After the change: 20 of 20 launches played (log line "Playback: key Space in the Viewer").
+    Play at the very end starts again from the beginning, because the restored moment can be the end.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

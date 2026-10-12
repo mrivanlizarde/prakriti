@@ -286,6 +286,14 @@ final class ViewerModel {
     // MARK: Playing
 
     func play() {
+        // At the end, Play starts again from the beginning, as QuickTime Player does. Reason: the moment is
+        // restored at launch, so a recording left at its end otherwise opened with Space doing nothing (12 Oct,
+        // measured: four playback checks in a row stopped at 90.048 s of a 90 s clip).
+        if let item = player.currentItem, item.duration.isNumeric, item.duration.seconds > 1,
+           player.currentTime().seconds >= item.duration.seconds - 0.25 {
+            player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
+            time = 0
+        }
         hasPosition = true
         shuttleSpeed = 1
         player.rate = 1
@@ -296,6 +304,14 @@ final class ViewerModel {
         shuttleSpeed = 0
         player.pause()
         rate = 0
+        // The moment paused at is saved now, not up to a second later (12 Oct: a pause at 23.696 s came back
+        // at 22.800 s), so the window opens at it next time.
+        let now = player.currentTime().seconds
+        if player.currentItem != nil, now.isFinite {
+            time = max(0, now)
+            lastReported = time
+            onPositionChange?(rendition, time)
+        }
     }
 
     /// Space (HIG playing video: Space toggles play).

@@ -247,7 +247,7 @@ final class OutputsTests: XCTestCase {
             o.introPath = self.work.appending(path: "gone.wav").path
         }
         XCTAssertEqual(stopped.outcome, .failed)
-        XCTAssertEqual(stopped.reason, "The intro chosen on the Outputs screen (gone.wav) is not there any more, so no episode audio was made. Choose it again, or remove it.")
+        XCTAssertEqual(stopped.reason, "The intro chosen in Settings, Outputs (gone.wav) is not there any more, so no episode audio was made. Choose it again, or remove it.")
         XCTAssertNil(stopped.outputFolder)
         XCTAssertEqual(try Data(contentsOf: folder.appending(path: "episode.mp3")), before, "the last good episode is untouched")
         XCTAssertEqual(Pipeline.madeFiles(in: folder), ["REPORT.md", "episode.mp3"])

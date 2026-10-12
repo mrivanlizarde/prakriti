@@ -5,6 +5,20 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-12, Mon: v2 part M3b, fixes after the verifier
+
+- **Space, J, K, L and Escape in the Viewer no longer depend on SwiftUI's focus.** Why: the verifier found Space
+  ignored in 2 of 5 real launches, each one a Viewer put back from the last session; the focus set in `onAppear`
+  was not taken. Measured before the fix: 4 of 5 launches failed. A key monitor reads them from the app's own
+  events now (START_HERE warning 99); measured after: 20 of 20 launches played.
+- **Play at the very end starts again from the beginning, and a pause saves its moment at once.** Why: the
+  restored moment walked to the end of the 90 s clip and the next Space did nothing; and a pause at 23.696 s
+  came back at 22.800 s because the moment was saved once a second.
+- **No word Ivan reads sends him to "the recording's page" or "the Outputs screen" any more.** Why: both were
+  retired (M3b and M3a), yet the welcome's step 2, three Help lines and eleven lines of the podcast-ready
+  checklist and episode text still named them. Each now names the place the control really is (the Viewer, the
+  inspector's Info or Outputs tab, or Settings, Outputs), and `RulesTests` fails if either name comes back.
+
 ## 2026-10-12, Mon: v2 part M3b, the Viewer
 
 - **Opening a recording shows the Viewer: the system player on a black canvas, Original, Podcast or

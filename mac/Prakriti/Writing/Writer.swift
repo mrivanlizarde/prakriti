@@ -310,7 +310,7 @@ struct WrittenPackage: Codable, Equatable, Sendable {
         text += "\n## Show notes\n\n\(showNotes)\n"
         text += "\n## Chapters\n\n"
         for chapter in chapters { text += "- \(chapter.label) \(chapter.title)\n" }
-        text += "\n[The call to action is yours to set, on the Outputs screen under Podcast-ready episode; none is written here. "
+        text += "\n[The call to action is yours to set, in Settings, Outputs, under Podcast-ready episode; none is written here. "
             + "The address for questions or removal requests is not chosen yet: SCOPE PKG-04 leaves it open for Gabriel and Serenity.]\n"
         if let keywords, !keywords.isEmpty { text += "\n## Keywords\n\n" + keywords.joined(separator: ", ") + "\n" }
         if let social, !social.isEmpty {

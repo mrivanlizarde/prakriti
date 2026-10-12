@@ -212,6 +212,56 @@ final class ViewerTests: XCTestCase {
         try? (report.joined(separator: "\n") + "\n").write(to: folder.appending(path: "viewer-playback.txt"), atomically: true, encoding: .utf8)
     }
 
+    /// Space, J, K, L and Escape reach the Viewer from the app's event stream, whatever holds SwiftUI's focus
+    /// (START_HERE, Mac warning 99; the M3b verifier saw Space do nothing in 2 of 5 restored launches). They are
+    /// left to a field being typed in, to the transcript (it handles them itself) and to a control reached
+    /// with Full Keyboard Access, and never taken outside the Viewer or with Command, Control or Option.
+    func testTheViewerKeysDoNotWaitForFocus() {
+        func act(_ c: String, _ m: NSEvent.ModifierFlags = [], open: Bool = true, text: Bool = false, control: Bool = false) -> ViewerKeys.Action? {
+            ViewerKeys.action(characters: c, modifiers: m, viewerOpen: open, responderIsText: text, responderIsKeyboardControl: control)
+        }
+        XCTAssertEqual(act(" "), .togglePlay)
+        XCTAssertEqual(act(" ", .shift), .togglePlay)
+        XCTAssertEqual(act("l"), .shuttle("l"))
+        XCTAssertEqual(act("J"), .shuttle("J"))
+        XCTAssertEqual(act("k"), .shuttle("k"))
+        XCTAssertEqual(act("\u{1b}"), .back)
+        XCTAssertNil(act(" ", open: false), "the browser keeps its keys")
+        XCTAssertNil(act(" ", text: true), "a field being typed in keeps Space")
+        XCTAssertNil(act("\u{1b}", text: true), "a field being typed in keeps Escape")
+        XCTAssertNil(act(" ", control: true), "Full Keyboard Access: Space presses the control")
+        XCTAssertNil(act(" ", .command))
+        XCTAssertNil(act("l", .option))
+        XCTAssertNil(act("a"))
+    }
+
+    /// At the end, Play starts again from the beginning (the moment is restored at launch, so a recording left
+    /// at its end opened with Space doing nothing); a pause saves the moment then, not up to a second later
+    /// (the verifier's pause at 23.696 s came back at 22.800 s).
+    func testPlayAtTheEndStartsAgainAndAPauseKeepsItsMoment() async throws {
+        let (model, recording) = try madeRecording()
+        model.open(recording)
+        model.openViewer(recording)
+        let viewer = model.viewer
+        viewer.player.isMuted = true
+        try await waitFor { viewer.player.currentItem?.status == .readyToPlay }
+        let length = viewer.player.currentItem?.duration.seconds ?? 0
+        XCTAssertGreaterThan(length, 10)
+        viewer.seek(renditionTime: length)
+        try await waitFor { viewer.player.currentTime().seconds >= length - 0.25 }
+        viewer.togglePlay()
+        try await waitFor { viewer.player.rate > 0 && viewer.player.currentTime().seconds > 0.3 && viewer.player.currentTime().seconds < 3 }
+        try await Task.sleep(for: .milliseconds(1400))
+        viewer.togglePlay()
+        let paused = viewer.player.currentTime().seconds
+        XCTAssertEqual(viewer.rate, 0)
+        let state = try JSONDecoder().decode(WindowState.self, from: Data((model.settings.windowState ?? "").utf8))
+        let saved = try XCTUnwrap(state.original)
+        let expected = try XCTUnwrap(recording.episodeClock?.originalTime(paused))
+        print(String(format: "Played from the end: started again; paused at %.3f s in the episode; saved %.3f s on the original's clock (expected %.3f s)", paused, saved, expected))
+        XCTAssertEqual(saved, expected, accuracy: 0.05, "the moment paused at is the moment kept")
+    }
+
     // MARK: Helpers
 
     /// A made recording of 20 s: a test pattern with a tone as its original, an episode.mp3 that starts 1 s

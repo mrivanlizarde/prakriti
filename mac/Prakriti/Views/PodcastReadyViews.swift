@@ -20,7 +20,7 @@ struct PodcastReadySettingsRows: View {
             if showsShow {
                 showRows
             } else {
-                RowNote("The show's name, host, artwork, numbering and call to action are set once, on the Outputs screen, for every episode.")
+                RowNote("The show's name, host, artwork, numbering and call to action are set once, in Settings, Outputs, for every episode.")
             }
             Toggle(isOn: $setting.explicitContent) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -32,7 +32,7 @@ struct PodcastReadySettingsRows: View {
         }
     }
 
-    /// What the show is: set once, on the Outputs screen.
+    /// What the show is: set once, in Settings, Outputs.
     @ViewBuilder
     private var showRows: some View {
         TextRow(label: "Show name", detail: "Written into the MP3 as its album, and its file name.", text: $setting.showName)
@@ -413,9 +413,9 @@ struct PodcastReadySection: View {
         let numbering = model.podcastReadySettings(for: recording).numbering
         let highest = model.highestEpisodeNumber(excluding: recording).map { " The highest number so far is \($0)." } ?? ""
         switch numbering {
-        case .none: return "Optional: the show is not numbered (Outputs screen)." + highest
-        case .episodes: return "The show is numbered (Outputs screen), so each episode needs its number." + highest
-        case .seasons: return "The show has seasons (Outputs screen), so each episode needs its number and season." + highest
+        case .none: return "Optional: the show is not numbered (Settings, Outputs)." + highest
+        case .episodes: return "The show is numbered (Settings, Outputs), so each episode needs its number." + highest
+        case .seasons: return "The show has seasons (Settings, Outputs), so each episode needs its number and season." + highest
         }
     }
 

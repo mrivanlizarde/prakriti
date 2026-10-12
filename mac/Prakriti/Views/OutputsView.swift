@@ -150,7 +150,7 @@ struct TranscriptSettingsRows: View {
             Toggle(isOn: $setting.applyLexicon) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Use the Yoga Marga word list").font(AppFont.body)
-                    Text((wordListIsBelow ? "Fixes the known mis-hearings listed below." : "Fixes the known mis-hearings listed on the Outputs screen.")
+                    Text((wordListIsBelow ? "Fixes the known mis-hearings listed below." : "Fixes the known mis-hearings listed in Settings, Outputs.")
                          + " The words as heard are kept too, in transcript.json.")
                         .font(AppFont.secondary).foregroundStyle(.appSecondary)
                         .fixedSize(horizontal: false, vertical: true)

@@ -40,7 +40,7 @@ struct PodcastReadySettings: Codable, Equatable, Sendable {
     static func bitrates(_ channels: AudioChannels) -> [Int] { channels == .mono ? [64, 96, 128] : [128, 192] }
 }
 
-/// How the show numbers its episodes, chosen once on the Outputs screen (11 Oct). Apple asks for
+/// How the show numbers its episodes, chosen once in Settings, Outputs (11 Oct). Apple asks for
 /// episode numbers only for a serial show, and season numbers only for a show in seasons.
 enum PodcastNumbering: String, Codable, CaseIterable, Sendable {
     case none, episodes, seasons
@@ -530,13 +530,13 @@ enum PodcastPackage {
         heading("Episode title")
         if let title = c.title {
             line(md ? "**\(title)**" : title)
-            if !c.titleChosen { aside("Not chosen yet: this is the writer's first pick. Use This Title on the recording's page makes it the episode's title and the file's name.") }
+            if !c.titleChosen { aside("Not chosen yet: this is the writer's first pick. Use This Title, in the inspector's Outputs tab, makes it the episode's title and the file's name.") }
             if !c.alternatives.isEmpty {
                 subheading("Alternatives")
                 for (index, option) in c.alternatives.enumerated() { line("\(index + 1). \(option)") }
             }
         } else {
-            line("Not chosen yet. Write one in About this recording, on the recording's page.")
+            line("Not chosen yet. Type one under Title, in the inspector's Info tab.")
         }
 
         heading("One-line summary")
@@ -564,11 +564,11 @@ enum PodcastPackage {
             }
             var said: [String] = []
             if !c.notes.isEmpty {
-                said.append(c.notesChosen ? "Your notes, as written on the recording's page."
-                    : "A draft by \(written?.writtenBy ?? "the writing model"), not chosen yet. Press Use as Notes on the recording's page, or write your own.")
+                said.append(c.notesChosen ? "Your notes, as written in the inspector's Info tab."
+                    : "A draft by \(written?.writtenBy ?? "the writing model"), not chosen yet. Press Use as Notes in the inspector's Outputs tab, or write your own.")
             }
             said.append(c.chapters.isEmpty ? "No chapters are in the file." : "The chapters are the ones written into the MP3, at their times in this file.")
-            said.append(c.callToAction == nil ? "No call to action is set (Outputs screen, Podcast-ready episode), so none closes the notes." : "The last line is your call to action, from the Outputs screen.")
+            said.append(c.callToAction == nil ? "No call to action is set (Settings, Outputs, Podcast-ready episode), so none closes the notes." : "The last line is your call to action, from Settings, Outputs.")
             aside(said.joined(separator: " "))
         }
 
@@ -600,7 +600,7 @@ enum PodcastPackage {
         }
 
         heading("For the host's form")
-        line((md ? "- " : "") + "Show: " + (settings.showName.isEmpty ? "not set (Outputs screen, Podcast-ready episode)" : settings.showName))
+        line((md ? "- " : "") + "Show: " + (settings.showName.isEmpty ? "not set (Settings, Outputs, Podcast-ready episode)" : settings.showName))
         line((md ? "- " : "") + "Host or author: " + (settings.hostName.isEmpty ? "not set" : settings.hostName))
         line((md ? "- " : "") + "Episode number: " + (facts.episodeNumber.map(String.init) ?? (settings.numbering.needsEpisode ? "not set, and the show is numbered" : "not set (the show is not numbered)")))
         line((md ? "- " : "") + "Season: " + (facts.seasonNumber.map(String.init) ?? (settings.numbering.needsSeason ? "not set, and the show has seasons" : "not set")))
@@ -671,7 +671,7 @@ enum PodcastPackage {
             let mono = ch == 1
             let ok = mono ? (64...128).contains(kbps) : (128...256).contains(kbps)
             add(ok ? .pass : .fail, "Bitrate", "\(kbps) kbps \(mono ? "mono" : "stereo") MP3. Apple recommends \(mono ? "96 to 128 kbps for mono" : "128 to 256 kbps for stereo") (and takes MP3 or AAC).",
-                "Choose \(mono ? "96" : "128") kbps on the Outputs screen and make it again.")
+                "Choose \(mono ? "96" : "128") kbps in Settings, Outputs and make it again.")
         } else {
             add(.fail, "Bitrate", "Could not be read.", "Make it again.")
         }
@@ -688,32 +688,32 @@ enum PodcastPackage {
         // What it is called, and by whom.
         add(settings.showName.isEmpty ? .missing : .pass, "Show name",
             settings.showName.isEmpty ? "Not set. Prakriti never makes one up." : "\"\(settings.showName)\", in the MP3 as its album.",
-            "Type it on the Outputs screen, Podcast-ready episode, then Update Podcast-Ready Files on the recording's page.")
+            "Type it in Settings, Outputs, Podcast-ready episode, then Update Podcast-Ready Files in the inspector's Outputs tab.")
         let title = facts.title.trimmingCharacters(in: .whitespacesAndNewlines)
         if title.isEmpty || isOnlyADate(title) {
             add(.missing, "Episode title", title.isEmpty ? "Not chosen; the file is named by its date." : "\"\(title)\" is only a date.",
-                (written?.titles.isEmpty == false ? "Pick one of the drafts in \"\(textName)\" with Use This Title" : "Write one in About this recording")
-                    + " on the recording's page, then Update Podcast-Ready Files.")
+                (written?.titles.isEmpty == false ? "Pick one of the drafts in \"\(textName)\" with Use This Title in the inspector's Outputs tab" : "Type one under Title, in the inspector's Info tab")
+                    + ", then Update Podcast-Ready Files in the inspector's Outputs tab.")
         } else {
             add(.pass, "Episode title", "\"\(title)\".")
         }
         add(settings.hostName.isEmpty ? .missing : .pass, "Host or author", settings.hostName.isEmpty ? "Not set." : "\"\(settings.hostName)\", in the MP3 as its artist.",
-            "Type it on the Outputs screen, Podcast-ready episode.")
-        // Numbers, as the show is numbered on the Outputs screen (11 Oct): a numbered show needs each
+            "Type it in Settings, Outputs, Podcast-ready episode.")
+        // Numbers, as the show is numbered in Settings, Outputs (11 Oct): a numbered show needs each
         // episode's number, and a show in seasons its season too; otherwise they are optional.
         let numbers = [facts.episodeNumber.map { "episode \($0)" }, facts.seasonNumber.map { "season \($0)" }].compactMap { $0 }
         let lacking = [settings.numbering.needsEpisode && facts.episodeNumber == nil ? "the episode number" : nil,
                        settings.numbering.needsSeason && facts.seasonNumber == nil ? "the season" : nil].compactMap { $0 }
         if !lacking.isEmpty {
-            add(.missing, "Episode and season numbers", "The show is set to \(settings.numbering.title.lowercased()) (Outputs screen), and \(lacking.joined(separator: " and ")) \(lacking.count == 1 ? "is" : "are") not set.",
-                "Type \(lacking.joined(separator: " and ")) on the recording's page, then Update Podcast-Ready Files.")
+            add(.missing, "Episode and season numbers", "The show is set to \(settings.numbering.title.lowercased()) (Settings, Outputs), and \(lacking.joined(separator: " and ")) \(lacking.count == 1 ? "is" : "are") not set.",
+                "Type \(lacking.joined(separator: " and ")) under Ready to upload, in the inspector's Outputs tab, then Update Podcast-Ready Files.")
         } else if settings.numbering == .none {
-            add(.pass, "Episode and season numbers", numbers.isEmpty ? "Not numbered, as set on the Outputs screen. Apple asks for numbers only for a serial show."
+            add(.pass, "Episode and season numbers", numbers.isEmpty ? "Not numbered, as set in Settings, Outputs. Apple asks for numbers only for a serial show."
                 : numbers.joined(separator: ", ").capitalizedFirst + ", written into the MP3, though the show is set to not numbered.")
         } else {
             add(.pass, "Episode and season numbers", numbers.joined(separator: ", ").capitalizedFirst + ", as the show is numbered.")
         }
-        add(.pass, "Explicit", settings.explicit ? "Yes, as set on the Outputs screen." : "No, as set on the Outputs screen. Choose Yes there if anything said needs it.")
+        add(.pass, "Explicit", settings.explicit ? "Yes, as set in Settings, Outputs." : "No, as set in Settings, Outputs. Choose Yes there if anything said needs it.")
 
         // The tag, read back.
         if let tag = m.tag {
@@ -738,11 +738,11 @@ enum PodcastPackage {
                 add(.fail, "Artwork", "\(art.fileName) passes Apple's rules but is not in the MP3.", "Update Podcast-Ready Files.")
             } else {
                 add(.fail, "Artwork", "\(art.fileName): \(art.problems.joined(separator: " ")) It was not put in the MP3.",
-                    "Fix the image or choose another on the Outputs screen.")
+                    "Fix the image or choose another in Settings, Outputs.")
             }
         } else {
             add(.missing, "Artwork", "None chosen. Prakriti never makes artwork.",
-                "Choose the show's artwork on the Outputs screen (square JPEG or PNG, 1400 to 3000 px, RGB, under 512 KB). Hosts also ask for it once, on the show.")
+                "Choose the show's artwork in Settings, Outputs (square JPEG or PNG, 1400 to 3000 px, RGB, under 512 KB). Hosts also ask for it once, on the show.")
         }
 
         // Chapters.
@@ -774,10 +774,10 @@ enum PodcastPackage {
         let closing = episode.callToAction == nil ? " No call to action is set (optional)." : " Your call to action closes them."
         if let notes = showNotes(facts: facts, written: written) {
             add(notes.chosen ? .pass : .missing, "Show notes",
-                (notes.chosen ? "Yours, from the recording's page (\(WritingText.words(notes.text)) words), in \"\(textName)\" with the chapters." : "A draft by \(title2) is in \"\(textName)\", not chosen yet.") + closing,
-                "Read the draft, then press Use as Notes on the recording's page (or write your own), then Update Podcast-Ready Files.")
+                (notes.chosen ? "Yours, from the inspector's Info tab (\(WritingText.words(notes.text)) words), in \"\(textName)\" with the chapters." : "A draft by \(title2) is in \"\(textName)\", not chosen yet.") + closing,
+                "Read the draft, then press Use as Notes in the inspector's Outputs tab (or write your own in its Info tab), then Update Podcast-Ready Files.")
         } else {
-            add(.missing, "Show notes", "None.", "Turn on Titles, show notes and chapters, or write notes on the recording's page.")
+            add(.missing, "Show notes", "None.", "Turn on Titles, show notes and chapters, or write notes in the inspector's Info tab.")
         }
         if !episode.captions.isEmpty {
             let quotes = episode.captions.filter { $0.pullQuote != nil }.count
@@ -787,7 +787,7 @@ enum PodcastPackage {
                 "Write the titles and notes again for the missing ones, or write them yourself.")
         } else if !episode.plainCaptions.isEmpty {
             add(.missing, "Social captions", "\(Format.count(episode.plainCaptions.count, "draft")) written before captions were made per platform, with no pull quotes.",
-                "Press Write Again on the recording's page for a caption per platform, each with its pull quote.")
+                "Press Write Again in the inspector's Outputs tab for a caption per platform, each with its pull quote.")
         } else {
             add(.missing, "Social captions", "None yet.", "They are written with the titles and show notes.")
         }
@@ -802,17 +802,17 @@ enum PodcastPackage {
             add(.missing, "AI voice (Apple 1.11)", "You said the intro or outro uses an AI-made voice. Prakriti added a line saying so to the show notes text.",
                 "Apple asks for it to be said in the audio too: make sure the intro or outro says it, and keep the line in the show notes.")
         } else {
-            add(.pass, "AI voice (Apple 1.11)", "No AI-made voice in the episode (none is used unless you choose one on the Outputs screen).")
+            add(.pass, "AI voice (Apple 1.11)", "No AI-made voice in the episode (none is used unless you choose one in Settings, Outputs).")
         }
         switch facts.kind {
         case .talk: add(.pass, "What this is", "A talk, one teacher speaking, as you marked it. Not a class.")
         case .lesson: add(.fail, "What this is", "A class: students may be heard. A class is never uploaded.", "Do not upload it.")
         case .conversation: add(.fail, "What this is", "A conversation: more than one person speaks, and Prakriti cannot check who.", "Do not upload it until speakers can be checked.")
         case .unknown, .test: add(.missing, "What this is", "Not set. Unknown voices count as students.",
-                                  "On the recording's page, mark it as a talk with one teacher speaking, if it is one.")
+                                  "In the inspector's Info tab, under What this is, choose Talk, one teacher speaking, if it is one.")
         }
         add(.missing, "Speakers", "Not checked by Prakriti: it cannot tell voices apart yet.",
-            "Listen for any voice other than the teacher's, and any name said, before uploading. Approve on the recording's page records your word.")
+            "Listen for any voice other than the teacher's, and any name said, before uploading. Approve, in the Viewer's toolbar or the inspector's Outputs tab, records your word.")
         return lines
     }
 

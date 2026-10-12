@@ -278,6 +278,25 @@ final class RulesTests: XCTestCase {
         }
     }
 
+    /// v1's recording page was retired in v2 part M3b, and v1's Outputs screen became Settings, Outputs in M3a.
+    /// No string Ivan reads, in the app, in Help or in a file Prakriti writes, may send him to either (the M3b
+    /// verifier, 12 Oct, found eleven that still did).
+    func testNothingSendsIvanToARetiredScreen() throws {
+        let help = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appending(path: "Prakriti/Resources/Help")
+        let articles = ((try? FileManager.default.contentsOfDirectory(at: help, includingPropertiesForKeys: nil)) ?? []).filter { $0.pathExtension == "md" }
+        XCTAssertGreaterThan(articles.count, 5, "Help's articles are read too")
+        for file in appSourceFiles + articles {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for (number, line) in text.components(separatedBy: "\n").enumerated() {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if file.pathExtension == "swift" && (trimmed.hasPrefix("//") || trimmed.hasPrefix("///")) { continue }
+                for retired in ["recording's page", "Outputs screen", "recording page"] where line.contains(retired) {
+                    XCTFail("\"\(retired)\" in \(file.lastPathComponent) line \(number + 1): name the Viewer, the inspector's tab or Settings")
+                }
+            }
+        }
+    }
+
     func testNoTooltips() throws {
         // Tooltips draw at the system tooltip size, under Ivan's 12 pt floor. Measured 10 Oct.
         XCTAssertLessThan(NSFont.toolTipsFont(ofSize: 0).pointSize, 12, "if tooltips ever reach 12 pt, this rule can go")

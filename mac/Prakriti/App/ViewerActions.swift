@@ -251,3 +251,63 @@ extension AppModel {
         #endif
     }
 }
+
+// MARK: The Viewer's keys
+
+/// Space, J, K, L and Escape in the Viewer (design spec 2.5 and 6.7), taken from the app's own event stream
+/// rather than from SwiftUI's focus. Reason (START_HERE, Mac warning 99): with `.onKeyPress` on a `.focused`
+/// view, Space did nothing in 4 of 5 launches that put the Viewer back from the last session
+/// (12 Oct, measured from the playback log: every line at rate 0.00 with the window key and frontmost),
+/// because the focus set in `onAppear` was not taken when the window was restored. A key reaches the Viewer
+/// now whatever holds the focus, except a field being typed in, the transcript (it handles the same keys
+/// itself), and a control Ivan reached with Full Keyboard Access (Space presses it).
+enum ViewerKeys {
+    enum Action: Equatable { case togglePlay, shuttle(Character), back }
+
+    /// What a key does in the Viewer, or nil when it belongs to something else.
+    static func action(characters: String, modifiers: NSEvent.ModifierFlags, viewerOpen: Bool,
+                       responderIsText: Bool, responderIsKeyboardControl: Bool) -> Action? {
+        guard viewerOpen, !responderIsText, !responderIsKeyboardControl else { return nil }
+        guard modifiers.intersection([.command, .control, .option]).isEmpty else { return nil }
+        if characters == "\u{1b}" { return .back }
+        if characters == " " { return .togglePlay }
+        if characters.count == 1, let key = characters.first, "jklJKL".contains(key) { return .shuttle(key) }
+        return nil
+    }
+
+    @MainActor private static var monitor: Any?
+
+    /// Installed once, at launch.
+    @MainActor static func install(_ model: AppModel) {
+        guard monitor == nil else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak model] event in
+            let characters = event.charactersIgnoringModifiers ?? ""
+            let modifiers = event.modifierFlags
+            let window = event.window
+            let handled = MainActor.assumeIsolated { () -> Bool in
+                guard let model else { return false }
+                let main = NSApp.windows.first { $0.identifier?.rawValue.hasPrefix(MainWindow.id) == true }
+                guard let main, window === main, main.isKeyWindow, main.attachedSheet == nil else { return false }
+                let responder = main.firstResponder
+                let keyboardControl = NSApp.isFullKeyboardAccessEnabled && responder is NSControl
+                guard let action = action(characters: characters, modifiers: modifiers, viewerOpen: !model.path.isEmpty,
+                                          responderIsText: responder is NSText, responderIsKeyboardControl: keyboardControl) else {
+                    if !model.path.isEmpty, action(characters: characters, modifiers: modifiers, viewerOpen: true, responderIsText: false,
+                                                   responderIsKeyboardControl: false) != nil {
+                        model.viewer.playbackLog?("Playback: key left to \(responder.map { String(describing: type(of: $0)) } ?? "nothing")")
+                    }
+                    return false
+                }
+                switch action {
+                case .togglePlay: model.viewer.togglePlay()
+                case .shuttle(let key): model.viewer.shuttle(key)
+                case .back: model.back()
+                }
+                let name = action == .togglePlay ? "Space" : (action == .back ? "Escape" : "J, K or L")
+                model.viewer.playbackLog?(String(format: "Playback: key %@ in the Viewer, rate now %.2f", name, model.viewer.player.rate))
+                return true
+            }
+            return handled ? nil : event
+        }
+    }
+}

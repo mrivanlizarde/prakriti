@@ -43,7 +43,7 @@ struct ArtworkCheck: Codable, Equatable, Sendable {
         var result = ArtworkCheck(fileName: url.lastPathComponent)
         let fm = FileManager.default
         guard fm.fileExists(atPath: url.path) else {
-            result.problems = ["The file is not there any more. Choose it again on the Outputs screen."]
+            result.problems = ["The file is not there any more. Choose it again in Settings, Outputs."]
             return result
         }
         result.bytes = ((try? fm.attributesOfItem(atPath: url.path))?[.size] as? NSNumber)?.int64Value ?? 0

@@ -1012,7 +1012,7 @@ struct Pipeline: Sendable {
         guard let path, !path.isEmpty else { return nil }
         let name = (path as NSString).lastPathComponent
         guard FileManager.default.fileExists(atPath: path) else {
-            throw PipelineFailure(step: .episode, reason: "The \(role) chosen on the Outputs screen (\(name)) is not there any more, so no episode audio was made. Choose it again, or remove it.")
+            throw PipelineFailure(step: .episode, reason: "The \(role) chosen in Settings, Outputs (\(name)) is not there any more, so no episode audio was made. Choose it again, or remove it.")
         }
         let probe = try await tool(.episode, tools.ffprobe, ["-v", "error", "-show_entries", "format=duration:stream=codec_type", "-of", "json", path],
                                    duration: duration)

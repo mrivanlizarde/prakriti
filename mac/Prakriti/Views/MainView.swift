@@ -321,9 +321,10 @@ struct PauseButton: View {
     }
 }
 
-/// Resolves a route to its recording in the Viewer; the recording may have been removed since. It takes the
-/// keys when it opens, so Escape comes back to the browser (design spec 2.5) and Space plays or pauses, with
-/// J, K and L to shuttle (design spec 6.7); a field being edited keeps its keys for itself.
+/// Resolves a route to its recording in the Viewer; the recording may have been removed since. Escape comes
+/// back to the browser (design spec 2.5) and Space plays or pauses, with J, K and L to shuttle (design spec
+/// 6.7): those keys are read by `ViewerKeys` from the app's event stream, never through SwiftUI's focus
+/// (START_HERE, Mac warning 99). The focus is still set here, so the sidebar does not keep it.
 struct RecordingDestination: View {
     let route: RecordingRoute
     @Environment(\.modelContext) private var context
@@ -344,19 +345,6 @@ struct RecordingDestination: View {
         .focusable()
         .focusEffectDisabled()
         .focused($focused)
-        .onKeyPress(.escape) {
-            // A field being typed in keeps Escape (measured: without this, Escape in the title field closed
-            // the page under the typing).
-            if NSApp.keyWindow?.firstResponder is NSText { return .ignored }
-            model.back()
-            return .handled
-        }
-        .onKeyPress(characters: CharacterSet(charactersIn: " jklJKL"), phases: .down) { press in
-            if NSApp.keyWindow?.firstResponder is NSText { return .ignored }
-            guard let key = press.characters.first, press.modifiers.isEmpty || press.modifiers == .shift else { return .ignored }
-            if key == " " { model.viewer.togglePlay() } else { model.viewer.shuttle(key) }
-            return .handled
-        }
         .onAppear { focused = true }
     }
 }

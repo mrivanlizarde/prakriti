@@ -28,7 +28,7 @@ recording on this Mac, and holds back anything a person has not checked.
 Only a recording you marked as a talk can be read by the Claude API. Everything else is only read by
 models on this Mac, even if a task is set to the Claude API: a class, a conversation, a test, a recording
 whose kind is still Not set, and any recording whose transcript names Serenity. LM Studio does that task
-instead, and the recording's page says so. See [Models and API keys](09-models-and-api-keys.md).
+instead, and the inspector's Checks tab says so. See [Models and API keys](09-models-and-api-keys.md).
 
 :::unless people
 ## Classes and other voices
@@ -39,7 +39,8 @@ Prakriti does not yet tell one voice from another. So:
   shows "Speakers not checked" and cannot be approved.
 - A class is never made ready to upload as a podcast episode.
 - Before you approve a talk, listen for any voice other than the teacher's, and for any name said
-  aloud. To take one out, cut it on the recording's page: the episode and the transcript both lose it.
+  aloud. To take one out, select its words in the Viewer's transcript and choose Remove from the Edit,
+  or type its times under Cut a section in the inspector's Info tab: the episode and the transcript both lose it.
   See [Review and approve](06-reviewing-and-approving.md).
 :::
 
@@ -58,7 +59,7 @@ In the browser, each recording shows who was found: the names of the people you 
 other people appear or speak, such as "Gabriel, Serenity and 3 other people". Choose View > Show
 Recordings With Other People to see only those.
 
-On a recording's page, People in This Recording lists each person with a picture of their face, when
+In the inspector's People tab, People in This Recording lists each person with a picture of their face, when
 they appear, and when they speak.
 
 ## Choose who appears in each output
@@ -91,7 +92,7 @@ recognize the same person in the next.
 
 Only name someone who has agreed to have their face and voice recognized by Prakriti.
 
-1. On a recording's page, under People in This Recording, click an Unnamed person.
+1. In the inspector's People tab, under People in This Recording, click an Unnamed person.
 2. Click Name This Person and type their name.
 3. Select "This person has agreed to be recognized", then click Save.
 
@@ -100,7 +101,7 @@ Their face appears in People.
 
 ### Correct a mistake
 
-If Prakriti names the wrong person, click the name on the recording's page and choose Not This Person.
+If Prakriti names the wrong person, click the name in the inspector's People tab and choose Not This Person.
 If it misses someone you have named, click the Unnamed person and choose their name. When Prakriti is
 not sure who someone is, it treats them as Unnamed, so a doubtful face is blurred, never shown.
 

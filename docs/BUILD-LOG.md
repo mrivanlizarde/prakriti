@@ -32,7 +32,7 @@ is built, and the notification button that asks macOS only after saying why.
 **Then part M3a, the main window and Settings, and part M3b, the Viewer** (the last section, "v2 part M3b"):
 opening a recording plays it in the app (Original, Podcast, Podcast-ready) with Timeline-lite and a transcript of
 clickable words under it, Remove from the Edit and Keep in the Edit, Follow Playback and Quick Help; v1's
-recording page is retired. M3b is built and checked but **not installed** until a verifier passes it.
+recording page is retired. M3b failed its first verifier on Space after a restored launch and on stale wording; both were fixed the same day ("v2 part M3b, fixes after the verifier") and installed.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -3232,3 +3232,82 @@ frames for Ivan from this part.
   Space, click a word, choose Original and Podcast-ready in the toolbar, select a few words and try Remove from
   the Edit and Keep in the Edit (then Keep them back, or Clear Trim and Cuts in Info). Say what to change.
 - [ ] **Install after the verifier passes M3a's second fix and this part:** `cd ~/Code/prakriti/mac && make install`.
+
+
+## v2 part M3b, fixes after the verifier. Mon 12 Oct 2026
+
+The M3b verifier failed the part on three counts: Space ignored in 2 of 5 real launches (check 3), "the recording's
+page" still in the welcome, Help and the podcast-ready checklist, and (not this part's doing) the live copy down
+after an outside Quit at 10:39:26. This entry fixes the first two at their cause and installs.
+
+### What was fixed, and the cause
+
+1. **Space ignored on a Viewer put back at launch.** Cause: the keys were SwiftUI `.onKeyPress` on a `.focused` view,
+   and the focus set in `onAppear` was not taken when the window restored the Viewer. **Reproduced before the fix:
+   1 of 5 playback runs passed** (11:08 to 11:10; every line rate 0.00 at the restored moment). Fix: `ViewerKeys`
+   (`App/ViewerActions.swift`), one local `keyDown` monitor installed at launch (live, development and capture),
+   taking Space, J, K, L and Escape while the main window is key with no sheet and the Viewer is open, and leaving
+   them to a field being typed in, to the transcript (which handles them itself) and to a control reached with Full
+   Keyboard Access. `RecordingDestination`'s `.onKeyPress` handlers are gone. START_HERE warning 99.
+2. **Play at the very end did nothing.** Found while measuring 1: the restored moment walked to the end of the 90 s
+   clip, and runs 7 to 10 of the first ten failed at 90.048 s although every Space reached the Viewer (the log says
+   so). Play at the end now starts from the beginning, as QuickTime Player does.
+3. **A pause saved its moment up to a second late** (verifier: 23.696 s came back at 22.800 s). `pause()` now saves it.
+4. **Retired places named in words Ivan reads.** The welcome's step 2 (its replacement needed `video` too): a row for
+   the Viewer as built, `requires: [.viewer], unless: [.video]`, and the v1 row deleted. Help 07 (lines 31, 42, and
+   the hidden People sections, which now name the inspector's People tab as the plan has it), 08 (hidden Direction
+   lines) and 09 line 98. The podcast-ready checklist and episode text (`Engine/PodcastReady.swift`, 13 lines): each
+   now names where the control is, checked in the code: Use This Title, Use as Notes, Write Again and Update
+   Podcast-Ready Files in the inspector's Outputs tab (`WritingSection`, `PodcastReadySection`, both in `OutputsTab`);
+   Title, Notes and What this is in the Info tab; Episode and Season under Ready to upload; Approve in the toolbar and
+   the Outputs tab. **"Outputs screen"** (v1's, now Settings, Outputs since M3a) was also in 18 shown strings
+   (checklist, episode text, the Ready to upload notes, a pipeline refusal, the artwork check, the writer's note):
+   all now say Settings, Outputs. `RulesTests.testNothingSendsIvanToARetiredScreen` reads every Swift string and
+   every Help article and fails on "recording's page", "recording page" or "Outputs screen".
+
+### Checks run, with results
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `make test` on the final code | **PASS. 204 tests, 0 failures, 8 skipped by design**, 638.0 s (11:51 to 12:02). `make build` **No warnings**. New: `ViewerTests.testTheViewerKeysDoNotWaitForFocus`, `testPlayAtTheEndStartsAgainAndAPauseKeepsItsMoment` (played from the end: started again; paused at 1.801 s in the episode, saved 2.801 s on the original's clock, expected 2.801 s), `RulesTests.testNothingSendsIvanToARetiredScreen` (it caught one more on its first run, `PodcastReady.swift` line 571, fixed) |
+| 2 | Snapshots, looked at | **PASS.** `screens/mac/v2-m3b-fix/` (564 pictures from `make test`). Looked at: `welcome-3-light.png` and `-dark.png` (step 2 now "Open it to listen in the Viewer. Select words in the transcript and choose Remove from the Edit, or set where the episode starts and ends in the inspector's Info tab, then choose Make Again."), `help-06-people-and-privacy-light-end.png` (the Remove from the Edit and Cut a section line) |
+| 3 | `make look` plus playback from the log | **PASS, 0 FAIL lines** (11:44 to 11:48): every sidebar row, the refusal, **every key** (Space plays, log rate 1.00; pauses, 0.00; Escape after Return comes back; Escape in the title field stays), playback 86.950 to 89.950 s, **3.000 s, rate 1.00 and 1.00**. Then **10 playback runs in a row, 10 of 10 PASS** (11:48 to 11:51), each launch restoring the last moment: 3.000, 3.000, 3.000, 3.000, 2.977, 3.000, 3.000, 2.999, 3.000, 3.000 s, all at rate 1.00, each paused again by Space. With the first ten (11:14 to 11:17, before the capture fix, 10 of 10) that is **20 of 20**. Restored moment against the pause: 8.196 to 8.195 s, 16.391 to 16.390 s, 24.514 to 24.513 s. Live layout keys: "changed by this run: none". Looked at `real/13-viewer-playback.png` (Podcast rendition, the system player at 1:30, the sentence marked; no picture of a talk) |
+| 4 | Clicked word within 0.25 s | **PASS** in `make test` (`viewer-playback.txt`) |
+| 5 | `make accept-edits` through the Viewer | **PASS** (inside `make regress`, 11:21 to 11:39): 2,948 words; Remove from the Edit on 15 words cut exactly 15; Keep left no edit; approve refused before Make Again; **38.82 s shorter (expected 38.82)**; **0 of 73** runs from the cut heard, 189 of 201 after it; marked a class: refused |
+| 8 | Regression set, `make migrate-check` | **PASS.** `make regress MILESTONE=v2-m3b-fix` exit 0: 13 Sep -16.8 LUFS (-16.82), -1.7 dBFS (-1.68 dBTP), 15:47 of 15:48; 6 Sep -16.7 LUFS (-16.72), -1.4 dBFS, 55:38 of 55:39; `grep -c 2026-09-14 acceptance.txt`: 0. `make migrate-check` (12:02): recordings 11/11, folders 2/2, output settings 40/40, Activity lines 567/567, approved 2 |
+
+**The originals** by `stat` after the runs: 13 Sep 730,464,600 bytes, modified 1789350092; 6 Sep 2,578,079,009
+bytes, 1788746532 (unchanged). No frame of a talk was looked at (D1): the only picture of the Viewer looked at shows
+the Podcast rendition, which has none.
+
+### What the runs caught
+
+- **The first `make look` after the fix failed two keys** (Escape after Return, Space): a capture launch builds its
+  model in its own branch of `AppModel.launch()`, which never installed the monitor, and the old `.onKeyPress` was
+  gone. It is installed there too; the keys check then passed 15 of 15. A diagnostic line ("Playback: key left to
+  _SystemTextFieldFieldEditor") is written, only with `--debug-playback-log`, when a Viewer key is left to something
+  else.
+- **`OutputsTests` asserted the old pipeline refusal word for word**; updated to Settings, Outputs.
+
+### Decisions, each with its reason
+
+1. **A key monitor, not a better focus.** Reason: focus restoration in SwiftUI gave no guarantee to measure against;
+   a monitor runs whatever holds the focus, and its rules are a pure function the tests cover.
+2. **The hidden Help sections were rewritten too** (People tab, Direction tab, as PLAN M3 says they will appear).
+   Reason: one rule can then read every article; they show only when M6 and M9 switch them on, and those builders
+   rewrite them against what they build.
+3. **Installed.** Reason: this fixer's instructions install once every M3b check passes, and the live copy was not
+   running at all (outside Quit, 10:39:26). Note for the next verifier: M3a's second fix (62c713f) goes live with it,
+   still without its own verdict.
+
+### Installed
+
+`make install` at 12:03:25: `~/Applications/Prakriti.app` running as **pid 91904** (`pgrep`), the only copy
+registered, live mode, watching `~/Prakriti/Drop` and the studio folder; first sweep "Checked 2 folders. Nothing new."
+(11 recordings listed in the studio folder, 0 in Drop), and "Caught up on changes made while Prakriti was closed: 0
+events." The live log also says notices are turned off for Prakriti in System Settings (Ivan's switch, unchanged).
+
+### Still open (the builder's list, unchanged)
+
+J (backward) not measured on the real files; VoiceOver not run over the strip or the transcript; the split between
+picture and transcript is not remembered; the Podcast-ready rendition assumes no intro.
