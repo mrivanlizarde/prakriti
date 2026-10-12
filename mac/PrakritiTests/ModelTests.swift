@@ -137,6 +137,20 @@ final class ModelTests: XCTestCase {
             XCTAssertEqual(ModelRouting.provider(chosen: provider, for: lesson), provider, "a local choice is kept")
         }
         XCTAssertFalse(ModelProvider.claudeAPI.isLocal)
+        // Fails closed (12 Oct): no recording, or a kind other than a talk, never reaches the cloud.
+        // Reason: the 16, 20 and 23 Sep classes sat in the live store with their kind not set, while the
+        // live settings chose the Claude API and a key was in the Keychain.
+        XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: nil), .lmStudio, "no recording: stays on this Mac")
+        for kind in RecordingKind.allCases where kind != .talk {
+            let recording = Recording(filePath: "/tmp/\(kind.rawValue).mp4", kind: kind)
+            XCTAssertTrue(recording.isPrivacyLocked, "\(kind) is locked")
+            XCTAssertNotNil(recording.lockLine, "\(kind) says why")
+            XCTAssertNotNil(Privacy.lockReason(kind: kind, serenity: false), "\(kind) has a reason for the writer")
+            XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: recording), .lmStudio, "\(kind) stays on this Mac")
+        }
+        XCTAssertFalse(talk.isPrivacyLocked)
+        XCTAssertNil(talk.lockLine)
+        XCTAssertNil(Privacy.lockReason(kind: .talk, serenity: false))
     }
 
     func testStatusVocabulary() {

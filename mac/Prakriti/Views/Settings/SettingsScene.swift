@@ -166,7 +166,7 @@ struct PrivacyPane: View {
         Form {
             Section {
                 PrivacyRule(symbol: "lock.fill",
-                            text: "A recording marked as a class, or whose transcript says \u{201C}Serenity\u{201D}, is only read by models on this Mac. If a task is set to the Claude API, LM Studio does it for these recordings instead, and the recording says so.")
+                            text: "Only a recording marked as a talk can be read by the Claude API. A class, a conversation, a test, a recording not marked yet, or one whose transcript says \u{201C}Serenity\u{201D} is only read by models on this Mac. If a task is set to the Claude API, LM Studio does it for these recordings instead, and the recording says so.")
                 PrivacyRule(symbol: "externaldrive",
                             text: "Recordings never leave this Mac. With a Claude API key, only the words of a transcript are sent, and never for the recordings above.")
                 PrivacyRule(symbol: "person.2",

@@ -466,7 +466,7 @@ struct OllamaClient: LanguageModelClient {
 // MARK: Claude API
 
 /// The Claude API (Anthropic's Messages API, raw HTTP: there is no official Swift SDK). Optional;
-/// sends text to Anthropic, so the privacy lock keeps classes and anything with Serenity in it away
+/// sends text to Anthropic, so the privacy lock keeps everything but a talk without Serenity in it away
 /// from it. The key comes from the Keychain for each run and is never written to a file or a log.
 /// Claude Opus 5.5 takes no sampling settings and cannot turn thinking off; its effort is set to
 /// "medium" explicitly, and a declined request falls back on Anthropic's side ("fallbacks").

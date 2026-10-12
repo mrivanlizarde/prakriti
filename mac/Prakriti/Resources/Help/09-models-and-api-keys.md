@@ -92,8 +92,9 @@ Key. To stop it working everywhere, delete it on Anthropic's site too.
 When a task uses the Claude API, Prakriti sends the transcript's lines, with their times, and the
 instructions for the task. It never sends sound, video or pictures.
 
-**The privacy lock.** A recording marked as a class, or one whose transcript names Serenity, is only read
-by models on this Mac, whatever Settings, Models says. LM Studio does those tasks instead, and the
+**The privacy lock.** Only a recording you marked as a talk can be read by the Claude API. A class, a
+conversation, a test, a recording whose kind is still Not set, and any recording whose transcript names
+Serenity are only read by models on this Mac, whatever Settings, Models says. LM Studio does those tasks instead, and the
 recording's page and the inspector's Checks say so. Nothing is sent.
 
 ### What Anthropic keeps

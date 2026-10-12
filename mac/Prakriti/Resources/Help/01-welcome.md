@@ -44,8 +44,8 @@ call.
 
 - It never changes or deletes an original recording, and never writes into a folder it watches.
 - It never uploads, posts or sends anything.
-- It never sends a recording marked as a class, or one whose transcript names Serenity, to a model
-  outside your Mac. See [Models and API keys](09-models-and-api-keys.md).
+- It only sends a recording you marked as a talk to a model outside your Mac, and never one whose
+  transcript names Serenity. A class, or a recording not marked yet, stays on your Mac. See [Models and API keys](09-models-and-api-keys.md).
 
 :::requires people
 - It never keeps the face or voice of someone you have not named and marked as having agreed.

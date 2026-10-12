@@ -2949,6 +2949,92 @@ refusal), and the snapshots in `screens/mac/v2-m3a/` in contact sheets.
   it to open its page (Escape comes back); try the list (Command-2) and the search (type a word Gabriel says).
   Prakriti > Settings (Command-comma) holds Outputs, Models and the rest. Say what to change: this is the
   cheapest point to change direction.
-- [ ] **Your window keeps its own size (1140 by 772).** The new layout is drawn for 1440 by 900: drag the window
+- [ ] **Your window keeps its own size (1440 by 795, read from the live preferences; "1140 by 772" was stale,
+  corrected 12 Oct by the fix below).** The new layout is drawn for 1440 by 900: drag the window
   larger, or hide the inspector (Command-Option-I) when the browser feels tight.
 - Nothing is blocked on you.
+
+---
+
+## v2 part M3a, fixed after verification. Mon 12 Oct 2026
+
+The independent verifier of M3a failed four checks. Each is fixed at its cause here, measured again, and the
+app installed again. No feature was added or changed apart from the privacy lock's rule.
+
+### What failed, and what changed
+
+1. **`make migrate-check` failed (5 assertions) although the schema was sound.** `StoreMigrationTests` asserted
+   that the live store's data was still unused: no approvals, no removed files. That stopped being true at
+   20:14 to 20:20 on 11 Oct, when the two talks were approved and Mon 14 Sep removed. **Fix:** the test reads the
+   copy with SQLite before SwiftData opens it, then asserts what a migration must guarantee on any store: every
+   row comes through (recordings, folders, output settings, Activity lines), every recording reads as stored
+   (path, status, kind, approval, Serenity mark, written text, podcast-ready record, episode number and length),
+   no output switch moves, an output kind added in the upgrade starts off, and a field is at its default only
+   when the copy did not have its column (that upgrade). The first try read every count as 0: the copy is in WAL
+   mode and a plain read-only open failed at the first query, silently; it now opens with `immutable=1` and
+   throws if any read fails. `make migrate-check FROM=<store>` runs it on an older store.
+2. **`make look` wrote AppKit layout into Ivan's live preferences.** All copies share the bundle identifier, so
+   AppKit's autosave of the main split view and the Settings window landed in `studio.therowan.prakriti.app`;
+   only the main window's frame had been switched off. **Fix:** `LayoutAutosave` (in `PrakritiApp.swift`)
+   switches off frame and split-view autosave for every window under `--sample-data` and `--development`; and
+   `capture-window.swift` reads the live layout keys before a run and, at every exit (`finish(_:)`; Swift scripts
+   do not run `atexit`, measured with a two-line script), puts back any it changed and fails with exit 3 if one
+   cannot be.
+3. **The privacy lock did not fail closed** (v1's rule; the verifier filed it under M5a, but it was a live hazard
+   now). A recording whose kind was not set, or no recording, went to the Claude API when chosen; the live
+   settings chose it for all three tasks (06:12), a key was in the Keychain, and the 16, 20 and 23 Sep classes are
+   stored as kind "unknown". **Fix, interim until M5a's `PrivacyLock`:** only a recording marked as a talk,
+   without Serenity, may reach a cloud model. `Privacy.lockReason` gives a reason for every other kind ("it is
+   not marked as a talk yet", "this is a conversation", "this is marked as a test"); `Recording.isPrivacyLocked`
+   is that reason's presence; `ModelRouting.provider` returns LM Studio for a nil recording. The inspector's lock
+   line, Settings' Privacy pane, the Models pane's first line and its Privacy lock box, and Help articles 01, 07
+   and 09 say the new rule.
+4. **The running live app was not the installed copy:** since 20:13 on 11 Oct, pid 25439 was a Debug build in a
+   verifier's clone under `/private/tmp/.../m3a-verify-1710/clone`, opened by LaunchServices by bundle identifier,
+   in live mode with no login item. A plain `make install` would have opened the new copy, which hands over to
+   the copy already running in its mode and quits. **Fix:** `install.sh` asks any other copy running without
+   `--development` or `--sample-data` to quit, unregisters its bundle (`lsregister -u`), and registers the
+   installed copy (`lsregister -f`). The 21 other scratchpad clones still registered were unregistered by hand.
+
+### Checks, measured
+
+| Check | Result |
+|---|---|
+| `make migrate-check` on the live store | **PASS** (07:37): rows before and after: recordings 11/11, folders 2/2, output settings 40/40, Activity lines 529/529; 2 approved; 1 folder with 1 removed file; every field already in the store, so compared as stored |
+| The same test on the 10 Oct store copy (`scratchpad/store`, before milestone 5) | **PASS**: all seven gated fields absent, so each was checked at its default; the podcast-ready kind added to the copy in 3 settings, all off; rows 11/11, 2/2, 27/27, 16/16 |
+| `make test` | **PASS. 194 tests, 0 failures, 8 skipped by design**, 711.7 s (07:13 to 07:25). New assertions: `ModelTests.testPrivacyLockForcesALocalModel` (nil, class, conversation, test, not set all locked with a line; a talk not), `WritingTests` (a recording not set, a conversation and a test with every task on the Claude API: 0 Claude requests, LM Studio did all three, the files say "It is not marked as a talk yet, so it was written by a model on this Mac only.") |
+| `make look` on the final code | **PASS, 36 of 36** (07:34 to 07:37); the guard's line: "5 layout keys read before; changed by this run: none; all as before now." `defaults export` of the live domain before and after: **identical**; the live plist's modification time unchanged (07:21:46). The first run with `LayoutAutosave` alone (07:02 to 07:05) was also identical |
+| The guard proved by breaking it | A script built from the guard's own lines changed `NSNavPanelExpandedSizeForOpenMode` and added `NSWindow Frame guard-test` in the live domain, then exited through `finish`: it reported both, put them back, and `defaults export` before and after was **identical** |
+| Snapshots looked at | Settings, Privacy (light) shows the new rule in full; Settings, Models (light and dark) its first line and Privacy lock box, re-rendered with `make snapshots ONLY=library` (193 s, PASS) after those words changed; the inspector's Checks (p2) unchanged for the Serenity sample. HelpTests, RulesTests, ModelTests, WritingTests, WelcomeTests and LibraryTests run again on the final words: **104 tests, 0 failures** |
+| No dash in any added line | `git diff` added lines: **0** em or en dashes |
+| `make install` | 07:38:07: "Another live copy is running (pid 25439) from .../m3a-verify-1710/clone/... Asking it to quit, and unregistering it." Log: "Quit." 07:38:08, **"Prakriti 0.1 (1) opened. Mode: live. Store: ~/Library/Application Support/Prakriti/Prakriti.store"** 07:38:10, login item on, 0 events to catch up, **"Checked 2 folders. Nothing new." 07:38:10 and 07:43:10**. `ps`: the only Prakriti is **pid 66039, `~/Applications/Prakriti.app`**. LaunchServices now lists the installed copy and four builds inside the repo and Xcode's DerivedData; no copy under `/private/tmp` |
+| `make install` again, on the final words | 07:51:54: the installed copy asked to quit ("Quit." 07:51:56), **opened 07:51:57 in live mode, pid 66737**, login item on, 0 events, **"Checked 2 folders. Nothing new." 07:51:57 and 07:56:57**; the only Prakriti running; the installed Help holds 11 articles, 07 with the new rule |
+| Live files | `~/Prakriti/Outputs`, `Approved` and `Drop`: the same **24 files with the same SHA-256** before the first install and after the 07:43 and 07:56 heartbeats |
+
+### Decisions
+
+1. **The lock's interim rule is "a talk, without Serenity", not "anything but a class".** Reason: the plan's v2 lock
+   (M5a) also refuses a talk where students are heard; until it exists, the only kind Ivan has positively said is
+   one teacher speaking is a talk. Conversations and tests stay local too. M5a must be at least this strict.
+2. **The migration check compares stored values rather than asserting emptiness.** Reason: a ship gate that
+   depends on Ivan not having used the app fails the first day he does.
+3. **The layout guard is in the app and in the capture script.** Reason: the app's switch covers every window it
+   knows of today; the script's check covers anything AppKit or SwiftUI starts saving later, and fails loudly.
+
+### Not changed, noted
+
+- **Plan deviation (verifier's note):** M3a deleted v1's Today, Sources and Settings views, which the plan leaves to
+  M3b; decision 7 of M3a gives the reason. v1's recording page is kept, as the plan requires.
+- **The selected Grid/List segment** draws as a blank circle in bitmap snapshots (glass); only `make look` shows it.
+- **The inspector's Outputs tab is 12 screenfuls** for one recording in the snapshots.
+- **The writing section's lock line** still names Serenity in its stored reason; M5a rewrites it.
+
+### For Ivan
+
+- [ ] **Confirm the changes made at 20:14 to 20:20 on 11 Oct were yours.** They were made through the stray clone,
+  not the installed app: Mon 14 Sep removed from the library; Sun 6 Sep given its own choices with podcast-ready
+  and titles on; both talks marked as talks and approved, copied to `~/Prakriti/Approved`.
+- [ ] **Before turning titles on for any recording, mark what it is.** A recording whose kind is Not set now stays
+  on this Mac even with the Claude API chosen; only one marked as a talk can go to the Claude API.
+- The live app is the installed copy again; nothing else is blocked on you.
+

@@ -191,9 +191,11 @@ final class Recording {
 
     var fileName: String { (filePath as NSString).lastPathComponent }
 
-    /// A class, or anything with Serenity in it, may only be read by a model on this Mac.
+    /// Only a recording marked as a talk, with no Serenity in it, may be read by a cloud model; anything
+    /// else (a class, a conversation, a test, or a kind not set yet) stays on this Mac. It fails closed:
+    /// until 12 Oct a recording whose kind was never set counted as unlocked. Part M5a replaces this rule.
     /// `hasSerenity` is set when a transcript says her name (Privacy.mentionsSerenity) and never unset.
-    var isPrivacyLocked: Bool { kind == .lesson || hasSerenity }
+    var isPrivacyLocked: Bool { Privacy.lockReason(kind: kind, serenity: hasSerenity) != nil }
 
     /// The titles, show notes and chapters last written, or nil.
     var written: WrittenPackage? { WrittenPackage.decode(writtenJSON) }

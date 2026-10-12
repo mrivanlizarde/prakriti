@@ -25,9 +25,10 @@ recording on this Mac, and holds back anything a person has not checked.
 
 ## Which recordings only models on this Mac read
 
-A recording marked as a class, or one whose transcript names Serenity, is only read by models on this
-Mac, even if a task is set to the Claude API. LM Studio does that task instead, and the recording's
-page says so. See [Models and API keys](09-models-and-api-keys.md).
+Only a recording you marked as a talk can be read by the Claude API. Everything else is only read by
+models on this Mac, even if a task is set to the Claude API: a class, a conversation, a test, a recording
+whose kind is still Not set, and any recording whose transcript names Serenity. LM Studio does that task
+instead, and the recording's page says so. See [Models and API keys](09-models-and-api-keys.md).
 
 :::unless people
 ## Classes and other voices

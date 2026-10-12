@@ -503,9 +503,11 @@ written by the model chosen for each task on the Models screen (LM Studio by def
 loaded by Prakriti at 65,536 tokens; Apple on-device; Ollama; the Claude API with its key in the
 Keychain), then checked in Swift: every chapter starts at a time that is one of the transcript's own
 lines, and every quote is found word for word in `transcript.txt`, or it is left out and counted.
-Tags and a short summary are their own tasks. **The privacy lock:** a recording marked as a class, or
-whose transcript says "Serenity", is only read by models on this Mac; a task set to the Claude API is
-done by LM Studio instead, and the page, the step and `show-notes.md` say so. The output is a draft in
+Tags and a short summary are their own tasks. **The privacy lock (fails closed since 12 Oct, until
+part M5a replaces it):** only a recording marked as a talk whose transcript does not say "Serenity" may
+reach the Claude API; a class, a conversation, a test, a recording whose kind is not set, and no
+recording at all are only read by models on this Mac; a task set to the Claude API is done by LM Studio
+instead, and the page, the step and `show-notes.md` say so. The output is a draft in
 `show-notes.md` (Approve copies it) and `titles-notes-chapters.json` (Outputs only). It is off for
 every folder until Ivan turns it on, because the model holds about 33 GB and takes minutes.
 **Finish line, Sat 10 Oct:** v1 passed on real recordings. What works, what does not, what Ivan must
@@ -827,7 +829,8 @@ of -19 on two meters), made again with the transcript turned off on the recordin
 engine v0's episode bit for bit). It writes `acceptance-outputs.txt` and pictures of each state to
 `screens/mac/<milestone>/`. `make migrate-check` copies the live store with `sqlite3 .backup` (the live
 store is only read) and opens the copy with this build's models: **run it before `make install`
-whenever a model changes.** `make accept-edits` is milestone 5's check on the **real 13 Sep talk**
+whenever a model changes.** It must hold on any real store (warning 91): `FROM=<an older store>` runs it
+on that one instead. `make accept-edits` is milestone 5's check on the **real 13 Sep talk**
 (about 3 minutes): made with the standard choices, marked as a talk, the first 10 s trimmed and 5:00
 to 5:30 cut on its page, made again, approved into `~/Prakriti/Dev/Approved`, the approved MP3
 measured with ffprobe against the first episode (about 40 s shorter), the cut words checked gone from
@@ -1381,6 +1384,30 @@ top and its end. Reading the code is not verification, and neither is a passing 
     your yes" (design spec C1) in the app, in notices and in Activity's line "is waiting for your yes"; the
     stored raw value `readyForYourYes` never changed, so nothing migrated. `make drop` and `process-in-app.sh`
     accept both phrasings in the log. Reason: one word must mean one thing, and "Ready" now means approved.
+90. **The privacy lock fails closed: only `kind == .talk` without Serenity may reach a cloud model**
+    (`Privacy.lockReason`, `Recording.isPrivacyLocked`, `ModelRouting.provider`, which also returns LM Studio
+    for a nil recording). Never let an unset kind read as "not locked". Reason (12 Oct): v1's rule locked only a
+    class or Serenity, while the 16, 20 and 23 Sep classes sat in the live store as kind "unknown", the live
+    settings chose the Claude API for all three tasks, and a key was in the Keychain: turning titles on for one
+    would have sent a class to Anthropic. Part M5a replaces this with `PrivacyLock`; it must stay at least this
+    strict.
+91. **`make migrate-check` must hold on any real store, never on what Ivan happens not to have done yet.**
+    `StoreMigrationTests` reads the copy with SQLite first (`immutable=1`: the copy is in WAL mode, and a plain
+    read-only open read every count as 0), then asserts that every row and stored value comes through, that no
+    switch moves, and that a field is at its default only when the copy did not have its column. Reason: on 11
+    Oct it asserted "nothing approved, no removed files", which stopped being true the evening Ivan approved two
+    talks and removed a recording, and failed the ship gate for every later part with a sound schema.
+92. **No capture or development copy may write layout into the live preferences.** All copies share the bundle
+    identifier, so AppKit autosave (window frames, split views, the Settings window) lands in Ivan's
+    `studio.therowan.prakriti.app` domain. `LayoutAutosave` switches it off under `--sample-data` and
+    `--development`, and `capture-window.swift` reads the layout keys before a run and puts back any it changed
+    at every exit through `finish(_:)` (Swift scripts do not run `atexit`, measured). Reason: on 11 Oct `make
+    look` changed `NSSplitView Subview Frames main` and the Settings window's frame in the live domain.
+93. **Only the copy in `~/Applications` may run live.** `make install` asks any other copy running without
+    `--development` or `--sample-data` to quit, unregisters its bundle from LaunchServices, and registers the
+    installed one. A verifier that builds a clone must `lsregister -u` it when done. Reason: from 20:13 on 11
+    Oct the live watcher was a Debug build in a verifier's clone under `/private/tmp`, picked by bundle
+    identifier, running on the live store with no login item.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

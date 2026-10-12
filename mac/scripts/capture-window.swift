@@ -283,6 +283,43 @@ func sendKey(pid: pid_t, _ key: CGKeyCode, flags: CGEventFlags = []) {
     }
 }
 
+// MARK: The live preferences
+
+// Every copy of Prakriti shares one bundle identifier, so AppKit saves the window and split-view sizes of a
+// capture or development copy into the LIVE copy's preferences domain. On 11 Oct `make look` changed
+// `NSSplitView Subview Frames main` (220/860x795 to 220/1220x900) and the Settings window's frame in Ivan's
+// preferences. The app now switches that saving off in these modes (LayoutAutosave); this is the second
+// line: the layout keys are read before the first launch and, at exit, any key a run changed is put back
+// (one it added is removed) and read again. A key that cannot be put back fails the run (exit 3).
+let liveDomain = "studio.therowan.prakriti.app" as CFString
+let layoutPrefixes = ["NSWindow Frame ", "NSSplitView Subview Frames ", "NSToolbar Configuration ", "NSTableView ", "NSOutlineView ", "NSNavPanel"]
+func liveLayout() -> [String: NSObject] {
+    CFPreferencesAppSynchronize(liveDomain)
+    let keys = (CFPreferencesCopyKeyList(liveDomain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? [String]) ?? []
+    var result: [String: NSObject] = [:]
+    for key in keys where layoutPrefixes.contains(where: key.hasPrefix) {
+        if let value = CFPreferencesCopyValue(key as CFString, liveDomain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? NSObject { result[key] = value }
+    }
+    return result
+}
+let liveLayoutBefore = liveLayout()
+/// Every way out of this script goes through here (`swift` running a script does not run atexit handlers:
+/// measured 12 Oct), so the live layout keys are checked and put back at every exit.
+func finish(_ code: Int32) -> Never {
+    Thread.sleep(forTimeInterval: 1)  // a quit copy's last writes reach cfprefsd first
+    let after = liveLayout()
+    let changed = Set(after.keys).union(liveLayoutBefore.keys).filter { after[$0] != liveLayoutBefore[$0] }.sorted()
+    for key in changed {
+        CFPreferencesSetValue(key as CFString, liveLayoutBefore[key], liveDomain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
+    }
+    if !changed.isEmpty { CFPreferencesSynchronize(liveDomain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) }
+    let now = liveLayout()
+    let still = Set(now.keys).union(liveLayoutBefore.keys).filter { now[$0] != liveLayoutBefore[$0] }.sorted()
+    print("Live preferences (\(liveDomain)): \(liveLayoutBefore.count) layout keys read before; changed by this run: \(changed.isEmpty ? "none" : changed.joined(separator: "; ")); "
+          + (still.isEmpty ? "all as before now." : "FAIL, still different: \(still.joined(separator: "; "))"))
+    exit(still.isEmpty ? code : 3)
+}
+
 // MARK: Main
 
 var args = Array(CommandLine.arguments.dropFirst())
@@ -299,14 +336,14 @@ if args.first == "--window", args.count == 3 {
         if let first = pids(of: app).first { pid = first; found = mainWindowID(pid: pid) }
         if found == nil { Thread.sleep(forTimeInterval: 0.3) }
     }
-    guard let (windowID, _) = found else { print("FAIL  no Prakriti window to capture"); exit(1) }
+    guard let (windowID, _) = found else { print("FAIL  no Prakriti window to capture"); finish(1) }
     NSRunningApplication(processIdentifier: pid)?.activate()
     Thread.sleep(forTimeInterval: 2.0)
     let (status, text) = run("/usr/sbin/screencapture", ["-x", "-o", "-l", String(windowID), png.path])
-    guard status == 0 else { print("FAIL  screencapture said \(text)"); exit(1) }
+    guard status == 0 else { print("FAIL  screencapture said \(text)"); finish(1) }
     let size = NSImageRep(contentsOf: png).map { "\($0.pixelsWide)x\($0.pixelsHigh) px" } ?? "unreadable"
     print("      saved \(png.path), \(size)")
-    exit(0)
+    finish(0)
 }
 // The app icon as Finder and the Dock get it (NSWorkspace, which reads the built bundle's compiled
 // icon), drawn at 512 and 32 px, with a 32 px copy magnified 8 times for looking. It measures the
@@ -322,7 +359,7 @@ if args.first == "--app-icon", args.count == 3 {
     for pixels in [512, 32] {
         guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: pixels, pixelsHigh: pixels, bitsPerSample: 8,
                                          samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
-                                         bytesPerRow: 0, bitsPerPixel: 0) else { exit(1) }
+                                         bytesPerRow: 0, bitsPerPixel: 0) else { finish(1) }
         rep.size = NSSize(width: pixels, height: pixels)
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
@@ -374,7 +411,7 @@ if args.first == "--app-icon", args.count == 3 {
         }
     }
     print(cut ? "PASS  the cut disc: a cut across the middle and the halves set apart" : "FAIL  not the cut disc (no cut, or the halves are not set apart)")
-    exit(cut ? 0 : 1)
+    finish(cut ? 0 : 1)
 }
 // The menu bar, as the Window Server draws it, read for every Prakriti mark it shows. It captures the
 // system's own menu bar window again and again for the given number of seconds, finds each Prakriti
@@ -391,12 +428,12 @@ if args.first == "--menu-bar", args.count == 4, let seconds = Double(args[2]) {
     try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
     let names = ["prakriti-menubar", "prakriti-menubar-working-1", "prakriti-menubar-working-2", "prakriti-menubar-waiting",
                  "prakriti-menubar-problem", "prakriti-menubar-paused", "prakriti-menubar-not-watching"]
-    guard let bundle = Bundle(url: app) else { print("FAIL  cannot open \(app.path)"); exit(1) }
+    guard let bundle = Bundle(url: app) else { print("FAIL  cannot open \(app.path)"); finish(1) }
     let list = (CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]]) ?? []
     guard let bar = list.first(where: { ($0[kCGWindowName as String] as? String) == "Menubar" && ($0[kCGWindowOwnerName as String] as? String) == "Window Server" }),
           let barNumber = bar[kCGWindowNumber as String] as? Int,
           let barBounds = (bar[kCGWindowBounds as String] as? NSDictionary).flatMap({ CGRect(dictionaryRepresentation: $0) }) else {
-        print("FAIL  no menu bar window found"); exit(1)
+        print("FAIL  no menu bar window found"); finish(1)
     }
     let shot = FileManager.default.temporaryDirectory.appending(path: "prakriti-menubar-\(getpid()).png")
     /// One capture of the menu bar: its coverage (alpha, 0 to 1) per pixel.
@@ -408,13 +445,13 @@ if args.first == "--menu-bar", args.count == 4, let seconds = Double(args[2]) {
         for y in 0..<rep.pixelsHigh { for x in 0..<rep.pixelsWide { rep.getPixel(&p, atX: x, y: y); alpha[y * rep.pixelsWide + x] = Float(p[rep.samplesPerPixel - 1]) / 255 } }
         return (alpha, rep.pixelsWide, rep.pixelsHigh, rep)
     }
-    guard let first = capture() else { print("FAIL  the menu bar could not be captured (screencapture)"); exit(1) }
+    guard let first = capture() else { print("FAIL  the menu bar could not be captured (screencapture)"); finish(1) }
     let scale = Int((Double(first.height) / barBounds.height).rounded())
     let side = 18 * scale
     // Each glyph's coverage at the capture's scale.
     var glyphs: [(name: String, alpha: [Float])] = []
     for name in names {
-        guard let image = bundle.image(forResource: name) else { print("FAIL  \(name) is not in \(app.lastPathComponent)"); exit(1) }
+        guard let image = bundle.image(forResource: name) else { print("FAIL  \(name) is not in \(app.lastPathComponent)"); finish(1) }
         var bytes = [UInt8](repeating: 0, count: side * side)
         bytes.withUnsafeMutableBytes { buffer in
             guard let context = CGContext(data: buffer.baseAddress, width: side, height: side, bitsPerComponent: 8, bytesPerRow: side,
@@ -461,7 +498,7 @@ if args.first == "--menu-bar", args.count == 4, let seconds = Double(args[2]) {
     guard !prakriti.isEmpty else {
         // Other apps' items come back only with Screen Recording permission for whatever runs this.
         print("FAIL  no Prakriti mark in the menu bar (\(items(first).count) items read; Screen Recording permission for this process: \(CGPreflightScreenCaptureAccess() ? "yes" : "no, so the bar may come back empty"))")
-        exit(1)
+        finish(1)
     }
     for (n, item) in prakriti.enumerated() {
         // Magnified 8 times over mid grey, so the glyph and its dim half can be seen.
@@ -520,7 +557,7 @@ if args.first == "--menu-bar", args.count == 4, let seconds = Double(args[2]) {
     print(!animatedRight ? "FAIL  the working frames did not turn every 0.7 s (see above)"
           : sawTurning ? "PASS  the working frames turned every 0.7 s, and every other state held still"
           : "PASS  every state held still (nothing was working during the capture)")
-    exit(animatedRight ? 0 : 1)
+    finish(animatedRight ? 0 : 1)
 }
 // Prakriti Help (v2 part M2a): the REAL Help window, opened on its own with sample data
 // (`--sample-data --show=help`) at three articles and at a search, in light and dark, each captured with
@@ -738,7 +775,7 @@ if args.first == "--help", args.count == 3 {
     let file = out.deletingLastPathComponent().appending(path: "acceptance-help.txt")
     try? (report.joined(separator: "\n") + "\n").write(to: file, atomically: true, encoding: .utf8)
     print("      wrote \(file.path)")
-    exit(failures == 0 ? 0 : 1)
+    finish(failures == 0 ? 0 : 1)
 }
 // The first launch (v2 part M2b, docs/v2/PLAN.md M2 check 5), made rather than assumed: the development
 // preference `welcomeSeenVersion` is deleted (`defaults delete` on the development domain, never the live
@@ -828,7 +865,7 @@ if args.first == "--first-launch", args.count == 3 {
     let others = listing.split(separator: "\n").filter { $0.contains("--development") && !$0.contains("--sample-data") }
     if !others.isEmpty {
         say("FAIL  another development copy is running and holds the development lock: \(others.joined(separator: " | "))")
-        exit(1)
+        finish(1)
     }
     let liveBefore = preference(liveDomain)
     run("/usr/bin/defaults", ["delete", developmentDomain, "welcomeSeenVersion"])
@@ -902,14 +939,14 @@ if args.first == "--first-launch", args.count == 3 {
     let file = out.deletingLastPathComponent().appending(path: "acceptance-first-launch.txt")
     try? (report.joined(separator: "\n") + "\n").write(to: file, atomically: true, encoding: .utf8)
     print("      wrote \(file.path)")
-    exit(failures == 0 ? 0 : 1)
+    finish(failures == 0 ? 0 : 1)
 }
 // The contrast between the darkest and the lightest pixel in a box of a capture (sRGB, WCAG's formula):
 // secondary text on its background, measured as the screen drew it (v2 part M3a, design spec 6.6).
 //   swift scripts/capture-window.swift --contrast <png> <x0> <y0> <x1> <y1>   (pixels)
 if args.first == "--contrast", args.count == 6, let x0 = Int(args[2]), let y0 = Int(args[3]), let x1 = Int(args[4]), let y1 = Int(args[5]) {
     guard let rep = NSBitmapImageRep(data: (try? Data(contentsOf: URL(fileURLWithPath: args[1]))) ?? Data())?
-            .converting(to: .sRGB, renderingIntent: .default) else { print("FAIL  could not read \(args[1])"); exit(1) }
+            .converting(to: .sRGB, renderingIntent: .default) else { print("FAIL  could not read \(args[1])"); finish(1) }
     func luminance(_ p: [Int]) -> Double {
         let f = { (v: Int) -> Double in let v = Double(v) / 255; return v <= 0.03928 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
         return 0.2126 * f(p[0]) + 0.7152 * f(p[1]) + 0.0722 * f(p[2])
@@ -925,7 +962,7 @@ if args.first == "--contrast", args.count == 6, let x0 = Int(args[2]), let y0 = 
     }
     let ratio = (luminance(lightest) + 0.05) / (luminance(darkest) + 0.05)
     print("\(ratio >= 4.5 ? "PASS" : "FAIL")  \((args[1] as NSString).lastPathComponent) (\(x0),\(y0))-(\(x1),\(y1)): darkest rgb\(darkest), lightest rgb\(lightest), \(String(format: "%.2f", ratio)) to 1")
-    exit(ratio >= 4.5 ? 0 : 1)
+    finish(ratio >= 4.5 ? 0 : 1)
 }
 // The main window's keys in the REAL app (v2 part M3a, design spec 2.5 and 6.7), driven through the app's own
 // event queue and read back through Accessibility by process id (warning 79): Return and Command-Down open the
@@ -1010,16 +1047,16 @@ func runKeysCheck(_ app: URL) -> Int {
 if args.first == "--keys", args.count == 2 {
     let failures = runKeysCheck(URL(fileURLWithPath: args[1]).standardizedFileURL)
     print(failures == 0 ? "PASS: every key did what it says" : "FAIL: \(failures) key check(s) failed")
-    exit(failures == 0 ? 0 : 1)
+    finish(failures == 0 ? 0 : 1)
 }
 if args.first == "--analyze" {
     let ok = args.dropFirst().map { describe(($0 as NSString).lastPathComponent, analyze(URL(fileURLWithPath: $0))) }
-    exit(ok.allSatisfy { $0 } ? 0 : 1)
+    finish(ok.allSatisfy { $0 } ? 0 : 1)
 }
 guard args.count == 2 else {
     print("usage: swift scripts/capture-window.swift <Prakriti.app> <output folder>")
     print("       swift scripts/capture-window.swift --analyze <png>...")
-    exit(2)
+    finish(2)
 }
 let app = URL(fileURLWithPath: args[0]).standardizedFileURL
 let out = URL(fileURLWithPath: args[1]).standardizedFileURL
@@ -1123,4 +1160,4 @@ failures += keyFailures
 index += 1
 print(failures == 0 ? "PASS: every real window drew its selected sidebar row with a visible icon and label, the refusal showed, and every key did what it says"
                     : "FAIL: \(failures) of \(index) captures failed")
-exit(failures == 0 ? 0 : 1)
+finish(failures == 0 ? 0 : 1)

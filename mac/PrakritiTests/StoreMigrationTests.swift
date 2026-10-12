@@ -1,4 +1,5 @@
 import Foundation
+import SQLite3
 import SwiftData
 import XCTest
 @testable import Prakriti
@@ -17,6 +18,12 @@ final class StoreMigrationTests: XCTestCase {
         }
         let live = FileManager.default.homeDirectoryForCurrentUser.appending(path: "Library/Application Support/Prakriti/Prakriti.store").path
         XCTAssertNotEqual(URL(fileURLWithPath: path).resolvingSymlinksInPath().path, live, "never the live store itself")
+        // What the copy held BEFORE this build opened it, read straight from SQLite. Reason (12 Oct): this
+        // check used to assert that every field arrived empty, which was only true until Ivan used the
+        // app; once he approved two talks and removed a recording on 11 Oct, it failed for every later
+        // part although the schema was fine. A migration check must hold on any real store: a field this
+        // build ADDS arrives at its default, and everything the store already had comes through unchanged.
+        let before = try RawStore(path: path)
         let container = try PrakritiStore.makeContainer(at: URL(fileURLWithPath: path))
         let context = container.mainContext
         let recordings = try context.fetch(FetchDescriptor<Recording>())
@@ -25,58 +32,165 @@ final class StoreMigrationTests: XCTestCase {
         let lines = try context.fetchCount(FetchDescriptor<LogEntry>())
         XCTAssertFalse(sources.isEmpty, "the copy has its folders")
         XCTAssertFalse(settings.isEmpty, "the copy has its output settings")
-        // The fields milestone 4 added arrive empty, and nothing that was there is lost.
-        for recording in recordings {
-            XCTAssertNil(recording.episodeDuration)
-            XCTAssertEqual(recording.madeFiles, [])
-            // Milestone 5's fields arrive empty: no edits, none waiting for Make Again, nothing
-            // approved, and a recording engine v0 made reads as one part, all of it.
-            XCTAssertTrue(recording.edits.isEmpty)
-            XCTAssertFalse(recording.editsPending)
-            XCTAssertEqual(recording.episodeParts, [])
-            XCTAssertNil(recording.approvedAt)
-            XCTAssertEqual(recording.approvedFiles, [])
-            // Milestone 6's fields arrive empty: nothing written, no problem recorded.
-            XCTAssertNil(recording.writtenJSON)
-            XCTAssertNil(recording.writingProblem)
-            if recording.fromEngineV0, recording.status == .readyForYourYes, let duration = recording.duration {
-                XCTAssertEqual(recording.episodeClock?.segments, [Mastering.Span(start: 0, end: duration)])
-                XCTAssertTrue(ApprovalCheck.check(recording, isBusy: false).speakersNotChecked, "not marked as a talk yet")
+
+        // Nothing that was there is lost: every row comes through.
+        XCTAssertEqual(recordings.count, before.count("ZRECORDING"), "every recording comes through")
+        XCTAssertEqual(sources.count, before.count("ZSOURCE"), "every folder comes through")
+        XCTAssertEqual(settings.count, before.count("ZOUTPUTSETTING"), "every output setting comes through")
+        XCTAssertEqual(lines, before.count("ZLOGENTRY"), "every Activity line comes through")
+
+        // Nothing Ivan set is changed: per recording (by its path), its status, kind, approval, Serenity mark,
+        // what was written and the podcast-ready record read the same as SQLite stored them.
+        let rawRecordings = before.rows("ZRECORDING", ["ZFILEPATH", "ZSTATUSRAW", "ZKINDRAW", "ZAPPROVEDAT", "ZHASSERENITY", "ZWRITTENJSON", "ZPODCASTREADYJSON", "ZEPISODENUMBER", "ZEPISODEDURATION"])
+        let modelRecordings = recordings.map { r -> [String] in
+            [r.filePath, r.statusRaw, r.kindRaw, r.approvedAt == nil ? "nil" : "set", r.hasSerenity ? "1" : "0",
+             r.writtenJSON == nil ? "nil" : "set", r.podcastReadyJSON == nil ? "nil" : "set",
+             r.episodeNumber.map(String.init) ?? "nil", r.episodeDuration == nil ? "nil" : "set"]
+        }
+        let rawShaped = rawRecordings.map { row -> [String] in
+            [row[0] ?? "", row[1] ?? "", row[2] ?? "", row[3] == nil ? "nil" : "set", row[4] ?? "0",
+             row[5] == nil ? "nil" : "set", row[6] == nil ? "nil" : "set", row[7] ?? "nil", row[8] == nil ? "nil" : "set"]
+        }
+        XCTAssertEqual(modelRecordings.map { $0.joined(separator: "|") }.sorted(), rawShaped.map { $0.joined(separator: "|") }.sorted(),
+                       "every recording reads as SQLite stored it")
+        // Every output setting keeps its switch: the upgrade turns nothing on and nothing off.
+        let rawSwitches = before.rows("ZOUTPUTSETTING", ["ZKINDRAW", "ZISON"]).map { "\($0[0] ?? "")=\($0[1] ?? "0")" }.sorted()
+        XCTAssertEqual(settings.map { "\($0.kindRaw)=\($0.isOn ? 1 : 0)" }.sorted(), rawSwitches, "no switch moves in the upgrade")
+
+        // Fields this build adds to the store arrive at their defaults. Each block runs only when the copy did
+        // not have the field yet (the upgrade that adds it); once a store has it, its values are Ivan's.
+        let gates = [("ZRECORDING", "ZEPISODEDURATION"), ("ZRECORDING", "ZEPISODEPARTS"), ("ZRECORDING", "ZWRITTENJSON"), ("ZRECORDING", "ZPODCASTREADYJSON"),
+                     ("ZOUTPUTSETTING", "ZNUMBERINGRAW"), ("ZRECORDING", "ZCHECKEDCLAIMS"), ("ZSOURCE", "ZFORGOTTENPATHS")]
+        print("Fields this open adds, so checked at their defaults: \(gates.filter { !before.has($0.0, $0.1) }.map(\.1)); already in the store, so compared as stored: \(gates.filter { before.has($0.0, $0.1) }.map(\.1))")
+        if !before.has("ZRECORDING", "ZEPISODEDURATION") {
+            // Milestone 4: nothing made by the app yet.
+            for recording in recordings {
+                XCTAssertNil(recording.episodeDuration)
+                XCTAssertEqual(recording.madeFiles, [])
             }
         }
-        // Titles, show notes and chapters can be made from milestone 6. None of the folders may start
-        // writing on its own after the upgrade: every folder's switch was stored off (it started off,
-        // and could not be turned on before milestone 6).
-        let writingOn = sources.filter { $0.setting(for: .titlesNotesChapters)?.isOn == true }.map(\.name)
-        XCTAssertEqual(writingOn, [], "a folder would start writing with the 33 GB model on its own")
-        // The podcast-ready episode (10 Oct, after v1): the launch adds its settings to an older store,
-        // switched off everywhere, and its recording fields arrive empty.
-        for recording in recordings {
-            XCTAssertNil(recording.podcastReadyJSON)
-            XCTAssertNil(recording.podcastReadyProblem)
-            XCTAssertNil(recording.episodeNumber)
+        if !before.has("ZRECORDING", "ZEPISODEPARTS") {
+            // Milestone 5: no edits, none waiting for Make Again, nothing approved, and a recording engine v0
+            // made reads as one part, all of it.
+            for recording in recordings {
+                XCTAssertTrue(recording.edits.isEmpty)
+                XCTAssertFalse(recording.editsPending)
+                XCTAssertEqual(recording.episodeParts, [])
+                XCTAssertNil(recording.approvedAt)
+                XCTAssertEqual(recording.approvedFiles, [])
+                if recording.fromEngineV0, recording.status == .readyForYourYes, let duration = recording.duration {
+                    XCTAssertEqual(recording.episodeClock?.segments, [Mastering.Span(start: 0, end: duration)])
+                    XCTAssertTrue(ApprovalCheck.check(recording, isBusy: false).speakersNotChecked, "not marked as a talk yet")
+                }
+            }
         }
+        if !before.has("ZRECORDING", "ZWRITTENJSON") {
+            // Milestone 6: nothing written, no problem recorded, and no folder starts writing on its own.
+            for recording in recordings {
+                XCTAssertNil(recording.writtenJSON)
+                XCTAssertNil(recording.writingProblem)
+            }
+        }
+        let writingOn = sources.filter { $0.setting(for: .titlesNotesChapters)?.isOn == true }.map(\.name)
+        if !before.has("ZRECORDING", "ZPODCASTREADYJSON") {
+            // The podcast-ready episode (10 Oct): its recording fields arrive empty.
+            for recording in recordings {
+                XCTAssertNil(recording.podcastReadyJSON)
+                XCTAssertNil(recording.podcastReadyProblem)
+                XCTAssertNil(recording.episodeNumber)
+            }
+        }
+        // The launch adds any output kind a store lacks, switched OFF everywhere, and never touches one it has.
+        let hadReady = before.rows("ZOUTPUTSETTING", ["ZKINDRAW"]).contains { $0[0] == OutputKind.podcastReady.rawValue }
+        let readyBefore = Set(settings.filter { $0.kind == .podcastReady }.map(\.id))
         let added = try PrakritiStore.addMissingOutputKinds(context)
-        let readyOn = sources.filter { $0.setting(for: .podcastReady)?.isOn == true }.map(\.name)
-        XCTAssertEqual(readyOn, [], "a folder would start making podcast-ready episodes on its own")
-        XCTAssertTrue(sources.allSatisfy { $0.setting(for: .podcastReady) != nil }, "every folder has the switch, off")
+        let addedSettings = try context.fetch(FetchDescriptor<OutputSetting>()).filter { !Set(settings.map(\.id)).contains($0.id) }
+        XCTAssertTrue(addedSettings.allSatisfy { !$0.isOn }, "an output kind added in the upgrade starts off")
+        XCTAssertTrue(sources.allSatisfy { $0.setting(for: .podcastReady) != nil }, "every folder has the podcast-ready switch")
         let defaultReady = try context.fetch(FetchDescriptor<OutputSetting>()).filter { $0.kind == .podcastReady && $0.source == nil && $0.recording == nil }
         XCTAssertEqual(defaultReady.count, 1, "the Outputs screen has its settings")
-        XCTAssertEqual(defaultReady.first?.isOn, false)
-        print("The new output was added to the copy: \(added.map(\.title)); switched on in \(readyOn.count) folders")
-        // The episode text (11 Oct): numbering and the call to action arrive as "not numbered" and
-        // empty on every setting, so nothing Ivan did not choose closes any show notes.
+        if !hadReady {
+            XCTAssertEqual(defaultReady.first?.isOn, false)
+            XCTAssertEqual(sources.filter { $0.setting(for: .podcastReady)?.isOn == true }.map(\.name), [], "a folder would start making podcast-ready episodes on its own")
+        }
+        let readyOn = sources.filter { $0.setting(for: .podcastReady)?.isOn == true }.map(\.name)
+        print("Output kinds added to the copy: \(added.map(\.title)) (\(addedSettings.count) settings, all off); podcast-ready existed before: \(hadReady) (\(readyBefore.count) settings), on in \(readyOn.count) folders")
+        // The episode text (11 Oct): numbering and the call to action arrive unset when the store lacks them.
         let all = try context.fetch(FetchDescriptor<OutputSetting>())
-        XCTAssertTrue(all.allSatisfy { $0.numbering == .none && $0.callToAction.isEmpty }, "numbering and call to action arrive unset")
+        if !before.has("ZOUTPUTSETTING", "ZNUMBERINGRAW") {
+            XCTAssertTrue(all.allSatisfy { $0.numbering == .none && $0.callToAction.isEmpty }, "numbering and call to action arrive unset")
+        }
         print("Numbering and call to action on \(all.count) output settings: \(Set(all.map(\.numberingRaw))), \(all.filter { !$0.callToAction.isEmpty }.count) with a call to action")
-        // v2 part M3a: the ticked accuracy claims and the folders' removed files arrive empty.
-        XCTAssertTrue(recordings.allSatisfy { $0.checkedClaims.isEmpty }, "no claim arrives ticked")
-        XCTAssertTrue(sources.allSatisfy { $0.forgottenPaths.isEmpty }, "no folder arrives passing over a file")
-        print("v2 part M3a fields: \(recordings.filter { !$0.checkedClaims.isEmpty }.count) recordings with ticked claims, \(sources.filter { !$0.forgottenPaths.isEmpty }.count) folders with removed files")
+        // v2 part M3a: the ticked accuracy claims and the folders' removed files arrive empty when the store lacks them.
+        if !before.has("ZRECORDING", "ZCHECKEDCLAIMS") {
+            XCTAssertTrue(recordings.allSatisfy { $0.checkedClaims.isEmpty }, "no claim arrives ticked")
+        }
+        if !before.has("ZSOURCE", "ZFORGOTTENPATHS") {
+            XCTAssertTrue(sources.allSatisfy { $0.forgottenPaths.isEmpty }, "no folder arrives passing over a file")
+        }
+        print("v2 part M3a fields: \(recordings.filter { !$0.checkedClaims.isEmpty }.count) recordings with ticked claims, \(sources.filter { !$0.forgottenPaths.isEmpty }.count) folders with removed files (\(sources.map(\.forgottenPaths.count).reduce(0, +)) files)")
+        print("Rows before and after: recordings \(before.count("ZRECORDING"))/\(recordings.count), folders \(before.count("ZSOURCE"))/\(sources.count), output settings \(before.count("ZOUTPUTSETTING"))/\(settings.count), Activity lines \(before.count("ZLOGENTRY"))/\(lines); approved \(recordings.filter { $0.approvedAt != nil }.count)")
         let ready = recordings.filter { $0.status == .readyForYourYes }
         print("Store copy opened: \(recordings.count) recordings (\(ready.count) ready: "
               + ready.map { "\($0.fileName) \($0.loudnessLUFS.map { String($0) } ?? "?") LUFS" }.joined(separator: ", ")
               + "), \(sources.count) folders (" + sources.map(\.name).joined(separator: ", ") + "), \(settings.count) output settings, \(lines) Activity lines; "
               + "titles switched on in \(writingOn.count) folders; \(recordings.filter { $0.writtenJSON != nil }.count) recordings with anything written")
+    }
+}
+
+/// The copy as SQLite holds it, read before SwiftData opens it (read only; the file is the copy, never the
+/// live store). Only what the migration check compares: tables' columns, row counts, a few columns per row.
+private final class RawStore {
+    private var db: OpaquePointer?
+
+    init(path: String) throws {
+        // immutable=1: the copy is in WAL mode, and a plain read-only open of a WAL file with no -shm beside it
+        // fails at the first query (measured 12 Oct: every count read 0), so the file is read as it stands.
+        let uri = "file:" + (path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? path) + "?immutable=1"
+        guard sqlite3_open_v2(uri, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, nil) == SQLITE_OK else {
+            throw NSError(domain: "RawStore", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not open \(path)"])
+        }
+        // Read everything now, then close, so SwiftData opens the file alone.
+        for table in ["ZRECORDING", "ZSOURCE", "ZOUTPUTSETTING", "ZLOGENTRY"] {
+            columnsByTable[table] = Set(query("SELECT name FROM pragma_table_info('\(table)')").compactMap { $0[0] })
+            countsByTable[table] = Int(query("SELECT count(*) FROM \(table)").first?[0] ?? "0") ?? 0
+        }
+        for (table, columns) in [("ZRECORDING", ["ZFILEPATH", "ZSTATUSRAW", "ZKINDRAW", "ZAPPROVEDAT", "ZHASSERENITY", "ZWRITTENJSON", "ZPODCASTREADYJSON", "ZEPISODENUMBER", "ZEPISODEDURATION"]),
+                                 ("ZOUTPUTSETTING", ["ZKINDRAW", "ZISON"]), ("ZOUTPUTSETTING", ["ZKINDRAW"])] {
+            let present = columns.map { columnsByTable[table]?.contains($0) == true ? $0 : "NULL" }
+            rowsByKey["\(table):\(columns.joined(separator: ","))"] = query("SELECT \(present.joined(separator: ", ")) FROM \(table)")
+        }
+        sqlite3_close(db)
+        db = nil
+        // A read that silently returned nothing would make every comparison in the test meaningless.
+        if let failure { throw NSError(domain: "RawStore", code: 2, userInfo: [NSLocalizedDescriptionKey: "Could not read the copy: \(failure)"]) }
+        if countsByTable["ZRECORDING"] == 0 && columnsByTable["ZRECORDING"]?.isEmpty != false {
+            throw NSError(domain: "RawStore", code: 3, userInfo: [NSLocalizedDescriptionKey: "The copy has no recordings table"])
+        }
+    }
+
+    private var failure: String?
+    private var columnsByTable: [String: Set<String>] = [:]
+    private var countsByTable: [String: Int] = [:]
+    private var rowsByKey: [String: [[String?]]] = [:]
+
+    func has(_ table: String, _ column: String) -> Bool { columnsByTable[table]?.contains(column) == true }
+    func count(_ table: String) -> Int { countsByTable[table] ?? 0 }
+    func rows(_ table: String, _ columns: [String]) -> [[String?]] { rowsByKey["\(table):\(columns.joined(separator: ","))"] ?? [] }
+
+    private func query(_ sql: String) -> [[String?]] {
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+            failure = failure ?? String(cString: sqlite3_errmsg(db))
+            return []
+        }
+        defer { sqlite3_finalize(statement) }
+        var result: [[String?]] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            result.append((0..<sqlite3_column_count(statement)).map { index in
+                sqlite3_column_type(statement, index) == SQLITE_NULL ? nil : sqlite3_column_text(statement, index).map { String(cString: $0) }
+            })
+        }
+        return result
     }
 }

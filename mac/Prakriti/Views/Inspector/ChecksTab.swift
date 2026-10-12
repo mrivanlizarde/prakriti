@@ -143,12 +143,18 @@ struct StackedValue: View {
 
 extension Recording {
     /// The privacy lock's line for this recording (design spec C4): the real reason, in words that name no
-    /// one. Under v1's rule, still the rule until part M5a, a class is locked, and so is a recording whose
-    /// transcript names Serenity, who has not agreed to cloud models (SCOPE PRV-10).
+    /// one. Until part M5a, only a recording marked as a talk whose transcript does not name Serenity (who
+    /// has not agreed to cloud models, SCOPE PRV-10) may reach one; everything else is locked (12 Oct:
+    /// fails closed, so a recording whose kind is not set is locked too).
     var lockLine: String? {
         if kind == .lesson { return "This is a class, so only models on this Mac read it." }
         if hasSerenity { return "This recording names a teacher who has not agreed to cloud models, so only models on this Mac read it." }
-        return nil
+        switch kind {
+        case .talk, .lesson: return nil
+        case .conversation: return "This is a conversation, so only models on this Mac read it."
+        case .test: return "This is marked as a test, so only models on this Mac read it."
+        case .unknown: return "This is not marked as a talk yet, so only models on this Mac read it. Mark it as a talk to let a cloud model read it."
+        }
     }
 }
 

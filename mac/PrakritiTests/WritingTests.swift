@@ -357,6 +357,17 @@ final class WritingTests: XCTestCase {
         XCTAssertNil(open?.lockReason)
         XCTAssertEqual(open?.writingProvider, "claudeAPI")
 
+        // A recording whose kind was never set, every task on the Claude API: fails closed (12 Oct).
+        let (unset, lm4, claude4, _) = try await run(kind: .unknown, text: Self.text, providers: allCloud)
+        XCTAssertEqual(claude4.requests.count, 0, "a recording not marked as a talk never reaches Anthropic")
+        XCTAssertEqual(lm4.requests.count, 3)
+        XCTAssertEqual(unset?.lockReason, "it is not marked as a talk yet")
+        XCTAssertTrue(unset?.markdown(label: "Sun 13 Sep", fileName: "x.mp4").contains("It is not marked as a talk yet, so it was written by a model on this Mac only.") == true)
+        for kind in [RecordingKind.conversation, .test] {
+            let (_, _, claude5, _) = try await run(kind: kind, text: Self.text, providers: allCloud)
+            XCTAssertEqual(claude5.requests.count, 0, "\(kind) never reaches Anthropic")
+        }
+
         // A class with Apple on-device chosen for tags: a local choice is kept.
         let (_, _, _, apple) = try await run(kind: .lesson, text: Self.text, providers: [.tagging: .appleOnDevice])
         XCTAssertEqual(apple.requests.map(\.shape), [.tags])

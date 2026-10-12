@@ -10,8 +10,8 @@ import Foundation
 // - Every chapter must start at a time that is one of the transcript's own line times; one that
 //   does not is left out and counted. Every quote in the accuracy checklist must be found word for
 //   word in transcript.txt; one that is not is left out and counted (SCOPE 13, the evidence check).
-// - The privacy lock: a recording marked as a class, or whose transcript says "Serenity", is only
-//   ever read by a model on this Mac. If the Claude API is chosen for a task, LM Studio does that
+// - The privacy lock (fails closed, 12 Oct): only a recording marked as a talk whose transcript does
+//   not say "Serenity" may reach a cloud model; anything else is only ever read by a model on this Mac. If the Claude API is chosen for a task, LM Studio does that
 //   task instead, and the files and the page say so (SCOPE PRV-10: until Serenity says yes, no
 //   Claude session reads her teaching or any class).
 // - A reply cut off at its length, an empty reply, or JSON that fails the checks is tried again, up
@@ -31,10 +31,20 @@ enum Privacy {
     /// Why a recording may only be read on this Mac, written to sit inside a sentence ("this is a
     /// class", "This recording mentions Serenity"; capitalize it to start one), or nil. Never lowercased
     /// whole: her name keeps its capital (10 Oct: the page read "serenity is in this recording").
+    ///
+    /// It fails closed (12 Oct, ahead of part M5a): only a recording Ivan marked as a talk may reach a
+    /// cloud model. Before, a recording whose kind was never set read as unlocked, and the 16, 20 and
+    /// 23 Sep classes sat in the live store unmarked while the live settings chose the Claude API.
     static func lockReason(kind: RecordingKind, serenity: Bool) -> String? {
         if kind == .lesson { return "this is a class" }
         if serenity { return "This recording mentions Serenity" }
-        return nil
+        switch kind {
+        case .talk: return nil
+        case .lesson: return "this is a class"
+        case .conversation: return "this is a conversation"
+        case .test: return "this is marked as a test"
+        case .unknown: return "it is not marked as a talk yet"
+        }
     }
 }
 

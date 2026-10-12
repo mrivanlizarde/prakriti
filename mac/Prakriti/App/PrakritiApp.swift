@@ -115,6 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // must not be quit that way, so it opts out here as well as in Info.plist.
         ProcessInfo.processInfo.disableAutomaticTermination("Prakriti keeps working with its window closed.")
         guard let model = AppModel.current, !AppModel.isRunningTests else { return }
+        LayoutAutosave.keepOutOfLivePreferences()
 
         // A second copy in the same mode: hand over to the one already running, and quit.
         if model.isDuplicate {
@@ -278,3 +279,42 @@ struct AppCommands: Commands {
         }
     }
 }
+
+/// Keeps a window capture (`--sample-data`) and a development copy (`--development`) from writing window
+/// and split-view sizes into the live copy's preferences. Reason (12 Oct): every copy shares the bundle
+/// identifier, so AppKit's autosave wrote `NSSplitView Subview Frames main` (220/860x795 became 220/1220x900)
+/// and the Settings window's frame into Ivan's live domain during `make look`, although the app's own
+/// settings already went to the ephemeral suite. Only the main window's frame had been switched off.
+/// `scripts/capture-window.swift` also puts back any layout key a run changed, and fails if it cannot.
+@MainActor
+enum LayoutAutosave {
+    private static var observer: NSObjectProtocol?
+
+    static var applies: Bool { CaptureLaunch.current != nil || AppMode.current == .development }
+
+    static func keepOutOfLivePreferences() {
+        guard applies, observer == nil else { return }
+        NSApp.windows.forEach(forget)
+        // Every window as soon as AppKit updates it, before a size it gets can be saved; SwiftUI can name a
+        // split view after the window first draws, so this is checked again at each update (cheap: a few
+        // views, and only in these two modes).
+        observer = NotificationCenter.default.addObserver(forName: NSWindow.didUpdateNotification, object: nil, queue: .main) { note in
+            let number = (note.object as? NSWindow)?.windowNumber
+            MainActor.assumeIsolated {
+                if let number, let window = NSApp.window(withWindowNumber: number) { forget(window) }
+            }
+        }
+    }
+
+    static func forget(_ window: NSWindow) {
+        if !window.frameAutosaveName.isEmpty { window.setFrameAutosaveName("") }
+        clearSplitViews(in: window.contentView)
+    }
+
+    private static func clearSplitViews(in view: NSView?) {
+        guard let view else { return }
+        if let split = view as? NSSplitView, split.autosaveName != nil { split.autosaveName = nil }
+        for subview in view.subviews { clearSplitViews(in: subview) }
+    }
+}
+

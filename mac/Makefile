@@ -55,7 +55,10 @@
 #                 Writes acceptance-episode-text.txt and pictures to ../screens/mac/$(MILESTONE)/ (about 30 minutes)
 # make migrate-check  copy the live store (sqlite3 .backup, a consistent snapshot; the live store
 #                 is only read) into build/store-copy and open the COPY with this build's models.
-#                 Run it before `make install` whenever the models change
+#                 Run it before `make install` whenever the models change. It holds on any real store
+#                 (12 Oct): fields this build adds must arrive at their defaults, and every row and every
+#                 value already stored (approvals, removed files, switches) must come through unchanged.
+#                 FROM=<an older store> runs it on that store instead (still only a copy is opened)
 # make run        build, then open the app
 # make accept-help  v2 parts M2a and M2b: Prakriti Help and the welcome in the REAL app. The Help window
 #                 opened on its own with sample data at three articles and a search, light and dark; the
@@ -139,9 +142,11 @@ accept-first-launch: build
 
 STORE_COPY = $(CURDIR)/$(DERIVED)/store-copy/Prakriti.store
 
+FROM ?= $(HOME)/Library/Application Support/Prakriti/Prakriti.store
+
 migrate-check:
 	rm -rf $(DERIVED)/store-copy && mkdir -p $(DERIVED)/store-copy
-	/usr/bin/sqlite3 "$(HOME)/Library/Application Support/Prakriti/Prakriti.store" ".backup '$(STORE_COPY)'"
+	/usr/bin/sqlite3 "file:$(FROM)?mode=ro" ".backup '$(STORE_COPY)'"
 	TEST_RUNNER_PRAKRITI_STORE_COPY=$(STORE_COPY) $(XCB) test -only-testing:PrakritiTests/StoreMigrationTests
 
 run: build

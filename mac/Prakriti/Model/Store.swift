@@ -134,12 +134,14 @@ extension OutputResolver {
     }
 }
 
-/// The privacy lock: a class, or anything with Serenity in it, only ever reaches a model on this
-/// Mac. If the chosen provider sends text out, LM Studio is used instead, and the UI says so.
+/// The privacy lock: only a recording marked as a talk, with no Serenity in it, may reach a cloud
+/// model. If the chosen provider sends text out, LM Studio is used instead, and the UI says so. It
+/// fails closed: no recording at all, or one whose kind is not set, stays on this Mac (12 Oct).
 enum ModelRouting {
     static func provider(chosen: ModelProvider, for recording: Recording?) -> ModelProvider {
-        guard let recording, recording.isPrivacyLocked, !chosen.isLocal else { return chosen }
-        return .lmStudio
+        if chosen.isLocal { return chosen }
+        guard let recording, !recording.isPrivacyLocked else { return .lmStudio }
+        return chosen
     }
 
     static func isOverridden(chosen: ModelProvider, for recording: Recording?) -> Bool {

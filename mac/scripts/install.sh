@@ -13,6 +13,28 @@ BIN="$DEST/Contents/MacOS/Prakriti"
 [ -d "$BUILT" ] || { echo "FAIL: no build at $BUILT (run make build)"; exit 1; }
 codesign --verify --deep --strict "$BUILT" || { echo "FAIL: the build is not validly signed"; exit 1; }
 
+LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+
+# Any OTHER copy running in live mode (not --development, not --sample-data) is asked to quit too, and
+# LaunchServices is told to forget its bundle. Reason (12 Oct): from 20:13 on 11 Oct the live watcher was
+# a Debug build in a verifier's clone under /private/tmp, which LaunchServices had picked by bundle
+# identifier. It ran on the live store and folders with no login item, from a folder that gets cleaned
+# out, and a fresh install would have handed over to it and quit (one live copy at a time).
+STRAYS=()
+while read -r pid cmd; do
+  [ -n "$pid" ] || continue
+  case "$cmd" in "$BIN"*|*--development*|*--sample-data*) continue ;; esac
+  STRAYS+=("$pid")
+  bundle="${cmd%%/Contents/MacOS/Prakriti*}"
+  echo "Another live copy is running (pid $pid) from $bundle. Asking it to quit, and unregistering it."
+  kill -TERM "$pid" || true
+  [ -d "$bundle" ] && "$LSREGISTER" -u "$bundle" || true
+done < <(ps -axo pid=,command= | grep "Prakriti.app/Contents/MacOS/Prakriti" | grep -v grep | sed 's/^ *//')
+for pid in "${STRAYS[@]+"${STRAYS[@]}"}"; do
+  for _ in $(seq 1 60); do kill -0 "$pid" 2>/dev/null || break; sleep 0.5; done
+  if kill -0 "$pid" 2>/dev/null; then echo "FAIL: the other live copy (pid $pid) did not quit within 30 s; nothing was replaced"; exit 1; fi
+done
+
 if pgrep -f "$BIN" > /dev/null; then
   echo "Asking the installed Prakriti to quit."
   pkill -TERM -f "$BIN" || true
@@ -32,6 +54,8 @@ mv "$DEST.new" "$DEST"
 # (the Dock was not measured). The signature covers the contents, not the folder's date.
 touch "$DEST"
 codesign --verify --deep --strict "$DEST" && echo "Installed and signed: $DEST"
+# Registered again by path, so a launch by bundle identifier (a notice, the login item) finds this copy.
+"$LSREGISTER" -f "$DEST" || true
 open "$DEST"
 for _ in $(seq 1 30); do pgrep -f "$BIN" > /dev/null && break; sleep 0.5; done
 pgrep -f "$BIN" > /dev/null && echo "Running: $(pgrep -f "$BIN")" || { echo "FAIL: it did not start"; exit 1; }

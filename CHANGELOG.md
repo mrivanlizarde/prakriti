@@ -5,6 +5,20 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-12, Mon: v2 part M3a, fixed after verification
+
+- **The privacy lock fails closed: only a recording marked as a talk, without Serenity, can reach the Claude
+  API.** Why: v1's rule locked only a class or Serenity, so a recording whose kind was never set went to the
+  cloud when chosen, and the live settings chose the Claude API while the 16, 20 and 23 Sep classes sat
+  unmarked in the store. M5a replaces the rule and must stay at least this strict.
+- **`make migrate-check` checks the migration, not Ivan's data.** Why: it asserted nothing was approved or
+  removed, which failed the ship gate for every later part the evening Ivan approved two talks.
+- **Captures and development copies no longer save window layout into the live preferences, and `make look`
+  puts back anything that slips through.** Why: every copy shares the bundle identifier, and `make look` had
+  changed the live split view and Settings window sizes.
+- **`make install` quits and unregisters any other copy running live.** Why: from 20:13 on 11 Oct the live
+  watcher was a verifier's Debug clone under `/private/tmp`, picked by LaunchServices, with no login item.
+
 ## 2026-10-11, Sun: v2 part M3a, the main window and Settings
 
 - **The main window is a library now, built the way Photos and Final Cut Pro are: a sidebar of groups and

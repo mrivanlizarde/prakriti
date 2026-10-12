@@ -8,7 +8,7 @@ struct ModelsView: View {
         @Bindable var settings = model.settings
         Form {
             Section {
-                PageIntro(text: "Which model writes for each task. Models on this Mac keep everything here. The Claude API sends text to Anthropic, so classes and anything with Serenity in it never go there.")
+                PageIntro(text: "Which model writes for each task. Models on this Mac keep everything here. The Claude API sends text to Anthropic, so only a recording marked as a talk, without Serenity in it, ever goes there.")
             }
 
             Section {
@@ -31,7 +31,7 @@ struct ModelsView: View {
 
             Section {
                 Label {
-                    Text("A recording marked as a class, or whose transcript says \"Serenity\", always uses a model on this Mac. If a task above is set to the Claude API, LM Studio does that task for these recordings instead, and the recording's page and its show notes say so.")
+                    Text("Only a recording marked as a talk can use the Claude API. A class, a conversation, a test, a recording not marked yet, or one whose transcript says \"Serenity\" always uses a model on this Mac. If a task above is set to the Claude API, LM Studio does that task for these recordings instead, and the recording's page and its show notes say so.")
                         .font(AppFont.body)
                         .fixedSize(horizontal: false, vertical: true)
                 } icon: {
