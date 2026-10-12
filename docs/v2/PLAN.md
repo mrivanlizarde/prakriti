@@ -1617,3 +1617,9 @@ M13 Finish line.
   or voice prints; M7b's live recognition check is recorded as blocked-needs-ivan, not failed.
 - **D3: the default applies.** Everything works at 1080p with the gentler zoom limits; the checks say so.
 - **Order:** the podcast-ready output (separate run) must be committed and installed before M0 starts.
+- **Ivan, Mon 12 Oct: switch writing to the Claude API.** Local Qwen was too slow (58 min per package). He is
+  creating an Anthropic key (workspace-scoped) and will paste it into Prakriti himself; it lives in the
+  Keychain only. Default writing provider becomes Anthropic, model claude-sonnet-5-5 (Opus 5.5 optional for the
+  accuracy pass); LM Studio stays as the fallback and as the forced provider under the privacy lock (classes,
+  or other people heard or seen). Gabriel's own talks may go to the cloud by Ivan's decision. Never read,
+  log or test with Ivan's real key; tests use a stub.
