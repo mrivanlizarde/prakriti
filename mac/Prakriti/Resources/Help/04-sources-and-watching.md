@@ -15,25 +15,27 @@ and, if you choose, makes its outputs with nobody touching anything.
 
 ## Add a folder to watch
 
-1. Click Sources in the sidebar. [Show Me](prakriti://show/sources)
-2. Click Add Folder, choose the folder, then click Watch This Folder. You can also drag the folder onto
-   "Drop a recording here".
-3. A new folder starts as **Ask me first**: what is already in it is listed and left alone. Under
-   "When a recording arrives", choose one:
+1. In the sidebar, under Sources, click Add Folder, or choose File > Add Folder.
+   [Show Me](prakriti://show/sources)
+2. Choose the folder, then click Watch This Folder. You can also drag the folder onto the window.
+3. A new folder starts as **Ask me first**: what is already in it is listed and left alone. Select the
+   folder under Sources: its settings show in the inspector, on the right. Under "When a recording
+   arrives", choose one:
    - **Make outputs automatically:** Prakriti checks each new recording and makes its outputs.
-   - **Ask me first:** Prakriti checks it, then waits for you to click Make Outputs on its page.
-4. With Make outputs automatically chosen, the folder's outputs appear under it. Turn on the ones this
-   folder should make. See [Outputs](05-outputs.md).
+   - **Ask me first:** Prakriti checks it, then waits for you to choose Make Outputs.
+4. With Make outputs automatically chosen, the folder's outputs appear under it in the inspector. Turn
+   on the ones this folder should make. See [Outputs](05-outputs.md).
 
-If macOS asks whether Prakriti may read the folder, click Allow. If a folder shows a warning, click Open
-Privacy Settings and turn Prakriti on.
+If macOS asks whether Prakriti may read the folder, click Allow. A folder Prakriti cannot read shows a
+warning sign in the sidebar: select it, click Open Privacy Settings in the inspector, and turn Prakriti
+on.
 
 ## Add a single recording
 
 - Put the file in the Drop folder, in the Prakriti folder in your home folder. Prakriti finds it like
   any new recording.
-- Or click Add File on the Sources screen, or choose File > Add File, and choose the file. It waits on
-  its page until you click Make Outputs.
+- Or drag the file onto the window, or choose File > Add File, and choose the file. It waits in In
+  Progress, marked Found, until you choose Make Outputs: in the inspector, or Control-click it.
 - To start one at once, choose File > Process File.
 
 ## What counts as a recording
@@ -58,10 +60,11 @@ Privacy Settings and turn Prakriti on.
 ## How watching works
 
 Prakriti notices a new file as soon as macOS reports it, and also looks through every folder every 5
-minutes in case something was missed. It keeps watching when the window is closed. Click Check Now on
-the Sources screen to look right away.
+minutes in case something was missed. It keeps watching when the window is closed. To look right away,
+select a folder under Sources and click Check Now in the inspector.
 
-Each look is written in Activity as a short line, such as "Checked 2 folders. Nothing new." If no new
+Each look is written in Activity (Window > Activity) as a short line, such as "Checked 2 folders.
+Nothing new." If no new
 line appears for more than 5 minutes, Prakriti may have stopped. See
 [If something isn't working](10-troubleshooting.md).
 
@@ -75,27 +78,28 @@ and choose Keep Downloaded.
 ## Follow the work
 
 :::unless progress
-- **Today** shows every recording being worked on, the step it is on, and how many steps are done.
-- **The recording's page** shows each step in order, with how long each one took.
+- **In Progress**, in the sidebar, lists every recording being made, waiting its turn or found. Select
+  one: the inspector shows the step it is on.
+- **The inspector's Checks** show each step of the last make, with how long each one took.
 - **The menu bar** shows Prakriti's mark. While it works, the two halves of the mark light in turn, and
   its menu says which recording it is working on and the step.
-- **Notifications** tell you when a recording is found, when it is ready for your yes, when something
-  needs a decision, and when a recording could not finish.
+- **Notifications** tell you when a recording is found, when it is waiting for your yes, when
+  something needs a decision, and when a recording could not finish.
 :::
 :::requires progress
-- **Today** shows every recording being worked on, the step it is on, a progress bar and the time left.
+- **In Progress** shows every recording being worked on, the step it is on, a progress bar and the time left.
 - **The recording's page** shows each step in order, with how long each one took.
 - **The menu bar** shows the current step and how far along it is.
-- **Notifications** tell you when a recording is found, when it is ready for your yes, and when
+- **Notifications** tell you when a recording is found, when it is waiting for your yes, and when
   something needs a decision.
 :::
 
 ## Pause and resume
 
-Click Pause All in the toolbar, in the menu bar menu, or in Settings. A recording already being made
+Click Pause All in the toolbar, in the menu bar menu, or in Settings, General. A recording already being made
 finishes. Nothing new is looked for or started until you click Resume All.
 
 ## Stop watching a folder
 
-On the Sources screen, click Stop Watching under the folder, then confirm. Nothing in the folder is
-deleted, and recordings already found stay in Recordings.
+Select the folder under Sources, click Stop Watching in the inspector, then confirm. Nothing in the
+folder is deleted, and recordings already found stay in All Recordings.

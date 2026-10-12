@@ -20,45 +20,144 @@ final class SnapshotTests: XCTestCase {
         var written: [String] = []
 
         // `make snapshots ONLY=recording` draws just the recording pages, for quick looks while
-        // working on them; the full set is the milestone's check.
+        // working on them; ONLY=library just the main window and Settings (v2 part M3a); the full set is
+        // the milestone's check.
         let only = ProcessInfo.processInfo.environment["PRAKRITI_SNAPSHOT_ONLY"].flatMap { $0.isEmpty ? nil : $0 }
         // ONLY=help draws only the Help window (testRenderHelp), ONLY=welcome only the welcome (testRenderWelcome).
         if only == "help" || only == "welcome" { return }
-        for (index, item) in SidebarItem.allCases.enumerated() where only == nil {
+
+        func draw(_ name: String, empty: Bool = false, _ change: (AppModel) throws -> Void) throws {
             for (scheme, appearance) in appearances {
-                let model = Fixtures.model()
-                model.selection = item
-                let name = String(format: "%02d-%@-%@", index + 1, item.rawValue, scheme)
-                try renderer.render(model: model, appearance: appearance, name: name)
-                written.append(name)
+                let model = Fixtures.model(empty: empty)
+                try change(model)
+                try renderer.render(model: model, appearance: appearance, name: "\(name)-\(scheme)")
+                written.append("\(name)-\(scheme)")
             }
         }
+        func talk13(_ model: AppModel) throws -> Recording {
+            try XCTUnwrap(try model.context.fetch(FetchDescriptor<Recording>()).first { $0.title == "Talk with Gabriel" && $0.status == .readyForYourYes })
+        }
 
-        // The recording page, for the 13 Sep talk and for the silent 14 Sep class.
-        for (slug, title) in [("recording-ready", "Talk with Gabriel"), ("recording-silent", "Class")] {
+        if only == nil || only == "library" {
+            // v2 part M3a: every smart group, filled and empty, as a grid; nothing selected.
+            for (index, group) in SmartGroup.allCases.enumerated() {
+                try draw(String(format: "%02d-%@", index + 1, group.rawValue)) { $0.selection = .group(group) }
+                try draw(String(format: "%02d-%@-empty", index + 1, group.rawValue), empty: true) { $0.selection = .group(group) }
+            }
+            // All Recordings as a list, one recording selected (its row and the inspector).
+            try draw("05-all-recordings-list") { model in
+                model.selection = .group(.all)
+                model.browserMode = .list
+                model.selectedRecordings = [try talk13(model).id]
+            }
+            // A folder under Sources: its recordings, its settings in the inspector.
+            try draw("06-source-studio") { model in
+                model.go(to: .sources)
+            }
+            // The inspector's three tabs for the 13 Sep talk, and the Outputs tab for a recording that needs
+            // a decision, one being made and one approved.
+            for tab in InspectorTab.allCases {
+                try draw("07-inspector-\(tab.rawValue)") { model in
+                    model.selection = .group(.needsYou)
+                    model.selectedRecordings = [try talk13(model).id]
+                    model.inspectorTab = tab
+                }
+            }
+            for status in [RecordingStatus.needsADecision, .working] {
+                try draw("07-inspector-outputs-\(status.rawValue)") { model in
+                    let recording = try XCTUnwrap(try model.context.fetch(FetchDescriptor<Recording>()).first { $0.status == status })
+                    model.selection = .group(.all)
+                    model.selectedRecordings = [recording.id]
+                }
+            }
+            try draw("07-inspector-outputs-approved") { model in
+                let talk = try talk13(model)
+                talk.status = .approved
+                talk.approvedAt = Fixtures.now
+                talk.statusReason = "Approved. Its files are in ~/Prakriti/Approved/2026-09-13 18-25-44. Nothing was uploaded or published."
+                model.selection = .group(.ready)
+                model.selectedRecordings = [talk.id]
+            }
+            // Two claims of the accuracy checklist ticked.
+            try draw("07-inspector-checks-ticked") { model in
+                let talk = try talk13(model)
+                for claim in (talk.written?.checklist ?? []).prefix(2) { model.setClaim(claim.claim, checked: true, for: talk) }
+                model.selection = .group(.needsYou)
+                model.selectedRecordings = [talk.id]
+                model.inspectorTab = .checks
+            }
+            // Several selected.
+            try draw("07-inspector-several") { model in
+                model.selection = .group(.all)
+                model.selectedRecordings = Set(try model.context.fetch(FetchDescriptor<Recording>()).prefix(3).map(\.id))
+            }
+            // A search over what was said: the 13 Sep talk's transcript (in its output folder) names the lineage.
+            try draw("08-search-said") { model in
+                model.selection = .group(.all)
+                model.search = LibrarySearch(text: "Krishnamacharya", scopes: [])
+            }
+            try draw("08-search-nothing") { model in
+                model.search = LibrarySearch(text: "zqxj", scopes: [.title])
+            }
+            // A filter that leaves nothing.
+            try draw("08-filter-nothing") { model in
+                model.selection = .group(.ready)
+                model.kindFilter = [.conversation]
+            }
+            // Right after the switch-over, before Ivan answers macOS's prompt for the Documents folder: the
+            // studio folder cannot be read yet, and Needs You and the folder's inspector say so.
+            try draw("09-needs-you-waiting-for-permission") { model in
+                Fixtures.waitingForPermission(model)
+                model.selection = .group(.needsYou)
+            }
+            try draw("09-source-waiting-for-permission") { model in
+                Fixtures.waitingForPermission(model)
+                model.go(to: .sources)
+            }
+
+            // The Settings window, each pane; Outputs with the show numbered (its podcast-ready settings show
+            // the numbering choice and the empty call to action); General with notifications not asked.
+            for (index, pane) in SettingsPane.allCases.enumerated() {
+                for (scheme, appearance) in appearances {
+                    let name = String(format: "10-settings-%02d-%@-%@", index + 1, pane.rawValue, scheme)
+                    try renderer.renderSettings(model: Fixtures.model(), pane: pane, appearance: appearance, name: name)
+                    written.append(name)
+                }
+            }
             for (scheme, appearance) in appearances {
-                let model = Fixtures.model()
-                let recordings = try model.context.fetch(FetchDescriptor<Recording>())
-                let recording = try XCTUnwrap(recordings.first { $0.title == title && ($0.status == .readyForYourYes || $0.status == .needsADecision) })
+                let numbered = Fixtures.model()
+                try XCTUnwrap(numbered.defaultSettings().first { $0.kind == .podcastReady }).numbering = .episodes
+                try renderer.renderSettings(model: numbered, pane: .outputs, appearance: appearance, name: "10-settings-outputs-numbered-\(scheme)")
+                let notAsked = Fixtures.model()
+                Fixtures.waitingForPermission(notAsked)
+                try renderer.renderSettings(model: notAsked, pane: .general, appearance: appearance, name: "10-settings-general-not-asked-\(scheme)")
+                try renderer.renderActivity(model: Fixtures.model(), appearance: appearance, name: "11-activity-\(scheme)")
+                written += ["10-settings-outputs-numbered-\(scheme)", "10-settings-general-not-asked-\(scheme)", "11-activity-\(scheme)"]
+            }
+        }
+        if only == "library" {
+            print("Snapshots written to \(outputFolder.path): \(written.count) library and Settings pictures")
+            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 2 * 3 + 2 * 2 + 5 * 2 + 3 * 2)
+            return
+        }
+
+        // v1's recording page, opened from the browser (until the Viewer, part M3b): the 13 Sep talk and the
+        // sample class with no sound.
+        for (slug, title) in [("recording-ready", "Talk with Gabriel"), ("recording-silent", "Class")] {
+            try draw("20-\(slug)") { model in
+                let recording = try XCTUnwrap(try model.context.fetch(FetchDescriptor<Recording>())
+                    .first { $0.title == title && ($0.status == .readyForYourYes || $0.status == .needsADecision) })
                 model.open(recording)
-                let name = "08-\(slug)-\(scheme)"
-                try renderer.render(model: model, appearance: appearance, name: name)
-                written.append(name)
             }
         }
 
         // The 13 Sep talk with its own choices: the transcript turned off and its loudness at -19,
         // as milestone 4's acceptance made it.
-        for (scheme, appearance) in appearances {
-            let model = Fixtures.model()
-            let recordings = try model.context.fetch(FetchDescriptor<Recording>())
-            let recording = try XCTUnwrap(recordings.first { $0.title == "Talk with Gabriel" && $0.status == .readyForYourYes })
+        try draw("20-recording-own-choices") { model in
+            let recording = try talk13(model)
             model.setOutput(.transcript, on: false, for: recording)
             recording.outputSettings.first { $0.kind == .podcastEpisode }?.loudnessTarget = -19
             model.open(recording)
-            let name = "08-recording-own-choices-\(scheme)"
-            try renderer.render(model: model, appearance: appearance, name: name)
-            written.append(name)
         }
 
         // Milestone 5: the 13 Sep talk with a trim and a cut not made yet (Approve waits for Make
@@ -71,47 +170,32 @@ final class SnapshotTests: XCTestCase {
                                    r.status = .approved
                                    r.approvedAt = Fixtures.now
                                    r.statusReason = "Approved. Its files are in ~/Prakriti/Approved/2026-09-13 18-25-44. Nothing was uploaded or published." })] {
-            for (scheme, appearance) in appearances {
-                let model = Fixtures.model()
-                let recordings = try model.context.fetch(FetchDescriptor<Recording>())
-                let recording = try XCTUnwrap(recordings.first { $0.title == "Talk with Gabriel" && $0.status == .readyForYourYes })
+            try draw("20-recording-\(slug)") { model in
+                let recording = try talk13(model)
                 change(model, recording)
                 model.open(recording)
-                let name = "08-recording-\(slug)-\(scheme)"
-                try renderer.render(model: model, appearance: appearance, name: name)
-                written.append(name)
             }
         }
 
         // Milestone 6: the 13 Sep talk marked as a class, its titles not written yet, with writing set
         // to the Claude API: the page says the privacy lock hands the writing to LM Studio.
-        for (scheme, appearance) in appearances {
-            let model = Fixtures.model()
+        try draw("20-recording-class-not-written") { model in
             model.settings.provider[.writing] = .claudeAPI
-            let recordings = try model.context.fetch(FetchDescriptor<Recording>())
-            let recording = try XCTUnwrap(recordings.first { $0.title == "Talk with Gabriel" && $0.status == .readyForYourYes })
+            let recording = try talk13(model)
             recording.writtenJSON = nil
             model.setKind(.lesson, for: recording)
             model.open(recording)
-            let name = "08-recording-class-not-written-\(scheme)"
-            try renderer.render(model: model, appearance: appearance, name: name)
-            written.append(name)
         }
 
         // 11 Oct: the 13 Sep talk marked as a class with the podcast-ready episode switched on: Ready to
         // upload says why a class is never made ready, and nothing was made.
-        for (scheme, appearance) in appearances {
-            let model = Fixtures.model()
-            let recordings = try model.context.fetch(FetchDescriptor<Recording>())
-            let recording = try XCTUnwrap(recordings.first { $0.title == "Talk with Gabriel" && $0.status == .readyForYourYes })
+        try draw("20-recording-class-not-ready") { model in
+            let recording = try talk13(model)
             model.setKind(.lesson, for: recording)
             model.setOutput(.podcastReady, on: true, for: recording)
             recording.podcastReadyJSON = nil
             recording.podcastReadyProblem = PodcastPackage.refusal(kind: .lesson)
             model.open(recording)
-            let name = "08-recording-class-not-ready-\(scheme)"
-            try renderer.render(model: model, appearance: appearance, name: name)
-            written.append(name)
         }
 
         if only == "recording" {
@@ -119,42 +203,9 @@ final class SnapshotTests: XCTestCase {
             return
         }
 
-        // 11 Oct: the Outputs screen with the show numbered, so its podcast-ready settings show the
-        // numbering choice and the empty call to action (nothing is ever filled in for Ivan).
-        for (scheme, appearance) in appearances {
-            let model = Fixtures.model()
-            model.selection = .outputs
-            try XCTUnwrap(model.defaultSettings().first { $0.kind == .podcastReady }).numbering = .episodes
-            let name = "04-outputs-numbered-\(scheme)"
-            try renderer.render(model: model, appearance: appearance, name: name)
-            written.append(name)
-        }
-
-        // Today with nothing waiting, and nothing set up.
-        for (scheme, appearance) in appearances {
-            let model = Fixtures.model(empty: true)
-            model.selection = .today
-            let name = "09-today-empty-\(scheme)"
-            try renderer.render(model: model, appearance: appearance, name: name)
-            written.append(name)
-        }
-
-        // Sources and Today right after the switch-over, before Ivan answers macOS's prompt for the
-        // Documents folder: the studio folder cannot be read yet, and the app says so.
-        for (scheme, appearance) in appearances {
-            for item in [SidebarItem.sources, .today, .settings] {
-                let model = Fixtures.model()
-                Fixtures.waitingForPermission(model)
-                model.selection = item
-                let name = "10-\(item.rawValue)-waiting-for-permission-\(scheme)"
-                try renderer.render(model: model, appearance: appearance, name: name)
-                written.append(name)
-            }
-        }
-
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, SidebarItem.allCases.count * 2 + 26)
+        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 2 * 3 + 2 * 2 + 5 * 2 + 3 * 2 + 2 * 2 + 2 + 3 * 2 + 2 + 2)
     }
 
     /// v2 part M2a: the Help window, open at every article this build shows, in light and dark, with a

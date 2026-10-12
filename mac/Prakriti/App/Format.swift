@@ -29,6 +29,21 @@ enum Format {
         return day + " at " + clock(date, timeZone: timeZone)
     }
 
+    /// "Sun 13 Sep 2026, 6:25 pm": a card's date line (design spec 3.1.1).
+    static func cardDate(_ date: Date, timeZone: TimeZone = .current) -> String {
+        formatter("EEE d MMM yyyy", timeZone: timeZone).string(from: date) + ", " + clock(date, timeZone: timeZone)
+    }
+
+    /// "Sun 13 Sep 2026": a list row's date (design spec 3.2).
+    static func fullDay(_ date: Date, timeZone: TimeZone = .current) -> String {
+        formatter("EEE d MMM yyyy", timeZone: timeZone).string(from: date)
+    }
+
+    /// "October 2026": a month heading in the browser.
+    static func month(_ date: Date, timeZone: TimeZone = .current) -> String {
+        formatter("MMMM yyyy", timeZone: timeZone).string(from: date)
+    }
+
     /// "6:25 pm"
     static func clock(_ date: Date, timeZone: TimeZone = .current) -> String {
         let f = formatter("h:mm a", timeZone: timeZone)
@@ -49,6 +64,20 @@ enum Format {
         let m = s / 60, x = s % 60
         if m > 0 { return x > 0 ? "\(m) min \(x) s" : "\(m) min" }
         return "\(x) s"
+    }
+
+    /// A length as VoiceOver reads it: "15 minutes 48 seconds", "1 hour 2 minutes".
+    static func spokenLength(_ seconds: Double) -> String {
+        func unit(_ n: Int, _ word: String) -> String { "\(n) \(word)\(n == 1 ? "" : "s")" }
+        let s = Int(seconds.rounded())
+        if s >= 3600 {
+            let minutes = Int((Double(s) / 60).rounded())
+            let h = minutes / 60, m = minutes % 60
+            return m > 0 ? unit(h, "hour") + " " + unit(m, "minute") : unit(h, "hour")
+        }
+        let m = s / 60, x = s % 60
+        if m > 0 { return x > 0 ? unit(m, "minute") + " " + unit(x, "second") : unit(m, "minute") }
+        return unit(x, "second")
     }
 
     /// A timecode, as the transcript shows it: "15:47", "1:01:42".

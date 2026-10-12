@@ -289,6 +289,18 @@ final class RulesTests: XCTestCase {
         }
     }
 
+    /// Secondary text is drawn in the app's measured color, never the system's `.secondary`, which measures
+    /// 3.95 to 1 on the white window (v2 part M3a, design spec 6.6; `LibraryTests` measures both).
+    func testSecondaryTextUsesTheMeasuredColor() throws {
+        for file in appSourceFiles where file.pathExtension == "swift" {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for (number, line) in text.components(separatedBy: "\n").enumerated()
+            where line.contains(".foregroundStyle(.secondary)") || line.contains("? .secondary :") || line.contains(": .secondary)") && line.contains("Text(") {
+                XCTFail("System secondary text in \(file.lastPathComponent) line \(number + 1): use .appSecondary")
+            }
+        }
+    }
+
     func testModelNamesReadAsPeopleSayThem() {
         XCTAssertEqual(Format.modelName("qwen/qwen3.8-27b"), "Qwen3.8-27B")
         XCTAssertEqual(Format.modelName("google/gemma-3-27b"), "Gemma-3-27B")

@@ -152,13 +152,16 @@ final class PipelineAcceptanceTests: XCTestCase {
         let renderer = try SnapshotRenderer(outputFolder: SnapshotRenderer.milestoneFolder())
         var drawn: [String] = []
         for (scheme, appearance) in SnapshotRenderer.appearances {
-            for item in [SidebarItem.recordings, .today, .activity] {
+            for group in [SmartGroup.all, .needsYou] {
                 model.path = []
-                model.selection = item
-                let name = "m2-\(item.rawValue)-\(scheme)"
+                model.selection = .group(group)
+                let name = "m2-\(group.rawValue)-\(scheme)"
                 try renderer.render(model: model, appearance: appearance, name: name)
                 drawn.append(name)
             }
+            let activity = "m2-activity-\(scheme)"
+            try renderer.renderActivity(model: model, appearance: appearance, name: activity)
+            drawn.append(activity)
             for (slug, file) in [("talk-13-sep", talk13), ("silent-60s", silent60), ("clip-30s", clip30), ("talk-6-sep", talk06)] {
                 model.open(try XCTUnwrap(recordings[file]))
                 let name = "m2-recording-\(slug)-\(scheme)"

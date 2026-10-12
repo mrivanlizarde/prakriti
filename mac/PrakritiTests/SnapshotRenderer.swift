@@ -33,7 +33,24 @@ final class SnapshotRenderer {
                                                             .environment(model)
                                                             .modelContainer(model.container)),
                                            rowsHaveIcons: true),
-                   size: MainWindow.size, title: "Prakriti", appearance: appearance, name: name)
+                   size: MainWindow.size, title: "Prakriti", appearance: appearance, name: name,
+                   inspector: model.inspectorShown ? AnyView(InspectorView().environment(model).modelContainer(model.container)) : nil)
+    }
+
+    /// One pane of the Settings window (v2 part M3a) at the size it opens at. The Settings window's own
+    /// toolbar of panes is the system's and is judged in the real window (`make look`); the pane is what
+    /// the bitmap shows.
+    func renderSettings(model: AppModel, pane: SettingsPane, appearance: NSAppearance.Name, name: String) throws {
+        model.settingsPane = pane
+        try render(root: AnyView(SettingsPaneView(pane: pane).environment(model).modelContainer(model.container)),
+                   sidebar: nil, size: CGSize(width: SettingsWindow.width, height: SettingsWindow.height(pane)),
+                   title: pane.title, appearance: appearance, name: name, titleBand: 32)
+    }
+
+    /// The Activity window (v2 part M3a): v1's Activity list in its own window.
+    func renderActivity(model: AppModel, appearance: NSAppearance.Name, name: String) throws {
+        try render(root: AnyView(ActivityWindow().environment(model).modelContainer(model.container)),
+                   sidebar: nil, size: ActivityWindow.size, title: "Activity", appearance: appearance, name: name)
     }
 
     /// The Help window (v2 part M2a) at its real size, open at whatever article or search `model.help` holds.
@@ -60,7 +77,7 @@ final class SnapshotRenderer {
     }
 
     private func render(root: AnyView, sidebar: SidebarDrawing?, size: CGSize, title: String,
-                        appearance: NSAppearance.Name, name: String) throws {
+                        appearance: NSAppearance.Name, name: String, titleBand: CGFloat = 0, inspector: AnyView? = nil) throws {
         let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                               backing: .buffered, defer: false)
@@ -85,8 +102,28 @@ final class SnapshotRenderer {
             host.layoutSubtreeIfNeeded()
         }
 
+        // The content fits the window: a view that asks for more height than the window has would make the
+        // real window taller than the screen (v2 part M3a found an empty state asking for 1,835 pt).
+        if let content = host.subviews.first {
+            XCTAssertLessThanOrEqual(content.frame.height, host.bounds.height + 1, "\(name): the content asks for \(Int(content.frame.height)) pt, more than the window's \(Int(host.bounds.height))")
+        }
         let frameView = window.contentView?.superview ?? host
-        try save(composite(frameView: frameView, window: window, sidebar: sidebar), name: name, size: size)
+        // A window without a toolbar keeps a title bar band above its content (Settings panes, Activity).
+        let size = CGSize(width: size.width, height: size.height + titleBand)
+        // The inspector (v2 part M3a) is Liquid Glass too, so it is drawn on its own, like the sidebar,
+        // into its column; and it scrolls on its own, so its pages are pictures of their own
+        // ("-inspector-p2", "-inspector-end") at the column's size.
+        let inspectorView = firstView(in: frameView, where: { $0.contains("InspectorStyleContext") })
+        let titlebarHeight = firstView(in: frameView, where: { $0 == "NSTitlebarContainerView" })?.frame.height ?? 52
+        var standalone: Standalone?
+        if let inspector, let inspectorView {
+            let rect = inspectorView.convert(inspectorView.bounds, to: frameView)
+            standalone = try Standalone(view: inspector, size: CGSize(width: rect.width, height: frameView.bounds.height - titlebarHeight),
+                                        appearance: window.effectiveAppearance, x: rect.minX)
+        }
+        defer { standalone?.close() }
+        try save(composite(frameView: frameView, window: window, sidebar: sidebar, inspector: standalone), name: name, size: size)
+        if let standalone { try saveInspectorPages(standalone, name: name) }
 
         // A page taller than the window gets a second picture, scrolled to its end, so nothing
         // below the fold goes unlooked-at.
@@ -94,7 +131,8 @@ final class SnapshotRenderer {
         let tall = views(in: frameView, where: { _ in true }).compactMap { $0 as? NSScrollView }.filter { scroll in
             guard let document = scroll.documentView else { return false }
             let inSidebar = sidebarView.map { scroll.isDescendant(of: $0) } ?? false
-            return !inSidebar && document.frame.height > scroll.contentView.bounds.height + 20
+            let inInspector = inspectorView.map { scroll.isDescendant(of: $0) } ?? false
+            return !inSidebar && !inInspector && document.frame.height > scroll.contentView.bounds.height + 20
         }
         // Only the page itself scrolls: a list inside the page (a recording's transcript, milestone 5)
         // keeps its own place, as it does when Ivan scrolls the page, rather than being scrolled with it.
@@ -123,11 +161,79 @@ final class SnapshotRenderer {
             let middles = max(0, Int(tallest.rounded(.up)) - 1)
             for page in 0..<middles {
                 scrollAll { scroll, _ in CGFloat(page + 1) * (scroll.contentView.bounds.height - 60) }
-                try save(composite(frameView: frameView, window: window, sidebar: sidebar), name: name + "-p\(page + 2)", size: size)
+                try save(composite(frameView: frameView, window: window, sidebar: sidebar, inspector: standalone), name: name + "-p\(page + 2)", size: size)
             }
             scrollAll { _, end in end }
-            try save(composite(frameView: frameView, window: window, sidebar: sidebar), name: name + "-end", size: size)
+            try save(composite(frameView: frameView, window: window, sidebar: sidebar, inspector: standalone), name: name + "-end", size: size)
         }
+    }
+
+    /// A view drawn in a plain window of its own (the inspector): the same SwiftUI views, outside the glass
+    /// column that a bitmap cannot draw.
+    @MainActor
+    final class Standalone {
+        let window: NSWindow
+        let host: NSView
+        let size: CGSize
+        let x: CGFloat
+
+        init(view: AnyView, size: CGSize, appearance: NSAppearance, x: CGFloat) throws {
+            self.size = size
+            self.x = x
+            window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            window.appearance = appearance
+            window.backgroundColor = .windowBackgroundColor
+            let hosting = NSHostingView(rootView: view)
+            host = hosting
+            window.contentView = hosting
+            window.setContentSize(size)
+            window.alphaValue = 0.01
+            window.orderFront(nil)
+            settle()
+        }
+
+        func settle() {
+            for _ in 0..<10 {
+                RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+                host.layoutSubtreeIfNeeded()
+            }
+        }
+
+        func picture() throws -> NSBitmapImageRep {
+            let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: rep)
+            return rep
+        }
+
+        func close() {
+            window.orderOut(nil)
+            window.close()
+        }
+    }
+
+    /// The inspector's own pages, when its form is taller than its column.
+    private func saveInspectorPages(_ inspector: Standalone, name: String) throws {
+        let scrolls = views(in: inspector.host, where: { _ in true }).compactMap { $0 as? NSScrollView }.filter { scroll in
+            guard let document = scroll.documentView else { return false }
+            return document.frame.height > scroll.contentView.bounds.height + 20
+        }
+        guard let scroll = scrolls.max(by: { ($0.documentView?.frame.height ?? 0) < ($1.documentView?.frame.height ?? 0) }),
+              let document = scroll.documentView else { return }
+        let visible = scroll.contentView.bounds.height
+        let end = document.frame.height - visible
+        let pages = Int((end / max(1, visible - 60)).rounded(.up))
+        for page in 1...max(1, pages) {
+            let fromTop = page == pages ? end : min(end, CGFloat(page) * (visible - 60))
+            scroll.contentView.scroll(to: NSPoint(x: 0, y: document.isFlipped ? fromTop : end - fromTop))
+            scroll.reflectScrolledClipView(scroll.contentView)
+            inspector.settle()
+            let suffix = page == pages ? "-inspector-end" : "-inspector-p\(page + 1)"
+            try save(try inspector.picture(), name: name + suffix, size: inspector.size)
+        }
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: document.isFlipped ? 0 : end))
+        scroll.reflectScrolledClipView(scroll.contentView)
+        inspector.settle()
     }
 
     private func save(_ rep: NSBitmapImageRep, name: String, size: CGSize) throws {
@@ -143,7 +249,7 @@ final class SnapshotRenderer {
     /// sidebar column painted with the system window background, then the real sidebar view (the
     /// same SwiftUI rows, fonts and counts) drawn on top, then the title bar controls again. What
     /// the PNG cannot show is the glass material itself; open the app to see that.
-    private func composite(frameView: NSView, window: NSWindow, sidebar drawing: SidebarDrawing?) throws -> NSBitmapImageRep {
+    private func composite(frameView: NSView, window: NSWindow, sidebar drawing: SidebarDrawing?, inspector: Standalone? = nil) throws -> NSBitmapImageRep {
         let bounds = frameView.bounds
         let base = try XCTUnwrap(frameView.bitmapImageRepForCachingDisplay(in: bounds))
         frameView.cacheDisplay(in: bounds, to: base)
@@ -173,6 +279,13 @@ final class SnapshotRenderer {
                                                appearance: window.effectiveAppearance)
         if let image = rows.cgImage {
             ctx.draw(image, in: pixels(CGRect(x: column.minX, y: 0, width: column.width, height: bounds.height - titlebarHeight)))
+        }
+        // The inspector column: the window background, then the inspector drawn on its own (its top page).
+        if let inspector, let image = try inspector.picture().cgImage {
+            let rect = CGRect(x: inspector.x, y: 0, width: inspector.size.width, height: inspector.size.height)
+            ctx.setFillColor(background)
+            ctx.fill(pixels(rect))
+            ctx.draw(image, in: pixels(rect))
         }
 
         // The title bar controls over the sidebar column (window buttons, sidebar button), each

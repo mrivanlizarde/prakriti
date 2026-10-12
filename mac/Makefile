@@ -5,7 +5,9 @@
 # make build      build the app (signed, warnings fail the build)
 # make test       run every unit test (includes the snapshot render)
 # make snapshots  render every screen, light and dark, to ../screens/mac/$(MILESTONE)/
-#                 (ONLY=recording draws just the recording pages, ONLY=help just the Help window)
+#                 (ONLY=library draws just the main window's groups, browser, inspector, Settings and
+#                 Activity, ONLY=recording just v1's recording pages, ONLY=help just the Help window,
+#                 ONLY=welcome just the welcome)
 # make fixtures   build the shared test files of v2 (docs/v2/PLAN.md section 4) from the 13 Sep and
 #                 6 Sep talks and macOS `say` into ~/Prakriti/Dev/Fixtures, every time from scratch;
 #                 prints each file's SHA-256 and whether it is the SAME as the last run (about 15 s)

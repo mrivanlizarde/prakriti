@@ -51,15 +51,14 @@ final class OutputsAcceptanceTests: XCTestCase {
         var report = ["Milestone 4 acceptance, \(Date().formatted(date: .abbreviated, time: .standard))", "The 13 Sep talk: \(talk.lastPathComponent)", ""]
         let renderer = try SnapshotRenderer(outputFolder: SnapshotRenderer.milestoneFolder())
         var drawn: [String] = []
-        func draw(_ name: String, page: SidebarItem? = nil) throws {
+        func draw(_ name: String, pane: SettingsPane? = nil) throws {
             for (scheme, appearance) in SnapshotRenderer.appearances {
-                if let page {
-                    model.path = []
-                    model.selection = page
+                if let pane {
+                    try renderer.renderSettings(model: model, pane: pane, appearance: appearance, name: "m4-\(name)-\(scheme)")
                 } else {
                     model.open(recording)
+                    try renderer.render(model: model, appearance: appearance, name: "m4-\(name)-\(scheme)")
                 }
-                try renderer.render(model: model, appearance: appearance, name: "m4-\(name)-\(scheme)")
                 drawn.append("m4-\(name)-\(scheme)")
             }
         }
@@ -102,7 +101,7 @@ final class OutputsAcceptanceTests: XCTestCase {
         XCTAssertLessThanOrEqual(recording.truePeakDBFS ?? 0, -1.0)
         XCTAssertEqual(transcriptFiles().count, 5, "the transcript is still on")
         report += runLines("Run 2, the Outputs screen's loudness changed to -19 LUFS, made again", recording, second, folder: folder)
-        try draw("outputs-at-19", page: .outputs)
+        try draw("outputs-at-19", pane: .outputs)
 
         // 3. The transcript turned off on the recording's page, and made again.
         model.setOutput(.transcript, on: false, for: recording)

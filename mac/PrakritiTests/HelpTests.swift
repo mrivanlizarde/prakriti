@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import SwiftData
 import XCTest
 @testable import Prakriti
 
@@ -96,7 +97,13 @@ final class HelpTests: XCTestCase {
         XCTAssertEqual(library.link("05-outputs.md"), .article("outputs"))
         XCTAssertEqual(library.link("05-outputs.md#transcript"), .article("outputs"))
         XCTAssertEqual(library.link("prakriti-help://troubleshooting"), .article("troubleshooting"))
-        XCTAssertEqual(library.link("prakriti://show/sources"), .place(.screen(.sources)))
+        XCTAssertEqual(library.link("prakriti://show/sources"), .place(.sources))
+        XCTAssertEqual(library.link("prakriti://show/group/needs-you"), .place(.group(.needsYou)))
+        XCTAssertEqual(library.link("prakriti://show/settings/models"), .place(.settings(.models)))
+        XCTAssertEqual(library.link("prakriti://show/activity"), .place(.activity))
+        XCTAssertEqual(library.link("prakriti://show/settings/nowhere"), .unknown("prakriti://show/settings/nowhere"))
+        // Every known place writes a link that reads back as itself.
+        for place in HelpPlace.known { XCTAssertEqual(library.link(place.destination), .place(place)) }
         XCTAssertEqual(library.link("prakriti://show/nowhere"), .unknown("prakriti://show/nowhere"))
         XCTAssertEqual(library.link("https://example.com"), .unknown("https://example.com"))
         XCTAssertEqual(library.link("../welcome-panels.md"), .unknown("../welcome-panels.md"))
@@ -331,17 +338,19 @@ final class HelpTests: XCTestCase {
     /// shows), and the button opens the Sources screen in the main window.
     func testShowMeInSourcesAndWatchingOpensSources() throws {
         let model = Fixtures.model()
-        model.selection = .today
+        model.selection = .default
         let library = model.help.library
         let article = try XCTUnwrap(library.visibleArticle(id: "sources-and-watching"))
         let blocks = library.blocks(article)
         let first = try XCTUnwrap(blocks.prefix(4).flatMap(\.showMeLinks).first, "a Show Me link near the top of the article")
-        XCTAssertEqual(first, HelpShowMe(title: "Show Me", place: .screen(.sources)))
+        XCTAssertEqual(first, HelpShowMe(title: "Show Me", place: .sources))
 
         var mainWindowOpened = false
         HelpActions.show(first.place, model: model, openMainWindow: { mainWindowOpened = true })
         XCTAssertTrue(mainWindowOpened, "Show Me opens the main window")
-        XCTAssertEqual(model.selection, .sources, "and shows Sources in it")
+        let firstFolder = try XCTUnwrap(try model.context.fetch(FetchDescriptor<Source>(sortBy: [SortDescriptor(\.addedAt)])).first)
+        XCTAssertEqual(model.selection, .source(firstFolder.id), "and selects the first folder under Sources, its settings in the inspector")
+        XCTAssertEqual(model.selectedSource?.name, "Studio Recordings")
     }
 
     /// A Show Me link in the middle of a paragraph leaves one space between the sentences around it.
@@ -351,7 +360,7 @@ final class HelpTests: XCTestCase {
                                          library: library).blocks
         guard case .paragraph(let runs, _, let showMe) = blocks.first else { return XCTFail("\(blocks)") }
         XCTAssertEqual(runs.map(\.text).joined(), "Click Activity. It writes a line.")
-        XCTAssertEqual(showMe.map(\.place), [.screen(.activity), .screen(.sources)])
+        XCTAssertEqual(showMe.map(\.place), [.activity, .sources])
         for article in built.visible {
             XCTAssertFalse(built.blocks(article).map(\.plainText).joined(separator: "\n").contains("  "), "a double space in \(article.fileName)")
         }

@@ -3,6 +3,16 @@
 The team's notes for the in-app Help article `mac/Prakriti/Resources/Help/04-sources-and-watching.md` ("Sources and watching").
 Moved out of the article in v2 part M2a so the app bundle holds user text only. Never shown in the app.
 
+## Status after v2 part M3a (Sun 11 Oct 2026)
+
+- Sources are rows of the sidebar; a folder's settings (mode, outputs, Check Now, Open Privacy Settings, Stop
+  Watching) are in the inspector when it is selected. Add Folder is the sidebar's last Sources row and File >
+  Add Folder. v1's drop area is gone: a file or folder dragged onto the window is added. Activity is Window >
+  Activity (its own window; M4a builds it out). The first Show Me is still `sources` (it now selects the first
+  folder), which `HelpTests.testShowMeInSourcesAndWatchingOpensSources` checks.
+- "Follow the work" (until `progress`) names In Progress and the inspector's Checks. The `:::requires progress`
+  block had its names updated (In Progress, waiting for your yes); M4a still rewrites it.
+
 ## Status after v2 part M2a (Sun 11 Oct 2026)
 
 - Show Me (Sources) in step 1: the link check 4 of M2a tests (`HelpTests.testShowMeInSourcesAndWatchingOpensSources`).

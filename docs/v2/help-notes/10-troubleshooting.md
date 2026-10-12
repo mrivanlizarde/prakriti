@@ -3,6 +3,12 @@
 The team's notes for the in-app Help article `mac/Prakriti/Resources/Help/10-troubleshooting.md` ("If something isn't working").
 Moved out of the article in v2 part M2a so the app bundle holds user text only. Never shown in the app.
 
+## Status after v2 part M3a (Sun 11 Oct 2026)
+
+- Sources, Check Now and Open Privacy Settings are in the inspector with the folder selected; Activity is Window >
+  Activity (Show Me `activity`, which opens the Activity window); notifications go through Settings, General
+  (Show Me `settings/general`); LM Studio and the Claude API test through Settings, Models.
+
 ## Status after v2 part M2a (Sun 11 Oct 2026)
 
 - Visible: v1's checks, Show Me for Sources, Activity, Settings and Models, "If a cut took out something you

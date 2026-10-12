@@ -25,7 +25,7 @@ struct PrakritiApp: App {
         Window("Prakriti Help", id: HelpWindow.id) {
             HelpWindow()
                 .environment(model)
-                .preferredColorScheme(CaptureLaunch.current?.colorScheme)
+                                .preferredColorScheme(CaptureLaunch.current?.colorScheme)
         }
         .defaultSize(width: HelpWindow.size.width, height: HelpWindow.size.height)
         .windowResizability(.contentMinSize)
@@ -40,13 +40,34 @@ struct PrakritiApp: App {
             WelcomeWindow()
                 .environment(model)
                 .modelContainer(model.container)
-                .preferredColorScheme(CaptureLaunch.current?.colorScheme)
+                                .preferredColorScheme(CaptureLaunch.current?.colorScheme)
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         .defaultPosition(.center)
         .defaultLaunchBehavior(model.welcome.presentsAtLaunch ? .presented : .suppressed)
         .restorationBehavior(.disabled)
+
+        // The Settings window (v2 part M3a, Command-comma): v1's Outputs and Models screens and its
+        // settings moved here from the sidebar (design spec C5).
+        Settings {
+            SettingsWindow()
+                .environment(model)
+                .modelContainer(model.container)
+                .preferredColorScheme(CaptureLaunch.current?.colorScheme)
+        }
+
+        // Window, Activity (v2 part M3a): v1's Activity screen, out of the sidebar. Part M4a builds it out.
+        Window("Activity", id: ActivityWindow.id) {
+            ActivityWindow()
+                .environment(model)
+                .modelContainer(model.container)
+                .preferredColorScheme(CaptureLaunch.current?.colorScheme)
+        }
+        .defaultSize(width: ActivityWindow.size.width, height: ActivityWindow.size.height)
+        .defaultLaunchBehavior(.suppressed)
+        .restorationBehavior(.disabled)
+        .keyboardShortcut("9", modifiers: .command)
 
         MenuBarExtra(isInserted: Binding(get: { model.settings.showInMenuBar },
                                          set: { model.settings.showInMenuBar = $0 })) {
@@ -74,9 +95,10 @@ extension PrakritiApp {
 
 enum MainWindow {
     static let id = "main"
-    /// The size the window opens at, and the size every snapshot is rendered at.
-    static let size = CGSize(width: 1180, height: 760)
-    static let minimumSize = CGSize(width: 900, height: 600)
+    /// The size the window opens at, and the size every snapshot is rendered at (design spec 2.2: 17 pt
+    /// type needs the room; v1 was 1180 by 760).
+    static let size = CGSize(width: 1440, height: 900)
+    static let minimumSize = CGSize(width: 1100, height: 720)
 }
 
 /// Keeps Prakriti running when its window is closed: the watcher must keep working.
@@ -178,20 +200,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-/// The menu bar commands: Process File, Add File, Add Folder, Pause All, Settings in the main window,
-/// and the Help menu.
+/// The menu bar commands: Process File, Add File, Add Folder and Pause All in File; the browser's views
+/// and the inspector in View; Open, Back and a recording's actions in a Recording menu (v2 part M3a,
+/// design spec 6.7 and 6.8); and the Help menu. Settings is the Settings scene's own item (Command-comma).
 struct AppCommands: Commands {
     let model: AppModel
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
-        CommandGroup(replacing: .appSettings) {
-            Button("Settings…") {
-                openWindow(id: MainWindow.id)
-                model.open(.settings)
-            }
-            .keyboardShortcut(",", modifiers: .command)
-        }
         CommandGroup(replacing: .newItem) {
             Button("Process File…") { model.chooseFilesToProcess() }
                 .keyboardShortcut("p", modifiers: [.command, .shift])
@@ -203,6 +219,46 @@ struct AppCommands: Commands {
             Button(model.settings.isPaused ? "Resume All" : "Pause All") {
                 model.setPaused(!model.settings.isPaused)
             }
+        }
+        CommandGroup(before: .sidebar) {
+            Button("as Grid") { model.browserMode = .grid }
+                .keyboardShortcut("1", modifiers: .command)
+            Button("as List") { model.browserMode = .list }
+                .keyboardShortcut("2", modifiers: .command)
+            Divider()
+        }
+        CommandGroup(after: .sidebar) {
+            Button(model.inspectorShown ? "Hide Inspector" : "Show Inspector") { model.inspectorShown.toggle() }
+                .keyboardShortcut("i", modifiers: [.command, .option])
+            ForEach(Array(InspectorTab.allCases.enumerated()), id: \.element) { index, tab in
+                Button("Inspector: \(tab.title)") {
+                    model.inspectorShown = true
+                    model.inspectorTab = tab
+                }
+                .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: [.command, .option])
+            }
+            Divider()
+        }
+        CommandMenu("Recording") {
+            Button("Open") { model.openSelected() }
+                .keyboardShortcut(.downArrow, modifiers: .command)
+                .disabled(!model.path.isEmpty || model.selectedRecordings.count != 1)
+            Button("Back to Library") { model.back() }
+                .keyboardShortcut(.upArrow, modifiers: .command)
+                .disabled(model.path.isEmpty)
+            Divider()
+            Button("Show Original in Finder") { model.focusedRecording.map(model.showOriginalInFinder) }
+                .disabled(model.focusedRecording == nil)
+            Button("Show Outputs in Finder") { model.focusedRecording.map(model.showOutputsInFinder) }
+                .disabled(model.focusedRecording?.outputFolder == nil)
+            Divider()
+            Button("Make Again…") { model.focusedRecording.map { model.ask(.makeAgain, for: $0) } }
+                .disabled(model.focusedRecording.map(model.canMakeAgain) != true)
+            Button("Approve…") { model.focusedRecording.map { model.ask(.approve, for: $0) } }
+                .disabled(model.focusedRecording.map { model.approvalCheck($0).canApprove } != true)
+            Divider()
+            Button("Remove from Library…") { model.focusedRecording.map { model.ask(.removeFromLibrary, for: $0) } }
+                .disabled(model.focusedRecording.map(model.canRemoveFromLibrary) != true)
         }
         // The Help menu (v2 parts M2a and M2b). macOS adds its own search field at the top, which also
         // lists Help articles through HelpMenuSearch.

@@ -4,7 +4,7 @@ title: Review and approve
 summary: Listen to the episode, read the transcript, trim and cut, check what is said, and approve the finished files.
 section: reviewing
 order: 1
-keywords: [review, approve, listen, play, episode, original, transcript, cut, trim, make again, accuracy checklist, ready for your yes, needs a decision, approved folder, receipt, talk, class, what this is]
+keywords: [review, approve, listen, play, episode, original, transcript, cut, trim, make again, accuracy checklist, waiting for your yes, needs a decision, needs you, ready, inspector, approved folder, receipt, talk, class, what this is, remove from library]
 related: [outputs, people-and-privacy, models-and-api-keys]
 ---
 
@@ -13,18 +13,33 @@ related: [outputs, people-and-privacy, models-and-api-keys]
 Prakriti stops when a recording's outputs are made. Nothing is ready to go out until a person has
 listened to it, checked it and clicked Approve.
 
-## Open a recording
+## Find and open a recording
 
-When a recording is ready, you get a notice such as "Ready for Your Yes: Sun 13 Sep". Click it, or click
-Today or Recordings in the sidebar and click the recording. [Show Me](prakriti://show/today)
+When a recording is ready, you get a notice such as "Waiting for Your Yes: Sun 13 Sep". Click it to open
+the recording. Or click **Needs You** in the sidebar: it holds every recording waiting for your yes,
+needing a decision or that could not finish. [Show Me](prakriti://show/group/needs-you)
 
-At the top of the page you see its status:
+- **In Progress** holds what is being made, waiting its turn, or found and not made yet.
+- **Ready** holds what you have approved.
+- **All Recordings** holds everything, by the month it was recorded. Each folder under Sources holds
+  its own.
 
-- **Working:** outputs are being made. The page shows each step as it happens.
-- **Ready for your yes:** everything is made and waiting for you.
-- **Needs a decision:** something stopped Prakriti, such as a silent recording. The page says what, and
-  what you can do.
-- **Couldn't finish:** a step stopped. The page says which, and Try Again starts it again.
+Choose View > as Grid (Command-1) or View > as List (Command-2). The Sort menu in the toolbar sorts by
+date recorded, date found, length or title, and shows only the kinds you choose. Type in the search field
+to find a recording by its title, its notes or what was said in it: a sentence that matches shows under
+the recording, with its time, and clicking it opens the recording there.
+
+Click a recording to select it: the inspector, on the right, shows it (View > Show Inspector,
+Command-Option-I). Double-click it, or press Return, to open its page. Click Back, or press Escape, to
+return.
+
+Its status is shown in symbol and words:
+
+- **Working:** outputs are being made. The inspector shows the step it is on.
+- **Waiting for your yes:** everything is made and waiting for you.
+- **Needs a decision:** something stopped Prakriti, such as a silent recording. The inspector says what,
+  and what you can do.
+- **Couldn't finish:** a step stopped. The inspector says which, and Try Again starts it again.
 - **Approved:** you approved it, and its files are in the Approved folder.
 
 :::unless viewer
@@ -69,9 +84,10 @@ Prakriti marks the moments where the transcript or a person's name may be wrong.
 
 ## Check what is said
 
-Read the accuracy checklist in the titles and notes, when they are written. Each quote was found word
-for word in the transcript. Each claim still needs a person: check it against the recording, including
-any year, name or number.
+Read the accuracy checklist in the inspector's Checks, when the titles and notes are written. Each quote
+was found word for word in the transcript. Each claim still needs a person: check it against the
+recording, including any year, name or number, then tick its box. The ticks are your own record; they
+change no file.
 
 ## Change the episode
 
@@ -105,7 +121,8 @@ Before you can approve:
 - Every line of each output's checklist passes.
 :::
 
-Then click Approve, and confirm. Prakriti copies the finished files to the Approved folder, in a folder
+Then click Approve, on the recording's page or in the inspector's Outputs, and confirm. Prakriti copies
+the finished files to the Approved folder, in a folder
 named after the recording, with `APPROVAL.md`: a receipt with the title, the notes, the edits, and
 each file's size and fingerprint. Nothing is uploaded or posted.
 
@@ -115,6 +132,12 @@ approved files stay as they were until you do.
 
 ## After you approve
 
-Upload the files yourself. For the podcast-ready episode, the Ready to upload section on the
-recording's page has the upload checklist and a Copy button for each piece of text the podcast host
-asks for. See [Outputs](05-outputs.md).
+The recording moves to Ready. Upload the files yourself. For the podcast-ready episode, the Ready to
+upload section, on the recording's page and in the inspector's Outputs, has the upload checklist and a
+Copy button for each piece of text the podcast host asks for. See [Outputs](05-outputs.md).
+
+## Remove a recording from the library
+
+Control-click it and choose Remove from Library, then confirm. Prakriti forgets it and moves its files
+in Outputs to the Trash. The original recording and anything in the Approved folder are not touched,
+and its folder does not bring it back as new. To bring it back, choose File > Add File and choose it.

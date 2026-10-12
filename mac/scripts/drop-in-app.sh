@@ -1,7 +1,7 @@
 #!/bin/bash
 # Milestone 3's check in the REAL app: a fresh 90 s clip, cut with `ffmpeg -c copy` from the 13 Sep
 # talk, is moved into a watched drop folder, and nothing else is done. Passes when the app's log
-# shows it found, started, made and Ready for your yes, with the notices it sent (or why macOS did
+# shows it found, started, made and Waiting for your yes (v1: Ready for your yes), with the notices it sent (or why macOS did
 # not show them). No clicks.
 #   cd ~/Code/prakriti/mac && ./scripts/drop-in-app.sh development ../screens/mac/m3/real
 #   cd ~/Code/prakriti/mac && ./scripts/drop-in-app.sh live ../screens/mac/m3/real
@@ -47,7 +47,7 @@ seen() { tail -n +$((BEFORE + 1)) "$LOG" 2>/dev/null | grep -F "$1" | head -1; }
 DONE=""
 for _ in $(seq 1 300); do
   NEW=$(tail -n +$((BEFORE + 1)) "$LOG" 2>/dev/null || true)
-  if grep -qE "\($NAME\) is ready for your yes|Filed $NAME as a test|\($NAME\) has no usable sound|Couldn't finish $NAME" <<< "$NEW"; then DONE=yes; break; fi
+  if grep -qE "\($NAME\) is (waiting|ready) for your yes|Filed $NAME as a test|\($NAME\) has no usable sound|Couldn't finish $NAME" <<< "$NEW"; then DONE=yes; break; fi
   pgrep -f "$BIN" > /dev/null || { echo "FAIL: Prakriti quit while working"; exit 1; }
   sleep 2
 done
@@ -60,7 +60,7 @@ echo "---"
 FOUND=$(grep -m1 -F "Found $NAME in" <<< "$NEW" | cut -c12-19 || true)
 echo "Found at:      ${FOUND:-not logged}"
 echo "Result after:  $((END - START)) s from the move"
-grep -q "($NAME) is ready for your yes" <<< "$NEW" && echo "PASS: found, made and ready with no clicks" || { echo "FAIL: not ready"; exit 1; }
+grep -qE "\($NAME\) is (waiting|ready) for your yes" <<< "$NEW" && echo "PASS: found, made and ready with no clicks" || { echo "FAIL: not ready"; exit 1; }
 grep -E "Notice (shown|NOT shown|handed|\(log only\))" <<< "$NEW" | sed 's/^/notice: /' || echo "notice: none logged"
 echo "Still running: $(pgrep -f "$BIN" > /dev/null && echo yes || echo no)"
 echo "NAME=$NAME"

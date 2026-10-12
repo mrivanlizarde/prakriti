@@ -572,6 +572,26 @@ are built, so today's welcome describes v1 with the podcast-ready episode; a lat
 written beside today's and replaces it in the commit that builds it. macOS is not asked about
 notifications at that launch: the last panel asks after saying why, or, when notifications are off, opens
 System Settings at Prakriti's own page. See `docs/BUILD-LOG.md`, "v2 part M2b".
+**v2 part M3a (the main window and Settings), Sun 11 Oct:** the window is now built the way Photos and Final
+Cut Pro are (`docs/v2/design-spec.md` 2 and 3). The sidebar is a Library of four groups, **Needs You** (waiting
+for your yes, needs a decision, couldn't finish), **In Progress**, **Ready** (approved) and **All Recordings**,
+each a SwiftData predicate over the stored status, with counts as plain text; under **Sources**, each watched
+folder and Add Folder. The middle is a browser of recordings as a **grid** of cards (a neutral tile with the
+day and the kind, the status in symbol and words, the length, the title and when it was recorded) or a
+**list** (Command-1 and Command-2), in sections (Needs You by status, oldest first; months elsewhere), with a
+Sort and Filter menu, and a **search** over titles, notes and what was said (a matching sentence opens the
+recording there). On the right, the **inspector** (Command-Option-I) follows the selection: a recording's
+**Outputs** (status, Make Outputs or Try Again, Approve and Make Again with v1's refusals, the files with Play
+and Show in Finder, the writing and podcast-ready sections), **Checks** (what was measured, the accuracy
+checklist with a box per claim, the privacy lock in words that name no one, the steps of the last make) and
+**Info** (title, what it is, notes, where the episode starts and ends, the file); a folder's settings (v1's
+Sources screen, for one folder). **Opening a recording still shows v1's recording page, unchanged,** until the
+Viewer replaces it (M3b). v1's Outputs and Models screens and its settings moved into a **Settings window**
+(Command-comma: General, Outputs, Models, Privacy, Advanced); Activity is its own window (Window > Activity).
+A card's menu adds **Remove from Library**: Prakriti forgets it and its Outputs folder goes to the Trash; the
+original and Approved are untouched, and its folder never brings it back as new. "Ready for your yes" now
+reads **"Waiting for your yes"** everywhere, notices included, so "Ready" means approved. Secondary text and
+the dark accent were measured under 4.5 to 1 and replaced. See `docs/BUILD-LOG.md`, "v2 part M3a".
 
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
@@ -593,7 +613,11 @@ folders, beside the live one.
   and social captions, and the upload checklist; the recording's page has a Copy button for each). Your yeses:
   `~/Prakriti/Approved/<recording name>/`, only when you press Approve. To have any file made, put it
   in `~/Prakriti/Drop`. Prakriti only reads the Studio Recordings folder and never writes into it.
-  Every look and every step: `~/Library/Logs/Prakriti/<date>.log`, and the Activity screen.
+  Every look and every step: `~/Library/Logs/Prakriti/<date>.log`, and Window > Activity.
+- **Find a recording.** Needs You (in the sidebar) holds what waits on you; In Progress what is being made;
+  Ready what you approved; All Recordings everything. Click one to see it in the inspector on the right;
+  double-click it (or press Return) to open its page; Escape comes back. Type in the search field to find
+  one by its title, notes or what was said.
 - **The upload folder.** `~/Prakriti/Outputs/<recording name>/Podcast-ready/` holds everything a
   podcast host asks for: the MP3 (named `<Show> - <Title>.mp3` once both are set, by its date until
   then), its captions (`.srt` for the host's transcript field, `.vtt` for the web), `Episode text.txt`
@@ -601,9 +625,9 @@ folders, beside the live one.
   pull quote for Instagram, LinkedIn and X and Threads, and `Upload checklist.txt`, every line PASS,
   MISSING or FAIL with what to do. It exists only for a recording with Podcast-ready episode switched on.
   Prakriti never uploads; you do, by hand. To get one ready:
-  1. **Once, on the Outputs screen, Podcast-ready episode:** the show name, artwork, host or author,
+  1. **Once, in Settings (Command-comma), Outputs, Podcast-ready episode:** the show name, artwork, host or author,
      numbering, and a call to action if you want one. These belong to the show and reach every episode.
-  2. **On the recording's page:** mark it "Talk, one teacher speaking"; set any trim and cuts; under
+  2. **On the recording's page (double-click it):** mark it "Talk, one teacher speaking"; set any trim and cuts; under
      Outputs for this recording switch on Podcast-ready episode (and Titles, show notes and chapters,
      with LM Studio open); press Make Again. With the writing on, allow an hour or more.
   3. **Under Ready to upload:** read the drafts, press Use This Title and Use as Notes for the ones you
@@ -624,7 +648,7 @@ folders, beside the live one.
 - **The welcome.** It opened once by itself (after the v2 part M2b install). Help, Welcome to Prakriti opens
   it again; its last panel is the quickest way to turn on notifications (Open Notification Settings goes
   straight to Prakriti's page in System Settings: turn on Allow notifications).
-- **Pause it.** Pause All (the window's toolbar, the menu bar, or Settings). A recording already
+- **Pause it.** Pause All (the window's toolbar, the menu bar, or Settings, General). A recording already
   running finishes; nothing new is found or started until Resume All.
 - **Stop it.** The mark in the menu bar, Quit Prakriti (or Command-Q with the window in front). It stays stopped
   until you open it again or log in again. To stop it opening at login: System Settings, General,
@@ -706,6 +730,15 @@ cd ~/Code/prakriti/mac && make snapshots MILESTONE=v2-m2a ONLY=help
 cd ~/Code/prakriti/mac && make snapshots MILESTONE=v2-m2b ONLY=welcome
 ```
 ```bash
+cd ~/Code/prakriti/mac && make snapshots MILESTONE=v2-m3a ONLY=library
+```
+```bash
+cd ~/Code/prakriti/mac && make look MILESTONE=v2-m3a
+```
+```bash
+cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --keys build/Build/Products/Debug/Prakriti.app
+```
+```bash
 cd ~/Code/prakriti/mac && make accept-first-launch MILESTONE=v2-m2b
 ```
 ```bash
@@ -728,13 +761,23 @@ tail -20 ~/Library/Logs/Prakriti/$(date +%Y-%m-%d).log
 ```
 
 `make test` runs every unit test (data, rules, copy and type checks, and the snapshot render).
-`make snapshots` writes every screen, light and dark, at the window's real size (1180 by 760) to
-`screens/mac/<milestone>/` (gitignored), plus an `-end` picture for any page taller than the
-window, and fails if the selected sidebar row's icon or label cannot be seen. `make look` opens
-the **real** app on sample data (in memory, nothing saved) at each sidebar screen in light and
-dark, captures the real window with `screencapture -l` into `screens/mac/<milestone>/real/`,
-checks the selected sidebar row by its pixels, and checks that adding the Studio Recordings folder
-is refused with an alert. It takes the screen's focus for about a minute: leave the Mac alone.
+`make snapshots` writes every screen, light and dark, at the window's real size (1440 by 900 since v2
+part M3a) to `screens/mac/<milestone>/` (gitignored): every smart group filled and empty, the list, a folder,
+the inspector's tabs and states, a search, a filter, the Settings panes, the Activity window and v1's
+recording pages (`ONLY=library` for the window and Settings alone), plus an `-end` picture for any page
+taller than the window and `-inspector-p2` to `-inspector-end` for a long inspector; it fails if the
+selected sidebar row's icon or label cannot be seen, or if the window's content asks for more height than
+the window has. The sidebar and the inspector are Liquid Glass, which a bitmap cannot draw, so each is
+drawn on its own into its column. `make look` opens the **real** app on sample data (in memory, nothing
+saved) at each smart group, the list, a folder, each inspector tab, a search over what was said, each pane
+of the Settings window and the Activity window, in light and dark, captures each with `screencapture -l`
+into `screens/mac/<milestone>/real/`, checks the main window is 1440 by 900 and its selected sidebar row
+by its pixels, checks that adding the Studio Recordings folder is refused with an alert, and then drives
+the keys (`--keys`: Return, Escape, Command-Down, Command-Up, Command-[, Command-1 and 2, Command-Option-I,
+Command-comma), each read back through Accessibility by process id. A capture opens at 1440 by 900 and
+saves no window frame into the live copy's preferences. It takes the screen's focus for about three
+minutes: leave the Mac alone. `swift scripts/capture-window.swift --contrast <png> <x0> <y0> <x1> <y1>`
+measures the contrast between the darkest and lightest pixel in a box of a capture (text on its background).
 `make check` builds, tests, launches the app, lets it close its own window, proves it is still
 running 15 seconds later, then runs `make look`'s capture. `make accept` is milestone 2's check on
 **real recordings** through the app's own pipeline and runner (about 4 to 5 minutes): the 13 Sep talk
@@ -744,7 +787,7 @@ picture with digital silence) must be Needs a decision with nothing made; the 30
 `~/Prakriti/Dev/Drop` must be filed as a test; the 6 Sep talk runs too. Until v2 part M0 (Sun 11 Oct)
 the silent recording was the 14 Sep class; the rule is now never a class, so `acceptance.txt` names no
 2026-09-14 file. It builds the fixtures first if any is missing, writes to `~/Prakriti/Dev/Outputs`,
-draws Recordings, Today, Activity and each recording's page from what was really measured into
+draws All Recordings, Needs You, the Activity window and each recording's page from what was really measured into
 `screens/mac/<milestone>/`, and writes the numbers to `acceptance.txt` there. `make fixtures` builds
 the shared test files of v2 (`docs/v2/PLAN.md`, section 4) into `~/Prakriti/Dev/Fixtures` from the 13
 Sep and 6 Sep talks and macOS `say`, from scratch every time (about 15 s), and prints each file's
@@ -843,7 +886,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 |---|---|
 | Project definition (source of truth) | `mac/project.yml`; `make generate` rebuilds `Prakriti.xcodeproj`, and both are committed |
 | App code | `mac/Prakriti/App` (launch, paths, settings, log, `PipelineRunner`, `Watcher`, `Notices`, `LoginItem` with the instance lock, `EngineV0Import`, `StatusSummary` and the menu bar's `WorkingTicker`), `Engine` (the pipeline: `Subprocess`, `Readiness`, `Measurements`, `Pipeline` with `Mastering`, `Report`; the watcher's `FolderScan` and `EventStream`), `Model` (vocabulary, SwiftData models, store), `Views`, `Fixtures` |
-| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `RecordingPageTests` (milestone 5: edits, the episode's clock, typed times, the cut's words gone through Parakeet with the Mac's voice, six sentences of Parakeet's real misplaced tokens, what the report names, the page's player, Approve and its refusals), `EditsAcceptanceTests` (the 13 Sep talk trimmed, cut, made again and approved, `make accept-edits` only), `StoreMigrationTests` (`make migrate-check` only), `HelpTests` (v2 part M2a: the articles, the capability blocks, links, the copy rules, what only Help may show, search, the Help menu's handler, Show Me), `WelcomeTests` (v2 part M2b: the welcome's words and symbols, what each stage of the build shows, the first-launch rule, the notification button, Choose Folder), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share, the main window and the Help window) |
+| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `RecordingPageTests` (milestone 5: edits, the episode's clock, typed times, the cut's words gone through Parakeet with the Mac's voice, six sentences of Parakeet's real misplaced tokens, what the report names, the page's player, Approve and its refusals), `EditsAcceptanceTests` (the 13 Sep talk trimmed, cut, made again and approved, `make accept-edits` only), `StoreMigrationTests` (`make migrate-check` only), `HelpTests` (v2 part M2a: the articles, the capability blocks, links, the copy rules, what only Help may show, search, the Help menu's handler, Show Me), `WelcomeTests` (v2 part M2b: the welcome's words and symbols, what each stage of the build shows, the first-launch rule, the notification button, Choose Folder), `LibraryTests` (v2 part M3a: the smart groups as predicates, sections and sorts, search, open and back, Remove from Library with the watcher passing over it, places, the lock line, every text color's contrast), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share: the main window with its sidebar and inspector drawn on their own, the Help window, Settings panes, the Activity window) |
 | Real-window capture | `mac/scripts/capture-window.swift` (run by `make look` and `make check`); also `--analyze <png>` to check any capture, `--window <app> <png>` to capture the running app as it is, `--app-icon <app> <folder>` to draw the app's icon as Finder gets it at 512 and 32 px and measure its cut, and `--menu-bar <app> <seconds> <folder>` to read every Prakriti mark in the real menu bar over time (v2 part M1) |
 | Real-app pipeline check | `mac/scripts/process-in-app.sh <file> <folder>` |
 | The writing models (milestone 6) | `mac/Prakriti/Writing/`: `ModelClients.swift` (the request and reply, LM Studio with its load at 65,536 tokens, Ollama, the Claude API), `AppleOnDevice.swift` (Foundation Models, guided generation for tags and summaries), `Keychain.swift` (the Claude API key), `Writer.swift` (prompts, the privacy lock, tries, `WritingCheck`, `WrittenPackage` and `show-notes.md`); `App/ModelActions.swift` (test buttons, the key, Write Again, Use This Title); `Views/ModelsView.swift`, `Views/WritingSection.swift`; the pipeline step `.writing` and `PipelineRunner.write` (Write Again); tests `WritingTests` (in `make test`) and `ModelsAcceptanceTests` (`make accept-models`) |
@@ -853,8 +896,9 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | Approved files, live | `~/Prakriti/Approved/<file name without extension>/`: `episode.mp3`, the transcript's chosen formats (following the episode), `REPORT.md`, and `APPROVAL.md` (title, notes, edits, every file's size and SHA-256). Never `transcript.json`. Development: `~/Prakriti/Dev/Approved/` |
 | Outputs, development mode | `~/Prakriti/Dev/Outputs/<file name without extension>/`: `episode.mp3`, `transcript.txt/.srt/.vtt/.md` (the chosen formats, with the word list applied), `transcript.json` (Parakeet's words as heard, with their times; never changed), `REPORT.md` (engine v0's layout). A make in progress lives in the hidden `.making <name>` folder beside it |
 | The podcast-ready episode | `mac/Prakriti/Engine/PodcastReady.swift` (the settings with numbering and the call to action, the chain with the reason for every number, the file name, chapters, `EpisodeCopy` and `PodcastPackage.copy` (the words the text files and the Copy buttons share), the two episode text files, the checklist and the class refusal), `PodcastReadyRun.swift` (the passes ffmpeg makes and the package written and read back), `ID3.swift` (Prakriti's own ID3v2.4 writer and reader), `Artwork.swift` (Apple's artwork rules, read by ImageIO); `Views/PodcastReadyViews.swift` (its settings on Outputs, the Ready to upload section with its Copy buttons and checklist, `Pasteboard`); `Writing/CopyRules.swift` (Ivan's copy rules, read by Swift); `PipelineRunner.packageAgain` (Update Podcast-Ready Files); tests `PodcastReadyTests` and `EpisodeTextTests` (in `make test`), `PodcastReadyAcceptanceTests` (`make accept-podcast`) and `EpisodeTextAcceptanceTests` (`make accept-episode-text`) |
-| The Yoga Marga word list | `mac/Prakriti/Engine/Lexicon.swift` (each word as written, how it has been misheard, and what it is); shown on the Outputs screen |
-| Output settings | Which outputs: each folder's switches (Sources), else the Outputs screen's (files added by hand). How: the Outputs screen. A recording's own choices (its page) override both: `OutputResolver` in `Model/Store.swift` |
+| The Yoga Marga word list | `mac/Prakriti/Engine/Lexicon.swift` (each word as written, how it has been misheard, and what it is); shown in Settings, Outputs |
+| Output settings | Which outputs: each folder's switches (the inspector, with the folder selected under Sources), else Settings, Outputs (files added by hand). How: Settings, Outputs. A recording's own choices (its page) override both: `OutputResolver` in `Model/Store.swift` |
+| The main window (v2 part M3a) | `mac/Prakriti/Model/Library.swift` (the smart groups and their predicates, `SidebarItem`, the browser's sections and sorts, `LibrarySearch`, `TranscriptIndex`), `App/LibraryActions.swift` (places, open and back, confirmations, a card's menu, Remove from Library), `Views/MainView.swift` (the window, toolbar, Sort menu, sidebar, Activity window), `Views/Library/` (`LibraryView` with the groups, folders, search, empty states and the Needs You status line; `BrowserGrid` with `RecordingCard`, `NeutralTile`, `StatusCapsule`, `RecordingMenu`; `BrowserList`), `Views/Inspector/` (`InspectorView` with the folder and several-selected inspectors; `OutputsTab` with `Deliverable`; `ChecksTab` with `Recording.lockLine` and `setClaim`; `InfoTab`), `Views/Settings/SettingsScene.swift` (the Settings window: General, Outputs = v1's `OutputsView`, Models = v1's `ModelsView`, Privacy, Advanced), `Views/AppColor.swift` (the measured text colors and `.appSecondary`); v1's page is still `Views/RecordingsView.swift` (`RecordingDetailView`) and `Views/RecordingPage.swift`; tests `LibraryTests` and `SnapshotTests.testRenderEveryScreen` |
 | Test clips | `~/Prakriti/Dev/Drop/2026-09-13 clip 30s.mp4` (a test) and `~/Prakriti/Dev/Clips/2026-09-13 clip 90s.mp4` (a full run), cut with `ffmpeg -c copy` from the 13 Sep talk |
 | v2 test fixtures | `~/Prakriti/Dev/Fixtures/` (made by `make fixtures`, never by hand): the files, `SHA256SUMS` from the last run, `RECIPES.txt` (the ffmpeg and macOS versions they were made with). The recipes: `mac/scripts/make-fixtures.sh`, with the texts `say` reads and the made-up talk in `mac/scripts/fixtures/` |
 | The built app | `mac/build/Build/Products/Debug/Prakriti.app` (gitignored) |
@@ -987,7 +1031,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 27. **Automatic work gets three tries at the regular looks; an interrupted automatic run restarts by
     itself and counts as a try.** Reason: v0's rule, a passing failure says nothing (SCOPE 8.7), and
     a file that stops Prakriti every time must end as Couldn't finish, not loop.
-28. **A folder decides only WHETHER an output is made; HOW it is made comes from the Outputs screen,
+28. **A folder decides only WHETHER an output is made; HOW it is made comes from the Outputs screen (Settings, Outputs since v2 part M3a),
     or from a recording's own settings** (`OutputResolver.choice` and `.details`). Reason: every folder
     holds a copy of every setting from the day it was added, and until 10 Oct that copy won, so a
     loudness changed on the Outputs screen silently never reached the studio folder's recordings.
@@ -1307,6 +1351,36 @@ top and its end. Reading the code is not verification, and neither is a passing 
 84. **A capture finds the main window as the widest one** (`mainWindowID`), and the welcome as the 720 pt
     one. Reason: since v2 part M2b a development copy with an unseen welcome opens it beside the main
     window, and "the first window wider than 600 pt" could have captured the welcome instead.
+
+85. **Remove from Library leaves the file's path on its folder (`Source.forgottenPaths`), and the watcher treats
+    those paths as known.** The recording's Outputs folder goes to the Trash (`AppModel.moveToTrash`, only ever a
+    folder inside this mode's Outputs); the original and the Approved folder are never touched; it is refused
+    while the recording is being made or waits its turn; File > Add File takes the path off the list. Reason:
+    the watcher finds a file it has no record of as new, so without the list the next look (5 minutes later)
+    would take the removed recording in again and, in a Make outputs automatically folder, make it again
+    (read in `Watcher.sweep` before building it; `LibraryTests` proves the look passes over it).
+86. **Secondary text is `.foregroundStyle(.appSecondary)`, never the system's `.secondary`; text in the accent is
+    `AppColor.accentText`; a problem in words is `AppColor.problemText`** (`Views/AppColor.swift`, `RulesTests`
+    fails on `.foregroundStyle(.secondary)`). Reason: measured on macOS 27.2, the system's secondary label is
+    3.95 to 1 on the white window and the dark accent #4459E8 is 3.05 on the dark one, under the 4.5 text needs;
+    `LibraryTests` measures every text color on every background in light, dark and Increase Contrast. Never
+    set a whole window's foreground hierarchy (`foregroundStyle(_:_:)`) to fix it: tried, it turned every
+    bordered button and quaternary fill dark in the real window.
+87. **Nothing in the main window may ask for more height than the window has** (`SnapshotRenderer` asserts it
+    for every snapshot). `EmptyState`'s message has a 240 pt minimum width, and the inspector's empty state
+    sits in a scroll view. Reason: a wrapped message with `fixedSize(vertical:)`, asked for its smallest size
+    in a narrow column, reflows to a word a line; measured, the empty inspector asked for 2,195 pt and an
+    empty group for 1,835 pt, which pushes the window past the screen.
+88. **The sidebar and the inspector are Liquid Glass, so the snapshots draw each on its own into its column,
+    and the real window (`make look`) is the judge** (warning 7 for the sidebar). A capture opens the main
+    window at 1440 by 900 and clears its frame autosave, so it never writes a window frame into the live
+    copy's preferences (the live domain holds Ivan's own saved frame, 1140 by 772 on Sun 11 Oct, which his
+    window keeps).
+89. **The smart groups are predicates over `statusRaw` (`SmartGroup.predicate`), and Ready holds exactly the
+    approved recordings until the platform checks exist (M8, M11b).** "Ready for your yes" reads "Waiting for
+    your yes" (design spec C1) in the app, in notices and in Activity's line "is waiting for your yes"; the
+    stored raw value `readyForYourYes` never changed, so nothing migrated. `make drop` and `process-in-app.sh`
+    accept both phrasings in the log. Reason: one word must mean one thing, and "Ready" now means approved.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

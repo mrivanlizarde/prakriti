@@ -73,10 +73,10 @@ final class WatcherTests: XCTestCase {
         // Found, Started, Ready: one notice, updated in place.
         XCTAssertEqual(poster.posted.map(\.event), [.found, .started, .ready])
         XCTAssertEqual(Set(poster.posted.map(\.identifier)), ["rec-2026-09-13-drop-test-status"])
-        XCTAssertEqual(poster.posted.last?.title, "Ready for Your Yes: Sun 13 Sep")
+        XCTAssertEqual(poster.posted.last?.title, "Waiting for Your Yes: Sun 13 Sep")
         let lines = try model.context.fetch(FetchDescriptor<LogEntry>()).map(\.message)
         XCTAssertTrue(lines.contains { $0.hasPrefix("Found 2026-09-13 drop test.m4a in Test drop folder.") }, "\(lines)")
-        XCTAssertTrue(lines.contains { $0.contains("is ready for your yes") }, "\(lines)")
+        XCTAssertTrue(lines.contains { $0.contains("is waiting for your yes") }, "\(lines)")
     }
 
     func testAskMeFirstChecksTheSoundThenWaits() async throws {

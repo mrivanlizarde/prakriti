@@ -53,7 +53,7 @@ In every recording, Prakriti looks for faces in the picture and voices in the so
 
 ## See who is in a recording
 
-In Recordings, each recording shows who was found: the names of the people you have named, and how many
+In the browser, each recording shows who was found: the names of the people you have named, and how many
 other people appear or speak, such as "Gabriel, Serenity and 3 other people". Choose View > Show
 Recordings With Other People to see only those.
 

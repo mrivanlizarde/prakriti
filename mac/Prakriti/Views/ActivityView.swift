@@ -43,7 +43,7 @@ struct ActivityRow: View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(Format.clock(entry.at))
                 .font(AppFont.numbers)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.appSecondary)
                 .frame(width: 76, alignment: .trailing)
             Image(systemName: entry.level.symbol)
                 .font(AppFont.secondary)

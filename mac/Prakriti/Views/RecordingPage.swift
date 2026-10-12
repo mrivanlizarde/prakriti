@@ -298,20 +298,27 @@ struct TranscriptSection: View {
             } else {
                 let parts = editedParts
                 let playing = page.currentLineID()
-                List(page.lines, selection: $selection) { line in
-                    TranscriptLineRow(line: line, fate: line.fate(in: parts), isPlaying: line.id == playing)
-                        .tag(line.id)
-                        .contextMenu {
-                            Button("Play From Here") { page.seek(original: line.speechStart) }
-                            Button("Cut This Line") {
-                                if let problem = model.addCut(TimeRange(start: line.start, end: line.end), to: recording) {
-                                    model.notice = Notice(title: "Not cut", message: problem)
+                ScrollViewReader { proxy in
+                    List(page.lines, selection: $selection) { line in
+                        TranscriptLineRow(line: line, fate: line.fate(in: parts), isPlaying: line.id == playing)
+                            .tag(line.id)
+                            .id(line.id)
+                            .contextMenu {
+                                Button("Play From Here") { page.seek(original: line.speechStart) }
+                                Button("Cut This Line") {
+                                    if let problem = model.addCut(TimeRange(start: line.start, end: line.end), to: recording) {
+                                        model.notice = Notice(title: "Not cut", message: problem)
+                                    }
                                 }
                             }
-                        }
+                    }
+                    .listStyle(.plain)
+                    .frame(height: 380)
+                    // Opened at a sentence (a search result, v2 part M3a): that line is shown, not the first.
+                    .onAppear {
+                        if let playing { proxy.scrollTo(playing, anchor: .center) }
+                    }
                 }
-                .listStyle(.plain)
-                .frame(height: 380)
                 .onChange(of: selection) { _, chosen in
                     if chosen.count == 1, let id = chosen.first, let line = page.lines.first(where: { $0.id == id }) {
                         page.seek(original: line.speechStart)
@@ -366,18 +373,18 @@ struct TranscriptLineRow: View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(Format.timecode(line.speechStart))
                 .font(AppFont.numbers)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.appSecondary)
                 .frame(width: 64, alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
                 Text(line.text)
                     .font(isPlaying ? AppFont.headline : AppFont.body)
-                    .foregroundStyle(fate == .kept ? .primary : .secondary)
+                    .foregroundStyle(fate == .kept ? Color.primary : AppColor.secondaryText)
                     .strikethrough(fate == .cut)
                     .fixedSize(horizontal: false, vertical: true)
                 if fate != .kept {
                     Text(fate == .cut ? "Cut from the episode" : "Partly cut from the episode")
                         .font(AppFont.label)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.appSecondary)
                 }
             }
             Spacer(minLength: 0)
@@ -420,7 +427,7 @@ struct TimeField: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(label).font(AppFont.body)
                 if let problem {
-                    Text(problem).font(AppFont.secondary).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
+                    Text(problem).font(AppFont.secondary).foregroundStyle(AppColor.problemText).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
@@ -468,7 +475,7 @@ struct EditsSection: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Cut \(TimeText.string(cut.start)) to \(TimeText.string(cut.end))").font(AppFont.body)
-                        Text(Format.length(cut.end - cut.start) + " taken out").font(AppFont.secondary).foregroundStyle(.secondary)
+                        Text(Format.length(cut.end - cut.start) + " taken out").font(AppFont.secondary).foregroundStyle(.appSecondary)
                     }
                 }
             }
@@ -476,7 +483,7 @@ struct EditsSection: View {
                 HStack(spacing: 8) {
                     TextField("Cut from", text: $cutFrom, prompt: Text("4:12"))
                         .labelsHidden().textFieldStyle(.roundedBorder).font(AppFont.numbers).frame(width: 90)
-                    Text("to").font(AppFont.body).foregroundStyle(.secondary)
+                    Text("to").font(AppFont.body).foregroundStyle(.appSecondary)
                     TextField("Cut to", text: $cutTo, prompt: Text("4:42"))
                         .labelsHidden().textFieldStyle(.roundedBorder).font(AppFont.numbers).frame(width: 90)
                         .onSubmit(addCut)
@@ -487,7 +494,7 @@ struct EditsSection: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Cut a section, from and to").font(AppFont.body)
                     Text(cutProblem ?? "Or select lines in the transcript and cut them.")
-                        .font(AppFont.secondary).foregroundStyle(cutProblem == nil ? Color.secondary : Color.red)
+                        .font(AppFont.secondary).foregroundStyle(cutProblem == nil ? AppColor.secondaryText : AppColor.problemText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -582,7 +589,7 @@ struct AboutSection: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("What this is").font(AppFont.body)
                     Text("Only a talk with one teacher speaking can be approved until Prakriti can check who is speaking.")
-                        .font(AppFont.secondary).foregroundStyle(.secondary)
+                        .font(AppFont.secondary).foregroundStyle(.appSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -617,7 +624,7 @@ struct ApproveRows: View {
             } else if let line = check.line {
                 Text(line)
                     .font(AppFont.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if recording.status != .approved {
@@ -632,7 +639,7 @@ struct ApproveRows: View {
                     Text(check.canApprove ? "Copies the finished files to \(model.paths.display(model.approvedFolder(for: recording).path)). Nothing is uploaded."
                                           : "Approve copies the finished files to \(model.paths.display(model.paths.approved.path)). Nothing is uploaded.")
                         .font(AppFont.secondary)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.appSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }

@@ -47,6 +47,8 @@ final class PipelineRunner {
     }
 
     func isWaiting(_ recording: Recording) -> Bool { waitingIDs.contains(recording.id) }
+    /// The recordings waiting their turn, in the order they will be made (In Progress lists them so).
+    var waitingOrder: [UUID] { waitingIDs }
     func isCurrent(_ recording: Recording) -> Bool { currentID == recording.id }
 
     /// Puts a recording in line. It starts when nothing else is running and Pause All is off.
@@ -485,7 +487,7 @@ final class PipelineRunner {
         case .ready:
             recording.status = .readyForYourYes
             run.outcome = .ready
-            run.summary = "Ready for your yes."
+            run.summary = "Waiting for your yes."
             var facts = facts(for: recording)
             if result.coverageOK == false, let reaches = result.transcriptReaches, let duration = result.duration {
                 facts.coverageGap = duration - reaches
@@ -516,7 +518,7 @@ final class PipelineRunner {
             } else if activeOptions.makePodcastReady {
                 numbers.append("podcast-ready files NOT made (\(result.podcastProblem ?? "no reason given"))")
             }
-            model.record("\(label) (\(name)) is ready for your yes, made in \(Format.length(result.seconds))" + (numbers.isEmpty ? "." : ": " + numbers.joined(separator: ", ") + "."),
+            model.record("\(label) (\(name)) is waiting for your yes, made in \(Format.length(result.seconds))" + (numbers.isEmpty ? "." : ": " + numbers.joined(separator: ", ") + "."),
                          level: result.coverageOK == false || result.writingProblem != nil || result.podcastProblem != nil ? .attention : .info, run: run)
             if !result.replaced.isEmpty {
                 let gone = result.replaced.filter { !result.files.contains($0) }

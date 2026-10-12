@@ -80,6 +80,7 @@ struct HelpSidebar: View {
                 } header: {
                     Text(group.section.title(with: library.capabilities))
                         .font(AppFont.secondaryEmphasis)
+                        .foregroundStyle(.appSecondary)
                 }
             }
         }
@@ -101,7 +102,7 @@ struct HelpSearchResults: View {
                 if results.isEmpty {
                     Text("Try a shorter word, or look through the sections on the left.")
                         .font(AppFont.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.appSecondary)
                 }
                 ForEach(results) { result in
                     Button {
@@ -117,7 +118,7 @@ struct HelpSearchResults: View {
                             if let sentence = result.sentence {
                                 Text(sentence)
                                     .font(AppFont.secondary)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(.appSecondary)
                             }
                         }
                         .multilineTextAlignment(.leading)

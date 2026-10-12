@@ -5,6 +5,47 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-11, Sun: v2 part M3a, the main window and Settings
+
+- **The main window is a library now, built the way Photos and Final Cut Pro are: a sidebar of groups and
+  folders, a browser of recordings, and an inspector for whatever is selected.** Needs You, In Progress,
+  Ready and All Recordings replace Today and Recordings; each watched folder is a row under Sources with its
+  settings in the inspector; recordings show as a grid of cards or a list (Command-1, Command-2), sorted and
+  filtered, and a search finds them by title, notes or what was said, opening the recording at the matching
+  sentence. Why: Ivan asked for "another pass, how would Apple build it" (REQUEST item 11), and v1's long
+  scrolling pages put controls far from what they affect.
+- **Opening a recording still shows v1's recording page, unchanged.** Why: the Viewer is part M3b's, and
+  episode 1 ships Fri 23 Oct; trim, cuts, Make Again and Approve must keep working on the page Ivan knows
+  until the Viewer has passed the same checks (PLAN 10.1, item 2).
+- **Outputs, Models and v1's settings moved into a Settings window (Command-comma); Activity into its own
+  window (Window > Activity).** Why: the sidebar is for content, preferences live in Settings in every
+  Apple app (design spec C5); Activity's progress features come with part M4a.
+- **"Ready for your yes" reads "Waiting for your yes", in the app, the notices and Activity.** Why: "Ready"
+  now names the group of approved recordings, and one word must mean one thing (design spec C1). The stored
+  value did not change, so nothing migrated.
+- **Secondary text, sidebar headings and red problem text are drawn in colors measured at 4.5 to 1 or more,
+  and text in the accent uses #7D8BFF in dark.** Why: measured on macOS 27.2, the system's secondary grey is
+  3.95 to 1 on the white window, the sidebar's heading grey 2.23, and the dark accent 3.05 (design spec C7):
+  under the minimum for 15 and 17 pt text. A test measures every text color on every background, light, dark
+  and Increase Contrast.
+- **The privacy lock's line names the real reason and no person:** "This recording names a teacher who has
+  not agreed to cloud models, so only models on this Mac read it." Why: design spec C4; the rule underneath is
+  still v1's until part M5a.
+- **Remove from Library forgets a recording, sends its Outputs folder to the Trash, and leaves its path on
+  its folder so the watcher never finds it as new again.** The original and the Approved folder are never
+  touched. Why: the design spec asks for it (3.1.1), and without the path list the next look, five minutes
+  later, would have taken the recording in again and, in a Make outputs automatically folder, made it again.
+- **The accuracy checklist has a box per claim, in the inspector's Checks.** Why: the plan asks for it, and a
+  claim Ivan has checked should stay checked; the ticks change no file and no approval.
+- **The window opens at 1440 by 900 (it was 1180 by 760), never smaller than 1100 by 720.** Why: 17 pt type
+  with a sidebar, a browser and an inspector needs the room (design spec 2.2). Ivan's own saved window size is
+  kept.
+- **Found while building, and fixed:** an empty state's wrapped message, asked for its smallest size in a
+  narrow column, asked for up to 2,195 pt of height, which would push the window past the screen (now a
+  240 pt minimum width, and a snapshot check that the content fits); Escape while typing in a field on the
+  recording's page closed the page (now the field keeps it); setting a whole window's text hierarchy to fix
+  the grey turned every bordered button and tile dark (taken back for a measured style).
+
 ## 2026-10-11, Sun: v2 part M2b, the welcome window
 
 - **A welcome window of five panels opens once by itself, and again from Help, Welcome to Prakriti:**

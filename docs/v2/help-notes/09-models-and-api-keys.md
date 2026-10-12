@@ -3,6 +3,11 @@
 The team's notes for the in-app Help article `mac/Prakriti/Resources/Help/09-models-and-api-keys.md` ("Models and API keys").
 Moved out of the article in v2 part M2a so the app bundle holds user text only. Never shown in the app.
 
+## Status after v2 part M3a (Sun 11 Oct 2026)
+
+- The Models screen is Settings, Models (Command-comma); Show Me `settings/models`. The lock's last line says the
+  page and the inspector's Checks say so.
+
 ## Status after v2 part M2a (Sun 11 Oct 2026)
 
 - Visible: v1's four providers and three tasks (Writing, Tagging, Summarizing), the Claude API key steps

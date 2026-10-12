@@ -2,20 +2,69 @@ import Foundation
 
 /// A place in the app that a Show Me link opens: `prakriti://show/<place>` in an article. The
 /// `prakriti://` scheme is handled inside the Help window only and is never registered with Launch
-/// Services, so no other app or web page can drive Prakriti through it (docs/v2/PLAN.md, M2).
+/// Services, so no other app or web page can drive Prakriti through it (docs/v2/PLAN.md, M2). Since
+/// v2 part M3a the places are the main window's groups and folders, the Settings window's panes and
+/// the Activity window; the same names open a place from a launch flag (`--show=<place>`).
 enum HelpPlace: Equatable, Hashable, Sendable {
-    /// A screen of the main window, by its sidebar name: `prakriti://show/sources`.
-    case screen(SidebarItem)
+    /// A smart group of the sidebar: `prakriti://show/group/needs-you`.
+    case group(SmartGroup)
+    /// The first watched folder under Sources, with its settings in the inspector: `prakriti://show/sources`.
+    case sources
+    /// A pane of the Settings window: `prakriti://show/settings/models`.
+    case settings(SettingsPane)
+    /// Window, Activity: `prakriti://show/activity`.
+    case activity
 
     init?(destination: String) {
         guard let url = URL(string: destination), url.scheme == "prakriti", url.host() == "show" else { return nil }
-        let path = url.path().trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        guard let item = SidebarItem(rawValue: path) else { return nil }
-        self = .screen(item)
+        self.init(path: url.path().trimmingCharacters(in: CharacterSet(charactersIn: "/")))
+    }
+
+    /// A place by its name: "group/needs-you" (or "needs-you"), "sources" (or "source"),
+    /// "settings/models" (or "settings-models"), "activity". v1's screen names are read as the place
+    /// that took each one over, so older checks and scripts still land somewhere real: "today" is
+    /// Needs You, "recordings" All Recordings, "settings", "outputs" and "models" the Settings panes.
+    init?(path raw: String) {
+        let path = raw.lowercased().replacingOccurrences(of: "settings-", with: "settings/")
+        let parts = path.split(separator: "/").map(String.init)
+        switch parts.first {
+        case "group":
+            guard parts.count == 2, let group = SmartGroup(rawValue: parts[1]) else { return nil }
+            self = .group(group)
+        case "sources", "source":
+            guard parts.count == 1 else { return nil }
+            self = .sources
+        case "settings":
+            if parts.count == 1 { self = .settings(.general); return }
+            guard parts.count == 2, let pane = SettingsPane(rawValue: parts[1]) else { return nil }
+            self = .settings(pane)
+        case "activity":
+            guard parts.count == 1 else { return nil }
+            self = .activity
+        case "today": self = .group(.needsYou)
+        case "recordings": self = .group(.all)
+        case "outputs": self = .settings(.outputs)
+        case "models": self = .settings(.models)
+        default:
+            guard parts.count == 1, let group = parts.first.flatMap(SmartGroup.init(rawValue:)) else { return nil }
+            self = .group(group)
+        }
     }
 
     /// Every place an article may name today, for the test that every Show Me link resolves.
-    static var known: [HelpPlace] { SidebarItem.allCases.map { .screen($0) } }
+    static var known: [HelpPlace] {
+        SmartGroup.allCases.map { .group($0) } + [.sources] + SettingsPane.allCases.map { .settings($0) } + [.activity]
+    }
+
+    /// The link an article writes for this place.
+    var destination: String {
+        switch self {
+        case .group(let group): "prakriti://show/group/\(group.rawValue)"
+        case .sources: "prakriti://show/sources"
+        case .settings(let pane): "prakriti://show/settings/\(pane.rawValue)"
+        case .activity: "prakriti://show/activity"
+        }
+    }
 }
 
 /// Where a link in an article goes.

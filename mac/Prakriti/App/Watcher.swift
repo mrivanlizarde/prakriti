@@ -222,6 +222,8 @@ final class Watcher {
         // Back on the main actor. The store may have changed during the scan: re-read what is known.
         let recordings = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
         var known = Set(recordings.map(\.filePath))
+        // Removed from the library by Ivan (v2 part M3a): never found again as new.
+        known.formUnion(sources.flatMap(\.forgottenPaths))
         let now = model.now()
         var newOnes: [(Recording, Source)] = []
         var listed = 0

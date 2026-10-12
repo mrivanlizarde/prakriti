@@ -5,11 +5,7 @@ import SwiftUI
 /// accent (#4459E8) measures 3.05 to 1 on the dark window, under the 4.5 text needs, and #7D8BFF
 /// measures 5.56 (docs/v2/design-spec.md 6.2, C7).
 enum HelpColors {
-    static let link = Color(nsColor: NSColor(name: "helpLink") { appearance in
-        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-            ? NSColor(srgbRed: 0x7D / 255.0, green: 0x8B / 255.0, blue: 0xFF / 255.0, alpha: 1)
-            : NSColor(srgbRed: 0x23 / 255.0, green: 0x37 / 255.0, blue: 0xC6 / 255.0, alpha: 1)
-    })
+    static let link = AppColor.accentText
 }
 
 /// One article, drawn from its blocks with Ivan's type scale: the title at 28 pt, section headings at
@@ -78,7 +74,7 @@ struct HelpBlockView: View {
                         HStack(alignment: .firstTextBaseline, spacing: 10) {
                             Image(systemName: callout.symbol)
                                 .font(AppFont.body)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.appSecondary)
                                 .accessibilityHidden(true)
                             paragraphText(runs)
                         }
@@ -105,7 +101,7 @@ struct HelpBlockView: View {
                         Text(ordered ? "\(start + number)." : "\u{2022}")
                             .font(AppFont.body)
                             .monospacedDigit()
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.appSecondary)
                             .frame(minWidth: 22, alignment: .trailing)
                             .accessibilityHidden(!ordered)
                         VStack(alignment: .leading, spacing: 8) {

@@ -20,6 +20,10 @@ final class Source {
     /// listed and left alone (engine v0's "first start" rule), so adding a folder of old recordings
     /// never starts work on all of them. Nil until the first look.
     var baselinedAt: Date?
+    /// Files in this folder that Ivan removed from the library (v2 part M3a, Remove from Library). The
+    /// watcher passes over them, so a removed recording is not found again as new and made again; adding
+    /// one by hand takes it off this list. Paths only: nothing about the recording itself is kept.
+    var forgottenPaths: [String] = []
 
     @Relationship(deleteRule: .nullify, inverse: \Recording.source)
     var recordings: [Recording] = []
@@ -133,6 +137,10 @@ final class Recording {
     var writtenJSON: String?
     /// Why the last try at writing them did not give anything, in one plain sentence, or nil.
     var writingProblem: String?
+    /// The accuracy checklist's claims Ivan has ticked in the Checks tab (v2 part M3a), by their words.
+    /// A claim written again in other words starts unticked. Ticking is his own review; it never changes
+    /// a file or an approval.
+    var checkedClaims: [String] = []
 
     /// The podcast-ready episode (10 Oct): this episode's number and season, set on its page (both
     /// optional; Apple asks for them only for a serial show), and what the last podcast-ready make

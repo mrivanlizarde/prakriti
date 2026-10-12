@@ -247,9 +247,7 @@ final class ModelsAcceptanceTests: XCTestCase {
         XCTAssertEqual(model.providerChecks[.lmStudio]?.state, .ok)
         XCTAssertEqual(model.providerChecks[.claudeAPI]?.state, .notSetUp, "no key in the test Keychain item: nothing is sent")
         for (scheme, appearance) in SnapshotRenderer.appearances {
-            model.path = []
-            model.selection = .models
-            try renderer.render(model: model, appearance: appearance, name: "m6-models-\(scheme)")
+            try renderer.renderSettings(model: model, pane: .models, appearance: appearance, name: "m6-models-\(scheme)")
         }
 
         let out = SnapshotRenderer.milestoneFolder()

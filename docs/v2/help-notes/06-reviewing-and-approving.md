@@ -3,6 +3,16 @@
 The team's notes for the in-app Help article `mac/Prakriti/Resources/Help/06-reviewing-and-approving.md` ("Review and approve").
 Moved out of the article in v2 part M2a so the app bundle holds user text only. Never shown in the app.
 
+## Status after v2 part M3a (Sun 11 Oct 2026)
+
+- "Find and open a recording" replaces "Open a recording": the four smart groups, grid and list (Command-1,
+  Command-2), the Sort menu, search over titles, notes and what was said, the inspector (Command-Option-I),
+  open with a double-click or Return, Back or Escape. Statuses read "Waiting for your yes" (C1) and point at
+  the inspector. The accuracy checklist has a box per claim in the inspector's Checks. Approve works from the
+  page or the inspector. New section: Remove from Library (Control-click), with the Trash and the tombstone.
+- Command-Option-I is named because it is built; Command-9 is not named (it is listed for `progress` in
+  `HelpTests.unbuiltNames` until M4a). Quick Look is not built and not named.
+
 ## Status after v2 part M2a (Sun 11 Oct 2026)
 
 - Visible: v1's recording page (Listen with Episode or Original, transcript lines, Control-click menu,

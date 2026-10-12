@@ -8,6 +8,13 @@ related: [01-welcome, 02-capture-the-best-video]
 
 # Welcome panels
 
+## Status after v2 part M3a (Sun 11 Oct 2026)
+
+- Panel 3, step 1 (`found`): "Today shows the step it is on." became "In Progress shows the step it is on."
+  (v1's Today is now the Needs You and In Progress groups). Panel 5's notifications row says "waiting for your
+  yes" (design spec C1). `WelcomeContent.version` stays 2: the meaning did not change, so the welcome does not
+  open again.
+
 ## Status after v2 part M2b (Sun 11 Oct 2026)
 
 This file was the copy source. **The build's words are in `mac/Prakriti/Views/Welcome/WelcomeContent.swift`**,

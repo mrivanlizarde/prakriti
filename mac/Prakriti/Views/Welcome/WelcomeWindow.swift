@@ -68,7 +68,7 @@ struct WelcomeWindow: View {
         return HStack(spacing: 12) {
             Text(welcome.position)
                 .font(AppFont.secondary)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.appSecondary)
                 .monospacedDigit()
                 .accessibilityLabel("Panel \(welcome.panel + 1) of \(welcome.panels.count)")
             Spacer()
@@ -131,7 +131,7 @@ struct WelcomePanelView: View {
                         .accessibilityAddTraits(.isHeader)
                     Text(panel.line)
                         .font(AppFont.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.appSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -179,7 +179,7 @@ struct WelcomeRowView: View {
                     Label {
                         Text(status.text)
                             .font(AppFont.secondary)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.appSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     } icon: {
                         if let symbol = status.symbol {

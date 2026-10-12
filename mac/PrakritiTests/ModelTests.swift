@@ -141,7 +141,7 @@ final class ModelTests: XCTestCase {
 
     func testStatusVocabulary() {
         XCTAssertEqual(RecordingStatus.allCases.filter(\.needsYou), [.readyForYourYes, .needsADecision, .couldntFinish])
-        XCTAssertEqual(RecordingStatus.readyForYourYes.title, "Ready for your yes")
+        XCTAssertEqual(RecordingStatus.readyForYourYes.title, "Waiting for your yes", "design spec C1: Ready means approved")
         XCTAssertEqual(RecordingStatus.couldntFinish.title, "Couldn't finish")
         XCTAssertEqual(Set(RecordingStatus.allCases.map(\.symbol)).count, RecordingStatus.allCases.count,
                        "each status needs its own symbol shape, not only its own color")

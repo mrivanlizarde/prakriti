@@ -10,7 +10,7 @@ extension RecordingStatus {
         switch self {
         case .found, .skipped: .secondary
         case .working: .blue
-        case .readyForYourYes: .accentColor
+        case .readyForYourYes: AppColor.accentText
         case .needsADecision: .orange
         case .approved: .green
         case .couldntFinish: .red
@@ -100,7 +100,7 @@ struct RecordingRow: View {
                     .lineLimit(1)
                 Text(recording.listDetail)
                     .font(AppFont.secondary)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.appSecondary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -108,7 +108,7 @@ struct RecordingRow: View {
             if showsStatusWords {
                 Text(recording.status.title)
                     .font(AppFont.secondary)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.appSecondary)
                     .lineLimit(1)
             }
         }
@@ -124,7 +124,7 @@ struct PageIntro: View {
     var body: some View {
         Text(text)
             .font(AppFont.body)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.appSecondary)
             .fixedSize(horizontal: false, vertical: true)
     }
 }
@@ -152,7 +152,7 @@ struct RowNote: View {
     var body: some View {
         Text(text)
             .font(AppFont.secondary)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.appSecondary)
             .fixedSize(horizontal: false, vertical: true)
     }
 }
@@ -167,14 +167,16 @@ struct EmptyState: View {
         VStack(spacing: 10) {
             Image(systemName: symbol)
                 .font(AppFont.pageTitle)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.appSecondary)
             Text(title)
                 .font(AppFont.sectionTitle)
+            // At least 240 pt wide: asked for its smallest size, a wrapped message otherwise reflows to a
+            // word a line and asks for its full height (measured: a 1,835 pt window, v2 part M3a).
             Text(message)
                 .font(AppFont.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.appSecondary)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 420)
+                .frame(minWidth: 240, maxWidth: 420)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity)
@@ -203,7 +205,7 @@ struct PathRow: View {
                 Text(label).font(AppFont.body)
                 Text(model.paths.display(path))
                     .font(AppFont.path)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.appSecondary)
                     .lineLimit(2)
                     .truncationMode(.middle)
                     .fixedSize(horizontal: false, vertical: true)
@@ -223,7 +225,7 @@ struct ValueRow: View {
         LabeledContent {
             Text(value)
                 .font(monospaced ? AppFont.path : AppFont.secondary)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.appSecondary)
                 .multilineTextAlignment(.trailing)
                 .lineLimit(2)
                 .truncationMode(.middle)
@@ -233,4 +235,36 @@ struct ValueRow: View {
                 .font(AppFont.body)
         }
     }
+}
+
+/// An output's on and off switch, with its one-line description.
+struct OutputSwitch: View {
+    @Bindable var setting: OutputSetting
+    /// A longer line in place of the output's one-line summary.
+    var detail: String?
+
+    var body: some View {
+        OutputToggle(kind: setting.kind, isOn: $setting.isOn, detail: detail)
+    }
+}
+
+/// The switch itself. An output that cannot be made (one not built yet) shows off and greyed,
+/// whatever is stored, so the screen never claims it is made.
+struct OutputToggle: View {
+    let kind: OutputKind
+    @Binding var isOn: Bool
+    var detail: String?
+
+    var body: some View {
+        Toggle(isOn: Binding(get: { isOn && kind.isAvailable }, set: { isOn = $0 })) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(kind.title).font(AppFont.body)
+                Text(detail ?? line).font(AppFont.secondary).foregroundStyle(.appSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .disabled(!kind.isAvailable)
+    }
+
+    private var line: String { kind.summary }
 }

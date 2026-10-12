@@ -25,7 +25,7 @@ struct PodcastReadySettingsRows: View {
             Toggle(isOn: $setting.explicitContent) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Explicit").font(AppFont.body)
-                    Text("Apple asks this for every episode. Off means No.").font(AppFont.secondary).foregroundStyle(.secondary)
+                    Text("Apple asks this for every episode. Off means No.").font(AppFont.secondary).foregroundStyle(.appSecondary)
                 }
             }
             soundRows
@@ -56,7 +56,7 @@ struct PodcastReadySettingsRows: View {
         } label: {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Numbering").font(AppFont.body)
-                Text(numberingLine).font(AppFont.secondary).foregroundStyle(.secondary)
+                Text(numberingLine).font(AppFont.secondary).foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -80,7 +80,7 @@ struct PodcastReadySettingsRows: View {
         } label: {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Channels").font(AppFont.body)
-                Text("One microphone, so mono loses nothing and halves the file.").font(AppFont.secondary).foregroundStyle(.secondary)
+                Text("One microphone, so mono loses nothing and halves the file.").font(AppFont.secondary).foregroundStyle(.appSecondary)
             }
         }
         LabeledContent {
@@ -95,7 +95,7 @@ struct PodcastReadySettingsRows: View {
                 Text(setting.channels == .mono
                      ? "Measured: 96 kbps has 5 dB less coding noise than 64, which also pushed the peak over -1; 128 adds a third to the file for 1.5 dB less."
                      : "128 kbps for stereo, the start of Apple's recommended range.")
-                    .font(AppFont.secondary).foregroundStyle(.secondary)
+                    .font(AppFont.secondary).foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -103,7 +103,7 @@ struct PodcastReadySettingsRows: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Light noise reduction").font(AppFont.body)
                 Text("Off: the studio's room sound sits 38 to 51 dB under the voice, and noise reduction can smear a voice. For a noisier room only; listen after.")
-                    .font(AppFont.secondary).foregroundStyle(.secondary)
+                    .font(AppFont.secondary).foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -111,7 +111,7 @@ struct PodcastReadySettingsRows: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("The intro or outro has an AI-made voice").font(AppFont.body)
                 Text("Apple asks for that to be said (guideline 1.11). On, the show notes text says so and the checklist asks you to say it in the audio.")
-                    .font(AppFont.secondary).foregroundStyle(.secondary)
+                    .font(AppFont.secondary).foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -152,7 +152,7 @@ struct TextRow: View {
         } label: {
             VStack(alignment: .leading, spacing: 2) {
                 Text(label).font(AppFont.body)
-                if let detail { Text(detail).font(AppFont.secondary).foregroundStyle(.secondary) }
+                if let detail { Text(detail).font(AppFont.secondary).foregroundStyle(.appSecondary) }
             }
         }
     }
@@ -200,7 +200,7 @@ struct CallToActionRow: View {
                 .font(AppFont.body)
                 .lineLimit(1...4)
             Text(detail)
-                .font(AppFont.secondary).foregroundStyle(.secondary)
+                .font(AppFont.secondary).foregroundStyle(.appSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.vertical, 2)
@@ -244,7 +244,7 @@ struct PodcastReadySection: View {
                             .fixedSize(horizontal: false, vertical: true)
                         if ready != nil {
                             Text("Files made before it was marked a class are still in its folder. They must not be uploaded; Make Again takes them away.")
-                                .font(AppFont.secondary).foregroundStyle(.secondary)
+                                .font(AppFont.secondary).foregroundStyle(.appSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
@@ -278,7 +278,7 @@ struct PodcastReadySection: View {
                         Text(model.podcastReadyIsOutOfDate(recording)
                              ? "The title, notes or show settings changed since these files were made."
                              : "Up to date with the title, notes and show settings.")
-                            .font(AppFont.secondary).foregroundStyle(.secondary)
+                            .font(AppFont.secondary).foregroundStyle(.appSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 12)
                         Button("Update Podcast-Ready Files") { model.updatePodcastReady(recording) }
@@ -316,7 +316,7 @@ struct PodcastReadySection: View {
     private func filesRows(_ ready: PodcastReadyRecord) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Files").font(AppFont.headline)
-            Text("In \(model.paths.display(folderURL?.path ?? "")).").font(AppFont.secondary).foregroundStyle(.secondary)
+            Text("In \(model.paths.display(folderURL?.path ?? "")).").font(AppFont.secondary).foregroundStyle(.appSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             if files(ready).isEmpty {
                 Text("The files are not in their folder any more. Make Again makes them.").font(AppFont.body)
@@ -330,14 +330,14 @@ struct PodcastReadySection: View {
                     // Decimal megabytes, as the checklist's File size line counts them.
                     Text(Self.role(file.name, mp3: ready.fileName) + ", "
                          + (file.bytes >= 1_000_000 ? Format.megabytes(file.bytes) : String(format: "%.0f KB", Double(file.bytes) / 1000)))
-                        .font(AppFont.secondary).foregroundStyle(.secondary)
+                        .font(AppFont.secondary).foregroundStyle(.appSecondary)
                 }
                 .accessibilityElement(children: .combine)
             }
             Text(String(format: "%@ MP3, %d kbps, %.1f kHz, %@: %.2f LUFS, true peak %.2f dBTP, loudness range %.1f LU, %@.",
                         ready.channels == 1 ? "Mono" : "Stereo", ready.bitrateKbps, Double(ready.sampleRate) / 1000, Format.timecode(ready.duration),
                         ready.integratedLUFS, ready.truePeak, ready.loudnessRange, ready.normalizationType == "linear" ? "raised evenly" : "leveled moment to moment"))
-                .font(AppFont.secondary).foregroundStyle(.secondary)
+                .font(AppFont.secondary).foregroundStyle(.appSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.vertical, 4)
@@ -395,15 +395,15 @@ struct PodcastReadySection: View {
     private var numbersRow: some View {
         LabeledContent {
             HStack(spacing: 8) {
-                Text("Episode").font(AppFont.secondary).foregroundStyle(.secondary)
+                Text("Episode").font(AppFont.secondary).foregroundStyle(.appSecondary)
                 NumberField(label: "Episode number", value: recording.episodeNumber) { model.setEpisodeNumbers(episode: $0, season: recording.seasonNumber, for: recording) }
-                Text("Season").font(AppFont.secondary).foregroundStyle(.secondary)
+                Text("Season").font(AppFont.secondary).foregroundStyle(.appSecondary)
                 NumberField(label: "Season", value: recording.seasonNumber) { model.setEpisodeNumbers(episode: recording.episodeNumber, season: $0, for: recording) }
             }
         } label: {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Episode and season").font(AppFont.body)
-                Text(numbersLine).font(AppFont.secondary).foregroundStyle(.secondary)
+                Text(numbersLine).font(AppFont.secondary).foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -459,7 +459,7 @@ struct CopyRow: View {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text(label).font(emphasis ? AppFont.headline : AppFont.body)
                 if let detail {
-                    Text(detail).font(AppFont.secondary).foregroundStyle(.secondary).lineLimit(1)
+                    Text(detail).font(AppFont.secondary).foregroundStyle(.appSecondary).lineLimit(1)
                 }
                 Spacer(minLength: 12)
                 Button(didCopy ? "Copied" : "Copy") {
@@ -474,7 +474,7 @@ struct CopyRow: View {
             }
             Text(text)
                 .font(AppFont.body)
-                .foregroundStyle(emphasis ? .primary : .secondary)
+                .foregroundStyle(emphasis ? Color.primary : AppColor.secondaryText)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -491,12 +491,12 @@ struct ChecklistRow: View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(line.status.rawValue)
                 .font(AppFont.secondaryEmphasis)
-                .foregroundStyle(line.status == .pass ? .secondary : .primary)
+                .foregroundStyle(line.status == .pass ? AppColor.secondaryText : Color.primary)
                 .frame(width: 84, alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
                 Text(line.item).font(AppFont.body)
                 Text(line.detail + (line.todo.map { " What to do: " + $0 } ?? ""))
-                    .font(AppFont.secondary).foregroundStyle(.secondary)
+                    .font(AppFont.secondary).foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)

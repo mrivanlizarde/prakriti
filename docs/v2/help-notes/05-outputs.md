@@ -3,6 +3,12 @@
 The team's notes for the in-app Help article `mac/Prakriti/Resources/Help/05-outputs.md` ("Outputs").
 Moved out of the article in v2 part M2a so the app bundle holds user text only. Never shown in the app.
 
+## Status after v2 part M3a (Sun 11 Oct 2026)
+
+- The Outputs screen is Settings, Outputs; its Show Me is `settings/outputs`. A folder's outputs are chosen in the
+  inspector with the folder selected. Ready to upload shows on the recording's page and in the inspector's
+  Outputs tab (the same `PodcastReadySection`).
+
 ## Status after v2 part M2a (Sun 11 Oct 2026)
 
 - Tables are lists. The podcast-ready section now describes what was built on 10 and 11 Oct: `Episode

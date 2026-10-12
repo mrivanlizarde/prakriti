@@ -85,15 +85,19 @@ final class HelpModel {
     }
 }
 
-/// What a Show Me button does: opens the main window at the place the article names.
+/// What a Show Me button does: opens the place the article names. A group or a folder opens in the
+/// main window; a Settings pane opens the Settings window; Activity opens its window (v2 part M3a).
 @MainActor
 enum HelpActions {
     static func show(_ place: HelpPlace, model: AppModel, openMainWindow: () -> Void) {
         switch place {
-        case .screen(let item):
+        case .group, .sources:
             openMainWindow()
-            model.open(item)
+            model.path = []
+        case .settings, .activity:
+            break
         }
+        model.go(to: place)
         model.log.write("Help: Show Me opened \(place.logName).")
         if !AppModel.isRunningTests { NSApp.activate() }
     }
@@ -102,7 +106,10 @@ enum HelpActions {
 extension HelpPlace {
     var logName: String {
         switch self {
-        case .screen(let item): item.title
+        case .group(let group): group.title
+        case .sources: "Sources"
+        case .settings(let pane): "Settings, \(pane.title)"
+        case .activity: "Activity"
         }
     }
 }

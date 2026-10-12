@@ -1,10 +1,15 @@
+import AppKit
 import SwiftData
 import SwiftUI
 
-/// The main window: a sidebar and the screen it opens.
+/// The main window (v2 part M3a, docs/v2/design-spec.md 2.1 to 2.5): the Library sidebar (Needs You,
+/// In Progress, Ready, All Recordings; the watched folders under Sources), the browser of recordings in
+/// the middle (a grid or a list), and the inspector on the right for whatever is selected. Opening a
+/// recording swaps the browser for v1's recording page, unchanged, until the Viewer replaces it (M3b).
 struct MainView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         @Bindable var model = model
@@ -13,21 +18,49 @@ struct MainView: View {
                 .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
         } detail: {
             NavigationStack(path: $model.path) {
-                screen(for: model.selection ?? .today)
+                LibraryView()
                     .navigationDestination(for: RecordingRoute.self) { route in
                         RecordingDestination(route: route)
+                            .navigationBarBackButtonHidden(true)
                     }
             }
         }
+        .inspector(isPresented: $model.inspectorShown) {
+            InspectorView()
+                .inspectorColumnWidth(min: 320, ideal: 360, max: 440)
+        }
         .frame(minWidth: MainWindow.minimumSize.width, minHeight: MainWindow.minimumSize.height)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                PauseButton()
+        .toolbar { MainToolbar() }
+        .searchable(text: $model.search.text, tokens: $model.search.scopes, placement: .toolbar, prompt: "Search") { scope in
+            Text(scope.title)
+        }
+        .searchSuggestions {
+            if model.search.scopes.isEmpty {
+                ForEach(SearchScope.allCases) { scope in
+                    Text(scope.suggestion).font(AppFont.body).searchCompletion(scope)
+                }
             }
         }
-        .onAppear {
+        // Searching from a recording's page shows the results in the browser.
+        .onChange(of: model.search.text) { _, text in
+            if !text.trimmingCharacters(in: .whitespaces).isEmpty { model.back() }
+        }
+                .onAppear {
             if model.openMainWindow == nil { model.openMainWindow = { openWindow(id: MainWindow.id) } }
             if model.openHelpWindow == nil { model.openHelpWindow = { openWindow(id: HelpWindow.id) } }
+            model.openSettingsWindow = { openSettings() }
+            model.openActivityWindow = { openWindow(id: ActivityWindow.id) }
+            model.openPendingWindow()
+            // A window capture opens at the design size, never at a frame the live copy saved, and
+            // saves no frame of its own into the live copy's preferences.
+            if CaptureLaunch.current != nil {
+                DispatchQueue.main.async {
+                    guard let window = NSApp.windows.first(where: { $0.identifier?.rawValue.hasPrefix(MainWindow.id) == true }) else { return }
+                    window.setFrameAutosaveName("")
+                    window.setContentSize(MainWindow.size)
+                    window.center()
+                }
+            }
         }
         .alert(model.notice?.title ?? "", isPresented: Binding(get: { model.notice != nil }, set: { if !$0 { model.notice = nil } }),
                presenting: model.notice) { _ in
@@ -35,68 +68,224 @@ struct MainView: View {
         } message: { notice in
             Text(notice.message)
         }
+        .confirmationDialog(confirmationTitle, isPresented: Binding(get: { model.confirmation != nil },
+                                                                    set: { if !$0 { model.confirmation = nil } }),
+                            presenting: model.confirmation) { confirmation in
+            switch confirmation.action {
+            case .makeAgain: Button("Make Again") { model.confirm(confirmation) }
+            case .approve: Button("Approve") { model.confirm(confirmation) }
+            case .removeFromLibrary: Button("Remove from Library", role: .destructive) { model.confirm(confirmation) }
+            }
+            Button("Cancel", role: .cancel) { model.confirmation = nil }
+        } message: { confirmation in
+            Text(confirmationMessage(confirmation))
+        }
     }
 
-    @ViewBuilder
-    private func screen(for item: SidebarItem) -> some View {
-        switch item {
-        case .today: TodayView()
-        case .recordings: RecordingsView()
-        case .sources: SourcesView()
-        case .outputs: OutputsView()
-        case .models: ModelsView()
-        case .activity: ActivityView()
-        case .settings: SettingsView()
+    private var confirmationTitle: String {
+        guard let confirmation = model.confirmation, let recording = model.recording(id: confirmation.recordingID) else { return "" }
+        let day = Format.dayLabel(recording.sessionDate)
+        return switch confirmation.action {
+        case .makeAgain: "Make \(day) again?"
+        case .approve: "Approve \(day)?"
+        case .removeFromLibrary: "Remove \(day) from the library?"
+        }
+    }
+
+    private func confirmationMessage(_ confirmation: Confirmation) -> String {
+        guard let recording = model.recording(id: confirmation.recordingID) else { return "" }
+        return switch confirmation.action {
+        case .makeAgain:
+            "It is made again with the trim, the cuts and the choices on its page. The files made before are replaced once the new ones are ready, and the original recording is not changed."
+        case .approve:
+            "Copies \(Format.madeFiles(ApprovalCheck.filesToApprove(recording))) to \(model.paths.display(model.approvedFolder(for: recording).path)), with a receipt. Nothing is uploaded or published."
+        case .removeFromLibrary:
+            "Prakriti forgets this recording and moves its files in Outputs to the Trash. The original recording and anything in Approved are not touched, and its folder does not bring it back as new. To bring it back, add the file with File, Add File."
         }
     }
 }
 
+/// The main window's toolbar (design spec 3.3): Back while a recording is open; Grid or List and the
+/// Sort menu in the browser; Pause All, with its words; the inspector's switch. The search field is the
+/// window's own (`searchable`).
+struct MainToolbar: ToolbarContent {
+    @Environment(AppModel.self) private var model
+
+    var body: some ToolbarContent {
+        @Bindable var model = model
+        if !model.path.isEmpty {
+            ToolbarItem(placement: .navigation) {
+                Button { model.back() } label: {
+                    Label("Back", systemImage: "chevron.backward")
+                }
+                .keyboardShortcut("[", modifiers: .command)
+                .accessibilityLabel("Back to the library")
+            }
+        } else {
+            ToolbarItem(placement: .principal) {
+                Picker("View", selection: $model.browserMode) {
+                    ForEach(BrowserMode.allCases) { mode in
+                        Label(mode.title, systemImage: mode.symbol).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelStyle(.iconOnly)
+                .accessibilityLabel("View as")
+            }
+            ToolbarItem(placement: .principal) {
+                SortMenu()
+            }
+        }
+        ToolbarItem(placement: .primaryAction) {
+            PauseButton()
+        }
+        ToolbarItem(placement: .primaryAction) {
+            Button { model.inspectorShown.toggle() } label: {
+                Label(model.inspectorShown ? "Hide Inspector" : "Show Inspector", systemImage: "sidebar.trailing")
+            }
+        }
+    }
+}
+
+/// Sort and filter, in one menu (design spec 3.1.3). The filter is the kind of recording; the people and
+/// edited-video filters come with their parts.
+struct SortMenu: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        @Bindable var model = model
+        Menu {
+            Picker("Sort By", selection: $model.browserSort) {
+                ForEach(BrowserSort.allCases) { sort in Text(sort.title).tag(sort) }
+            }
+            .pickerStyle(.inline)
+            Divider()
+            Section("Show") {
+                ForEach(RecordingKind.choices, id: \.self) { kind in
+                    Toggle(kind.choiceTitle, isOn: Binding(get: { model.kindFilter.contains(kind) },
+                                                           set: { on in
+                                                               if on { model.kindFilter.insert(kind) } else { model.kindFilter.remove(kind) }
+                                                           }))
+                }
+                Button("Show Every Kind") { model.kindFilter = [] }
+                    .disabled(model.kindFilter.isEmpty)
+            }
+        } label: {
+            Label(model.kindFilter.isEmpty ? "Sort" : "Sort and Filter", systemImage: "line.3.horizontal.decrease.circle")
+                .labelStyle(.titleAndIcon)
+        }
+        .accessibilityLabel("Sort and filter")
+    }
+}
+
+/// The Library sidebar (design spec 2.3): the smart groups with their counts, then each watched folder
+/// and Add Folder. Two levels at most. Counts are plain 15 pt text, never a badge (badges draw under 12
+/// pt), and the icons carry no color of their own (START_HERE, Mac warning 8: the sidebar colors them,
+/// white on the selected row).
 struct Sidebar: View {
     @Binding var selection: SidebarItem?
-    @Query private var recordings: [Recording]
+    @Environment(AppModel.self) private var model
+    @Query(sort: \Source.addedAt) private var sources: [Source]
 
     var body: some View {
         List(selection: $selection) {
             Section {
-                row(.today, count: recordings.filter(\.status.needsYou).count)
-                row(.recordings)
+                ForEach(SmartGroup.allCases) { group in
+                    GroupRow(group: group)
+                        .tag(SidebarItem.group(group))
+                }
+            } header: {
+                SidebarHeader(title: "Library")
             }
             Section {
-                row(.sources)
-                row(.outputs)
-                row(.models)
-            }
-            Section {
-                row(.activity)
-                row(.settings)
+                ForEach(sources) { source in
+                    SourceRow(source: source, blocked: model.watcher.states[source.id]?.isBlocked == true)
+                        .tag(SidebarItem.source(source.id))
+                }
+                Button { model.chooseFolder() } label: {
+                    Label {
+                        Text("Add Folder…").font(AppFont.body)
+                    } icon: {
+                        Image(systemName: "plus").font(AppFont.body)
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.vertical, 3)
+            } header: {
+                SidebarHeader(title: "Sources")
             }
         }
         .listStyle(.sidebar)
     }
+}
 
-    private func row(_ item: SidebarItem, count: Int = 0) -> some View {
+/// A sidebar section's name, at 15 pt semibold in the measured secondary color (the system's sidebar headers
+/// draw at 11 pt, and in a grey measured at 2.23 to 1 on the light sidebar).
+struct SidebarHeader: View {
+    let title: String
+
+    var body: some View {
+        Text(title)
+            .font(AppFont.secondaryEmphasis)
+            .foregroundStyle(.appSecondary)
+            .textCase(nil)
+    }
+}
+
+/// A smart group's row: its symbol, its name and, for the three groups that count, how many recordings
+/// it holds, read with the group's own predicate.
+struct GroupRow: View {
+    let group: SmartGroup
+    @Query private var members: [Recording]
+
+    init(group: SmartGroup) {
+        self.group = group
+        _members = Query(filter: group.predicate)
+    }
+
+    var body: some View {
         HStack {
             Label {
-                Text(item.title)
+                Text(group.title)
                     .font(AppFont.body)
             } icon: {
                 // No foregroundStyle here. The sidebar colors its own icons: accent at rest, white
                 // on the selected row. An explicit .tint painted the selected row's icon in the
                 // same accent as the selection, so it vanished (caught on the real window, 10 Oct).
-                Image(systemName: item.symbol)
+                Image(systemName: group.symbol)
                     .font(AppFont.body)
             }
             Spacer()
-            if count > 0 {
-                Text("\(count)")
+            if group.showsCount && !members.isEmpty {
+                Text("\(members.count)")
                     .font(AppFont.secondaryEmphasis)
                     .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("\(count) need you")
+                    .foregroundStyle(.appSecondary)
+                    .accessibilityLabel("\(members.count)")
             }
         }
         .padding(.vertical, 3)
-        .tag(item)
+    }
+}
+
+/// A watched folder's row. A folder Prakriti cannot read shows a warning shape in place of its folder,
+/// so the state is told by shape and by the inspector's words, never by color.
+struct SourceRow: View {
+    let source: Source
+    let blocked: Bool
+
+    var body: some View {
+        Label {
+            Text(source.name)
+                .font(AppFont.body)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        } icon: {
+            Image(systemName: blocked ? "exclamationmark.triangle" : (source.kind == .dropFolder ? "tray.and.arrow.down" : "folder"))
+                .font(AppFont.body)
+        }
+        .padding(.vertical, 3)
+        .accessibilityLabel(blocked ? "\(source.name), cannot be read" : source.name)
     }
 }
 
@@ -116,17 +305,50 @@ struct PauseButton: View {
     }
 }
 
-/// Resolves a route to its recording; the recording may have been removed since.
+/// Resolves a route to its recording; the recording may have been removed since. It takes the keys when it
+/// opens, so Escape comes back to the browser (design spec 2.5); a field being edited keeps Escape for itself.
 struct RecordingDestination: View {
     let route: RecordingRoute
     @Environment(\.modelContext) private var context
+    @Environment(AppModel.self) private var model
+    @FocusState private var focused: Bool
 
     var body: some View {
-        if let recording = context.model(for: route.id) as? Recording, !recording.isDeleted {
-            RecordingDetailView(recording: recording)
-        } else {
-            EmptyState(symbol: "questionmark.circle", title: "Recording not found",
-                       message: "It may have been removed. It is still in its folder if it was there before.")
+        Group {
+            if let recording = context.model(for: route.id) as? Recording, !recording.isDeleted {
+                RecordingDetailView(recording: recording)
+            } else {
+                ScrollView {
+                    EmptyState(symbol: "questionmark.circle", title: "Recording not found",
+                               message: "It may have been removed. It is still in its folder if it was there before.")
+                }
+            }
         }
+        .focusable()
+        .focusEffectDisabled()
+        .focused($focused)
+        .onKeyPress(.escape) {
+            // A field being typed in keeps Escape (measured: without this, Escape in the title field closed
+            // the page under the typing).
+            if NSApp.keyWindow?.firstResponder is NSText { return .ignored }
+            model.back()
+            return .handled
+        }
+        .onAppear { focused = true }
     }
+}
+
+/// Window, Activity (Command-9): v1's list of every look and every step, moved out of the sidebar into
+/// its own window (v2 part M3a, design spec C5). Part M4a adds what is working now and what finished.
+struct ActivityWindow: View {
+    static let id = "activity"
+    static let size = CGSize(width: 720, height: 640)
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        NavigationStack {
+            ActivityView()
+        }
+        .frame(minWidth: 560, minHeight: 420)
+            }
 }

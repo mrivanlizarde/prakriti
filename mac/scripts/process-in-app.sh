@@ -19,13 +19,13 @@ pkill -f "$BIN" 2>/dev/null || true
 sleep 1
 BEFORE=$( [ -f "$LOG" ] && wc -l < "$LOG" || echo 0 )
 START=$(date +%s)
-open -n "$APP" --args --development "--process-file=$FILE" --show=recordings
+open -n "$APP" --args --development "--process-file=$FILE" --show=all-recordings
 echo "Opened Prakriti with Process File on $NAME. Waiting for the pipeline (the size must hold still 60 s first)."
 
 DONE=""
 for _ in $(seq 1 240); do
   NEW=$(tail -n +$((BEFORE + 1)) "$LOG" 2>/dev/null || true)
-  if grep -qE "($NAME).*(ready for your yes)|Filed $NAME as a test|($NAME).*(no usable sound)|Couldn't finish $NAME" <<< "$NEW"; then DONE=yes; break; fi
+  if grep -qE "($NAME).*((waiting|ready) for your yes)|Filed $NAME as a test|($NAME).*(no usable sound)|Couldn't finish $NAME" <<< "$NEW"; then DONE=yes; break; fi
   pgrep -f "$BIN" > /dev/null || { echo "FAIL: Prakriti quit while working"; exit 1; }
   sleep 2
 done
@@ -35,7 +35,7 @@ sleep 2
 swift scripts/capture-window.swift --window "$APP" "$OUT/m2-real-recordings.png"
 pkill -f "$BIN" || true
 sleep 2
-open -n "$APP" --args --development --show=recordings "--open=$FILE"
+open -n "$APP" --args --development --show=all-recordings "--open=$FILE"
 sleep 4
 swift scripts/capture-window.swift --window "$APP" "$OUT/m2-real-recording-page.png"
 pkill -f "$BIN" || true

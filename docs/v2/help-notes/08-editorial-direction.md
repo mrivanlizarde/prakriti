@@ -3,6 +3,10 @@
 The team's notes for the in-app Help article `mac/Prakriti/Resources/Help/08-editorial-direction.md` ("Editorial direction").
 Moved out of the article in v2 part M2a so the app bundle holds user text only. Never shown in the app.
 
+## Status after v2 part M3a (Sun 11 Oct 2026)
+
+- Only a hidden line changed: "on the Models screen" became "in Settings, Models".
+
 ## Status after v2 part M2a (Sun 11 Oct 2026)
 
 - Whole article hidden (`requires: style`, M9); "Bring in a moment from another recording" inside

@@ -5,37 +5,6 @@ import SwiftData
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The sidebar: what Ivan can open. Flat, one level, nothing critical at the bottom (HIG sidebars).
-enum SidebarItem: String, CaseIterable, Identifiable, Hashable, Sendable {
-    case today, recordings, sources, outputs, models, activity, settings
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .today: "Today"
-        case .recordings: "Recordings"
-        case .sources: "Sources"
-        case .outputs: "Outputs"
-        case .models: "Models"
-        case .activity: "Activity"
-        case .settings: "Settings"
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .today: "sun.max"
-        case .recordings: "rectangle.stack"
-        case .sources: "folder"
-        case .outputs: "square.and.arrow.down.on.square"
-        case .models: "sparkles"
-        case .activity: "clock.arrow.circlepath"
-        case .settings: "gearshape"
-        }
-    }
-}
-
 /// A refusal Ivan should see: a short title and one plain reason.
 struct Notice: Identifiable, Equatable {
     let id = UUID()
@@ -77,6 +46,9 @@ final class AppModel {
     @ObservationIgnored var openMainWindow: (() -> Void)?
     /// Opens the Help window, set the same way (the menu bar icon, the main window, Help itself).
     @ObservationIgnored var openHelpWindow: (() -> Void)?
+    /// Opens the Settings window and the Activity window, set the same way (v2 part M3a).
+    @ObservationIgnored var openSettingsWindow: (() -> Void)?
+    @ObservationIgnored var openActivityWindow: (() -> Void)?
     /// Prakriti Help: the articles this build shows, the open one, Back and Forward, search (v2 part M2a).
     let help: HelpModel
     /// The Help menu's search field handler, registered at launch (AppDelegate).
@@ -85,10 +57,44 @@ final class AppModel {
     /// A snapshot test swaps in one built for every capability, to see that the v2 copy fits too.
     var welcome = WelcomeModel()
 
-    var selection: SidebarItem? = .today {
-        didSet { if oldValue != selection { path = [] } }
+    /// The sidebar's selection: a smart group or a watched folder (v2 part M3a). Choosing another one
+    /// closes an open recording and clears the browser's selection.
+    var selection: SidebarItem? = .default {
+        didSet {
+            if oldValue != selection {
+                path = []
+                selectedRecordings = []
+            }
+        }
     }
+    /// The open recording: v1's recording page, shown in place of the browser until the Viewer (M3b).
     var path: [RecordingRoute] = []
+
+    // The browser and the inspector (v2 part M3a, docs/v2/design-spec.md 3.1 to 3.5). Held for this
+    // launch only: restoring them at the next launch is part M3b's.
+    var browserMode: BrowserMode = .grid
+    var browserSort: BrowserSort = .dateRecorded
+    /// Kinds shown; every kind when empty (the Filter menu).
+    var kindFilter: Set<RecordingKind> = []
+    var search = LibrarySearch()
+    /// The recordings selected in the browser, by id.
+    var selectedRecordings: Set<UUID> = []
+    var inspectorShown = true
+    var inspectorTab: InspectorTab = .outputs
+    /// The pane the Settings window shows (Command-comma).
+    var settingsPane: SettingsPane = .general
+    /// A moment to go to when a recording's page opens: a "Said" search result opens it there.
+    var pendingSeek: PendingSeek?
+    /// A question the main window asks before an action that cannot be taken back lightly: Make Again,
+    /// Approve, Remove from Library. Asked the same way from the inspector, the menus and a card's menu.
+    var confirmation: Confirmation?
+    /// The transcripts the library search reads, loaded once per make.
+    @ObservationIgnored let transcripts = TranscriptIndex()
+    /// A window asked for before the main window could open it (a launch flag): opened with it.
+    @ObservationIgnored var pendingWindow: PendingWindow?
+    /// Where Remove from Library puts a recording's files in Outputs: the Trash, from which they can be
+    /// put back. A test gives its own, so nothing lands in Ivan's Trash.
+    @ObservationIgnored var moveToTrash: (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) }
 
     /// True while the watcher runs. When false, the status line says so plainly.
     var isWatching = false
@@ -153,9 +159,22 @@ final class AppModel {
             // runs in live mode, and wrote its lines into Ivan's live log until this was fixed.
             let paths = AppPaths(mode: AppMode.current)
             let model = Fixtures.model(mode: paths.mode, log: AppLog(directory: AppPaths(mode: .development).logs))
-            model.selection = launch.screen
             current = model
-            model.log.write("Opened with sample data for a window capture, showing \(launch.showsHelp ? "Help" : launch.showsWelcome ? "the welcome" : launch.screen.title). Nothing is saved.")
+            model.go(to: launch.place)
+            // The browser and the inspector as the capture asks (v2 part M3a).
+            model.browserMode = launch.browserMode
+            if let status = launch.selectStatus {
+                let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
+                if let chosen = all.sorted(by: Recording.newestFirst).first(where: { $0.status == status }) {
+                    model.selectedRecordings = [chosen.id]
+                }
+            }
+            if let tab = launch.inspectorTab { model.inspectorTab = tab }
+            if let search = launch.search {
+                // Typed once the window is up, as the Help capture does, so the field draws in the window's appearance.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { model.search.text = search }
+            }
+            model.log.write("Opened with sample data for a window capture, showing \(launch.title). Nothing is saved.")
             // The welcome alone (v2 part M2b): never under sample data unless asked for, at one panel, and
             // optionally with a folder chosen on the last panel (in memory, through the panel's own path).
             if launch.showsWelcome {
@@ -443,6 +462,25 @@ final class AppModel {
         selection = item
     }
 
+    /// Opens the Settings window at a pane (Command-comma, the menu bar menu, a Show Me link).
+    func showSettings(_ pane: SettingsPane = .general) {
+        settingsPane = pane
+        if let openSettingsWindow {
+            openSettingsWindow()
+        } else {
+            // No view has handed over SwiftUI's openSettings yet: the app menu's own item opens it.
+            Self.chooseAppMenuItem(prefix: "Settings")
+        }
+        if !Self.isRunningTests { NSApp.activate() }
+    }
+
+    /// Window, Activity: v1's list of every look and every step, in its own window (v2 part M3a), until
+    /// part M4a adds what is working now and what finished.
+    func showActivity() {
+        openActivityWindow?()
+        if !Self.isRunningTests { NSApp.activate() }
+    }
+
     // MARK: Help
 
     /// Opens the Help window at an article (if this build shows it), or with a search filled in.
@@ -485,9 +523,18 @@ final class AppModel {
         menu.performActionForItem(at: index)
     }
 
+    /// Opens one recording: v1's recording page in place of the browser (until the Viewer, part M3b),
+    /// with the recording selected, so Back returns to it in the browser.
     func open(_ recording: Recording) {
-        selection = .recordings
+        if selection == nil { selection = .group(.all) }
+        selectedRecordings = [recording.id]
         path = [RecordingRoute(id: recording.persistentModelID)]
+    }
+
+    private static func chooseAppMenuItem(prefix: String) {
+        guard let menu = NSApp.mainMenu?.items.first?.submenu,
+              let index = menu.items.firstIndex(where: { $0.title.hasPrefix(prefix) }) else { return }
+        menu.performActionForItem(at: index)
     }
 
     /// Adds a watched folder with this mode's default outputs. Watching it starts with milestone 3.
@@ -542,6 +589,8 @@ final class AppModel {
                                       foundAt: now(), sizeBytes: size, status: .found)
             context.insert(recording)
             recording.source = source(containing: url)
+            // Added by hand after Remove from Library: its folder no longer passes over it (v2 part M3a).
+            recording.source?.forgottenPaths.removeAll { $0 == recording.filePath }
             added.append(recording)
             record("Added \(url.lastPathComponent) by hand.")
         }
@@ -632,15 +681,17 @@ final class AppModel {
     }
 }
 
-/// How the real-window capture opens the app: `--sample-data`, optionally `--show=<screen>`,
-/// `--appearance=light|dark`, `--add-folder=<path>` (tries to add that folder, as Add Folder
-/// does, so a refusal can be seen), `--open=ready` (the sample talk's page) and `--sample-edits`
-/// (with a trim and a cut on it, not made yet), `--show=help` and `--show=welcome` (one window alone).
+/// How the real-window capture opens the app: `--sample-data`, optionally `--show=<place>` (a smart
+/// group, `source` for the first folder, `settings-<pane>`, `activity`, `help` or `welcome`),
+/// `--appearance=light|dark`, `--add-folder=<path>` (tries to add that folder, as Add Folder does, so a
+/// refusal can be seen), `--open=ready` (the sample talk's page) and `--sample-edits` (with a trim and a
+/// cut on it, not made yet), `--browser=list`, `--select=<status>` (selects the first sample recording
+/// with that status, so the inspector shows it), `--inspector-tab=<tab>` and `--search=<words>`.
 /// Used only by scripts/capture-window.swift. Each flag is one word with
 /// its value after "=": a value passed as a separate word reads to macOS as a file to open, and an
 /// app launched to open a file does not open its window.
 struct CaptureLaunch {
-    let screen: SidebarItem
+    let place: HelpPlace
     let colorScheme: ColorScheme?
     let addFolder: String?
     var openReady = false
@@ -655,6 +706,11 @@ struct CaptureLaunch {
     var showsWelcome = false
     var welcomePanel = 1
     var welcomeFolder: String?
+    /// The browser and the inspector as a capture asks for them (v2 part M3a).
+    var browserMode: BrowserMode = .grid
+    var selectStatus: RecordingStatus?
+    var inspectorTab: InspectorTab?
+    var search: String?
 
     static var current: CaptureLaunch? {
         let args = CommandLine.arguments
@@ -662,29 +718,39 @@ struct CaptureLaunch {
         func value(_ flag: String) -> String? {
             args.first { $0.hasPrefix(flag + "=") }.map { String($0.dropFirst(flag.count + 1)) }
         }
-        let screen = value("--show").flatMap(SidebarItem.init(rawValue:)) ?? .today
         let colorScheme: ColorScheme? = switch value("--appearance") {
         case "light": .light
         case "dark": .dark
         default: nil
         }
-        return CaptureLaunch(screen: screen, colorScheme: colorScheme, addFolder: value("--add-folder"),
+        return CaptureLaunch(place: value("--show").flatMap(HelpPlace.init(path:)) ?? .group(.needsYou),
+                             colorScheme: colorScheme, addFolder: value("--add-folder"),
                              openReady: value("--open") == "ready", sampleEdits: args.contains("--sample-edits"),
                              showsHelp: value("--show") == "help", helpArticle: value("--help-article"),
                              helpSearch: value("--help-search"), showsWelcome: value("--show") == "welcome",
                              welcomePanel: value("--welcome-panel").flatMap(Int.init) ?? 1,
-                             welcomeFolder: value("--welcome-folder"))
+                             welcomeFolder: value("--welcome-folder"),
+                             browserMode: value("--browser").flatMap(BrowserMode.init(rawValue:)) ?? .grid,
+                             selectStatus: value("--select").flatMap(RecordingStatus.init(rawValue:)),
+                             inspectorTab: value("--inspector-tab").flatMap(InspectorTab.init(rawValue:)),
+                             search: value("--search"))
+    }
+
+    /// The window this capture shows, for the log line.
+    var title: String {
+        showsHelp ? "Help" : showsWelcome ? "the welcome" : place.logName
     }
 }
 
 /// Flags for a normal launch (Ivan's real store), used by the milestone checks to drive the real
-/// app without clicks: `--process-file=<path>` runs Process File on that file, `--show=<screen>`
-/// opens a sidebar screen, `--open=latest` opens the newest recording's page and `--open=<path>`
-/// that file's page. One word per flag,
-/// for the same reason as CaptureLaunch.
+/// app without clicks: `--process-file=<path>` runs Process File on that file, `--show=<place>`
+/// opens a place (a smart group, `source`, `settings-<pane>`, `activity`; v1's screen names still
+/// work: `today`, `recordings`, `sources`, `outputs`, `models`, `settings`), `--open=latest` opens the
+/// newest recording's page and `--open=<path>` that file's page. One word per flag, for the same
+/// reason as CaptureLaunch.
 struct LaunchOptions {
     let processFiles: [String]
-    let show: SidebarItem?
+    let show: HelpPlace?
     let openLatest: Bool
     /// `--open=<path>`: opens that recording's page (milestone 4's check of the real window).
     let openPath: String?
@@ -698,7 +764,7 @@ struct LaunchOptions {
             args.filter { $0.hasPrefix(flag + "=") }.map { String($0.dropFirst(flag.count + 1)) }
         }
         return LaunchOptions(processFiles: values("--process-file"),
-                             show: values("--show").first.flatMap(SidebarItem.init(rawValue:)),
+                             show: values("--show").first.flatMap(HelpPlace.init(path:)),
                              openLatest: values("--open").first == "latest",
                              openPath: values("--open").first.flatMap { $0 == "latest" ? nil : $0 },
                              forget: values("--forget"))
@@ -706,7 +772,7 @@ struct LaunchOptions {
 
     @MainActor
     func apply(to model: AppModel) {
-        if let show { model.selection = show }
+        if let show { model.go(to: show) }
         for path in forget {
             let standardized = URL(fileURLWithPath: path).standardizedFileURL.path
             let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []

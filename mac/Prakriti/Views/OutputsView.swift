@@ -4,7 +4,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// The outputs: what each one is, and how it is made. The settings here apply to every recording
-/// that has no settings of its own. Which outputs a folder makes is chosen on Sources; a switch here
+/// that has no settings of its own. Shown as Settings, Outputs since v2 part M3a. Which outputs a folder
+/// makes is chosen on the folder (the inspector, with it selected under Sources); a switch here
 /// is the starting choice for a new folder and for a file added by hand.
 struct OutputsView: View {
     @Environment(AppModel.self) private var model
@@ -14,7 +15,7 @@ struct OutputsView: View {
         let defaults = settings.filter { $0.source == nil && $0.recording == nil }
         Form {
             Section {
-                PageIntro(text: "What Prakriti makes from each recording, and how. These settings apply to every recording unless one has its own. Which outputs each folder makes is chosen on Sources.")
+                PageIntro(text: "What Prakriti makes from each recording, and how. These settings apply to every recording unless one has its own. Which outputs each folder makes is chosen on the folder: select it under Sources in the main window.")
             }
 
             if let podcast = defaults.first(where: { $0.kind == .podcastEpisode }) {
@@ -87,21 +88,21 @@ struct PodcastSettingsRows: View {
                 HStack(spacing: 8) {
                     Text(Format.loudnessTarget(setting.loudnessTarget))
                         .font(AppFont.numbers)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.appSecondary)
                     Stepper("Loudness target", value: $setting.loudnessTarget, in: -24 ... -12, step: 1)
                         .labelsHidden()
                 }
             } label: {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Loudness target").font(AppFont.body)
-                    Text("Apple Podcasts asks for -16 LUFS.").font(AppFont.secondary).foregroundStyle(.secondary)
+                    Text("Apple Podcasts asks for -16 LUFS.").font(AppFont.secondary).foregroundStyle(.appSecondary)
                 }
             }
             Toggle(isOn: $setting.trimSilence) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Trim silence at the start and end").font(AppFont.body)
                     Text("Only true silence, keeping half a second before the first word and after the last.")
-                        .font(AppFont.secondary).foregroundStyle(.secondary)
+                        .font(AppFont.secondary).foregroundStyle(.appSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -117,7 +118,7 @@ struct PodcastSettingsRows: View {
             } label: {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Channels").font(AppFont.body)
-                    Text("The studio records one microphone, so mono loses nothing.").font(AppFont.secondary).foregroundStyle(.secondary)
+                    Text("The studio records one microphone, so mono loses nothing.").font(AppFont.secondary).foregroundStyle(.appSecondary)
                 }
             }
         }
@@ -151,7 +152,7 @@ struct TranscriptSettingsRows: View {
                     Text("Use the Yoga Marga word list").font(AppFont.body)
                     Text((wordListIsBelow ? "Fixes the known mis-hearings listed below." : "Fixes the known mis-hearings listed on the Outputs screen.")
                          + " The words as heard are kept too, in transcript.json.")
-                        .font(AppFont.secondary).foregroundStyle(.secondary)
+                        .font(AppFont.secondary).foregroundStyle(.appSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -166,7 +167,7 @@ struct WordListSection: View {
             ForEach(Lexicon.entries, id: \.written) { entry in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entry.written).font(AppFont.body)
-                    Text(heardLine(entry)).font(AppFont.secondary).foregroundStyle(.secondary)
+                    Text(heardLine(entry)).font(AppFont.secondary).foregroundStyle(.appSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.vertical, 1)
@@ -174,7 +175,7 @@ struct WordListSection: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text("Kept as written").font(AppFont.body)
-                Text(Lexicon.keptAsWritten.joined(separator: ", ") + ".").font(AppFont.secondary).foregroundStyle(.secondary)
+                Text(Lexicon.keptAsWritten.joined(separator: ", ") + ".").font(AppFont.secondary).foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)
@@ -213,7 +214,7 @@ struct FileChoiceRow: View {
             HStack(spacing: 8) {
                 Text(path.map { ($0 as NSString).lastPathComponent } ?? "None")
                     .font(AppFont.secondary)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.appSecondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 if path != nil {
@@ -225,7 +226,7 @@ struct FileChoiceRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(label).font(AppFont.body)
                 if let detail {
-                    Text(detail).font(AppFont.secondary).foregroundStyle(.secondary)
+                    Text(detail).font(AppFont.secondary).foregroundStyle(.appSecondary)
                 }
             }
         }
@@ -252,12 +253,12 @@ struct NotBuiltRow: View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Image(systemName: kind.symbol)
                 .font(AppFont.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.appSecondary)
                 .frame(width: Metrics.symbolWidth)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(kind.title).font(AppFont.body)
-                Text(kind.summary).font(AppFont.secondary).foregroundStyle(.secondary)
+                Text(kind.summary).font(AppFont.secondary).foregroundStyle(.appSecondary)
             }
             Spacer(minLength: 0)
         }

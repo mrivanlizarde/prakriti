@@ -11,8 +11,8 @@ related: [people-and-privacy, outputs, troubleshooting]
 # Models and API keys
 
 A few of Prakriti's steps use a language model: a program that reads the transcript and writes. You
-choose which model does each of these tasks on the Models screen. Everything else always runs on this
-Mac. [Show Me](prakriti://show/models)
+choose which model does each of these tasks in Settings, Models (Command-comma). Everything else always
+runs on this Mac. [Show Me](prakriti://show/settings/models)
 
 ## What uses a model, and what never does
 
@@ -79,7 +79,7 @@ a payment method under Billing first. A key does not work until the account has 
 
 ### Add it to Prakriti
 
-1. Click Models in the sidebar. [Show Me](prakriti://show/models)
+1. Choose Prakriti > Settings (Command-comma), then click Models. [Show Me](prakriti://show/settings/models)
 2. Under Claude API, paste the key, then click Save in Keychain.
 3. Click Test Claude API and read what it says.
 4. Under Tasks, choose Claude API for the tasks you want it to do.
@@ -93,8 +93,8 @@ When a task uses the Claude API, Prakriti sends the transcript's lines, with the
 instructions for the task. It never sends sound, video or pictures.
 
 **The privacy lock.** A recording marked as a class, or one whose transcript names Serenity, is only read
-by models on this Mac, whatever the Models screen says. LM Studio does those tasks instead, and the
-recording's page says so. Nothing is sent.
+by models on this Mac, whatever Settings, Models says. LM Studio does those tasks instead, and the
+recording's page and the inspector's Checks say so. Nothing is sent.
 
 ### What Anthropic keeps
 

@@ -69,6 +69,10 @@ final class StoreMigrationTests: XCTestCase {
         let all = try context.fetch(FetchDescriptor<OutputSetting>())
         XCTAssertTrue(all.allSatisfy { $0.numbering == .none && $0.callToAction.isEmpty }, "numbering and call to action arrive unset")
         print("Numbering and call to action on \(all.count) output settings: \(Set(all.map(\.numberingRaw))), \(all.filter { !$0.callToAction.isEmpty }.count) with a call to action")
+        // v2 part M3a: the ticked accuracy claims and the folders' removed files arrive empty.
+        XCTAssertTrue(recordings.allSatisfy { $0.checkedClaims.isEmpty }, "no claim arrives ticked")
+        XCTAssertTrue(sources.allSatisfy { $0.forgottenPaths.isEmpty }, "no folder arrives passing over a file")
+        print("v2 part M3a fields: \(recordings.filter { !$0.checkedClaims.isEmpty }.count) recordings with ticked claims, \(sources.filter { !$0.forgottenPaths.isEmpty }.count) folders with removed files")
         let ready = recordings.filter { $0.status == .readyForYourYes }
         print("Store copy opened: \(recordings.count) recordings (\(ready.count) ready: "
               + ready.map { "\($0.fileName) \($0.loudnessLUFS.map { String($0) } ?? "?") LUFS" }.joined(separator: ", ")

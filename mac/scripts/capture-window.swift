@@ -1,13 +1,16 @@
-// Captures the REAL Prakriti window, every sidebar screen in light and in dark, and checks what the
-// bitmap snapshots can only imitate: the selected sidebar row as macOS really draws it (Liquid Glass
-// and the accent-colored selection) must show its icon and its label. Reason: on 10 Oct the selected
-// row's icon was invisible in the real window (accent icon on an accent selection) while every
-// snapshot looked fine. Last, it tries to add the Studio Recordings folder and checks that the
-// development refusal alert appears.
+// Captures the REAL Prakriti window in light and in dark: since v2 part M3a, every smart group of the
+// Library sidebar, the list, a folder under Sources, the inspector's three tabs, a search over what was
+// said, each pane of the Settings window and the Activity window. It checks what the bitmap snapshots
+// can only imitate: the selected sidebar row as macOS really draws it (Liquid Glass and the
+// accent-colored selection) must show its icon and its label. Reason: on 10 Oct the selected row's
+// icon was invisible in the real window (accent icon on an accent selection) while every snapshot
+// looked fine. Last, it tries to add the Studio Recordings folder and checks that the development
+// refusal alert appears.
 //
 //   cd ~/Code/prakriti/mac && make look
 //   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift build/Build/Products/Debug/Prakriti.app ../screens/mac/latest/real
 //   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --analyze some-capture.png
+//   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --contrast some-capture.png 488 700 860 735
 //   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --window build/Build/Products/Debug/Prakriti.app out.png
 //   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --help build/Build/Products/Debug/Prakriti.app ../screens/mac/v2-m2a/real
 //
@@ -19,7 +22,29 @@ import AppKit
 import CoreGraphics
 import Foundation
 
-let screens = ["today", "recordings", "sources", "outputs", "models", "activity", "settings"]
+/// One capture of `make look`: its name, its launch flags after --sample-data, which window it captures,
+/// and whether the sidebar must have the focus (its selection drawn in the accent).
+struct Look {
+    enum Window { case main, settings, activity }
+    let name: String
+    let flags: [String]
+    var window: Window = .main
+    var accent = false
+}
+let looks: [Look] = [
+    Look(name: "01-needs-you", flags: ["--show=needs-you"], accent: true),
+    Look(name: "02-in-progress", flags: ["--show=in-progress"]),
+    Look(name: "03-ready", flags: ["--show=ready"]),
+    Look(name: "04-all-recordings", flags: ["--show=all-recordings"]),
+    Look(name: "05-all-recordings-list", flags: ["--show=all-recordings", "--browser=list", "--select=readyForYourYes"]),
+    Look(name: "06-source", flags: ["--show=source"]),
+    Look(name: "07-inspector-outputs", flags: ["--show=needs-you", "--select=readyForYourYes", "--inspector-tab=outputs"]),
+    Look(name: "07-inspector-checks", flags: ["--show=needs-you", "--select=readyForYourYes", "--inspector-tab=checks"]),
+    Look(name: "07-inspector-info", flags: ["--show=needs-you", "--select=readyForYourYes", "--inspector-tab=info"]),
+    Look(name: "08-search-said", flags: ["--show=all-recordings", "--search=Krishnamacharya"]),
+] + ["general", "outputs", "models", "privacy", "advanced"].enumerated().map { index, pane in
+    Look(name: String(format: "09-settings-%02d-%@", index + 1, pane), flags: ["--show=settings-" + pane], window: .settings)
+} + [Look(name: "10-activity", flags: ["--show=activity"], window: .activity)]
 /// WorkingTicker.interval in the app: how long each working frame shows.
 let workingFrameSeconds = 0.7
 let appearances = ["light", "dark"]
@@ -49,9 +74,10 @@ func analyze(_ url: URL) -> RowCheck? {
     func distance(_ a: (Int, Int, Int), _ b: (Int, Int, Int)) -> Int {
         abs(a.0 - b.0) + abs(a.1 - b.1) + abs(a.2 - b.2)
     }
-    // The sidebar column, below the title bar: the sidebar is 220 of the window's 1180 points, so
-    // the first 17% of the width stays inside it (the page beside it is a different color).
-    let columnWidth = w * 17 / 100
+    // The sidebar column, below the title bar: the sidebar is 220 of the window's 1440 points (since
+    // v2 part M3a; 1180 before), so the first 14% of the width stays inside it (the page beside it is a
+    // different color).
+    let columnWidth = w * 14 / 100
     let top = h / 14
     func key(_ c: (Int, Int, Int)) -> Int { (c.0 / 8) << 10 | (c.1 / 8) << 5 | (c.2 / 8) }
     func color(_ k: Int) -> (Int, Int, Int) { ((k >> 10 & 31) * 8 + 4, (k >> 5 & 31) * 8 + 4, (k & 31) * 8 + 4) }
@@ -878,6 +904,114 @@ if args.first == "--first-launch", args.count == 3 {
     print("      wrote \(file.path)")
     exit(failures == 0 ? 0 : 1)
 }
+// The contrast between the darkest and the lightest pixel in a box of a capture (sRGB, WCAG's formula):
+// secondary text on its background, measured as the screen drew it (v2 part M3a, design spec 6.6).
+//   swift scripts/capture-window.swift --contrast <png> <x0> <y0> <x1> <y1>   (pixels)
+if args.first == "--contrast", args.count == 6, let x0 = Int(args[2]), let y0 = Int(args[3]), let x1 = Int(args[4]), let y1 = Int(args[5]) {
+    guard let rep = NSBitmapImageRep(data: (try? Data(contentsOf: URL(fileURLWithPath: args[1]))) ?? Data())?
+            .converting(to: .sRGB, renderingIntent: .default) else { print("FAIL  could not read \(args[1])"); exit(1) }
+    func luminance(_ p: [Int]) -> Double {
+        let f = { (v: Int) -> Double in let v = Double(v) / 255; return v <= 0.03928 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
+        return 0.2126 * f(p[0]) + 0.7152 * f(p[1]) + 0.0722 * f(p[2])
+    }
+    var darkest = [255, 255, 255], lightest = [0, 0, 0]
+    for y in y0..<min(y1, rep.pixelsHigh) {
+        for x in x0..<min(x1, rep.pixelsWide) {
+            var p = [Int](repeating: 0, count: 4)
+            rep.getPixel(&p, atX: x, y: y)
+            if luminance(p) < luminance(darkest) { darkest = Array(p[0..<3]) }
+            if luminance(p) > luminance(lightest) { lightest = Array(p[0..<3]) }
+        }
+    }
+    let ratio = (luminance(lightest) + 0.05) / (luminance(darkest) + 0.05)
+    print("\(ratio >= 4.5 ? "PASS" : "FAIL")  \((args[1] as NSString).lastPathComponent) (\(x0),\(y0))-(\(x1),\(y1)): darkest rgb\(darkest), lightest rgb\(lightest), \(String(format: "%.2f", ratio)) to 1")
+    exit(ratio >= 4.5 ? 0 : 1)
+}
+// The main window's keys in the REAL app (v2 part M3a, design spec 2.5 and 6.7), driven through the app's own
+// event queue and read back through Accessibility by process id (warning 79): Return and Command-Down open the
+// selected recording (the window's title becomes its day), Escape, Command-Up and Command-[ come back (the
+// group's name again), Command-2 and Command-1 switch to the list and back (a table appears and goes),
+// Command-Option-I hides and shows the inspector (the View menu's item changes its words), Command-comma
+// opens the Settings window (760 pt wide); and Escape while typing in the page's title field stays there.
+//   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --keys build/Build/Products/Debug/Prakriti.app
+func windowTitles(pid: pid_t) -> [String] {
+    let app = AXUIElementCreateApplication(pid)
+    var value: CFTypeRef?
+    AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &value)
+    return ((value as? [AXUIElement]) ?? []).compactMap { axString($0, kAXTitleAttribute) }
+}
+/// The list is a table of six columns; Accessibility reads SwiftUI's Table as an outline with columns, and the
+/// sidebar is an outline with one, so four or more columns means the list is showing.
+func hasTable(pid: pid_t) -> Bool {
+    axAll(AXUIElementCreateApplication(pid)).filter { axString($0, kAXRoleAttribute) == kAXColumnRole as String }.count >= 4
+}
+func runKeysCheck(_ app: URL) -> Int {
+    quitAll(app)
+    run("/usr/bin/open", ["-n", app.path, "--args", "--sample-data", "--show=needs-you", "--select=readyForYourYes", "--appearance=light"])
+    var pid: pid_t = 0
+    let deadline = Date().addingTimeInterval(15)
+    while Date() < deadline {
+        Thread.sleep(forTimeInterval: 0.3)
+        if let first = pids(of: app).first, mainWindowID(pid: first) != nil { pid = first; break }
+    }
+    guard pid != 0 else { print("FAIL  keys: the window did not appear"); return 1 }
+    NSRunningApplication(processIdentifier: pid)?.activate()
+    Thread.sleep(forTimeInterval: 2.0)
+    var failures = 0
+    func expect(_ what: String, _ ok: () -> Bool) {
+        var passed = false
+        let until = Date().addingTimeInterval(3)
+        while Date() < until { if ok() { passed = true; break }; Thread.sleep(forTimeInterval: 0.2) }
+        if !passed { failures += 1 }
+        print("\(passed ? "PASS" : "FAIL")  keys: \(what) (windows: \(windowTitles(pid: pid).joined(separator: ", ")))")
+    }
+    func title(_ t: String) -> () -> Bool { { windowTitles(pid: pid).contains(t) } }
+    expect("opens on Needs You", title("Needs You"))
+    sendKey(pid: pid, 36)                                   // Return
+    expect("Return opens the selected recording", title("Sun 13 Sep"))
+    sendKey(pid: pid, 53)                                   // Escape
+    expect("Escape comes back to the group", title("Needs You"))
+    sendKey(pid: pid, 125, flags: .maskCommand)             // Command-Down
+    expect("Command-Down opens it", title("Sun 13 Sep"))
+    sendKey(pid: pid, 126, flags: .maskCommand)             // Command-Up
+    expect("Command-Up comes back", title("Needs You"))
+    sendKey(pid: pid, 125, flags: .maskCommand)
+    expect("Command-Down opens it again", title("Sun 13 Sep"))
+    // Escape while typing in a field stays with the field: the page does not close under the typing.
+    let field = axAll(AXUIElementCreateApplication(pid)).first { axString($0, kAXRoleAttribute) == kAXTextFieldRole as String
+        && axString($0, kAXValueAttribute) == "Talk with Gabriel" }
+    if let field {
+        AXUIElementSetAttributeValue(field, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+        Thread.sleep(forTimeInterval: 0.5)
+        sendKey(pid: pid, 53)
+        Thread.sleep(forTimeInterval: 1.0)
+        expect("Escape while editing the title stays on the page", title("Sun 13 Sep"))
+    } else {
+        print("FAIL  keys: the page's title field was not found")
+        failures += 1
+    }
+    sendKey(pid: pid, 33, flags: .maskCommand)              // Command-[
+    expect("Command-[ comes back", title("Needs You"))
+    sendKey(pid: pid, 19, flags: .maskCommand)              // Command-2
+    expect("Command-2 shows the list", { hasTable(pid: pid) })
+    sendKey(pid: pid, 18, flags: .maskCommand)              // Command-1
+    expect("Command-1 shows the grid again", { !hasTable(pid: pid) })
+    let before = menuItems(pid: pid, menu: "View").map(\.title).filter { $0.hasSuffix("Inspector") }
+    sendKey(pid: pid, 34, flags: [.maskCommand, .maskAlternate])   // Command-Option-I
+    expect("Command-Option-I hides the inspector (View menu: \(before.joined()) before)", {
+        menuItems(pid: pid, menu: "View").contains { $0.title == "Show Inspector" } })
+    sendKey(pid: pid, 34, flags: [.maskCommand, .maskAlternate])
+    expect("Command-Option-I shows it again", { menuItems(pid: pid, menu: "View").contains { $0.title == "Hide Inspector" } })
+    sendKey(pid: pid, 43, flags: .maskCommand)              // Command-comma
+    expect("Command-comma opens the Settings window", { layerZeroWindows(pid: pid).contains { abs($0.1.width - 760) < 2 } })
+    quitAll(app)
+    return failures
+}
+if args.first == "--keys", args.count == 2 {
+    let failures = runKeysCheck(URL(fileURLWithPath: args[1]).standardizedFileURL)
+    print(failures == 0 ? "PASS: every key did what it says" : "FAIL: \(failures) key check(s) failed")
+    exit(failures == 0 ? 0 : 1)
+}
 if args.first == "--analyze" {
     let ok = args.dropFirst().map { describe(($0 as NSString).lastPathComponent, analyze(URL(fileURLWithPath: $0))) }
     exit(ok.allSatisfy { $0 } ? 0 : 1)
@@ -895,12 +1029,12 @@ quitAll(app)
 var failures = 0
 var index = 0
 for appearance in appearances {
-    for screen in screens {
+    for look in looks {
         index += 1
-        let name = String(format: "%02d-%@-%@", screens.firstIndex(of: screen)! + 1, screen, appearance)
+        let name = look.name + "-" + appearance
         // One word per flag: a value given as its own word reads to macOS as a file to open, and
         // then the app does not open its window.
-        run("/usr/bin/open", ["-n", app.path, "--args", "--sample-data", "--show=" + screen, "--appearance=" + appearance])
+        run("/usr/bin/open", ["-n", app.path, "--args", "--sample-data", "--appearance=" + appearance] + look.flags)
         var found: (CGWindowID, CGRect)?
         var pid: pid_t = 0
         let deadline = Date().addingTimeInterval(15)
@@ -908,18 +1042,24 @@ for appearance in appearances {
             Thread.sleep(forTimeInterval: 0.3)
             if let first = pids(of: app).first {
                 pid = first
-                found = mainWindowID(pid: pid)
+                switch look.window {
+                case .main: found = mainWindowID(pid: pid)
+                // The Settings window is 760 pt wide (its panes), the Activity window 720 pt to start.
+                case .settings: found = layerZeroWindows(pid: pid).first { abs($0.1.width - 760) < 2 }
+                case .activity: found = layerZeroWindows(pid: pid).first { abs($0.1.width - 720) < 2 && $0.1.height > 500 }
+                }
             }
         }
-        guard let (windowID, _) = found else {
+        guard let (windowID, bounds) = found else {
             print("FAIL  \(name): the window did not appear within 15 s")
             failures += 1
             quitAll(app)
             continue
         }
-        // Let SwiftUI lay out and the glass settle, and make sure the window is frontmost.
+        // Let SwiftUI lay out and the glass settle (a search is typed a second after the window opens), and
+        // make sure the window is frontmost.
         NSRunningApplication(processIdentifier: pid)?.activate()
-        Thread.sleep(forTimeInterval: 2.0)
+        Thread.sleep(forTimeInterval: 2.5)
         let png = out.appending(path: name + ".png")
         let (status, text) = run("/usr/sbin/screencapture", ["-x", "-o", "-l", String(windowID), png.path])
         if status != 0 {
@@ -927,15 +1067,22 @@ for appearance in appearances {
             failures += 1
         } else {
             let size = NSImageRep(contentsOf: png).map { "\($0.pixelsWide)x\($0.pixelsHigh) px" } ?? "unreadable"
-            print("      \(name): saved \(png.lastPathComponent), \(size)")
-            let check = analyze(png)
-            if !describe(name, check) { failures += 1 }
-            // Today opens with the sidebar focused, so its selection must be the accent color: that
-            // is the state that hid the icon on 10 Oct. Grey there means the window was not frontmost
-            // and the check proved nothing.
-            if screen == "today" && check?.isAccent != true {
-                print("FAIL  \(name): the selection is not in the accent color, so the window was not frontmost. Run it again without touching the Mac.")
-                failures += 1
+            print("      \(name): saved \(png.lastPathComponent), \(size), window \(Int(bounds.width))x\(Int(bounds.height)) pt")
+            if look.window == .main {
+                // Within a few points: macOS can settle a window a few points inside the size it was given.
+                if abs(bounds.width - 1440) > 8 || abs(bounds.height - 900) > 40 {
+                    print("FAIL  \(name): the main window is \(Int(bounds.width))x\(Int(bounds.height)) pt, not the 1440 by 900 it opens at")
+                    failures += 1
+                }
+                let check = analyze(png)
+                if !describe(name, check) { failures += 1 }
+                // Needs You opens with the sidebar focused, so its selection must be the accent color: that
+                // is the state that hid the icon on 10 Oct. Grey there means the window was not frontmost
+                // and the check proved nothing.
+                if look.accent && check?.isAccent != true {
+                    print("FAIL  \(name): the selection is not in the accent color, so the window was not frontmost. Run it again without touching the Mac.")
+                    failures += 1
+                }
             }
         }
         quitAll(app)
@@ -944,10 +1091,10 @@ for appearance in appearances {
 // The development refusal, seen in the real window: the app tries to add the Studio Recordings
 // folder (in memory, through the same path Add Folder takes) and must show its alert.
 for appearance in appearances {
-    let name = "08-refusal-\(appearance)"
+    let name = "11-refusal-\(appearance)"
     let studio = FileManager.default.homeDirectoryForCurrentUser.path + "/Documents/Design Work/Galindo x Lizarde/Studio Recordings "
     // --development: the refusal belongs to a test copy. The live Prakriti owns the studio folder.
-    run("/usr/bin/open", ["-n", app.path, "--args", "--sample-data", "--development", "--show=sources", "--appearance=" + appearance, "--add-folder=" + studio])
+    run("/usr/bin/open", ["-n", app.path, "--args", "--sample-data", "--development", "--show=source", "--appearance=" + appearance, "--add-folder=" + studio])
     var windows: [(CGWindowID, CGRect)] = []
     let deadline = Date().addingTimeInterval(15)
     while windows.count < 2 && Date() < deadline {
@@ -970,6 +1117,10 @@ for appearance in appearances {
     quitAll(app)
 }
 
-print(failures == 0 ? "PASS: every real window drew its selected sidebar row with a visible icon and label, and the refusal showed"
+// The keys (v2 part M3a), in the same run.
+let keyFailures = runKeysCheck(app)
+failures += keyFailures
+index += 1
+print(failures == 0 ? "PASS: every real window drew its selected sidebar row with a visible icon and label, the refusal showed, and every key did what it says"
                     : "FAIL: \(failures) of \(index) captures failed")
 exit(failures == 0 ? 0 : 1)

@@ -216,7 +216,7 @@ enum WelcomeContent {
             style: .steps,
             rows: [
                 WelcomeRow("found", symbol: "1.circle",
-                           "Prakriti finds a new recording and makes its outputs, or waits for you if its folder is set to Ask me first. Today shows the step it is on.",
+                           "Prakriti finds a new recording and makes its outputs, or waits for you if its folder is set to Ask me first. In Progress shows the step it is on.",
                            unless: [.progress]),
                 WelcomeRow("found-v2", symbol: "1.circle",
                            "Prakriti finds a new recording and starts on its own. Progress shows on the recording and in Activity.",
@@ -280,7 +280,7 @@ enum WelcomeContent {
                            "Recordings saved there are found on their own. A new folder asks you before anything is made.",
                            action: .chooseFolder),
                 WelcomeRow("notifications", symbol: "bell", headline: "Get a notice when something needs you.",
-                           "A notice says when a recording is ready for your yes, needs a decision or could not finish.",
+                           "A notice says when a recording is waiting for your yes, needs a decision or could not finish.",
                            action: .notifications),
                 WelcomeRow("help", symbol: "questionmark.circle", headline: "Find help at any time.",
                            "Choose Help > Prakriti Help, or type in the Help menu's search field.",

@@ -4,8 +4,10 @@ import Foundation
 // reads and the screen it opens say the same thing. Every string here is UI text, so: plain words,
 // no em dashes, no "we", no "Processing...".
 
-/// Where a recording is. The engine owns Found to Ready for your yes; Approve copies the finished
+/// Where a recording is. The engine owns Found to Waiting for your yes; Approve copies the finished
 /// files to ~/Prakriti/Approved. Scheduled, Live and Taken down belong to the web app, later.
+/// Since v2 part M3a the words for `readyForYourYes` are "Waiting for your yes" (design spec C1), so
+/// "Ready" means only approved; the stored raw value is unchanged, so nothing migrates.
 enum RecordingStatus: String, Codable, CaseIterable, Sendable {
     case found
     case working
@@ -19,7 +21,7 @@ enum RecordingStatus: String, Codable, CaseIterable, Sendable {
         switch self {
         case .found: "Found"
         case .working: "Working"
-        case .readyForYourYes: "Ready for your yes"
+        case .readyForYourYes: "Waiting for your yes"
         case .needsADecision: "Needs a decision"
         case .approved: "Approved"
         case .skipped: "Skipped"
@@ -40,7 +42,7 @@ enum RecordingStatus: String, Codable, CaseIterable, Sendable {
         }
     }
 
-    /// The three states that wait on Ivan. Today lists exactly these.
+    /// The three states that wait on Ivan. Needs You lists exactly these.
     var needsYou: Bool {
         switch self {
         case .readyForYourYes, .needsADecision, .couldntFinish: true
@@ -324,7 +326,7 @@ enum NotificationEvent: String, Codable, CaseIterable, Sendable {
         switch self {
         case .found: "New Recording Found"
         case .started: "Started"
-        case .ready: "Ready for Your Yes"
+        case .ready: "Waiting for Your Yes"
         case .needsADecision: "Needs a Decision"
         case .couldntFinish: "Couldn't Finish"
         }

@@ -2,43 +2,6 @@ import AppKit
 import SwiftData
 import SwiftUI
 
-/// Every recording, newest first.
-struct RecordingsView: View {
-    @Environment(AppModel.self) private var model
-    @Query private var recordings: [Recording]
-
-    var body: some View {
-        let sorted = recordings.sorted(by: Recording.newestFirst)
-        Group {
-            if sorted.isEmpty {
-                EmptyState(symbol: "rectangle.stack", title: "No recordings yet",
-                           message: "Recordings appear here when Prakriti finds them in a watched folder, or when you add one with Add File.")
-            } else {
-                List {
-                    PageIntro(text: "Every recording Prakriti has found or been given, newest first.")
-                        .padding(.vertical, 8)
-                        .listRowSeparator(.hidden)
-                    ForEach(sorted) { recording in
-                        NavigationLink(value: RecordingRoute(id: recording.persistentModelID)) {
-                            RecordingRow(recording: recording)
-                        }
-                    }
-                }
-                .listStyle(.inset)
-            }
-        }
-        .navigationTitle("Recordings")
-        .toolbar {
-            ToolbarItem {
-                Button { model.chooseFilesToProcess() } label: {
-                    Label("Process File…", systemImage: "plus")
-                        .labelStyle(.titleAndIcon)
-                }
-            }
-        }
-    }
-}
-
 /// One recording's page: its status and Approve at the top; the system player; the transcript as
 /// lines that play from their moment and can be cut; the trim and cuts; its title, notes and what it
 /// is; the steps with their timings; what was measured and made; and which outputs it makes, with
@@ -58,7 +21,7 @@ struct RecordingDetailView: View {
                         .font(AppFont.pageTitle)
                     Text(subtitle)
                         .font(AppFont.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.appSecondary)
                 }
                 .padding(.vertical, 6)
             }
@@ -76,7 +39,7 @@ struct RecordingDetailView: View {
                 if let waiting = waitingLine {
                     Text(waiting)
                         .font(AppFont.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.appSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 } else if let action = actionTitle {
                     Button(action) { model.makeOutputs(recording) }
@@ -219,7 +182,15 @@ struct RecordingDetailView: View {
         }
         .formStyle(.grouped)
         .navigationTitle(Format.dayLabel(recording.sessionDate))
-        .onAppear { page.load(recording, applyLexicon: wordListOn) }
+        .onAppear {
+            page.load(recording, applyLexicon: wordListOn)
+            // Opened from a search result or the inspector's Play (v2 part M3a): start at that moment.
+            if let seek = model.pendingSeek, seek.recordingID == recording.id {
+                model.pendingSeek = nil
+                page.seek(original: seek.time, play: seek.play)
+                page.hasPlayed = true
+            }
+        }
         .onChange(of: recording.madeAt) { page.load(recording, applyLexicon: wordListOn) }
         .onDisappear { page.player.pause() }
         .confirmationDialog("Make this recording again?", isPresented: $confirmMakeAgain) {
@@ -280,10 +251,10 @@ struct RecordingDetailView: View {
         return parts.joined(separator: ". ") + "."
     }
 
+    /// The lock's real reason, in words that name no one (design spec C4, v2 part M3a): the same line as
+    /// the inspector's Checks.
     private var lockLine: String {
-        recording.kind == .lesson
-            ? "This is a class, so only models on this Mac may read it."
-            : "This recording mentions Serenity, so only models on this Mac may read it."
+        recording.lockLine ?? ""
     }
 
     private var hasResults: Bool {
@@ -385,7 +356,7 @@ struct StepRow: View {
                 if let detail = step.detail {
                     Text(detail)
                         .font(AppFont.secondary)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.appSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -393,7 +364,7 @@ struct StepRow: View {
             if showsState || step.seconds != nil {
                 Text(step.seconds.map { Format.length($0) } ?? step.state.title)
                     .font(AppFont.numbers)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.appSecondary)
             }
         }
         .padding(.vertical, 2)

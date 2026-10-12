@@ -6,6 +6,9 @@ import SwiftUI
 /// tags and summary; who wrote them and, when the privacy lock decided it, why it stayed on this Mac.
 struct WritingSection: View {
     @Bindable var recording: Recording
+    /// The inspector's Outputs tab leaves the accuracy checklist to the Checks tab, where each claim has
+    /// its checkbox (v2 part M3a); v1's recording page shows it here.
+    var showsChecklist = true
     @Environment(AppModel.self) private var model
 
     var body: some View {
@@ -14,7 +17,7 @@ struct WritingSection: View {
             if let written {
                 Text(byLine(written))
                     .font(AppFont.secondary)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 if let lock = lockLine(written) {
                     LockLabel(text: lock)
@@ -28,7 +31,7 @@ struct WritingSection: View {
                                 .fixedSize(horizontal: false, vertical: true)
                             Spacer(minLength: 12)
                             if recording.title == title {
-                                Text("Its title").font(AppFont.secondary).foregroundStyle(.secondary)
+                                Text("Its title").font(AppFont.secondary).foregroundStyle(.appSecondary)
                             } else {
                                 Button("Use This Title") { model.useTitle(title, for: recording) }
                             }
@@ -41,7 +44,7 @@ struct WritingSection: View {
                         Text("Show notes").font(AppFont.headline)
                         Spacer(minLength: 12)
                         if recording.notes == written.showNotes {
-                            Text("Its notes").font(AppFont.secondary).foregroundStyle(.secondary)
+                            Text("Its notes").font(AppFont.secondary).foregroundStyle(.appSecondary)
                         } else {
                             Button("Use as Notes") { model.useNotes(written.showNotes, for: recording) }
                         }
@@ -55,7 +58,7 @@ struct WritingSection: View {
                     Text("Chapters").font(AppFont.headline)
                     ForEach(Array(written.chapters.enumerated()), id: \.offset) { _, chapter in
                         HStack(alignment: .firstTextBaseline, spacing: 12) {
-                            Text(chapter.label).font(AppFont.numbers).foregroundStyle(.secondary)
+                            Text(chapter.label).font(AppFont.numbers).foregroundStyle(.appSecondary)
                                 .frame(minWidth: 56, alignment: .leading)
                             Text(chapter.title).font(AppFont.body)
                         }
@@ -82,7 +85,7 @@ struct WritingSection: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Social captions").font(AppFont.headline)
                             Text("Drafts to post by hand. Nothing is posted.")
-                                .font(AppFont.secondary).foregroundStyle(.secondary)
+                                .font(AppFont.secondary).foregroundStyle(.appSecondary)
                             ForEach(Array(captionRows(written).enumerated()), id: \.offset) { _, row in
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(row.label).font(AppFont.secondaryEmphasis)
@@ -90,7 +93,7 @@ struct WritingSection: View {
                                         .textSelection(.enabled)
                                         .fixedSize(horizontal: false, vertical: true)
                                     if let quote = row.quote {
-                                        Text(quote).font(AppFont.secondary).foregroundStyle(.secondary)
+                                        Text(quote).font(AppFont.secondary).foregroundStyle(.appSecondary)
                                             .textSelection(.enabled)
                                             .fixedSize(horizontal: false, vertical: true)
                                     }
@@ -100,37 +103,39 @@ struct WritingSection: View {
                         .padding(.vertical, 4)
                     }
                 }
+                if showsChecklist {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Accuracy checklist").font(AppFont.headline)
                     Text("Each quote was found word for word in the transcript. Check each claim against the episode before anything is published.")
-                        .font(AppFont.secondary).foregroundStyle(.secondary)
+                        .font(AppFont.secondary).foregroundStyle(.appSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                     ForEach(Array(written.checklist.enumerated()), id: \.offset) { _, item in
                         HStack(alignment: .firstTextBaseline, spacing: 12) {
-                            Text(item.at.map { WritingText.stamp($0) } ?? "").font(AppFont.numbers).foregroundStyle(.secondary)
+                            Text(item.at.map { WritingText.stamp($0) } ?? "").font(AppFont.numbers).foregroundStyle(.appSecondary)
                                 .frame(minWidth: 56, alignment: .leading)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.claim).font(AppFont.body)
                                     .fixedSize(horizontal: false, vertical: true)
-                                Text("\u{201C}\(item.quote)\u{201D}").font(AppFont.secondary).foregroundStyle(.secondary)
+                                Text("\u{201C}\(item.quote)\u{201D}").font(AppFont.secondary).foregroundStyle(.appSecondary)
                                     .textSelection(.enabled)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
                     }
                     ForEach(Array(checkLines(written).enumerated()), id: \.offset) { _, line in
-                        Text(line).font(AppFont.secondary).foregroundStyle(.secondary)
+                        Text(line).font(AppFont.secondary).foregroundStyle(.appSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .padding(.vertical, 4)
+                }
                 if !written.tags.isEmpty {
                     ValueRow(label: "Tags", value: written.tags.joined(separator: ", "))
                 }
                 if let summary = written.summary, !summary.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Summary").font(AppFont.body)
-                        Text(summary).font(AppFont.body).foregroundStyle(.secondary)
+                        Text(summary).font(AppFont.body).foregroundStyle(.appSecondary)
                             .textSelection(.enabled)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -155,7 +160,7 @@ struct WritingSection: View {
             }
             HStack(alignment: .firstTextBaseline) {
                 if let busy = busyLine {
-                    Text(busy).font(AppFont.secondary).foregroundStyle(.secondary)
+                    Text(busy).font(AppFont.secondary).foregroundStyle(.appSecondary)
                 }
                 Spacer(minLength: 12)
                 Button(written == nil ? "Write Titles and Notes" : "Write Again") { model.writeAgain(recording) }

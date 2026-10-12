@@ -80,7 +80,7 @@ Prakriti only suggests moments from recordings of people who have agreed to be r
 
 ## Who does the editing
 
-The model you choose for editing on the Models screen reads the transcript and your direction, and
+The model you choose for editing in Settings, Models reads the transcript and your direction, and
 plans the edit. Everything else, including the cutting, zooming, blurring and the final video, happens
 on this Mac. See [Models and API keys](09-models-and-api-keys.md).
 

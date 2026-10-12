@@ -160,7 +160,7 @@ enum Fixtures {
         context.insert(talk13)
         talk13.source = studio
         addRun(context, to: talk13, start: date(2026, 10, 9, 16, 15, 11), trigger: .fileEvent, outcome: .ready,
-               summary: "Ready for your yes.", steps: [
+               summary: "Waiting for your yes.", steps: [
                 RunStep(name: "Checked the file is complete", state: .done, seconds: 60.2, detail: "Opens, its size held steady for 60 s, and its last seconds play."),
                 RunStep(name: "Sound check", state: .done, seconds: 0.6, detail: "Loudest point -3.4 dB, average -30 dB."),
                 RunStep(name: "Audio for the transcript", state: .done, seconds: 0.5, detail: "Mono, 16 kHz."),
@@ -237,7 +237,7 @@ enum Fixtures {
             (date(2026, 10, 10, 10, 31), .info, "Filed 2026-09-13 clip 45s.mp4 as a test (45 s). No notice sent."),
             (date(2026, 10, 10, 10, 1), .info, "Checked 2 folders. Nothing new."),
             (date(2026, 10, 9, 21, 6), .attention, "Mon 14 Sep has no usable sound (loudest point -91 dB). Needs a decision. Nothing was made."),
-            (date(2026, 10, 9, 16, 17), .info, "Sun 13 Sep is ready for your yes: -16.8 LUFS, peak -1.6 dBFS, transcript reaches 15:47 of 15:48."),
+            (date(2026, 10, 9, 16, 17), .info, "Sun 13 Sep is waiting for your yes: -16.8 LUFS, peak -1.6 dBFS, transcript reaches 15:47 of 15:48."),
             (date(2026, 10, 9, 16, 15), .info, "Found Sun 13 Sep in Studio Recordings (15 min 48 s)."),
         ]
         for (at, level, message) in lines {

@@ -92,6 +92,9 @@ Neither page is listed in search engines.
   Oct the app has its own Help (Help, Prakriti Help), which describes only what the app does today,
   and a welcome window of five short panels that opens once by itself (what it does, how to record,
   how outputs work, privacy, and three things to set) and again from Help, Welcome to Prakriti.
+  The main window is now a library: recordings that need Ivan, that are being made, that are approved,
+  or all of them, as a grid or a list, with a search that also finds what was said, and a panel on the
+  right with each recording's files, checks and details. Settings have their own window.
   Progress is in `docs/BUILD-LOG.md`.
 - Prakriti is named, researched and planned. The front page and roadmap are written; they go live
   on Ivan's yes. The web app behind sign-in is not built yet.

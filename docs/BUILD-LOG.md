@@ -2742,3 +2742,214 @@ articles' snapshots in `screens/mac/v2-m2b/`; one capture of System Settings at 
   then turn on **Allow notifications** on the page that opens. (Help, Welcome to Prakriti brings the panel
   back.)
 - Nothing is blocked on you.
+
+## v2 part M3a: the main window and Settings. Sun 11 Oct 2026
+
+The fifth part of v2 (`docs/v2/PLAN.md`, M3, part M3a; REQUEST item 11, "take another pass, how would Apple
+build it"): the main window as a library (sidebar of smart groups and folders, a browser of recordings as a
+grid or a list, search, the inspector's Outputs, Checks and Info tabs), the Settings window, the status words,
+contrast and notices. **Opening a recording still shows v1's recording page, unchanged**, so trim, cuts, Make
+Again and Approve keep working for episode 1 while the Viewer is built (M3b). Nothing of M3b (the Viewer, Quick
+Help, state restoration) was built. Built on `main`, as this run's instructions said (the plan's rule 2.1.1
+names a `v2-m3a` branch). No package was added.
+
+### What was built
+
+- **The window** (`Views/MainView.swift`): 1440 by 900 pt the first time it opens, never smaller than 1100 by
+  720 (design spec 2.2; v1 was 1180 by 760). A window already open keeps its own saved size (Ivan's live
+  preferences hold 1140 by 772). A `NavigationSplitView` of the sidebar and the browser, with the inspector
+  (`.inspector`, 320 to 440 pt, 360 to start) on the right.
+- **The sidebar** (design spec 2.3): **Library** with **Needs You** (waiting for your yes, needs a decision,
+  couldn't finish), **In Progress** (found, working), **Ready** (approved) and **All Recordings**; **Sources**
+  with each watched folder and **Add Folder…**. Each group is a SwiftData predicate over `statusRaw`
+  (`SmartGroup.predicate`, Mac warning 11), read by the browser and by each row's count. Counts are plain 15 pt
+  semibold text, never a badge; icons carry no color of their own (warning 8). A folder Prakriti cannot read
+  shows a warning shape in place of its folder. Section names at 15 pt in the measured secondary color (the
+  system draws them at 11 pt in a grey measured at 2.23 to 1). People is not shown (M6).
+- **The browser** (`Views/Library/`): a **grid** of cards 240 to 360 pt wide with 20 pt gaps, or a **list**
+  (`Table`), Command-1 and Command-2 and a segmented control in the toolbar. A card: a neutral tile (the
+  system's quaternary fill, the day at 21 pt semibold, the symbol of its kind; no frame is shown until faces
+  can be checked, design spec 3.1.2 rule 3), the status in symbol and words at 13 pt semibold, the length, the
+  title at 17 pt semibold (two lines) and "Sun 13 Sep 2026, 6:25 pm" at 15 pt. Sections: Needs You by status,
+  oldest first in each; In Progress as Working, Waiting (in the runner's order) and Found; Ready by the month
+  approved; All Recordings and a folder by the month recorded, newest first, 21 pt headings. The list: tile,
+  Title (truncated in the middle), Recorded, Length, Status, Source; click a heading to sort. The **Sort and
+  Filter** menu: Date Recorded, Date Found, Length, Title, and the kinds to show. Click selects (Command-click
+  adds), a double-click, Return or Command-Down opens, the arrow keys move; Escape, Command-Up, Command-[ and the
+  toolbar's Back come back with the recording still selected. A file or folder dragged onto the window is
+  added, as v1's drop area did. Empty states per group (design spec 3.16), and at the top of Needs You the
+  status line v1's Today showed ("Working on Sun 6 Sep: making the episode audio", a folder macOS has not
+  allowed, Pause All).
+- **Search** (`LibrarySearch`, `TranscriptIndex`): one field in the toolbar, with the tokens **Title** and
+  **Said** offered as suggestions. Every typed word must be found, case and accents ignored, in the title,
+  notes and file name, and in each sentence of the transcript (read from the recording's own output folder,
+  once per make). A card shows up to three matching sentences with their times; clicking one opens the
+  recording's page with the player at that sentence and the line in view (a small hook in v1's page:
+  `pendingSeek`, and the transcript list scrolls to the line).
+- **The inspector** (`Views/Inspector/`): a segmented row of symbols with the tab's name under it at 21 pt
+  (symbols alone would need tooltips), Command-Option-1 to 3, shown or hidden with Command-Option-I and the
+  toolbar. **Outputs:** the status in symbol and words with what it means, Make Outputs or Try Again, **Approve…**
+  (prominent, with `ApprovalCheck`'s reason when it is refused) and **Make Again…**, each asking first; the files
+  made (podcast episode with Play, which opens the page playing it; the podcast-ready folder with its checklist
+  count; the transcript's formats; REPORT.md; show-notes.md), each with Show in Finder, and outputs not made for
+  this recording named as such; v1's writing section (its accuracy checklist moved to Checks) and Ready to
+  upload, the same views as the page; Show All Outputs in Finder. **Checks:** what was measured (v1's report
+  numbers), the **accuracy checklist with a checkbox per claim** (`Recording.checkedClaims`, Ivan's own record;
+  it changes no file and no approval), the privacy lock in words that name no one (C4) and where each model step
+  ran, and the steps of the last make. **Info:** title, what it is, notes, where the episode starts and ends
+  (the same rules and refusals as the page), recorded, length, size, found, the original and the output folder.
+  A folder selected under Sources shows v1's Sources screen for that folder (path, watching and Check Now, Open
+  Privacy Settings, When a recording arrives, its outputs, Stop Watching); several recordings show their count
+  and length; nothing selected, one line.
+- **A card's menu** (design spec 3.1.1): Open, Show Original in Finder, Show Outputs in Finder; Make Outputs or
+  Try Again, Make Again…, Mark As (Talk, One Teacher Speaking; Class; Conversation; Not Set); **Remove from
+  Library…** The same actions are in a **Recording** menu (Open, Back to Library, the two Show in Finder, Make
+  Again…, Approve…, Remove from Library…).
+- **Remove from Library** (`LibraryActions.swift`): asks first; refused while the recording is being made or
+  waits its turn; moves its Outputs folder to the Trash (only ever a folder inside this mode's Outputs); never
+  touches the original or the Approved folder; leaves the file's path on its folder (`Source.forgottenPaths`,
+  an addition with a default) so the watcher passes over it; File > Add File takes it off the list.
+- **The Settings window** (`Views/Settings/SettingsScene.swift`, Command-comma, the menu bar's Settings…):
+  **General** (open at login, the menu bar item, Pause All, the five notices and Open Notification Settings,
+  Show the Welcome Window Again), **Outputs** (v1's Outputs screen as it was), **Models** (v1's Models screen,
+  until M5), **Privacy** (the rules in five plain sentences, each true of v1), **Advanced** (where files live).
+- **Activity** moved out of the sidebar into its own window (Window > Activity, Command-9), v1's list as it was;
+  M4a builds it out. v1's Today, Recordings list, Sources, Outputs, Models and Settings screens are retired from
+  the sidebar: Today, Sources and Settings were deleted (their parts live on in Needs You, the folder inspector
+  and the Settings window); Outputs and Models are the Settings panes; v1's recording page stays.
+- **Status words** (design spec C1): "Waiting for your yes" in the app, the notices ("Waiting for Your Yes:
+  Sun 13 Sep") and Activity ("is waiting for your yes"); the stored value is unchanged. `make drop` and
+  `process-in-app.sh` read both phrasings.
+- **Colors** (`Views/AppColor.swift`, design spec 6.2 and 6.6): secondary text is black at 58 percent in light
+  (the system's 50 percent measured 3.95 to 1 on white) through `.foregroundStyle(.appSecondary)`, which turns
+  white on a selected, emphasized row; text in the accent is #2337C6 light and #7D8BFF dark (C7, Help's links
+  already used it); a problem in words is #B3261E light and #FF6B63 dark; Increase Contrast variants. Every
+  `.foregroundStyle(.secondary)` in the app (106) became `.appSecondary`.
+- **The privacy lock's line** (C4), on the inspector and on v1's page: "This is a class, so only models on this
+  Mac read it." or "This recording names a teacher who has not agreed to cloud models, so only models on this
+  Mac read it." The rule underneath is still v1's until M5a.
+- **Places** (`HelpPlace`): Show Me links and the `--show=` launch flag now name a group
+  (`group/needs-you`), `sources` (the first folder), a Settings pane (`settings/models`) or `activity`; v1's
+  names still land on the place that took each over.
+- **Capture flags** (`--sample-data` only): `--show=<place>`, `--browser=list`, `--select=<status>`,
+  `--inspector-tab=<tab>`, `--search=<words>`. A capture opens the main window at 1440 by 900 and saves no
+  window frame into the live preferences.
+- **Help:** articles 01, 04, 05, 06, 09 and 10 rewritten for the window as built (groups, the inspector, Settings,
+  Window > Activity, search, the checkboxes, Remove from Library), hidden lines of 07 and 08 renamed; their notes
+  in `docs/v2/help-notes/`. No capability was switched on (the Viewer's is M3b's). The welcome's step 1 names In
+  Progress, and its notifications row says "waiting for your yes".
+- **Checks:** `LibraryTests` (16), `RulesTests.testSecondaryTextUsesTheMeasuredColor`, `SnapshotTests` rewritten
+  (78 pictures plus pages), `SnapshotRenderer` (the inspector drawn on its own like the sidebar, its own pages,
+  Settings panes and the Activity window, and an assertion that the content never asks for more height than the
+  window), `make look` (`capture-window.swift`: every group, the list, a folder, each inspector tab, a search,
+  each Settings pane, Activity, the refusal, then `--keys`), `--contrast`, `StoreMigrationTests` (the two new
+  fields arrive empty).
+
+### Checks run, with results (PLAN M3, the checks part M3a runs: 1, 2 for groups, grid, list, inspector and Settings, 3 for window, sidebar and toolbar, 5 through v1's page, 6, 7, 8)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `make test`: every v1, podcast-ready, M1, M2a and M2b test still passes, with the snapshot list extended; `RulesTests` still fails on a planted 11 pt font and a planted `.help` | **PASS. 194 tests, 0 failures, 8 skipped by design** (the acceptance methods and the migration check), 712.2 s, on the final code (16:48 to 17:00); **0 compiler warnings** (the only "warning" lines are the `appintentsmetadataprocessor` tool line W4 describes and the test host's own "excessive live window count" note from drawing several hundred snapshot windows). 16 new tests: `LibraryTests` (15) and `RulesTests.testSecondaryTextUsesTheMeasuredColor`. **Proved by breaking it** (16:30, then restored, `shasum` identical): an 11 pt font, a `.help` tooltip and `.foregroundStyle(.secondary)` planted on the card's date line, the light secondary color set back to the system's 50 percent, the watcher made to forget the removed paths, and Couldn't finish taken out of Needs You, all at once: **18 failures**, each naming its cause (`testEveryFontComesFromTheTypeScale` and `testNoTooltips` at BrowserGrid.swift line 145, the secondary rule at the same line, 8 text pairs measuring 3.92 to 3.98 to 1, the removed recording found again as new, the group's predicate and sections) |
+| 2 | `make snapshots`: every group (empty and filled), grid and list, each inspector tab, each Settings pane, light and dark; every PNG looked at | **PASS.** `SnapshotTests.testRenderEveryScreen` (inside `make test`): **78 screens** (the four groups filled and empty, the list with a recording selected, a folder, the inspector's Outputs, Checks and Info for the 13 Sep sample, Outputs for one that needs a decision, one being made and one approved, two claims ticked, several selected, a search over what was said, a search and a filter with no results, Needs You and a folder while macOS has not allowed the studio folder, the five Settings panes, Outputs with numbering, General with notifications not asked, the Activity window, and v1's recording pages), with every screenful of a long page or inspector, light and dark; with Help's 22, the welcome's 23 and the acceptance runs' pictures, **619 pictures** in `screens/mac/v2-m3a/`. Each asserts the window's size and that its content fits the window. **Looked at** in contact sheets of four to six: the groups, the list, the inspector tabs and their pages, the folder inspector, search, the empty states, Settings, Activity, v1's pages at the new size, a Help article and a welcome panel; 17 pt body, 21 pt section headings, 13 pt capsules, nothing clipped in either appearance |
+| 3 | `make look` (real window, sample data): the window, the sidebar's selected row icon (W7, W8), the glass toolbar; no playback in this part | **PASS, 36 of 36 lines** (final code, 17:00 to 17:03). The main window at each group, the list, a folder, each inspector tab and a search, light and dark (20 captures): **1440 by 900 pt** (within 2 pt: 1438 to 1442 by 898 to 902), the selected sidebar row readable in every one (icon 462 to 800 px, label 1,319 to 2,019 px standing out), **in the accent where the sidebar has the focus** (each group, a folder, the search) and grey where a selected recording has it, as macOS draws it; the five Settings panes (760 pt wide, 548 to 788 tall) and the Activity window (720 by 640); the development refusal alert in both. **Keys** (`--keys`, through Accessibility by process id): Return and Command-Down opened the selected recording (the window's title became "Sun 13 Sep"), Escape, Command-Up and Command-[ came back ("Needs You"), **Escape while typing in the page's title field stayed on the page**, Command-2 showed the list (7 columns) and Command-1 the grid (1), Command-Option-I hid and showed the inspector (the View menu read Show Inspector, then Hide Inspector), Command-comma opened the Settings window. **Every capture looked at:** the glass toolbar with the group's title, the Grid and List control, Sort, Pause All with its words, the inspector switch and the search field; Liquid Glass in the sidebar and inspector; capsules and cards readable in both appearances. Contrast measured in the real window with `--contrast`: a card's date line **5.33 to 1** light and **5.79** dark, the sidebar's section names **5.13** and **4.86**, the inspector's secondary text **5.23** (light) |
+| 5 | `make accept-edits` through v1's page, as v1 runs it: trim 10 s, cut 5:00 to 5:30, Make Again, Approve; the approved MP3 38.82 s shorter; 0 of 73 cut runs heard | **PASS** (inside `make regress`, 16:26 to 16:30): the approved episode **38.82 s shorter (expected 38.82)**, the same SHA-256 as the made one, **0 of 73** five-word runs from the cut heard again and 189 of 201 from the minute after, approval refused before Make Again ("Make Again first"), and once marked a class (Speakers not checked) |
+| 6 | Notices: `NotificationTests` updated to "Waiting for Your Yes", still no name or title | **PASS** (inside check 1): "Waiting for Your Yes: Sun 13 Sep", the hidden preview "Waiting for your yes", title case, the five events, and no file name, title or name ("Maria", "divorce") in any variant. `WatcherTests` saw the notice titled "Waiting for Your Yes: Sun 13 Sep" and the Activity line "is waiting for your yes" from a real run on a generated file |
+| 7 | Contrast: every text color token 4.5 to 1 or more on its background in both appearances | **PASS.** `LibraryTests.testEveryTextColorMeasuresFourPointFiveToOne`: **68 pairs** (primary, secondary, accent and problem text on the window, control, under-page and text backgrounds, and white on the accent fill, in light, dark and both Increase Contrast appearances), **the lowest 4.92 to 1** (accent text on the dark under-page background); secondary text 5.32 on white and 5.21 on the light under-page; white on the accent fill 8.63 light, 5.47 dark. The same test measures the system's own secondary label at **3.95** on white and the accent fill as dark text at **3.05**, and asserts both are under 4.5 (the reasons the tokens exist). `testAppSecondaryResolvesToTheMeasuredColor`: `.appSecondary` resolves to the token, and to white at 85 percent on a selected, emphasized row. The real window measured in check 3 |
+| 8 | Regression set; `make migrate-check` (the new selection state is not stored; the two stored additions migrate) | **PASS.** `make regress MILESTONE=v2-m3a` (16:09 to 16:30, exit 0): **`make test` 194 tests, 0 failures, 8 skipped** (710.1 s); **`make accept` PASS**: 13 Sep **-16.8 LUFS** (-16.82 by loudnorm's meter), true peak **-1.7 dBFS** (-1.68 dBTP), 2,948 words reaching 15:47 of 15:48, 137 captions for 137 sentences, 0 differing; **`silent-60s` Needs a decision** at -91 dB, nothing made; the 30 s clip filed as a test; 6 Sep -16.7 LUFS (-16.72), -1.4 dBFS (-1.43 dBTP), 9,952 words reaching 55:38 of 55:39, 555 captions; **`grep -c 2026-09-14 acceptance.txt`: 0**; **`make accept-edits` PASS** (check 5). Code changed after the regress run (the list's headings, Help's section names, the Settings pane's first line), so `make test` and `make look` ran again on the final code (checks 1 and 3). **`make migrate-check` PASS** (17:03): the live store's copy opens with this schema, 11 recordings (2 waiting for a yes), 2 folders, 30 output settings, 340 Activity lines, titles on in 0 folders; **0 recordings with ticked claims and 0 folders with removed files** (the additions arrive empty). The browser's state (group, selection, grid or list, sort, filter, search, inspector tab) is held in memory only; the stored additions are `Source.forgottenPaths` and `Recording.checkedClaims`, both with defaults |
+
+**The originals:** unchanged, by `stat` before (16:09) and after (16:30) the regression set: the 13 Sep talk
+730,464,600 bytes, modified 1789350092; the 6 Sep talk 2,578,079,009 bytes, 1788746532.
+
+**Ship gate.** `make migrate-check` **PASS** (17:03, check 8). **`make install`** at 17:03:27: BUILD SUCCEEDED, the
+old copy (pid 90080) quit cleanly ("Quit." 17:03:28), **new pid 12336, "Prakriti 0.1 (1) opened. Mode: live. Store:
+~/Library/Application Support/Prakriti/Prakriti.store"** (no fallback store), login item on, "Welcome: seen before
+(version 2), so it is not shown.", "Caught up on changes made while Prakriti was closed: 0 events", `codesign --verify
+--deep --strict` passes, the installed bundle holds the 11 articles. **"Checked 2 folders. Nothing new." at 17:03:30
+and again at 17:08:29**, still pid 12336. The live `~/Prakriti/Outputs`, `Approved` and `Drop`: the same 12 files with
+the same SHA-256 before the install and after the second heartbeat.
+
+### What the runs caught and fixed
+
+- **An empty inspector asked for 2,195 pt of height, an empty group 1,835 pt, Needs You with an unreadable
+  folder 2,084 pt.** In the first snapshots the whole window was laid out that tall, so groups looked empty and
+  scrolled. The cause: a wrapped message with `fixedSize(vertical:)`, asked for its smallest size in a narrow
+  column, reflows to one word a line. `EmptyState`'s message now has a 240 pt minimum width, the status line
+  300 pt, the empty inspector sits in a scroll view, and every snapshot asserts the content fits the window
+  (warning 87). In the real window this would have pushed the window past the screen.
+- **Replacing the window's text hierarchy to fix the secondary grey turned every bordered button and every tile
+  dark** in the first real capture (the quaternary level derives from it). Taken back for `.appSecondary`
+  (warning 86).
+- **The inspector is Liquid Glass**: in the bitmap snapshots its forms drew blank. It is now drawn on its own into
+  its column, as the sidebar is, with its own pages when it is long.
+- **The grid took the focus at launch**, so the sidebar's selection drew grey and `make look`'s accent check
+  failed; it is focusable only once something is selected (warning 7's check passes).
+- **Escape did not come back** from a recording's page (nothing on the page had the focus), and once it did,
+  **Escape while typing in the title field closed the page**. The page takes the focus when it opens and a field
+  being typed in keeps Escape; `--keys` checks both.
+- **The status line and the inspector's tabs sat behind the toolbar**: both are safe-area insets now.
+- **The sidebar's section names measured 2.23 to 1**, the system's grey; they use the measured color (5.13 light,
+  4.86 dark, in the real window).
+- **`make look` misread the list**: Accessibility reads SwiftUI's Table as an outline with columns, not a table.
+- **Settings, Outputs opened scrolled past its first lines with Show name holding the keys** (macOS gave the first
+  text field the focus): a pane now opens with no field focused, at its first line (real window, looked at).
+- **The list's column headings drew at about 12 pt**, the table's own size; they are 15 pt semibold, and the columns
+  fit the browser beside the inspector without cutting Source.
+
+### Decisions, each with its reason
+
+1. **Ready holds the approved recordings.** Reason: "approved and every chosen deliverable passes" (design spec
+   2.4) needs the platform checks of M8 and M11b; until then an approved recording has passed every check
+   Prakriti makes, and Approve already refuses one whose edits are not made. The empty state says "Nothing is
+   approved yet."
+2. **The list is one sorted run of rows; the grid keeps the sections.** Reason: a table's column headings sort
+   it, which sections would fight; the design spec's list (3.2) has no sections.
+3. **Search spans the whole library, whatever group is selected.** Reason: Photos and Final Cut Pro search the
+   library; a sentence Ivan remembers should be found without knowing its group.
+4. **Capsules on the tile are solid, not a material.** Reason: the tile is a flat fill until M6 can make safe
+   frames; a material over a flat fill adds nothing and bitmaps cannot draw it. M6 switches to `.regularMaterial`
+   when real frames arrive (design spec 3.1.1).
+5. **Remove from Library moves the Outputs folder to the Trash rather than deleting it,** and remembers the path
+   on its folder. Reason: the Trash can be emptied by Ivan and undone until then; and without the path the
+   watcher would find and remake it.
+6. **Activity is a window now, v1's list as it was.** Reason: the design spec moves it out of the sidebar (C5)
+   and every v1 function must stay reachable; its progress is M4a's.
+7. **v1's Today, Sources and Settings screens were deleted in this part; the recording page was not.** Reason:
+   their every function now lives in Needs You, the folder inspector and the Settings window, and leaving dead
+   screens would read as current; the page stays until M3b, as the plan requires.
+8. **Quick Look, Stop on one recording, the People filter and the Has Edited Video filter are not built.** Reason:
+   v1 has no way to stop one recording, and the others need the Viewer (M3b), people (M6) or video (M8).
+9. **The grid and list toggles and the inspector toggle are symbols in the toolbar** (with their words in the
+   View menu and for VoiceOver). Reason: the design spec asks for Finder's control; Pause All and Sort keep
+   their words.
+10. **`WelcomeContent.version` stays 2.** Reason: two sentences changed words, not meaning; raising it would
+    reopen the welcome at Ivan's next launch.
+
+### Looked at (D1)
+
+No video frame, face or recording picture was made or looked at in this part: the cards are neutral tiles and the
+windows show no picture. Looked at: the real-window captures in `screens/mac/v2-m3a/real/` (every group, the
+list, a folder, the three inspector tabs, a search, the five Settings panes and Activity, light and dark, and the
+refusal), and the snapshots in `screens/mac/v2-m3a/` in contact sheets.
+
+### What does not work yet, or was not seen working
+
+- **Opening a recording shows v1's page**, by design, until M3b's Viewer.
+- **Quick Look (Space), state restoration, Quick Help and TipKit** are M3b's.
+- **The menu bar menu's Settings… was not clicked in the real menu bar** (it cannot be driven without Screen
+  Recording and Accessibility on the system's menu bar extra); Command-comma and the Settings scene were.
+- **Drag and drop onto the window was not dragged by hand**; its handler is v1's drop area's.
+- **VoiceOver was not run** over the cards; their labels are set in code.
+- **Help's sidebar section names** (M2a) still draw in the system's header grey.
+- **The writing section's lock line** reads the writer's stored reason ("This recording mentions Serenity"),
+  from `Privacy.lockReason`; M5a rewrites the lock and that reason.
+
+### For Ivan
+
+- [ ] **Ten minutes with the new window** (PLAN M3, Needs Ivan): it is open after the install. Click through Needs
+  You, In Progress, Ready and All Recordings; click a recording and read the inspector on the right; double-click
+  it to open its page (Escape comes back); try the list (Command-2) and the search (type a word Gabriel says).
+  Prakriti > Settings (Command-comma) holds Outputs, Models and the rest. Say what to change: this is the
+  cheapest point to change direction.
+- [ ] **Your window keeps its own size (1140 by 772).** The new layout is drawn for 1440 by 900: drag the window
+  larger, or hide the inspector (Command-Option-I) when the browser feels tight.
+- Nothing is blocked on you.

@@ -21,7 +21,7 @@ struct ModelsView: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(task.title).font(AppFont.body)
-                            Text(task.summary).font(AppFont.secondary).foregroundStyle(.secondary)
+                            Text(task.summary).font(AppFont.secondary).foregroundStyle(.appSecondary)
                         }
                     }
                 }
@@ -98,12 +98,12 @@ struct ProviderRow: View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Image(systemName: provider.isLocal ? "house" : "arrow.up.right.circle")
                 .font(AppFont.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.appSecondary)
                 .frame(width: Metrics.symbolWidth)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(location).font(AppFont.body)
-                Text(note).font(AppFont.secondary).foregroundStyle(.secondary)
+                Text(note).font(AppFont.secondary).foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -150,11 +150,11 @@ struct TestRow: View {
                     Text(check.line).font(AppFont.body)
                         .fixedSize(horizontal: false, vertical: true)
                     if check.state != .checking {
-                        Text("Tested at \(Format.clock(check.at)).").font(AppFont.secondary).foregroundStyle(.secondary)
+                        Text("Tested at \(Format.clock(check.at)).").font(AppFont.secondary).foregroundStyle(.appSecondary)
                     }
                 }
             } else {
-                Text("Not tested yet.").font(AppFont.body).foregroundStyle(.secondary)
+                Text("Not tested yet.").font(AppFont.body).foregroundStyle(.appSecondary)
             }
             Spacer(minLength: 12)
             Button(title) { model.testProvider(provider) }
@@ -199,13 +199,13 @@ struct ClaudeKeyRow: View {
                     }
                 }
                 if let problem {
-                    Text(problem).font(AppFont.secondary).foregroundStyle(.secondary)
+                    Text(problem).font(AppFont.secondary).foregroundStyle(.appSecondary)
                 }
             }
         } label: {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Key").font(AppFont.body)
-                Text(model.claudeKeyAdded ? "Kept in the Keychain." : "No key added.").font(AppFont.secondary).foregroundStyle(.secondary)
+                Text(model.claudeKeyAdded ? "Kept in the Keychain." : "No key added.").font(AppFont.secondary).foregroundStyle(.appSecondary)
             }
         }
     }

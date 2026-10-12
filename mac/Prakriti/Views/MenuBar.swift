@@ -6,6 +6,7 @@ import SwiftUI
 struct MenuBarMenu: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
     @Query private var recordings: [Recording]
     @Query(sort: \Source.addedAt) private var sources: [Source]
 
@@ -22,8 +23,7 @@ struct MenuBarMenu: View {
         }
         Divider()
         Button("Settings…") {
-            openWindow(id: MainWindow.id)
-            model.open(.settings)
+            openSettings()
             NSApp.activate()
         }
         .keyboardShortcut(",", modifiers: .command)
@@ -41,6 +41,7 @@ struct MenuBarMenu: View {
 struct MenuBarIcon: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
     @Query private var recordings: [Recording]
     @Query(sort: \Source.addedAt) private var sources: [Source]
 
@@ -52,6 +53,8 @@ struct MenuBarIcon: View {
             .onAppear {
                 model.openMainWindow = { openWindow(id: MainWindow.id) }
                 model.openHelpWindow = { openWindow(id: HelpWindow.id) }
+                model.openSettingsWindow = { openSettings() }
+                model.openActivityWindow = { openWindow(id: ActivityWindow.id) }
             }
             .onChange(of: working, initial: true) { _, isWorking in model.ticker.setWorking(isWorking) }
             // Hidden from the menu bar (Settings): nothing to animate.

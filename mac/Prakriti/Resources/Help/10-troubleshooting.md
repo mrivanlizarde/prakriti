@@ -18,26 +18,26 @@ related: [capture-the-best-video, set-up-obs-for-prakriti, sources-and-watching,
   on a recording, the two halves light in turn. If the mark is not there, open Prakriti from the
   Applications folder.
 - Check that Pause All is not on. If it is, click Resume All.
-- Click Sources and look at the folder. If it shows a warning, click Open Privacy Settings and turn
-  Prakriti on. [Show Me](prakriti://show/sources)
+- Look at the folder under Sources in the sidebar. If it shows a warning sign, select it, click Open
+  Privacy Settings in the inspector, and turn Prakriti on. [Show Me](prakriti://show/sources)
 - A recording still being written is not ready yet. Prakriti starts a minute after the file stops
   growing. A file in iCloud Drive must download first.
 - A recording under 60 seconds is filed as a test, and nothing is made from it.
-- Click Check Now on the Sources screen.
+- Select the folder under Sources and click Check Now in the inspector.
 
 ### If Prakriti seems to have stopped
 
-Click Activity in the sidebar. [Show Me](prakriti://show/activity) Prakriti writes a line such as
+Choose Window > Activity. [Show Me](prakriti://show/activity) Prakriti writes a line such as
 "Checked 2 folders. Nothing new." every 5 minutes. If there is no new line for longer than that, quit
 Prakriti from the menu bar and open it again. If it keeps happening, send the day's log (see "Find the
 log" below).
 
 ### If you don't get notifications
 
-Click Settings in the sidebar, then Open Notification Settings. System Settings opens at Prakriti's own
-page: turn on Allow notifications. [Show Me](prakriti://show/settings) Choose Banners, and turn on sound
-for its notifications. Also check that a Focus is not hiding them. The Settings screen says whether macOS
-allows Prakriti's notices.
+Choose Prakriti > Settings (Command-comma), click General, then Open Notification Settings. System
+Settings opens at Prakriti's own page: turn on Allow notifications.
+[Show Me](prakriti://show/settings/general) Choose Banners, and turn on sound for its notifications. Also
+check that a Focus is not hiding them. Settings, General says whether macOS allows Prakriti's notices.
 
 :::requires welcome
 The last panel of the welcome window does the same: choose Help > Welcome to Prakriti, click Continue to
@@ -114,8 +114,8 @@ blurred.
 ### If LM Studio doesn't answer
 
 - Open LM Studio and make sure its local server is running.
-- On the Models screen, check the address matches the one LM Studio shows, then click Test LM Studio.
-  [Show Me](prakriti://show/models)
+- In Settings, Models, check the address matches the one LM Studio shows, then click Test LM Studio.
+  [Show Me](prakriti://show/settings/models)
 - Make sure the model is downloaded in LM Studio. Prakriti loads it itself.
 - Close large apps. The model needs about 33 GB of memory while it works.
 
@@ -124,7 +124,7 @@ is still made, and the recording's page says why the writing stopped.
 
 ### If the Claude API key doesn't work
 
-- Click Test Claude API on the Models screen and read the message.
+- Click Test Claude API in Settings, Models and read the message.
 - Check that the account on Anthropic's site has credit or a payment method.
 - Make a new key on Anthropic's site, then paste it and click Save in Keychain.
 

@@ -7,7 +7,7 @@ import UserNotifications
 // plain data so the copy rules can be tested without macOS; the Notifier hands it to macOS.
 //
 // Copy rules (SCOPE 8.1 rule 6), each checked by NotificationTests:
-// - Title case with the date ("Ready for Your Yes: Sun 13 Sep"), the weekday computed.
+// - Title case with the date ("Waiting for Your Yes: Sun 13 Sep"), the weekday computed.
 // - Full sentences in the body. No app name (macOS already shows it), no "we", no em dashes, no
 //   emoji, no exclamation marks.
 // - No student names and no quotes from a session: notices show on lock screens and mirrored
@@ -189,7 +189,7 @@ final class SystemNoticePoster: NoticePoster {
 
 /// Asks macOS for permission once, posts the notices, and opens a recording's page when one is
 /// clicked. Permission is alert and sound only: never provisional (it would arrive quietly, and
-/// Ready for Your Yes must make a sound) and never a badge (SCOPE 7.2).
+/// Waiting for Your Yes must make a sound) and never a badge (SCOPE 7.2).
 @MainActor
 @Observable
 final class Notifier {

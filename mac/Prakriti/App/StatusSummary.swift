@@ -1,9 +1,27 @@
 import Foundation
 
-/// The one sentence that says what Prakriti is doing, used by the menu bar and Today.
+/// The status line for the menu bar and the top of Needs You.
+@MainActor
+extension AppModel {
+    func statusSummary(recordings: [Recording], sources: [Source]) -> StatusSummary {
+        let working = recordings.first { $0.status == .working }
+        let blocked = sources.filter { watcher.states[$0.id]?.isBlocked == true }.map(\.name)
+        return StatusSummary.make(
+            isWatching: isWatching,
+            isPaused: settings.isPaused,
+            folderNames: sources.map(\.name),
+            blockedFolders: blocked,
+            needsYou: recordings.filter(\.status.needsYou).count,
+            problems: recordings.filter { $0.status == .couldntFinish }.count,
+            working: working.map { (Format.dayLabel($0.sessionDate), $0.currentStep ?? "Working") })
+    }
+}
+
+
+/// The one sentence that says what Prakriti is doing, used by the menu bar and Needs You.
 /// Never "Processing...": the step is named.
 struct StatusSummary: Equatable, Sendable {
-    /// The state's shape. The raw values are SF Symbols, which Today draws inside the window, where
+    /// The state's shape. The raw values are SF Symbols, which Needs You draws inside the window, where
     /// SF Symbols belong; the menu bar draws `menuBarAsset` instead.
     enum Icon: String, CaseIterable, Sendable {
         case idle = "circle"
@@ -45,7 +63,7 @@ struct StatusSummary: Equatable, Sendable {
             return StatusSummary(line: "Paused. Nothing new is processed until you resume.", icon: .paused)
         }
         // A folder that cannot be read wins over work in progress: it needs Ivan, and new recordings
-        // there go unseen until he answers. Work in progress has its own section on Today.
+        // there go unseen until he answers. Work in progress has its own section in In Progress.
         if isWatching && !blockedFolders.isEmpty {
             return StatusSummary(line: "Watching " + folderPhrase(folderNames) + ". " + folderPhrase(blockedFolders)
                                  + " cannot be read yet: macOS needs your OK. See Sources.", icon: .problem)

@@ -102,7 +102,7 @@ final class NotificationTests: XCTestCase {
         let expected: [NotificationEvent: (sound: Bool, level: NoticeContent.Level)] = [
             .found: (false, .active),          // New Recording Found: no sound
             .started: (false, .passive),       // Started: quiet, straight to Notification Center
-            .ready: (true, .active),           // Ready for Your Yes: sound
+            .ready: (true, .active),           // Waiting for Your Yes: sound
             .needsADecision: (true, .active),
             .couldntFinish: (true, .active),
         ]
@@ -114,7 +114,7 @@ final class NotificationTests: XCTestCase {
         }
         // Hidden previews say the status words the app shows (SCOPE 8.1 rule 10).
         XCTAssertEqual(NotificationEvent.allCases.map(\.hiddenPreview),
-                       ["Found", "Working", "Ready for your yes", "Needs a decision", "Couldn't finish"])
+                       ["Found", "Working", "Waiting for your yes", "Needs a decision", "Couldn't finish"])
     }
 
     /// The exact words for the 13 Sep talk and the silent 14 Sep class, pinned.
@@ -127,7 +127,7 @@ final class NotificationTests: XCTestCase {
         XCTAssertEqual(NoticeBuilder.content(.started, f).title, "Started: Sun 13 Sep")
         XCTAssertEqual(NoticeBuilder.content(.started, f).body,
                        "The sound is good, so the episode audio and the transcript are being made now. It takes about 1 minute.")
-        XCTAssertEqual(NoticeBuilder.content(.ready, f).title, "Ready for Your Yes: Sun 13 Sep")
+        XCTAssertEqual(NoticeBuilder.content(.ready, f).title, "Waiting for Your Yes: Sun 13 Sep")
         XCTAssertEqual(NoticeBuilder.content(.ready, f).body, "The episode audio and the transcript are ready. Listen before anything goes out.")
         f.coverageGap = 185
         XCTAssertEqual(NoticeBuilder.content(.ready, f).body,

@@ -3,6 +3,13 @@
 The team's notes for the in-app Help article `mac/Prakriti/Resources/Help/01-welcome.md` ("What Prakriti does").
 Moved out of the article in v2 part M2a so the app bundle holds user text only. Never shown in the app.
 
+## Status after v2 part M3a (Sun 11 Oct 2026)
+
+- Step 3 names In Progress (v1's Today is gone); step 4 opens the recording by double-clicking it (v1's
+  page is unchanged until the Viewer, M3b). "Start here" reaches notifications through Prakriti >
+  Settings, General (the Settings window, Command-comma) with Show Me `settings/general`, and says
+  "waiting for your yes" (design spec C1). The Tip adds Settings, General, Show the Welcome Window Again.
+
 ## Status after v2 part M2a (Sun 11 Oct 2026)
 
 - Title changed from "Welcome to Prakriti" to **"What Prakriti does"** (DS 5.7's title for `welcome`), because

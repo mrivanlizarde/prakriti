@@ -32,9 +32,11 @@ call.
    and nothing is made from it.
 3. **Prakriti makes the outputs you chose.** It writes the transcript, masters the sound into a podcast
    episode and writes a short report. If you turn them on, it also makes the podcast-ready episode and
-   drafts titles, show notes and chapters. Today and the menu bar show the step it is on.
-4. **You review.** On the recording's page, listen to the episode or the original, read the transcript,
-   trim the start and end, cut what should not be heard, and make it again until it is right.
+   drafts titles, show notes and chapters. In Progress, in the sidebar, and the menu bar show the step
+   it is on.
+4. **You review.** Double-click the recording to open its page. Listen to the episode or the original,
+   read the transcript, trim the start and end, cut what should not be heard, and make it again until it
+   is right.
 5. **You approve.** Prakriti copies the finished files to your Approved folder with a receipt. You
    upload them. Prakriti never posts or uploads anything on its own.
 
@@ -54,12 +56,13 @@ call.
 1. [Capture the best video](02-capture-the-best-video.md): the light, sound and room choices that
    matter most.
 2. [Set up OBS for Prakriti](03-set-up-obs-for-prakriti.md): the settings, once.
-3. Turn on notifications so you know when a recording is ready for your yes: click Settings in the
-   sidebar, click Open Notification Settings, then turn on Allow notifications.
-   [Show Me](prakriti://show/settings)
+3. Turn on notifications so you know when a recording is waiting for your yes: choose Prakriti >
+   Settings (Command-comma), click General, click Open Notification Settings, then turn on Allow
+   notifications. [Show Me](prakriti://show/settings/general)
 4. Record a 10-second test and play it back with headphones before the first session.
 
 :::requires welcome
-**Tip:** The welcome window opens once by itself. To see it again, choose Help > Welcome to Prakriti.
-Its last panel can choose a folder to watch and turn on notifications.
+**Tip:** The welcome window opens once by itself. To see it again, choose Help > Welcome to Prakriti, or
+click Show the Welcome Window Again in Settings, General. Its last panel can choose a folder to watch and
+turn on notifications.
 :::
