@@ -3368,7 +3368,11 @@ passing results for those on be0f5c9 stand.
 
 ### Installed
 
-After every check above passed: `make install`, then `pgrep` and a fresh Activity sweep (below).
+After every check above passed and 5d1144f was pushed: `make install` at 16:36 ("Only the installed copy is
+registered"). `pgrep`: pid 25147, `~/Applications/Prakriti.app/Contents/MacOS/Prakriti`. Live log 16:36:11:
+"Caught up on changes made while Prakriti was closed: 0 events", Studio Recordings listed 13, Drop 0, "Checked 2
+folders. Nothing new.", "Finished launching. Mode: live." Nothing for Ivan to do; notifications are still off for
+Prakriti in System Settings, as before.
 
 ## v2 part M4a: progress and the Activity window. Mon 12 Oct 2026
 
