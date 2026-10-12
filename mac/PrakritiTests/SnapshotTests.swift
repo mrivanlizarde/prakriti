@@ -142,6 +142,14 @@ final class SnapshotTests: XCTestCase {
                             model.runner.showSample(job: model.runner.currentJob, waiting: [clip.id], held: [clip.id])
                         }
                     }),
+                    // Two waiting: the second in line shows Make Next beside Pause and Stop (M4a fix: no picture showed it).
+                    ("11-activity-now-line", .now, { model in
+                        Fixtures.showProgress(model)
+                        let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
+                        let clip = all.first { $0.fileName == "2026-09-13 clip 90s.mp4" }
+                        let other = all.first { $0.status != .working && $0.id != clip?.id }
+                        model.runner.showSample(job: model.runner.currentJob, waiting: [clip, other].compactMap { $0?.id })
+                    }),
                     ("11-activity-now-empty", .now, { _ in }),
                     ("11-activity-finished", .finished, { _ in }),
                     ("11-activity-log", .log, { _ in }),
@@ -275,7 +283,7 @@ final class SnapshotTests: XCTestCase {
 
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2 + viewerCount)
+        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + viewerCount)
     }
 
     /// v2 part M2a: the Help window, open at every article this build shows, in light and dark, with a

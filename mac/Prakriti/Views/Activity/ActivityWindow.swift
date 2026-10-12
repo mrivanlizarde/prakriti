@@ -229,7 +229,7 @@ struct StageRow: View {
                 .foregroundStyle(symbolColor)
                 .frame(width: 20)
                 .accessibilityHidden(true)
-            Text(line.step.title)
+            Text(line.step.listTitle(running: line.state == .running))
                 .font(AppFont.secondary)
                 .foregroundStyle(nameColor)
             Spacer(minLength: 12)

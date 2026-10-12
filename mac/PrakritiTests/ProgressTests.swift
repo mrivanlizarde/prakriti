@@ -435,3 +435,15 @@ final class ProgressTests: XCTestCase {
         return url
     }
 }
+
+/// v2 part M4a fix: a running step's name in the Activity window's Steps is never in the past tense.
+final class StepNameTenseTests: XCTestCase {
+    func testARunningStepIsNotNamedAsDone() {
+        XCTAssertEqual(PipelineStep.complete.listTitle(running: true), "Checking the file is complete")
+        XCTAssertEqual(PipelineStep.complete.listTitle(running: false), "Checked the file is complete")
+        for step in PipelineStep.allCases {
+            XCTAssertFalse(step.listTitle(running: true).hasPrefix("Checked"), step.rawValue)
+            XCTAssertEqual(step.listTitle(running: false), step.title)
+        }
+    }
+}

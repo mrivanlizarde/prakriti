@@ -1112,12 +1112,33 @@ func runKeysCheck(_ app: URL) -> Int {
     expect("Command-2 shows the list", { hasTable(pid: pid) })
     sendKey(pid: pid, 18, flags: .maskCommand)              // Command-1
     expect("Command-1 shows the grid again", { !hasTable(pid: pid) })
+    // The inspector itself, not only the menu's words: its tab switch (the "Inspector" picker) is on screen.
+    func inspectorOnScreen() -> Bool {
+        axAll(AXUIElementCreateApplication(pid)).contains { element in
+            let role = axString(element, kAXRoleAttribute)
+            return (role == kAXRadioGroupRole as String || role == kAXTabGroupRole as String || role == "AXPopUpButton")
+                && (axString(element, kAXDescriptionAttribute) == "Inspector" || axString(element, kAXTitleAttribute) == "Inspector")
+        }
+    }
     let before = menuItems(pid: pid, menu: "View").map(\.title).filter { $0.hasSuffix("Inspector") }
+    expect("the inspector is on screen to begin with", { inspectorOnScreen() })
     sendKey(pid: pid, 34, flags: [.maskCommand, .maskAlternate])   // Command-Option-I
     expect("Command-Option-I hides the inspector (View menu: \(before.joined()) before)", {
         menuItems(pid: pid, menu: "View").contains { $0.title == "Show Inspector" } })
+    // Sent at once, while the hide may still be animating (the case that lost it, Mac warning 107), and read
+    // again 1.5 s later: the end of the hide's animation once wrote "hidden" over this key after the menu was read.
     sendKey(pid: pid, 34, flags: [.maskCommand, .maskAlternate])
     expect("Command-Option-I shows it again", { menuItems(pid: pid, menu: "View").contains { $0.title == "Hide Inspector" } })
+    Thread.sleep(forTimeInterval: 1.5)
+    expect("and it stays shown 1.5 s later (View menu and the inspector on screen)", {
+        menuItems(pid: pid, menu: "View").contains { $0.title == "Hide Inspector" } && inspectorOnScreen() })
+    // The control: unhurried, a hide takes the inspector off the screen and a show brings it back.
+    sendKey(pid: pid, 34, flags: [.maskCommand, .maskAlternate])
+    Thread.sleep(forTimeInterval: 2.0)
+    expect("unhurried, Command-Option-I takes the inspector off the screen", { !inspectorOnScreen() })
+    sendKey(pid: pid, 34, flags: [.maskCommand, .maskAlternate])
+    Thread.sleep(forTimeInterval: 2.0)
+    expect("and brings it back", { inspectorOnScreen() && menuItems(pid: pid, menu: "View").contains { $0.title == "Hide Inspector" } })
     sendKey(pid: pid, 43, flags: .maskCommand)              // Command-comma
     expect("Command-comma opens the Settings window", { layerZeroWindows(pid: pid).contains { abs($0.1.width - 760) < 2 } })
     quitAll(app)

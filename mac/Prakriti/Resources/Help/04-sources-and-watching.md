@@ -99,7 +99,8 @@ and choose Keep Downloaded.
   toolbar, or choose Show Activity in the menu bar menu. [Show Me](prakriti://show/activity)
   - **Now** shows the recording being made, with every step: how long each finished one took, the
     running one's time so far, and the usual time of each still to come. Recordings waiting their turn
-    are listed under it, in order. Control-click one and choose Make Next to make it next.
+    are listed under it, in order. One that is second or later in line has a Make Next button; you can
+    also Control-click it and choose Make Next.
   - **Finished** lists each recording that ended, by day, with what came of it, Show and Show in Finder.
   - **Log** has every check and every step, newest first, with a search field.
 - **The menu bar** shows the recording, its step, the percent and the time left, such as "Making Sun 13

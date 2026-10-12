@@ -82,7 +82,38 @@ final class AppModel {
     var search = LibrarySearch()
     /// The recordings selected in the browser, by id.
     var selectedRecordings: Set<UUID> = [] { didSet { if oldValue != selectedRecordings { saveWindowState() } } }
-    var inspectorShown = true { didSet { if oldValue != inspectorShown { saveWindowState() } } }
+    var inspectorShown = true {
+        didSet {
+            guard oldValue != inspectorShown else { return }
+            if !applyingInspectorReport { inspectorAskedAt = Date() }
+            saveWindowState()
+        }
+    }
+    /// When Prakriti itself last showed or hid the inspector (a key, a menu, the toolbar, a restore).
+    @ObservationIgnored private var inspectorAskedAt = Date.distantPast
+    @ObservationIgnored private var applyingInspectorReport = false
+    /// Read by the main window's body so a refused report from the split view redraws the inspector as asked.
+    private(set) var inspectorRedraw = 0
+
+    /// The window's own report that the inspector opened or closed, from the split view (the `.inspector`
+    /// binding's setter). Ivan dragging the inspector shut arrives here and is kept. A report that contradicts
+    /// what was asked less than a second ago is the end of the PREVIOUS animation and is refused.
+    /// Reason (12 Oct, M4a fix): a second Command-Option-I pressed while the hide was still animating set
+    /// `inspectorShown` back to true, and then the hide's own completion (SwiftUI's
+    /// `SplitViewController.splitViewItem(_:didChangeCollapsed:animated:)`) wrote false over it, so the
+    /// inspector stayed hidden. Measured: in 6 of 6 `--keys` runs the stale write came after the second key;
+    /// the check failed when it landed before the menu was read (2 of 8 and 3 of 6 runs).
+    func inspectorReported(_ shown: Bool) {
+        guard shown != inspectorShown else { return }
+        if Date().timeIntervalSince(inspectorAskedAt) < 1.0 {
+            inspectorRedraw &+= 1
+            log.write("Inspector: kept \(inspectorShown ? "shown" : "hidden") as asked; the window's late report of the last animation was set aside.")
+            return
+        }
+        applyingInspectorReport = true
+        inspectorShown = shown
+        applyingInspectorReport = false
+    }
     var inspectorTab: InspectorTab = .outputs { didSet { if oldValue != inspectorTab { saveWindowState() } } }
     /// The Viewer (v2 part M3b): one at a time, so the inspector, the menus and state restoration read it.
     let viewer = ViewerModel()

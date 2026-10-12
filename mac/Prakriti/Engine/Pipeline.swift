@@ -50,6 +50,14 @@ enum PipelineStep: String, CaseIterable, Sendable {
         }
     }
 
+    /// The name in a list of steps (the Activity window's Steps): `title`, except a step whose title is in the
+    /// past tense says what it is doing while it runs. Reason (12 Oct, M4a fix): the running first step read
+    /// "Checked the file is complete" at 0:28 so far. `title` itself stays, because stored steps are matched
+    /// by it (`StageTimings`, `JobProgress`, `PipelineRunner`).
+    func listTitle(running: Bool) -> String {
+        running && self == .complete ? "Checking the file is complete" : title
+    }
+
     var doing: String {
         switch self {
         case .complete: "Checking the file is complete"

@@ -5,6 +5,23 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-12, Mon: v2 part M4a, fixes after the verifier
+
+- **Pressing Command-Option-I twice quickly now leaves the inspector shown.** Why: the verifier saw the second
+  press fail in 2 of 5 `make look` runs. The key was never lost. It reached the menu every time, and then the
+  end of the first hide's animation told the model "hidden" and overwrote it. The window's report now goes
+  through `AppModel.inspectorReported`, which sets aside a report that contradicts what was asked under a second
+  earlier (Mac warning 107). The earlier reason (the toolbar ring drawn as shapes) was wrong and is corrected
+  in warning 106.
+- **The keys check now reads the inspector itself, 1.5 s after the second press, with an unhurried hide and show
+  as the control.** Why: the old check read only the View menu's words at once, so it passed on a moment that
+  the late report then undid; with the unfixed code the new check fails 4 of 4 runs.
+- **A running first step reads "Checking the file is complete", not "Checked".** Why: the verifier's picture
+  showed the past tense at 0:28 so far. The stored step name stays, because stored steps are matched by it.
+- **A snapshot of two recordings in line shows Make Next on the second, and Help says the button is there.**
+  Why: no picture showed the button, and Help mentioned only the Control-click.
+- **Not installed until every check passed.** Why: PLAN rule 2.1.3; the builder installed before verification.
+
 ## 2026-10-12, Mon: v2 part M4a, progress and the Activity window
 
 - **Every recording being made shows its stage, percent and time left: a ring and percent on its card, a bar in

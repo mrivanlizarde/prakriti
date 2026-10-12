@@ -13,6 +13,7 @@ struct MainView: View {
 
     var body: some View {
         @Bindable var model = model
+        let _ = model.inspectorRedraw
         NavigationSplitView {
             Sidebar(selection: $model.selection)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
@@ -25,7 +26,9 @@ struct MainView: View {
                     }
             }
         }
-        .inspector(isPresented: $model.inspectorShown) {
+        // Through `inspectorReported`, never straight into `inspectorShown`: the split view reports the end of
+        // an animation that a newer key press has already overruled (Mac warning 107).
+        .inspector(isPresented: Binding(get: { model.inspectorShown }, set: { model.inspectorReported($0) })) {
             InspectorView()
                 .inspectorColumnWidth(min: 320, ideal: 360, max: 440)
         }

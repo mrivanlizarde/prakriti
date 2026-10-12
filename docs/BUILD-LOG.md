@@ -3313,6 +3313,63 @@ J (backward) not measured on the real files; VoiceOver not run over the strip or
 picture and transcript is not remembered; the Podcast-ready rendition assumes no intro.
 
 
+## v2 part M4a, fixes after the verifier. Mon 12 Oct 2026
+
+The verifier's verdict on be0f5c9: check 4 (`make look`) intermittent, the second Command-Option-I failing in 2
+of 5 runs (`screens/mac/v2-m4a-verify/look-run1-FAIL.txt`, `look-run3-FAIL.txt`); installed before verification
+(rule 2.1.3); three minor points. Fixed at their causes below, then installed.
+
+### What was fixed, and the cause
+
+1. **The second Command-Option-I.** Reproduced first: `swift scripts/capture-window.swift --keys` failed 2 of 8
+   runs on be0f5c9. With a log line and a call stack on every change of `inspectorShown` (temporary, removed),
+   all 6 runs showed the same order: the menu's action ran for both presses (true, false, true), then
+   `SwiftUI.SplitViewController.splitViewItem(_:didChangeCollapsed:animated:)` wrote **false** a moment later.
+   That was the end of the first hide's animation, overruling the second press. The check failed only when that
+   write landed before it read the menu. So no key was lost, and the toolbar ring had nothing to do with it.
+   **Fix:** `.inspector(isPresented:)` gets a binding whose setter is `AppModel.inspectorReported(_:)`. A report
+   that contradicts what was asked under 1 s earlier is set aside (logged: "Inspector: kept shown as asked; the
+   window's late report of the last animation was set aside.") and `inspectorRedraw` makes the window draw what
+   was asked. A report after that, such as dragging the inspector shut, is kept. START_HERE Mac warning 107; 106's
+   reason corrected.
+2. **The check could pass on a moment.** It read the View menu once, at once. Now it checks the inspector's tab
+   switch is on screen to begin with, presses twice at once, reads the menu, then again **1.5 s later both the
+   menu and the inspector on screen**, then an unhurried hide (off screen) and show (back) as the control.
+3. **"Checked the file is complete" while it ran.** `PipelineStep.listTitle(running:)` names the running
+   `.complete` step "Checking the file is complete" in the Activity window's Steps. `title` is unchanged because
+   `StageTimings`, `JobProgress` and `PipelineRunner` match stored steps by it. Test: `StepNameTenseTests`.
+4. **No picture of Make Next.** New snapshot `11-activity-now-line` (light, dark, and each "-end"): two waiting,
+   the second reads "Number 2 in line. Usually 28 min." with Pause, Stop and **Make Next**; the first, "Next in
+   line", has no Make Next. Help 04 now names the button as well as the Control-click.
+
+### Checks run, with results
+
+| Check | Result |
+|---|---|
+| New keys check on the **unfixed** code (control) | "and it stays shown 1.5 s later" **FAIL in 4 of 4 runs**: the new check catches the fault every time |
+| `--keys` on the fix | **13 of 13 runs, 20 of 20 lines each.** The "set aside" line was in the log on each run checked (3 of 3), so the race still happens and is handled |
+| `make look` (real app, captures, keys, playback), 3 runs in a row, the last ending 16:35 | **44 PASS, 0 FAIL each, exit 0.** Inspector lines all PASS 3 of 3. Playback 3.000 s apart at rate 1.00 in each (13.358/16.358, 21.543/24.543, 29.728/32.728 s). Live layout keys: "changed by this run: none" |
+| `make test` (`MILESTONE=v2-m4a-fix`) | **TEST SUCCEEDED, 237 test cases passed, 0 failed**, including `SnapshotTests.testRenderEveryScreen` (count updated for the new snapshot) and `StepNameTenseTests`. HelpTests run again after the Help edit: 22 of 22 |
+| Looked at | `screens/mac/v2-m4a-fix/11-activity-now-line-light.png` and `-light-end.png`: Make Next on place 2 only, as above |
+| Em dashes | 0 in the changed Help article, START_HERE, AppModel and Pipeline |
+
+Not run again, because nothing they cover changed (the pipeline, the store and the progress numbers are
+untouched): `make accept`, `make accept-progress`, `make accept-edits`, `make migrate-check`. The verifier's
+passing results for those on be0f5c9 stand.
+
+### Looked at, and left as it is
+
+- **The blank white pill in the grid/list switch and the Viewer's rendition switch** happens in the snapshots
+  only. The real window draws both correctly: `screens/mac/v2-m4a/real/05-all-recordings-list-dark.png` (the list
+  icon on its grey pill) and `12-viewer-original-pattern-light.png` ("Original" readable on its pill). It is the
+  offscreen renderer not drawing Liquid Glass's selected segment, the same limit as the sidebar's glass
+  (START_HERE). Not an app fault; no change.
+- **Parakeet and writing timed, not counted** (the builder's declared deviation) stays as decided.
+
+### Installed
+
+After every check above passed: `make install`, then `pgrep` and a fresh Activity sweep (below).
+
 ## v2 part M4a: progress and the Activity window. Mon 12 Oct 2026
 
 The seventh part of v2 (`docs/v2/PLAN.md`, M4, part M4a; REQUEST item 6, "give me a progress on the recordings as

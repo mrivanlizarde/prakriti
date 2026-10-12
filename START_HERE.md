@@ -830,7 +830,9 @@ of the Settings window and the Activity window, in light and dark, captures each
 into `screens/mac/<milestone>/real/`, checks the main window is 1440 by 900 and its selected sidebar row
 by its pixels, checks that adding the Studio Recordings folder is refused with an alert, and then drives
 the keys (`--keys`: Return, Escape, Command-Down, Command-Up, Command-[, Command-1 and 2, Command-Option-I,
-Command-comma), each read back through Accessibility by process id. A capture opens at 1440 by 900 and
+Command-comma), each read back through Accessibility by process id. Command-Option-I is pressed twice at once,
+then the inspector itself (its tab switch, not only the View menu's words) must still be on screen 1.5 s later,
+and an unhurried hide and show is the control (warning 107). A capture opens at 1440 by 900 and
 saves no window frame into the live copy's preferences. It takes the screen's focus for about three
 minutes: leave the Mac alone. `swift scripts/capture-window.swift --contrast <png> <x0> <y0> <x1> <y1>`
 measures the contrast between the darkest and lightest pixel in a box of a capture (text on its background).
@@ -1540,9 +1542,19 @@ top and its end. Reading the code is not verification, and neither is a passing 
 
 106. **The toolbar's Activity button draws its ring as a picture (`ProgressRing.image`) inside a `Label`, never as
     SwiftUI shapes, and reads cached numbers (`PipelineRunner.usual(for:)`), never the store, while it draws.**
-    Reason: measured 12 Oct in `make look`, with the ring drawn as shapes in the toolbar the second Command-Option-I
-    (show the inspector again) went unheard in 3 of 3 runs while a make was shown; the same build with the ring as
-    an image passed 3 of 3, as did the build before M4a.
+    Reason: kept because it is cheaper to draw, but **the reason first given here was wrong**. It said shapes in the
+    toolbar swallowed the second Command-Option-I; the verifier then saw that key fail in 2 of 5 runs with the
+    picture. The key was never lost: see warning 107 for the cause.
+107. **The inspector's `.inspector(isPresented:)` binding writes through `AppModel.inspectorReported(_:)`, never
+    straight into `inspectorShown`; a report that contradicts what was asked less than 1 s earlier is set aside and
+    the window redrawn (`inspectorRedraw`).** Reason: measured 12 Oct (M4a fix) with a call stack on every change of
+    `inspectorShown`: the second Command-Option-I reached the menu and set it to true every time, then the first
+    hide's animation ended and SwiftUI (`SplitViewController.splitViewItem(_:didChangeCollapsed:animated:)`) wrote
+    false over it. That happened in 6 of 6 runs; the check failed only when the write landed before the menu was
+    read (2 of 8 runs here, 2 of 5 for the verifier), so it looked like a lost key. With the guard, `--keys`
+    passed 13 of 13 runs, the log shows the late report set aside in each, and the inspector is on screen 1.5 s
+    later. Dragging the inspector shut still reaches the model (it is not within 1 s of a key). Do not "fix" this
+    by waiting longer in the check: the check now reads the inspector again 1.5 s later on purpose.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 
