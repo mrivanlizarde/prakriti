@@ -1635,3 +1635,10 @@ M13 Finish line.
   each a different composition, with a one-line reason; the chosen one shown on the tile. Faces of anyone not
   Included are never in a thumbnail (privacy rule). Built in M11b; the tile preview may land earlier (M3/M8)
   using a plain frame. Thumbnail headlines come from the writing model (Claude Sonnet by default).
+- **Ivan, Mon 12 Oct: releases exist.** "All the participants have signed an agreement that includes that their
+  likeness can be used for commercial purposes." So: (1) people found in a recording default to Include, not
+  Leave Out; Include / Hide Face / Leave Out stays as an editing choice, not a privacy gate; (2) classes and
+  recordings with other people may be approved, rendered, exported and sent to the cloud writer; (3) D1 and D2
+  are answered: verifiers may look at frames, and the gallery may learn named people's faces and voices
+  (recognition, M7b). Keep: per-person consent flag (now "signed release on file"), Forget, encryption at rest,
+  and nothing published without Ivan's tap. Do not reintroduce student-specific blocks.
