@@ -1623,3 +1623,15 @@ M13 Finish line.
   accuracy pass); LM Studio stays as the fallback and as the forced provider under the privacy lock (classes,
   or other people heard or seen). Gabriel's own talks may go to the cloud by Ivan's decision. Never read,
   log or test with Ivan's real key; tests use a stub.
+- **Ivan, Mon 12 Oct: designed YouTube thumbnails, previewed on every tile.** (1) Each recording tile in the
+  browser grid shows the chosen YouTube thumbnail once one exists (a real video frame until then; never the
+  placeholder ring when a frame can be read). (2) Thumbnails are designed, not screenshots: the best real
+  frame of the teacher (Vision aesthetics and face-capture quality; eyes open, expressive, sharp), subject cut
+  out and placed (Vision foreground mask), a 2 to 4 word headline (not the title) in large type, high
+  contrast, one focal point, readable at 168 px wide, following the thumbnail research in
+  research-edit-engine.md and MKBHD's thumbnail conventions (clean, one subject, minimal words, strong
+  color separation; never his brand). (3) Yoga Marga's own brand from brand-yoga-marga.md: Alegreya /
+  Alegreya Sans, saffron #DC6B09, earth #975131, gold #F3CF8A, black and white. Three options per video,
+  each a different composition, with a one-line reason; the chosen one shown on the tile. Faces of anyone not
+  Included are never in a thumbnail (privacy rule). Built in M11b; the tile preview may land earlier (M3/M8)
+  using a plain frame. Thumbnail headlines come from the writing model (Claude Sonnet by default).
