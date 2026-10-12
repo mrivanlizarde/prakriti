@@ -587,13 +587,25 @@ recording there). On the right, the **inspector** (Command-Option-I) follows the
 and Show in Finder, the writing and podcast-ready sections), **Checks** (what was measured, the accuracy
 checklist with a box per claim, the privacy lock in words that name no one, the steps of the last make) and
 **Info** (title, what it is, notes, where the episode starts and ends, the file); a folder's settings (v1's
-Sources screen, for one folder). **Opening a recording still shows v1's recording page, unchanged,** until the
-Viewer replaces it (M3b). v1's Outputs and Models screens and its settings moved into a **Settings window**
+Sources screen, for one folder). v1's Outputs and Models screens and its settings moved into a **Settings window**
 (Command-comma: General, Outputs, Models, Privacy, Advanced); Activity is its own window (Window > Activity).
 A card's menu adds **Remove from Library**: Prakriti forgets it and its Outputs folder goes to the Trash; the
 original and Approved are untouched, and its folder never brings it back as new. "Ready for your yes" now
 reads **"Waiting for your yes"** everywhere, notices included, so "Ready" means approved. Secondary text and
 the dark accent were measured under 4.5 to 1 and replaced. See `docs/BUILD-LOG.md`, "v2 part M3a".
+**v2 part M3b, the Viewer, Mon 12 Oct:** opening a recording (double-click, Return, Command-Down) replaces the
+browser with the **Viewer**: the system player (AVKit's own, the only scrubber) on a canvas black in both
+appearances, playing **Original** (picture and sound), **Podcast** or **Podcast-ready**, chosen in the toolbar
+(Video and Shorts are in the control and say they are not made yet); Space plays or pauses, J, K and L
+shuttle. Under it, **Timeline-lite** (what stays filled in the accent, what the trim and cuts take out outlined
+with scissors, a line at the moment playing; click a piece to play from it and see it above the inspector's
+tabs with Restore) and the **transcript** in paragraphs of words: click a word to play from it, **Follow
+Playback** marks the sentence playing and keeps it in view, select words and **Remove from the Edit** or **Keep
+in the Edit**, Find (Command-F). The trim, Use Player Time, the cuts with Restore and a typed cut are in the
+inspector's Info; the per-recording output choices moved to Outputs. **Quick Help** (Help menu) explains the
+control under the pointer at the top of the inspector. The window is put back at the next launch (group,
+selection, open recording, rendition, moment, tab). **v1's recording page is retired** (`RecordingPage.swift`
+and `RecordingsView.swift` deleted). See `docs/BUILD-LOG.md`, "v2 part M3b".
 
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
@@ -612,13 +624,14 @@ folders, beside the live one.
 - **Where things go.** Finished files: `~/Prakriti/Outputs/<recording name>/` (`episode.mp3`, the
   transcripts, `REPORT.md`, `show-notes.md` when writing is on, and the `Podcast-ready` folder when
   that output is on: the MP3 to upload, its captions, `Episode text.txt` with the title, show notes
-  and social captions, and the upload checklist; the recording's page has a Copy button for each). Your yeses:
+  and social captions, and the upload checklist; the inspector's Outputs has a Copy button for each). Your yeses:
   `~/Prakriti/Approved/<recording name>/`, only when you press Approve. To have any file made, put it
   in `~/Prakriti/Drop`. Prakriti only reads the Studio Recordings folder and never writes into it.
   Every look and every step: `~/Library/Logs/Prakriti/<date>.log`, and Window > Activity.
 - **Find a recording.** Needs You (in the sidebar) holds what waits on you; In Progress what is being made;
   Ready what you approved; All Recordings everything. Click one to see it in the inspector on the right;
-  double-click it (or press Return) to open its page; Escape comes back. Type in the search field to find
+  double-click it (or press Return) to open it in the Viewer, which plays it with its transcript under it;
+  Escape comes back. Type in the search field to find
   one by its title, notes or what was said.
 - **The upload folder.** `~/Prakriti/Outputs/<recording name>/Podcast-ready/` holds everything a
   podcast host asks for: the MP3 (named `<Show> - <Title>.mp3` once both are set, by its date until
@@ -629,14 +642,14 @@ folders, beside the live one.
   Prakriti never uploads; you do, by hand. To get one ready:
   1. **Once, in Settings (Command-comma), Outputs, Podcast-ready episode:** the show name, artwork, host or author,
      numbering, and a call to action if you want one. These belong to the show and reach every episode.
-  2. **On the recording's page (double-click it):** mark it "Talk, one teacher speaking"; set any trim and cuts; under
-     Outputs for this recording switch on Podcast-ready episode (and Titles, show notes and chapters,
+  2. **In the inspector (click the recording):** in Info, mark it "Talk, one teacher speaking" and set any trim and
+     cuts (or open it and take words out in the Viewer); in Outputs, under Outputs for this recording, switch on Podcast-ready episode (and Titles, show notes and chapters,
      with LM Studio open); press Make Again. With the writing on, allow an hour or more.
   3. **Under Ready to upload:** read the drafts, press Use This Title and Use as Notes for the ones you
      keep (or type your own), type the episode number if numbered, then Update Podcast-Ready Files
      (under a minute; the sound is not made again).
   4. **Listen** for any voice other than the teacher's and any name said. The Speakers line stays
-     MISSING whatever you do (Prakriti cannot check voices), so with everything else set the page says
+     MISSING whatever you do (Prakriti cannot check voices), so with everything else set the checklist says
      "0 FAIL, 1 MISSING": that last one is your ear.
   5. **Approve** copies the folder to `~/Prakriti/Approved/<recording name>/Podcast-ready/`, every file in
      the receipt. Upload the MP3 from there, upload the `.srt` where the host takes a transcript, and paste
@@ -875,11 +888,17 @@ text.txt` and `.md` are read back independently: every section, every pull quote
 `transcript.txt` and inside one `.srt` cue, every chapter time one ffprobe reads from the finished MP3,
 no dashes, no "$" or "enroll" in the captions, X and Threads under 280 characters, at most five
 hashtags; then a test call to action is set, the files updated, checked, cleared and updated again; it
-writes `acceptance-episode-text.txt` and pictures of the page and of the class refusal. The real window on the sample recording page:
-`open -n build/Build/Products/Debug/Prakriti.app --args --sample-data --show=recordings --open=ready
---appearance=light` (add `--sample-edits` for a trim and cut not made yet), then
+writes `acceptance-episode-text.txt` and pictures of the page and of the class refusal. The real window on the sample talk in the Viewer:
+`open -n build/Build/Products/Debug/Prakriti.app --args --sample-data --show=needs-you --open=ready
+--rendition=podcast --appearance=light` (add `--sample-edits` for a trim and cut not made yet; `--rendition=original`
+only with `--sample-original=<a test pattern>`, so no talk's picture is shown; `--sample-output=<folder>` for a
+podcast-ready file; `--quick-help`), then
 `swift scripts/capture-window.swift --window build/Build/Products/Debug/Prakriti.app out.png`.
-`--open=<path>` opens one recording's page in the real app. **Then open
+`--open=<path>` opens one recording in the Viewer in the real app. **Playback** (v2 part M3b) is proved from the
+log, never the picture: `swift scripts/capture-window.swift --playback build/Build/Products/Debug/Prakriti.app
+"<a development recording with an episode>" <folder>` (part of `make look`; `PLAYBACK=` picks the file) opens it
+with `--development --debug-playback-log`, presses Space and needs two `currentTime` lines 3 s apart to
+differ by 2.5 to 3.5 s at rate 1; `playback.txt` holds the lines. **Then open
 every PNG and look at it,** including the `-p2`, `-p3` pictures of the screens between a long page's
 top and its end. Reading the code is not verification, and neither is a passing test.
 
@@ -889,19 +908,20 @@ top and its end. Reading the code is not verification, and neither is a passing 
 |---|---|
 | Project definition (source of truth) | `mac/project.yml`; `make generate` rebuilds `Prakriti.xcodeproj`, and both are committed |
 | App code | `mac/Prakriti/App` (launch, paths, settings, log, `PipelineRunner`, `Watcher`, `Notices`, `LoginItem` with the instance lock, `EngineV0Import`, `StatusSummary` and the menu bar's `WorkingTicker`), `Engine` (the pipeline: `Subprocess`, `Readiness`, `Measurements`, `Pipeline` with `Mastering`, `Report`; the watcher's `FolderScan` and `EventStream`), `Model` (vocabulary, SwiftData models, store), `Views`, `Fixtures` |
-| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `RecordingPageTests` (milestone 5: edits, the episode's clock, typed times, the cut's words gone through Parakeet with the Mac's voice, six sentences of Parakeet's real misplaced tokens, what the report names, the page's player, Approve and its refusals), `EditsAcceptanceTests` (the 13 Sep talk trimmed, cut, made again and approved, `make accept-edits` only), `StoreMigrationTests` (`make migrate-check` only), `HelpTests` (v2 part M2a: the articles, the capability blocks, links, the copy rules, what only Help may show, search, the Help menu's handler, Show Me), `WelcomeTests` (v2 part M2b: the welcome's words and symbols, what each stage of the build shows, the first-launch rule, the notification button, Choose Folder), `LibraryTests` (v2 part M3a: the smart groups as predicates, sections and sorts, search, open and back, Remove from Library with the watcher passing over it, places, the lock line, every text color's contrast), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share: the main window with its sidebar and inspector drawn on their own, the Help window, Settings panes, the Activity window) |
+| Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `RecordingPageTests` (milestone 5: edits, the episode's clock, typed times, the cut's words gone through Parakeet with the Mac's voice, six sentences of Parakeet's real misplaced tokens, what the report names, the page's player, Approve and its refusals), `EditsAcceptanceTests` (the 13 Sep talk trimmed, cut, made again and approved, `make accept-edits` only; since v2 part M3b through the Viewer's Remove and Keep and the inspector's typed trim and cut), `ViewerTests` (v2 part M3b: the transcript as words, sentences and paragraphs, a selection's span, Timeline-lite's spans, Remove, Keep and Restore, the window put back, and a clicked word playing within 0.25 s with Follow Playback moving on, in a real player), `StoreMigrationTests` (`make migrate-check` only), `HelpTests` (v2 part M2a: the articles, the capability blocks, links, the copy rules, what only Help may show, search, the Help menu's handler, Show Me), `WelcomeTests` (v2 part M2b: the welcome's words and symbols, what each stage of the build shows, the first-launch rule, the notification button, Choose Folder), `LibraryTests` (v2 part M3a: the smart groups as predicates, sections and sorts, search, open and back, Remove from Library with the watcher passing over it, places, the lock line, every text color's contrast), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share: the main window with its sidebar and inspector drawn on their own, the Help window, Settings panes, the Activity window) |
 | Real-window capture | `mac/scripts/capture-window.swift` (run by `make look` and `make check`); also `--analyze <png>` to check any capture, `--window <app> <png>` to capture the running app as it is, `--app-icon <app> <folder>` to draw the app's icon as Finder gets it at 512 and 32 px and measure its cut, and `--menu-bar <app> <seconds> <folder>` to read every Prakriti mark in the real menu bar over time (v2 part M1) |
 | Real-app pipeline check | `mac/scripts/process-in-app.sh <file> <folder>` |
 | The writing models (milestone 6) | `mac/Prakriti/Writing/`: `ModelClients.swift` (the request and reply, LM Studio with its load at 65,536 tokens, Ollama, the Claude API), `AppleOnDevice.swift` (Foundation Models, guided generation for tags and summaries), `Keychain.swift` (the Claude API key), `Writer.swift` (prompts, the privacy lock, tries, `WritingCheck`, `WrittenPackage` and `show-notes.md`); `App/ModelActions.swift` (test buttons, the key, Write Again, Use This Title); `Views/ModelsView.swift`, `Views/WritingSection.swift`; the pipeline step `.writing` and `PipelineRunner.write` (Write Again); tests `WritingTests` (in `make test`) and `ModelsAcceptanceTests` (`make accept-models`) |
 | Written files | Beside the episode: `show-notes.md` (titles, notes, chapters, tags, summary, the checklist for review, what the checks changed, and placeholders for what is not chosen yet) and `titles-notes-chapters.json` (the checked package plus the model's own answer; never approved). On the recording: `writtenJSON` (the package without the raw answer) and `writingProblem` |
 | The Claude API key | The login Keychain, generic password, service `studio.therowan.prakriti.app.claude-api`, account `api-key`. Tests use `studio.therowan.prakriti.app.tests.claude-api` |
-| The recording page (milestone 5) | `mac/Prakriti/Views/RecordingPage.swift` (player, transcript lines, trim and cuts, title and notes, Approve), `App/RecordingActions.swift` (what its buttons do), `App/Approval.swift` (who may be approved, the copy and its receipt), `Engine/EpisodeEdits.swift` (the edits, the episode's clock, typed times, the transcript that follows the episode); tests `RecordingPageTests` (in `make test`) and `EditsAcceptanceTests` (`make accept-edits`) |
+| The recording page (milestone 5; retired in v2 part M3b, its functions in the Viewer and the inspector) | `App/RecordingActions.swift` (what its buttons do), `App/Approval.swift` (who may be approved, the copy and its receipt), `Engine/EpisodeEdits.swift` (the edits, the episode's clock, typed times, the transcript that follows the episode); tests `RecordingPageTests` (in `make test`) and `EditsAcceptanceTests` (`make accept-edits`) |
 | Approved files, live | `~/Prakriti/Approved/<file name without extension>/`: `episode.mp3`, the transcript's chosen formats (following the episode), `REPORT.md`, and `APPROVAL.md` (title, notes, edits, every file's size and SHA-256). Never `transcript.json`. Development: `~/Prakriti/Dev/Approved/` |
 | Outputs, development mode | `~/Prakriti/Dev/Outputs/<file name without extension>/`: `episode.mp3`, `transcript.txt/.srt/.vtt/.md` (the chosen formats, with the word list applied), `transcript.json` (Parakeet's words as heard, with their times; never changed), `REPORT.md` (engine v0's layout). A make in progress lives in the hidden `.making <name>` folder beside it |
 | The podcast-ready episode | `mac/Prakriti/Engine/PodcastReady.swift` (the settings with numbering and the call to action, the chain with the reason for every number, the file name, chapters, `EpisodeCopy` and `PodcastPackage.copy` (the words the text files and the Copy buttons share), the two episode text files, the checklist and the class refusal), `PodcastReadyRun.swift` (the passes ffmpeg makes and the package written and read back), `ID3.swift` (Prakriti's own ID3v2.4 writer and reader), `Artwork.swift` (Apple's artwork rules, read by ImageIO); `Views/PodcastReadyViews.swift` (its settings on Outputs, the Ready to upload section with its Copy buttons and checklist, `Pasteboard`); `Writing/CopyRules.swift` (Ivan's copy rules, read by Swift); `PipelineRunner.packageAgain` (Update Podcast-Ready Files); tests `PodcastReadyTests` and `EpisodeTextTests` (in `make test`), `PodcastReadyAcceptanceTests` (`make accept-podcast`) and `EpisodeTextAcceptanceTests` (`make accept-episode-text`) |
 | The Yoga Marga word list | `mac/Prakriti/Engine/Lexicon.swift` (each word as written, how it has been misheard, and what it is); shown in Settings, Outputs |
 | Output settings | Which outputs: each folder's switches (the inspector, with the folder selected under Sources), else Settings, Outputs (files added by hand). How: Settings, Outputs. A recording's own choices (its page) override both: `OutputResolver` in `Model/Store.swift` |
-| The main window (v2 part M3a) | `mac/Prakriti/Model/Library.swift` (the smart groups and their predicates, `SidebarItem`, the browser's sections and sorts, `LibrarySearch`, `TranscriptIndex`), `App/LibraryActions.swift` (places, open and back, confirmations, a card's menu, Remove from Library), `Views/MainView.swift` (the window, toolbar, Sort menu, sidebar, Activity window), `Views/Library/` (`LibraryView` with the groups, folders, search, empty states and the Needs You status line; `BrowserGrid` with `RecordingCard`, `NeutralTile`, `StatusCapsule`, `RecordingMenu`; `BrowserList`), `Views/Inspector/` (`InspectorView` with the folder and several-selected inspectors; `OutputsTab` with `Deliverable`; `ChecksTab` with `Recording.lockLine` and `setClaim`; `InfoTab`), `Views/Settings/SettingsScene.swift` (the Settings window: General, Outputs = v1's `OutputsView`, Models = v1's `ModelsView`, Privacy, Advanced), `Views/AppColor.swift` (the measured text colors and `.appSecondary`); v1's page is still `Views/RecordingsView.swift` (`RecordingDetailView`) and `Views/RecordingPage.swift`; tests `LibraryTests` and `SnapshotTests.testRenderEveryScreen` |
+| The main window (v2 part M3a) | `mac/Prakriti/Model/Library.swift` (the smart groups and their predicates, `SidebarItem`, the browser's sections and sorts, `LibrarySearch`, `TranscriptIndex`), `App/LibraryActions.swift` (places, open and back, confirmations, a card's menu, Remove from Library), `Views/MainView.swift` (the window, toolbar, Sort menu, sidebar, Activity window), `Views/Library/` (`LibraryView` with the groups, folders, search, empty states and the Needs You status line; `BrowserGrid` with `RecordingCard`, `NeutralTile`, `StatusCapsule`, `RecordingMenu`; `BrowserList`), `Views/Inspector/` (`InspectorView` with the folder and several-selected inspectors; `OutputsTab` with `Deliverable`; `ChecksTab` with `Recording.lockLine` and `setClaim`; `InfoTab`), `Views/Settings/SettingsScene.swift` (the Settings window: General, Outputs = v1's `OutputsView`, Models = v1's `ModelsView`, Privacy, Advanced), `Views/AppColor.swift` (the measured text colors and `.appSecondary`); tests `LibraryTests` and `SnapshotTests.testRenderEveryScreen` |
+| The Viewer (v2 part M3b) | `mac/Prakriti/Views/Viewer/` (`ViewerModel` with `Rendition` and `TimelineSpan`; `ViewerView` with the banner, the picture, `RenditionPicker`, the tip and `SelectedSpanStrip`; `TranscriptView`, an `NSTextView`; `TimelineLite`; `Transcript.swift` with `TranscriptDocument`, `TranscriptLine` and `RecordingTranscript`), `App/ViewerActions.swift` (opening it, Remove and Keep, Restore, the typed cut, `WindowState` restoration, the debug switch), `Views/QuickHelp.swift`, `Views/Inspector/RecordingChoices.swift` (v1's per-recording outputs and step rows, moved), `Views/Inspector/InfoTab.swift` (`CutEntry`, Use Player Time); tests `ViewerTests`, `RecordingPageTests`, `EditsAcceptanceTests`, `SnapshotTests` (`20-viewer-*`) |
 | Test clips | `~/Prakriti/Dev/Drop/2026-09-13 clip 30s.mp4` (a test) and `~/Prakriti/Dev/Clips/2026-09-13 clip 90s.mp4` (a full run), cut with `ffmpeg -c copy` from the 13 Sep talk |
 | v2 test fixtures | `~/Prakriti/Dev/Fixtures/` (made by `make fixtures`, never by hand): the files, `SHA256SUMS` from the last run, `RECIPES.txt` (the ffmpeg and macOS versions they were made with). The recipes: `mac/scripts/make-fixtures.sh`, with the texts `say` reads and the made-up talk in `mac/scripts/fixtures/` |
 | The built app | `mac/build/Build/Products/Debug/Prakriti.app` (gitignored) |
@@ -1416,6 +1436,30 @@ top and its end. Reading the code is not verification, and neither is a passing 
     verifier's clone under `/private/tmp`, picked by bundle identifier, running on the live store with no login
     item; on 12 Oct, after the running-copy fix, a quit scratch build was still registered and could be picked
     the same way.
+94. **The Viewer's player never takes the keyboard focus** (`UnfocusedPlayerView`, `acceptsFirstResponder` false).
+    Reason: in `make look` on 12 Oct, with `AVPlayerView` focused after Return opened a recording, Escape stayed in
+    the Viewer; the Viewer handles Space, J, K and L itself, and the player's buttons still take clicks.
+95. **The transcript is AppKit text (`TranscriptTextView`, an `NSTextView`), and the snapshots never page through
+    it** (`SnapshotRenderer` skips a scroll view whose document is `PlayableTextView`). Reason: a word must be
+    clickable on its own and a selection must cross lines in up to about 10,000 words, with the system's Find;
+    and the first Viewer snapshots paged the 13 Sep transcript into 15 pictures per screen, 200 for one run.
+    `textViewDidChangeSelection` ignores the selection AppKit drops while the text is replaced (`building`):
+    without it, every rebuild cleared the words Ivan had chosen.
+96. **No capture or snapshot of the Viewer shows a talk's picture.** The Original is played from a test pattern
+    (`--sample-original=`, `ViewerSnapshotMedia`), the Podcast-ready rendition from a copy of the sample episode
+    in a temporary folder (`--sample-output=`), and playback is proved from `--debug-playback-log` lines, muted.
+    Reason: PLAN section 11, D1 (frames of Gabriel's talks are measured, not looked at, until it is answered), and
+    a check must never play a talk aloud on Ivan's Mac, nor read the studio folder outside the acceptances
+    (warning 17).
+97. **The window's state lives in the mode's preferences (`AppSettings.windowState`, JSON of `WindowState`),
+    never in the store,** and captures and tests never restore it (they use the ephemeral preferences). Reason: no
+    SwiftData migration for what is only where the window was, and a capture must never write into the live
+    preferences (warning 92).
+98. **Every edit from the Viewer goes through v1's paths** (`addCut`, `setTrim`; `keep(_:in:)` only subtracts from
+    cuts and widens the trim), and a run of words becomes a cut held clear of the words on each side
+    (`TranscriptDocument.span(of:)`). Reason: Parakeet stretches the last word before a pause across the next
+    word's start, and a cut to its end took the next word too (`ViewerTests.testASelectionTakesExactlyItsWords`);
+    and an approved recording must lose its approval on any change (warning 38).
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

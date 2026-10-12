@@ -4,7 +4,8 @@ import SwiftData
 import XCTest
 @testable import Prakriti
 
-/// Milestone 5's acceptance, on the real 13 Sep talk, through the app's own page actions, runner,
+/// Milestone 5's acceptance, on the real 13 Sep talk, through the app's own actions (since v2 part M3b the
+/// Viewer's Remove from the Edit and Keep in the Edit and the inspector's typed trim and cut), runner,
 /// pipeline and Approve:
 ///
 ///   cd ~/Code/prakriti/mac && make accept-edits MILESTONE=m5
@@ -80,11 +81,28 @@ final class EditsAcceptanceTests: XCTestCase {
         XCTAssertTrue(model.approvalCheck(recording).speakersNotChecked)
         try draw("talk-1-made")
 
-        // 2. Marked as a talk; the first 10 s trimmed; 5:00 to 5:30 cut, typed as Ivan types it.
+        // 2. Marked as a talk; the first 10 s trimmed; 5:00 to 5:30 cut, typed as Ivan types it: since v2 part
+        // M3b through the Viewer and the inspector (the Info tab's Episode starts at and Cut a Section rows
+        // call these same model paths), after a Remove from the Edit and Keep in the Edit on words in the
+        // Viewer's transcript, which must leave no edit behind.
         model.setKind(.talk, for: recording)
         XCTAssertTrue(model.approvalCheck(recording).canApprove, model.approvalCheck(recording).line ?? "")
+        model.open(recording)
+        model.openViewer(recording)
+        model.viewer.player.isMuted = true
+        let viewerWords = model.viewer.document.words
+        XCTAssertGreaterThan(viewerWords.count, 2_500, "the Viewer reads the talk's words from transcript.json")
+        let chosen = viewerWords.indices.filter { (420.0...425.0).contains(viewerWords[$0].start) }
+        model.viewer.selectedWords = try XCTUnwrap(chosen.first)...(try XCTUnwrap(chosen.last))
+        XCTAssertNil(model.removeSelectedWords(from: recording))
+        XCTAssertEqual(recording.cuts.count, 1, "Remove from the Edit marks a cut")
+        let wordsCut = viewerWords.filter { !$0.isKept(in: recording.edits.segments(duration: recording.duration ?? 0)) }.count
+        XCTAssertEqual(wordsCut, chosen.count, "exactly the selected words")
+        XCTAssertNil(model.keepSelectedWords(in: recording))
+        XCTAssertTrue(recording.edits.isEmpty, "Keep in the Edit takes it back: \(recording.edits.summary ?? "")")
+        let viewerLine = "Viewer: \(viewerWords.count) words; Remove from the Edit on \(chosen.count) words said 7:00 to 7:05 cut exactly \(wordsCut); Keep in the Edit left no edit"
         XCTAssertNil(model.setTrim(start: TimeText.seconds("0:10"), end: nil, for: recording))
-        XCTAssertNil(model.addCut(TimeRange(start: try XCTUnwrap(TimeText.seconds("5:00")), end: try XCTUnwrap(TimeText.seconds("5:30"))), to: recording))
+        XCTAssertNil(model.typedCut(from: "5:00", to: "5:30", for: recording))
         XCTAssertTrue(recording.editsPending)
         let waiting = model.approvalCheck(recording)
         XCTAssertFalse(waiting.canApprove)
@@ -92,7 +110,7 @@ final class EditsAcceptanceTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: approved.path))
         XCTAssertEqual(model.notice?.title, "Not approved", "a refusal is said in an alert")
         model.notice = nil // as Ivan's OK would; otherwise the alert dims every later picture
-        report += ["", "Edits on the page: " + (recording.edits.summary ?? ""), "  approve before Make Again: refused: " + (waiting.line ?? "")]
+        report += ["", viewerLine, "Edits in the Viewer and inspector: " + (recording.edits.summary ?? ""), "  approve before Make Again: refused: " + (waiting.line ?? "")]
         try draw("talk-2-edits-pending")
 
         // 3. Make Again.

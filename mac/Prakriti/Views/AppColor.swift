@@ -37,6 +37,18 @@ enum AppColor {
         }
     }
 
+    /// Behind the sentence playing in the Viewer's transcript (v2 part M3b, design spec 3.4.4): the accent at
+    /// 12 percent over the text background, mixed here into one solid color so its contrast can be measured.
+    static let playingHighlightNS = NSColor(name: "prakriti.playingHighlight") { appearance in
+        var mixed = NSColor.white
+        appearance.performAsCurrentDrawingAppearance {
+            let base = NSColor.textBackgroundColor.usingColorSpace(.sRGB) ?? .white
+            let accent = (NSColor(named: "AccentColor") ?? .controlAccentColor).usingColorSpace(.sRGB) ?? .blue
+            mixed = base.blended(withFraction: 0.12, of: accent) ?? base
+        }
+        return mixed
+    }
+
     /// Text, links and symbols that carry meaning, in the accent.
     static let accentText = Color(nsColor: accentTextNS)
     /// Secondary text, drawn through `.appSecondary` (below).
@@ -64,6 +76,9 @@ enum AppColor {
             pairs.append(Pair(name: "problem text on the \(backgroundName) background", text: problemTextNS, background: background))
         }
         pairs.append(Pair(name: "white text on the accent fill", text: .white, background: accentFill))
+        // The Viewer's transcript (v2 part M3b): the sentence playing, its kept and its removed words.
+        pairs.append(Pair(name: "primary text on the playing highlight", text: .labelColor, background: playingHighlightNS))
+        pairs.append(Pair(name: "secondary text on the playing highlight", text: secondaryTextNS, background: playingHighlightNS))
         return pairs
     }
 

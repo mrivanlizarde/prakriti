@@ -549,7 +549,7 @@ enum PodcastPackage {
 
         heading("Show notes")
         if c.notes.isEmpty {
-            line("None yet. Turn on Titles, show notes and chapters for this recording, or write notes on its page.")
+            line("None yet. Turn on Titles, show notes and chapters for this recording, or write notes in its Info.")
         }
         if let block = c.showNotes {
             if md {
@@ -756,7 +756,7 @@ enum PodcastPackage {
             add(.fail, "Chapters", problem, "Write the titles and chapters again.")
         } else {
             add(.missing, "Chapters", "None. They are written with the titles and show notes.",
-                "Turn on Titles, show notes and chapters for this recording, or press Write Titles and Notes on its page.")
+                "Turn on Titles, show notes and chapters for this recording, or press Write Titles and Notes in its Outputs.")
         }
 
         // Captions (the transcript timed to this file).

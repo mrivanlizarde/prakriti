@@ -23,6 +23,10 @@ final class AppSettings {
         static let engineV0ImportedAt = "engineV0ImportedAt"
         static let helpLastArticle = "helpLastArticle"
         static let welcomeSeenVersion = "welcomeSeenVersion"
+        static let windowState = "windowState"
+        static let followPlayback = "followPlayback"
+        static let viewerTipSeen = "viewerTipSeen"
+        static let quickHelpOn = "quickHelpOn"
     }
 
     /// Stops finding and processing recordings until turned back on.
@@ -57,6 +61,16 @@ final class AppSettings {
     /// and never touch the live one.
     var welcomeSeenVersion: Int { didSet { defaults.set(welcomeSeenVersion, forKey: Key.welcomeSeenVersion) } }
 
+    /// The main window as Ivan left it (v2 part M3b, design spec 2.5): group, selection, open recording,
+    /// rendition, the moment playing and the inspector's tab, as JSON (`WindowState`). Each mode keeps its own.
+    var windowState: String? { didSet { defaults.set(windowState, forKey: Key.windowState) } }
+    /// Follow Playback in the Viewer (View menu); on until turned off.
+    var followPlayback: Bool { didSet { defaults.set(followPlayback, forKey: Key.followPlayback) } }
+    /// The Viewer's first-time tip was dismissed with Got It.
+    var viewerTipSeen: Bool { didSet { defaults.set(viewerTipSeen, forKey: Key.viewerTipSeen) } }
+    /// Help > Show Quick Help; off until turned on.
+    var quickHelpOn: Bool { didSet { defaults.set(quickHelpOn, forKey: Key.quickHelpOn) } }
+
     nonisolated static let defaultLMStudioAddress = "http://localhost:1235/v1"
     nonisolated static let defaultLMStudioModel = "qwen/qwen3.8-27b"
     nonisolated static let defaultOllamaAddress = "http://localhost:11434"
@@ -87,6 +101,10 @@ final class AppSettings {
         engineV0ImportedAt = defaults.object(forKey: Key.engineV0ImportedAt) as? Date
         helpLastArticle = defaults.string(forKey: Key.helpLastArticle)
         welcomeSeenVersion = defaults.integer(forKey: Key.welcomeSeenVersion)
+        windowState = defaults.string(forKey: Key.windowState)
+        followPlayback = defaults.object(forKey: Key.followPlayback) as? Bool ?? true
+        viewerTipSeen = defaults.bool(forKey: Key.viewerTipSeen)
+        quickHelpOn = defaults.bool(forKey: Key.quickHelpOn)
     }
 
     /// Each mode keeps its own preferences. Reason: from the switch-over a development copy can run

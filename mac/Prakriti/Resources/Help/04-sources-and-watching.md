@@ -46,7 +46,7 @@ on.
   before it starts.
 - **Under 60 seconds is a test.** Prakriti files it as a test, makes nothing and sends no notice.
 :::requires captureCheck
-  Its page shows the capture check. See [Capture the best video](02-capture-the-best-video.md).
+  The inspector's Checks show the capture check. See [Capture the best video](02-capture-the-best-video.md).
 :::
 - **A vertical copy is left alone.** In a watched folder, a file whose name ends in `-vertical` is
   never made on its own.
@@ -88,7 +88,7 @@ and choose Keep Downloaded.
 :::
 :::requires progress
 - **In Progress** shows every recording being worked on, the step it is on, a progress bar and the time left.
-- **The recording's page** shows each step in order, with how long each one took.
+- **The inspector's Checks** show each step in order, with how long each one took.
 - **The menu bar** shows the current step and how far along it is.
 - **Notifications** tell you when a recording is found, when it is waiting for your yes, and when
   something needs a decision.

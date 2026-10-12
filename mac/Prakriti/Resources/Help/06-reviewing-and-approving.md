@@ -1,10 +1,10 @@
 ---
 id: reviewing-and-approving
 title: Review and approve
-summary: Listen to the episode, read the transcript, trim and cut, check what is said, and approve the finished files.
+summary: Play the recording and its episodes in the viewer, read the transcript, trim and cut, check what is said, and approve the finished files.
 section: reviewing
 order: 1
-keywords: [review, approve, listen, play, episode, original, transcript, cut, trim, make again, accuracy checklist, waiting for your yes, needs a decision, needs you, ready, inspector, approved folder, receipt, talk, class, what this is, remove from library]
+keywords: [review, approve, listen, play, viewer, podcast-ready, follow playback, remove from the edit, keep in the edit, restore, find, episode, original, transcript, cut, trim, make again, accuracy checklist, waiting for your yes, needs a decision, needs you, ready, inspector, approved folder, receipt, talk, class, what this is, remove from library]
 related: [outputs, people-and-privacy, models-and-api-keys]
 ---
 
@@ -30,8 +30,8 @@ to find a recording by its title, its notes or what was said in it: a sentence t
 the recording, with its time, and clicking it opens the recording there.
 
 Click a recording to select it: the inspector, on the right, shows it (View > Show Inspector,
-Command-Option-I). Double-click it, or press Return, to open its page. Click Back, or press Escape, to
-return.
+Command-Option-I). Double-click it, or press Return, to open it in the viewer. Click Back, or press
+Escape, to return.
 
 Its status is shown in symbol and words:
 
@@ -53,15 +53,30 @@ it was recorded. The player is the Mac's own.
 :::
 
 :::requires viewer
-## Watch it in the viewer
+## Watch and listen in the viewer
 
-The viewer at the top of the page plays any output in the app: the edited video, a short, the podcast
-episode or the original recording. Choose which one from the menu above the player.
+The viewer takes the place of the library while a recording is open. Choose what plays in the toolbar:
 
-- Press Space to play or pause.
-- Click a line of the transcript to play from that moment.
-- Turn captions on or off from the player's controls.
-- Under the player, the strip shows each cut, zoom and title. Click one to jump to it.
+- **Original:** the recording as it was recorded, picture and sound.
+- **Podcast:** the episode as made.
+- **Podcast-ready:** the podcast-ready episode, once it is made.
+
+Two more choices in that control are not made by Prakriti yet; choosing one says so. The player is
+the Mac's own. Press Space to play or pause. L plays forward, and faster each time you press it again; J
+plays backward where the file allows it; K stops. They are in the Playback menu too.
+
+Under the player:
+
+- **The strip** shows what the episode keeps, filled in, and what the trim and cuts take out, outlined
+  with scissors. A thin line marks the moment playing. Click a piece to play from it. A piece that is
+  taken out also shows at the top of the inspector, with Restore.
+- **The transcript,** in paragraphs under their times. Click a word to play from it. With View > Follow
+  Playback on, the sentence playing is marked and kept in view. Words taken out are struck through.
+  Edit > Find in Transcript (Command-F) finds a word.
+
+The first time, a tip under the strip says how to use the transcript; click Got It to hide it. To see
+what any control does, choose Help > Show Quick Help: the top of the inspector says what the control
+under the pointer does, with a link to more in Help.
 :::
 
 :::unless people
@@ -91,11 +106,14 @@ change no file.
 
 ## Change the episode
 
-- **Trim the start or end.** Type a time in Episode starts at or Episode ends at, such as 4:12 or
-  1:02:30, or play to the moment and click Use Player Time.
-- **Cut a section.** Select lines in the transcript (Shift-click to select several) and click Cut
-  Selected Lines, or type the times in Cut from and Cut to and click Add Cut. To bring a cut back, click
-  Remove beside it. Clear Trim and Cuts takes them all away.
+- **Trim the start or end.** In the inspector's Info, type a time in Episode starts at or Episode ends
+  at, such as 4:12 or 1:02:30, or play to the moment in the viewer and click Use Player Time.
+- **Take words out.** Select words in the transcript (drag across them, or Shift-click), then click
+  Remove from the Edit under the transcript, or Control-click and choose it, or choose Edit > Remove from
+  the Edit. Or, in the inspector's Info, type two times under Cut a section and click Add Cut.
+- **Bring words back.** Select them and choose Keep in the Edit. To bring a whole cut back, click
+  Restore beside it in the inspector's Info, or click it in the strip and click Restore. Clear Trim and
+  Cuts takes them all away.
 :::requires style
 - **Steer the whole edit with words.** See [Editorial direction](08-editorial-direction.md).
 :::
@@ -103,7 +121,7 @@ change no file.
   new ones are ready, and the original recording is not changed.
 
 Times are always from the start of the original recording, as the transcript shows them. Until you
-make it again, the page says the changes are not in the episode yet.
+make it again, the viewer says the changes are not in the episode yet.
 
 ## Approve
 
@@ -111,7 +129,7 @@ make it again, the page says the changes are not in the episode yet.
 Before you can approve:
 
 - The recording is marked Talk, one teacher speaking.
-- Every trim and cut on the page is in the episode: click Make Again after changing them.
+- Every trim and cut is in the episode: click Make Again after changing them.
 :::
 :::requires people
 Before you can approve:
@@ -121,19 +139,19 @@ Before you can approve:
 - Every line of each output's checklist passes.
 :::
 
-Then click Approve, on the recording's page or in the inspector's Outputs, and confirm. Prakriti copies
+Then click Approve, in the toolbar while the recording is open or in the inspector's Outputs, and confirm. Prakriti copies
 the finished files to the Approved folder, in a folder
 named after the recording, with `APPROVAL.md`: a receipt with the title, the notes, the edits, and
 each file's size and fingerprint. Nothing is uploaded or posted.
 
 If you change anything after approving, such as the title, the notes, a trim or a cut, the approval is
-taken back and the page says "Approved before this change". Approve it again once it is right. The
+taken back and the inspector says "Approved before this change". Approve it again once it is right. The
 approved files stay as they were until you do.
 
 ## After you approve
 
 The recording moves to Ready. Upload the files yourself. For the podcast-ready episode, the Ready to
-upload section, on the recording's page and in the inspector's Outputs, has the upload checklist and a
+upload section, in the inspector's Outputs, has the upload checklist and a
 Copy button for each piece of text the podcast host asks for. See [Outputs](05-outputs.md).
 
 ## Remove a recording from the library

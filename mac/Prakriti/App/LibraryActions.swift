@@ -11,12 +11,15 @@ struct Confirmation: Identifiable, Equatable {
     let recordingID: UUID
 }
 
-/// Where a recording's page should start playing when it opens: a "Said" search result's sentence.
+/// Where the Viewer should start when a recording opens: a "Said" search result's sentence, or the
+/// inspector's Play.
 struct PendingSeek: Equatable {
     let recordingID: UUID
     let time: Double
     /// Play from there at once (the Files list's Play), or wait at that moment (a search result).
     var play = false
+    /// What plays: the inspector's Play asks for the Podcast; nil keeps the Viewer's own choice.
+    var rendition: Rendition?
 }
 
 /// A window a launch flag or a Show Me link asked for before any view could open it.
@@ -77,7 +80,7 @@ extension AppModel {
         return sources.first { $0.id == id }
     }
 
-    /// Open (Return, Command-Down, a double-click): the selected recording's page.
+    /// Open (Return, Command-Down, a double-click): the selected recording, in the Viewer.
     func openSelected() {
         guard path.isEmpty, selectedRecordings.count == 1, let id = selectedRecordings.first, let recording = recording(id: id) else { return }
         open(recording)
@@ -90,7 +93,7 @@ extension AppModel {
         path = []
     }
 
-    /// A "Said" search result: opens the recording's page with its player at that sentence.
+    /// A "Said" search result: opens the recording in the Viewer at that sentence.
     func open(_ recording: Recording, at time: Double) {
         pendingSeek = PendingSeek(recordingID: recording.id, time: time)
         open(recording)

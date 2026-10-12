@@ -495,7 +495,7 @@ final class RecordingPageTests: XCTestCase {
         XCTAssertTrue(recording.editsPending)
         let pending = model.approvalCheck(recording)
         XCTAssertFalse(pending.canApprove)
-        XCTAssertEqual(pending.line, "Make Again first: the trim and cuts on this page are not in the episode yet.")
+        XCTAssertEqual(pending.line, "Make Again first: the newest trim and cuts are not in the episode yet.")
         XCTAssertFalse(model.approve(recording))
 
         // Approving again replaces the copy; a file Ivan keeps there stays.
@@ -568,11 +568,11 @@ final class RecordingPageTests: XCTestCase {
         XCTAssertEqual(recording.episodeDuration ?? 0, clock.keptLength, accuracy: 0.3)
     }
 
-    // MARK: The page's player and lines
+    // MARK: The Viewer's player and lines (the page until v2 part M3b)
 
-    /// The page itself: its lines come from transcript.json with the word list applied, a cut line
-    /// shows as cut, and a line plays the episode from where its moment is (after the trim and the
-    /// cut), or the original from the moment itself.
+    /// The lines and the Viewer's words come from transcript.json with the word list applied, a cut line
+    /// shows as cut, and a moment plays the episode from where it is (after the trim and the cut), or the
+    /// original from the moment itself.
     func testALinePlaysTheEpisodeFromWhereItsMomentIs() async throws {
         let home = work.appending(path: "home", directoryHint: .isDirectory)
         let paths = AppPaths(mode: .development, home: home)
@@ -609,36 +609,44 @@ final class RecordingPageTests: XCTestCase {
         await model.runner.process(recording, trigger: .makeAgain)
         XCTAssertEqual(recording.status, .readyForYourYes, recording.statusReason ?? "")
 
-        let page = RecordingPage()
-        page.load(recording, applyLexicon: true)
-        XCTAssertTrue(page.hasEpisode)
-        XCTAssertEqual(page.listening, .episode)
-        XCTAssertGreaterThanOrEqual(page.lines.count, 3, "\(page.lines.map(\.text))")
-        XCTAssertTrue(page.lines[0].text.contains("Yoga Marga"), "the word list is applied to the lines: \(page.lines[0].text)")
+        let viewer = ViewerModel()
+        viewer.player.isMuted = true
+        viewer.load(recording, applyLexicon: true)
+        XCTAssertNotNil(viewer.files[.podcast])
+        XCTAssertEqual(viewer.rendition, .podcast, "the Viewer opens on the episode when it is made")
+        let lines = RecordingTranscript.lines(folder: recording.outputFolder, applyLexicon: true)
+        XCTAssertGreaterThanOrEqual(lines.count, 3, "\(lines.map(\.text))")
+        XCTAssertTrue(lines[0].text.contains("Yoga Marga"), "the word list is applied to the lines: \(lines[0].text)")
+        XCTAssertTrue(viewer.document.words.map(\.text).joined(separator: " ").contains("Yoga Marga"), "and to the Viewer's words")
         let parts = recording.edits.segments(duration: recording.duration ?? 0)
-        print("Page lines: " + page.lines.map { "\($0.start)-\($0.end) \($0.text)" }.joined(separator: " | "))
+        print("Lines: " + lines.map { "\($0.start)-\($0.end) \($0.text)" }.joined(separator: " | "))
         // Parakeet stretches the second sentence's last word across the pause after it, past the end
         // of the cut, but every one of its words is said inside the cut: it reads as cut.
-        let cutLine = try XCTUnwrap(page.lines.first { $0.speechStart >= cut.start && $0.speechStart <= cut.end }, "a line inside the cut")
+        let cutLine = try XCTUnwrap(lines.first { $0.speechStart >= cut.start && $0.speechStart <= cut.end }, "a line inside the cut")
         XCTAssertEqual(cutLine.fate(in: parts), .cut)
-        let last = try XCTUnwrap(page.lines.last)
+        let last = try XCTUnwrap(lines.last)
         XCTAssertEqual(last.fate(in: parts), .kept)
+        // In the Viewer's words too: every word said inside the cut is struck through, none after it.
+        let cutWords = viewer.document.words.filter { $0.position >= cut.start && $0.position <= cut.end }
+        XCTAssertFalse(cutWords.isEmpty)
+        XCTAssertTrue(cutWords.allSatisfy { !$0.isKept(in: parts) })
+        XCTAssertTrue(viewer.document.words.filter { $0.position > cut.end + 0.5 }.allSatisfy { $0.isKept(in: parts) })
 
         // The last line, in the episode: its moment less the trimmed silence and the cut.
-        page.seek(original: last.speechStart, play: false)
+        viewer.seek(original: last.speechStart, play: false)
         let clock = try XCTUnwrap(recording.episodeClock)
         let expected = clock.episodeTime(last.speechStart).time
         XCTAssertLessThan(expected, last.speechStart - (cut.end - cut.start) + 0.01, "the episode plays it earlier")
-        try await waitFor { abs(page.player.currentTime().seconds - expected) < 0.1 }
-        XCTAssertEqual(page.player.currentTime().seconds, expected, accuracy: 0.1)
-        XCTAssertEqual(page.currentOriginal ?? 0, last.speechStart, accuracy: 0.1, "and the page reads it back on the original's clock")
+        try await waitFor { abs(viewer.player.currentTime().seconds - expected) < 0.1 }
+        XCTAssertEqual(viewer.player.currentTime().seconds, expected, accuracy: 0.1)
+        XCTAssertEqual(viewer.currentOriginal ?? 0, last.speechStart, accuracy: 0.1, "and the Viewer reads it back on the original's clock")
 
         // The original: the same moment, as recorded.
-        page.listen(to: .original, recording: recording)
-        try await waitFor { page.player.currentItem != nil && abs(page.player.currentTime().seconds - last.speechStart) < 0.1 }
-        XCTAssertEqual(page.player.currentTime().seconds, last.speechStart, accuracy: 0.1)
-        XCTAssertNil(page.originalNote)
-        page.player.pause()
+        viewer.choose(.original, recording: recording)
+        try await waitFor { viewer.player.currentItem != nil && abs(viewer.player.currentTime().seconds - last.speechStart) < 0.1 }
+        XCTAssertEqual(viewer.player.currentTime().seconds, last.speechStart, accuracy: 0.1)
+        XCTAssertNil(viewer.originalNote)
+        viewer.pause()
     }
 
     private func waitFor(_ condition: () -> Bool, seconds: Double = 10) async throws {

@@ -140,7 +140,7 @@ Sound matters more than picture. A soft image is forgiven. A voice that cannot b
 
 :::unless video
 - **If you stumble, pause, then say the whole sentence again from the start.** The mistake can then be
-  cut cleanly on the recording's page, at a pause.
+  taken out cleanly in the viewer, at a pause.
 :::
 :::requires video
 - **If you stumble, pause, then say the whole sentence again from the start.** Prakriti recognizes the
@@ -162,7 +162,7 @@ Do this every time you set up, even when nothing has changed.
 4. Check the face is bright and sharp, the framing is right, and each voice is clear.
 :::requires captureCheck
 5. Put the test file in the Drop folder. Prakriti files anything under 60 seconds as a test and shows
-   its capture check on the recording's page: the picture size, the frame rate, each audio track and
+   its capture check in the inspector's Checks: the picture size, the frame rate, each audio track and
    how loud it is.
 :::
 

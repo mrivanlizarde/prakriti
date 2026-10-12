@@ -141,7 +141,7 @@ final class WatcherTests: XCTestCase {
         }
         XCTAssertEqual(poster.posted.map(\.event), [.couldntFinish])
         XCTAssertEqual(poster.posted.first?.body,
-                       "It stopped three times while checking the file is complete. The original is untouched, and the details are on the recording page.")
+                       "It stopped three times while checking the file is complete. The original is untouched; open it to see the details.")
         let r = try XCTUnwrap(recording(named: "2026-09-13 broken.mp4"))
         XCTAssertEqual(r.runs.count, 3)
         XCTAssertEqual(r.runs.filter { $0.trigger == .retry }.count, 2)

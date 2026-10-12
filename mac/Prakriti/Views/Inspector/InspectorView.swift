@@ -31,7 +31,14 @@ struct InspectorView: View {
                 }
             }
         }
+        // Quick Help (Help > Show Quick Help, v2 part M3b) sits above everything in the inspector.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if model.quickHelp.isOn {
+                QuickHelpPanel()
+                    .background(.background)
             }
+        }
+    }
 }
 
 /// A recording's three tabs.
@@ -51,6 +58,10 @@ struct RecordingInspector: View {
         // The tabs stay put above the scrolling form, inside the safe area (under the toolbar, not behind it).
         .safeAreaInset(edge: .top, spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
+            // The Timeline-lite span chosen in the Viewer (design spec 3.5.0), above the tabs.
+            if let span = model.viewer.selectedSpan, model.viewer.recordingID == recording.id, !model.path.isEmpty {
+                SelectedSpanStrip(span: span, recording: recording)
+            }
             Picker("Inspector", selection: $model.inspectorTab) {
                 ForEach(InspectorTab.allCases) { tab in
                     Label(tab.title, systemImage: tab.symbol)

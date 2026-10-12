@@ -228,7 +228,19 @@ struct AppCommands: Commands {
                 .keyboardShortcut("2", modifiers: .command)
             Divider()
         }
+        // Edit (v2 part M3b): the transcript's Find and the selected words' Remove and Keep.
+        CommandGroup(after: .textEditing) {
+            Button("Find in Transcript…") { model.findInTranscript() }
+                .keyboardShortcut("f", modifiers: .command)
+                .disabled(model.path.isEmpty || model.viewer.document.isEmpty)
+            Button("Remove from the Edit") { model.focusedRecording.map { _ = model.removeSelectedWords(from: $0) } }
+                .disabled(model.path.isEmpty || model.focusedRecording.map(model.canRemoveSelectedWords) != true)
+            Button("Keep in the Edit") { model.focusedRecording.map { _ = model.keepSelectedWords(in: $0) } }
+                .disabled(model.path.isEmpty || model.focusedRecording.map(model.canKeepSelectedWords) != true)
+        }
         CommandGroup(after: .sidebar) {
+            Toggle("Follow Playback", isOn: Binding(get: { model.viewer.followPlayback }, set: { model.setFollowPlayback($0) }))
+            Divider()
             Button(model.inspectorShown ? "Hide Inspector" : "Show Inspector") { model.inspectorShown.toggle() }
                 .keyboardShortcut("i", modifiers: [.command, .option])
             ForEach(Array(InspectorTab.allCases.enumerated()), id: \.element) { index, tab in
@@ -261,6 +273,18 @@ struct AppCommands: Commands {
             Button("Remove from Library…") { model.focusedRecording.map { model.ask(.removeFromLibrary, for: $0) } }
                 .disabled(model.focusedRecording.map(model.canRemoveFromLibrary) != true)
         }
+        // Playback (v2 part M3b, design spec 6.8). Space, J, K and L work in the Viewer itself; they are not
+        // given to these items, because a menu's Space would be taken from every text field too.
+        CommandMenu("Playback") {
+            Button("Play or Pause (Space)") { model.viewer.togglePlay() }
+                .disabled(model.path.isEmpty)
+            Button("Play Backward (J)") { model.viewer.shuttle("j") }
+                .disabled(model.path.isEmpty)
+            Button("Stop (K)") { model.viewer.shuttle("k") }
+                .disabled(model.path.isEmpty)
+            Button("Play Forward (L)") { model.viewer.shuttle("l") }
+                .disabled(model.path.isEmpty)
+        }
         // The Help menu (v2 parts M2a and M2b). macOS adds its own search field at the top, which also
         // lists Help articles through HelpMenuSearch.
         CommandGroup(replacing: .help) {
@@ -274,6 +298,7 @@ struct AppCommands: Commands {
                 openWindow(id: WelcomeWindow.id)
                 NSApp.activate()
             }
+            Button(model.quickHelp.isOn ? "Hide Quick Help" : "Show Quick Help") { model.setQuickHelp(!model.quickHelp.isOn) }
             Divider()
             Button("Show Log in Finder") { model.showLogInFinder() }
         }

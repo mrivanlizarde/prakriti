@@ -136,19 +136,19 @@ final class NotificationTests: XCTestCase {
         let silent = facts(silentClass, duration: 3702.27)
         XCTAssertEqual(NoticeBuilder.content(.needsADecision, silent).title, "Needs a Decision: Mon 14 Sep")
         XCTAssertEqual(NoticeBuilder.content(.needsADecision, silent).body,
-                       "The audio is silent for all 1 hr 2 min, so nothing was made from it. Choose what happens to it on its page.")
+                       "The audio is silent for all 1 hr 2 min, so nothing was made from it. Open it to choose what happens to it.")
 
         var stopped = facts(talk)
         stopped.tries = 3
         stopped.stoppedWhile = PipelineStep.transcript.doing
         XCTAssertEqual(NoticeBuilder.content(.couldntFinish, stopped).title, "Couldn't Finish: Sun 13 Sep")
         XCTAssertEqual(NoticeBuilder.content(.couldntFinish, stopped).body,
-                       "It stopped three times while writing the transcript. The original is untouched, and the details are on the recording page.")
+                       "It stopped three times while writing the transcript. The original is untouched; open it to see the details.")
 
         var ask = facts(talk, folder: "Drop folder")
         ask.askFirst = true
         XCTAssertEqual(NoticeBuilder.content(.found, ask).body,
-                       "Found in Drop folder, and it has sound. Nothing is made until you choose Make Outputs on its page.")
+                       "Found in Drop folder, and it has sound. Nothing is made until you open it and choose Make Outputs.")
     }
 
     /// A dropped file can be named after anyone, and a title can hold a name. Neither ever reaches

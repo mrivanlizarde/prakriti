@@ -41,14 +41,14 @@ struct ApprovalCheck: Equatable, Sendable {
             return ApprovalCheck(canApprove: false, line: blocked, speakersNotChecked: true)
         }
         if recording.editsPending {
-            return ApprovalCheck(canApprove: false, line: "Make Again first: the trim and cuts on this page are not in the episode yet.", speakersNotChecked: false)
+            return ApprovalCheck(canApprove: false, line: "Make Again first: the newest trim and cuts are not in the episode yet.", speakersNotChecked: false)
         }
         guard let folder = recording.outputFolder, !filesToApprove(recording).isEmpty,
               filesToApprove(recording).allSatisfy({ fileExists(folder + "/" + $0) }) else {
             return ApprovalCheck(canApprove: false, line: "The finished files are not all in their folder any more. Make Again first.", speakersNotChecked: false)
         }
         if recording.status == .approved {
-            return ApprovalCheck(canApprove: false, line: "Any change on this page takes this approval back, so the new version can be approved.", speakersNotChecked: false)
+            return ApprovalCheck(canApprove: false, line: "Any change to it takes this approval back, so the new version can be approved.", speakersNotChecked: false)
         }
         return ApprovalCheck(canApprove: true,
                              line: "Prakriti does not check speakers yet. You marked this as a talk with one teacher speaking: listen before you approve.",

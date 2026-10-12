@@ -107,7 +107,7 @@ enum NoticeBuilder {
         case .found:
             let place = facts.folderName.map { "Found in \($0)" } ?? "Found as a new recording"
             if facts.askFirst {
-                return "\(place), and it has sound. Nothing is made until you choose Make Outputs on its page."
+                return "\(place), and it has sound. Nothing is made until you open it and choose Make Outputs."
             }
             let length = facts.duration.map { " It is \(Format.length($0)) long, and" } ?? ""
             return length.isEmpty ? "\(place). The sound check runs next." : "\(place).\(length) the sound check runs next."
@@ -132,14 +132,14 @@ enum NoticeBuilder {
             return "\(what) \(verb) ready. " + (facts.makesEpisode ? "Listen before anything goes out." : "Read it before anything goes out.")
         case .needsADecision:
             if facts.noAudioTrack {
-                return "The file has no audio track, so nothing was made from it. Choose what happens to it on its page."
+                return "The file has no audio track, so nothing was made from it. Open it to choose what happens to it."
             }
             let length = facts.duration.map { " for all \(Format.length($0))" } ?? ""
-            return "The audio is silent\(length), so nothing was made from it. Choose what happens to it on its page."
+            return "The audio is silent\(length), so nothing was made from it. Open it to choose what happens to it."
         case .couldntFinish:
             let times = facts.tries >= 3 ? " three times" : (facts.tries == 2 ? " twice" : "")
             let step = facts.stoppedWhile.map { " while \($0.lowercasedFirst)" } ?? " before it finished"
-            return "It stopped\(times)\(step). The original is untouched, and the details are on the recording page."
+            return "It stopped\(times)\(step). The original is untouched; open it to see the details."
         }
     }
 

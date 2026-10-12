@@ -70,7 +70,7 @@ The show's name, host, artwork, numbering and a call to action are set once, in 
 Prakriti never makes them up: until you set them, the checklist says MISSING. A recording marked as a
 class is never made ready to upload.
 
-On the recording's page, and in the inspector's Outputs, the Ready to upload section shows the checklist
+In the inspector's Outputs, the Ready to upload section shows the checklist
 and has a Copy button for the
 title, the summary, the show notes and each caption, and Update Podcast-Ready Files writes a new title
 or show name into the files without making the sound again.
@@ -155,8 +155,8 @@ again.
   inspector, then turn its outputs on or off. [Show Me](prakriti://show/sources)
 - **For files you add by hand:** in Settings, Outputs (Command-comma), turn on the standard choices.
   [Show Me](prakriti://show/settings/outputs)
-- **For one recording:** double-click it to open its page, then under Outputs for this recording change
-  a switch. The recording then has its own choices. Click Make Again to make it with them.
+- **For one recording:** select it, then in the inspector's Outputs, under Outputs for this recording,
+  change a switch. The recording then has its own choices. Click Make Again to make it with them.
 
 How each output is made, such as the loudness target, the silence trim, an intro and outro, mono or
 stereo, and the transcript's formats, is set in Settings, Outputs, for every folder at once.

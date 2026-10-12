@@ -96,7 +96,7 @@ final class WelcomeTests: XCTestCase {
     }
 
     func testOnlyWhatIsBuiltIsVisibleInThePanels() {
-        XCTAssertEqual(Capabilities.built, [.help, .welcome], "v2 part M2b adds the welcome to Help")
+        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer], "v2 part M2b adds the welcome to Help, M3b the Viewer (no panel row needs only the Viewer)")
         XCTAssertEqual(unbuiltNamesFound(in: visibleText(built, capabilities: Capabilities.built), built: Capabilities.built), [])
         // At M2b, panel 1 lists finding recordings, the podcast and "nothing is posted without you".
         XCTAssertEqual(built.map(\.id), ["welcome", "record", "outputs", "privacy", "start"])

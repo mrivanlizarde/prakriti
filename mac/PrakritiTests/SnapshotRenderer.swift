@@ -132,7 +132,10 @@ final class SnapshotRenderer {
             guard let document = scroll.documentView else { return false }
             let inSidebar = sidebarView.map { scroll.isDescendant(of: $0) } ?? false
             let inInspector = inspectorView.map { scroll.isDescendant(of: $0) } ?? false
-            return !inSidebar && !inInspector && document.frame.height > scroll.contentView.bounds.height + 20
+            // The Viewer's transcript (v2 part M3b) scrolls on its own, as the player plays, like a list inside a
+            // page: it keeps its place rather than being paged through (a 15-minute talk is dozens of screenfuls).
+            let isTranscript = document is PlayableTextView
+            return !inSidebar && !inInspector && !isTranscript && document.frame.height > scroll.contentView.bounds.height + 20
         }
         // Only the page itself scrolls: a list inside the page (a recording's transcript, milestone 5)
         // keeps its own place, as it does when Ivan scrolls the page, rather than being scrolled with it.

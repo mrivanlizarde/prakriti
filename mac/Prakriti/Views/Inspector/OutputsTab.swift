@@ -35,6 +35,13 @@ struct OutputsTab: View {
                     PodcastReadySection(recording: recording)
                 }
             }
+            // What this recording makes, moved from v1's page (v2 part M3b).
+            if recording.status != .needsADecision && recording.status != .skipped {
+                RecordingOutputsSection(recording: recording)
+                if recording.hasOwnOutputs {
+                    RecordingOwnSettingsSections(recording: recording)
+                }
+            }
             if recording.outputFolder != nil {
                 Section {
                     Button("Show All Outputs in Finder") { model.showOutputsInFinder(recording) }
@@ -138,7 +145,7 @@ struct StatusBlock: View {
             }
         }
         if recording.editsPending && (recording.status == .readyForYourYes || recording.status == .approved) {
-            lines.append("The trim or cuts on its page are not in the episode yet. Make it again before approving.")
+            lines.append("The trim or cuts in the Viewer are not in the episode yet. Make it again before approving.")
         }
         return lines
     }
@@ -150,7 +157,7 @@ struct Deliverable: Identifiable, Equatable {
     let detail: String
     /// What Show in Finder selects; nil for an output this recording does not make.
     let url: URL?
-    /// The podcast episode plays on the recording's page.
+    /// The podcast episode plays in the Viewer.
     var playsOnPage = false
     var made: Bool { url != nil }
     var id: String { kind.rawValue }
@@ -246,7 +253,7 @@ struct DeliverableRow: View {
                 HStack(spacing: 10) {
                     if deliverable.playsOnPage {
                         Button("Play") {
-                            model.pendingSeek = PendingSeek(recordingID: recording.id, time: 0, play: true)
+                            model.pendingSeek = PendingSeek(recordingID: recording.id, time: 0, play: true, rendition: .podcast)
                             model.open(recording)
                         }
                     }

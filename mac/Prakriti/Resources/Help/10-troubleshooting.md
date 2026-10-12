@@ -64,13 +64,13 @@ can sound right and still be missing the others.
 
 ### If the transcript stops before the end
 
-The notice and the page say how much is missing. Listen to the end of the recording. If speech
+The notice and the inspector say how much is missing. Listen to the end of the recording. If speech
 continues there, click Make Again. If it stops again, the sound at that point may be very quiet or
 damaged.
 
 ### If a cut took out something you need
 
-On the recording's page, under Trim and cuts, click Remove beside the cut, then click Make Again.
+Open the recording and click the cut in the strip under the player, then click Restore at the top of the inspector. Or, in the inspector's Info, click Restore beside the cut. Then click Make Again.
 
 ## Picture and sound
 
@@ -103,7 +103,7 @@ VT). If the message stays, set both resolutions to 1920x1080. See
 
 ### If someone is named wrongly, or not recognized
 
-On the recording's page, under People in This Recording, click the person and choose Not This Person,
+In the inspector's People, click the person and choose Not This Person,
 or choose the right name. Then click Make Again. Faces seen from the side, far away or in poor light
 are harder to recognize. Prakriti treats anyone it is not sure about as Unnamed, so their face is
 blurred.
@@ -120,7 +120,7 @@ blurred.
 - Close large apps. The model needs about 33 GB of memory while it works.
 
 Writing takes about 10 to 15 minutes for a 15-minute talk. That is normal. If writing stops, the episode
-is still made, and the recording's page says why the writing stopped.
+is still made, and the inspector's Outputs say why the writing stopped.
 
 ### If the Claude API key doesn't work
 

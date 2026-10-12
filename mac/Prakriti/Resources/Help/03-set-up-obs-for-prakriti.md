@@ -134,7 +134,7 @@ session.
 3. Look at the bottom of the OBS window. There should be no "Encoding overloaded!" message and no
    dropped frames.
 :::requires captureCheck
-4. Put the test file in the Drop folder. Prakriti's capture check on the recording's page should show
+4. Put the test file in the Drop folder. Prakriti's capture check, in the inspector's Checks, should show
    3840 by 2160 at 30 frames per second, and one track for each source with sound on it.
 :::
 

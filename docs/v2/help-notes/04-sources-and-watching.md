@@ -3,6 +3,11 @@
 The team's notes for the in-app Help article `mac/Prakriti/Resources/Help/04-sources-and-watching.md` ("Sources and watching").
 Moved out of the article in v2 part M2a so the app bundle holds user text only. Never shown in the app.
 
+## Status after v2 part M3b (Mon 12 Oct 2026)
+
+- v1's recording page was retired with the Viewer: every line that sent Ivan to "the recording's page"
+  now names the viewer or the inspector's tab that holds the same thing.
+
 ## Status after v2 part M3a (Sun 11 Oct 2026)
 
 - Sources are rows of the sidebar; a folder's settings (mode, outputs, Check Now, Open Privacy Settings, Stop

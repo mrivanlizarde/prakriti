@@ -123,9 +123,9 @@ struct PodcastReadySettingsRows: View {
 
     private var numberingLine: String {
         switch setting.numbering {
-        case .none: "Apple asks for numbers only for a serial show. Numbers typed on a recording's page are still written."
-        case .episodes: "Each episode needs its number, typed on its page; until then the checklist says MISSING."
-        case .seasons: "Each episode needs its number and season, typed on its page; until then the checklist says MISSING."
+        case .none: "Apple asks for numbers only for a serial show. Numbers typed for a recording are still written."
+        case .episodes: "Each episode needs its number, typed in its Outputs; until then the checklist says MISSING."
+        case .seasons: "Each episode needs its number and season, typed in its Outputs; until then the checklist says MISSING."
         }
     }
 

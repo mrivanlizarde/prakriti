@@ -5,6 +5,30 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-12, Mon: v2 part M3b, the Viewer
+
+- **Opening a recording shows the Viewer: the system player on a black canvas, Original, Podcast or
+  Podcast-ready chosen in the toolbar, with Timeline-lite and the transcript under it.** Why: REQUEST item 10,
+  "preview the videos within the app", and v1's page only played sound in a pill; the plan's M3 Viewer.
+- **The transcript is words, not lines: click a word to play from it; select words to Remove from the Edit or
+  Keep in the Edit; Follow Playback marks the sentence playing and keeps it in view.** Why: v1's transcript did
+  not follow the player (design spec 3.4.4), and cutting by whole lines took more than Ivan chose. A selection
+  becomes a cut held clear of its neighbours, because Parakeet stretches a word over the pause after it.
+- **v1's recording page is deleted.** Why: the plan retires it only once the Viewer passes `accept-edits`, which
+  now runs through the Viewer and the inspector. Its every function moved: the trim, Use Player Time, the cuts
+  with Restore and a typed cut to Info; the per-recording outputs to Outputs; steps and numbers were already in
+  Checks. Every "page" in the app's words and in Help now names the Viewer or the inspector.
+- **Quick Help (Help menu) replaces tooltips at the top of the inspector, and the first-time tip is Prakriti's
+  own row.** Why: tooltips draw at 11 pt; TipKit's `TipView` was not proved to draw at 12 pt or more.
+- **The window comes back as it was left** (group, selection, open recording, rendition, moment, tab), kept in
+  the mode's preferences, not the store. Why: design spec 2.5; no migration for where the window was.
+- **`--debug-playback-log`, and playback proved from the log in `make look`.** Why: PLAN rule 2.1.10; a moving
+  picture cannot be judged by a verifier, and the menu of a real player cannot be read.
+- **The player never takes the keyboard focus.** Why: measured in the real window, Escape stayed in the Viewer
+  while `AVPlayerView` held the focus.
+- **No capture or snapshot shows a talk's picture; the Original plays a test pattern there.** Why: D1 stands
+  in this run's instructions (frames of Gabriel's talks are measured, not looked at).
+
 ## 2026-10-12, Mon: v2 part M3a, second fix (the build was not warning-free)
 
 - **`make build` now fails on any compiler warning by reading its own output.** Why: the commit that kept

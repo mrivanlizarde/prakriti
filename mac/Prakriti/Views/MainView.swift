@@ -5,7 +5,7 @@ import SwiftUI
 /// The main window (v2 part M3a, docs/v2/design-spec.md 2.1 to 2.5): the Library sidebar (Needs You,
 /// In Progress, Ready, All Recordings; the watched folders under Sources), the browser of recordings in
 /// the middle (a grid or a list), and the inspector on the right for whatever is selected. Opening a
-/// recording swaps the browser for v1's recording page, unchanged, until the Viewer replaces it (M3b).
+/// recording swaps the browser for the Viewer (v2 part M3b).
 struct MainView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
@@ -41,7 +41,7 @@ struct MainView: View {
                 }
             }
         }
-        // Searching from a recording's page shows the results in the browser.
+        // Searching from the Viewer shows the results in the browser.
         .onChange(of: model.search.text) { _, text in
             if !text.trimmingCharacters(in: .whitespaces).isEmpty { model.back() }
         }
@@ -96,7 +96,7 @@ struct MainView: View {
         guard let recording = model.recording(id: confirmation.recordingID) else { return "" }
         return switch confirmation.action {
         case .makeAgain:
-            "It is made again with the trim, the cuts and the choices on its page. The files made before are replaced once the new ones are ready, and the original recording is not changed."
+            "It is made again with its trim, its cuts and its choices. The files made before are replaced once the new ones are ready, and the original recording is not changed."
         case .approve:
             "Copies \(Format.madeFiles(ApprovalCheck.filesToApprove(recording))) to \(model.paths.display(model.approvedFolder(for: recording).path)), with a receipt. Nothing is uploaded or published."
         case .removeFromLibrary:
@@ -105,9 +105,9 @@ struct MainView: View {
     }
 }
 
-/// The main window's toolbar (design spec 3.3): Back while a recording is open; Grid or List and the
-/// Sort menu in the browser; Pause All, with its words; the inspector's switch. The search field is the
-/// window's own (`searchable`).
+/// The main window's toolbar (design spec 3.3): Back, the rendition picker, Make Again and Approve while a
+/// recording is open in the Viewer; Grid or List and the Sort menu in the browser; Pause All, with its
+/// words; the inspector's switch. The search field is the window's own (`searchable`).
 struct MainToolbar: ToolbarContent {
     @Environment(AppModel.self) private var model
 
@@ -120,6 +120,22 @@ struct MainToolbar: ToolbarContent {
                 }
                 .keyboardShortcut("[", modifiers: .command)
                 .accessibilityLabel("Back to the library")
+            }
+            ToolbarItem(placement: .principal) {
+                RenditionPicker()
+            }
+            if let recording = model.focusedRecording {
+                if model.canMakeAgain(recording) {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Make Again…") { model.ask(.makeAgain, for: recording) }
+                    }
+                }
+                if recording.status == .readyForYourYes {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Approve…") { model.ask(.approve, for: recording) }
+                            .disabled(!model.approvalCheck(recording).canApprove)
+                    }
+                }
             }
         } else {
             ToolbarItem(placement: .principal) {
@@ -305,8 +321,9 @@ struct PauseButton: View {
     }
 }
 
-/// Resolves a route to its recording; the recording may have been removed since. It takes the keys when it
-/// opens, so Escape comes back to the browser (design spec 2.5); a field being edited keeps Escape for itself.
+/// Resolves a route to its recording in the Viewer; the recording may have been removed since. It takes the
+/// keys when it opens, so Escape comes back to the browser (design spec 2.5) and Space plays or pauses, with
+/// J, K and L to shuttle (design spec 6.7); a field being edited keeps its keys for itself.
 struct RecordingDestination: View {
     let route: RecordingRoute
     @Environment(\.modelContext) private var context
@@ -316,7 +333,7 @@ struct RecordingDestination: View {
     var body: some View {
         Group {
             if let recording = context.model(for: route.id) as? Recording, !recording.isDeleted {
-                RecordingDetailView(recording: recording)
+                ViewerView(recording: recording)
             } else {
                 ScrollView {
                     EmptyState(symbol: "questionmark.circle", title: "Recording not found",
@@ -332,6 +349,12 @@ struct RecordingDestination: View {
             // the page under the typing).
             if NSApp.keyWindow?.firstResponder is NSText { return .ignored }
             model.back()
+            return .handled
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: " jklJKL"), phases: .down) { press in
+            if NSApp.keyWindow?.firstResponder is NSText { return .ignored }
+            guard let key = press.characters.first, press.modifiers.isEmpty || press.modifiers == .shift else { return .ignored }
+            if key == " " { model.viewer.togglePlay() } else { model.viewer.shuttle(key) }
             return .handled
         }
         .onAppear { focused = true }

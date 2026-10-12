@@ -3,6 +3,11 @@
 The team's notes for the in-app Help article `mac/Prakriti/Resources/Help/02-capture-the-best-video.md` ("Capture the best video").
 Moved out of the article in v2 part M2a so the app bundle holds user text only. Never shown in the app.
 
+## Status after v2 part M3b (Mon 12 Oct 2026)
+
+- v1's recording page was retired with the Viewer: every line that sent Ivan to "the recording's page"
+  now names the viewer or the inspector's tab that holds the same thing.
+
 ## Status after v2 part M2a (Sun 11 Oct 2026)
 
 - Tables are not drawn in Help: the camera settings table is a list.

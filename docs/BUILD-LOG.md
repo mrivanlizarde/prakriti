@@ -29,6 +29,10 @@ only while work runs (measured in the real menu bar) and never with Reduce Motio
 Help in the app ("v2 part M2a"), and M2b, the welcome window** (the last section, "v2 part M2b"): five
 panels that open once by itself and from Help, Welcome to Prakriti, each row shown only once its feature
 is built, and the notification button that asks macOS only after saying why.
+**Then part M3a, the main window and Settings, and part M3b, the Viewer** (the last section, "v2 part M3b"):
+opening a recording plays it in the app (Original, Podcast, Podcast-ready) with Timeline-lite and a transcript of
+clickable words under it, Remove from the Edit and Keep in the Edit, Follow Playback and Quick Help; v1's
+recording page is retired. M3b is built and checked but **not installed** until a verifier passes it.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -3092,3 +3096,139 @@ builder's "0 warnings" claim, and found that build installed live before any ver
 ### For Ivan
 
 - Nothing to do. After the verifier passes this fix: `cd ~/Code/prakriti/mac && make install`.
+
+---
+
+## v2 part M3b: the Viewer. Mon 12 Oct 2026
+
+The sixth part of v2 (`docs/v2/PLAN.md`, M3, part M3b; REQUEST item 10, "build a viewer"): opening a recording
+replaces the browser with the Viewer, and v1's recording page is retired. Built on `main`, as this run's
+instructions said (rule 2.1.1 names a `v2-m3b` branch). No package was added. No SwiftData model changed.
+
+### What was built
+
+- **The Viewer** (`Views/Viewer/ViewerView.swift`, `ViewerModel.swift`): AVKit's own player (`AVPlayerView`, the
+  only scrubber) on a canvas black in both appearances, floating controls over a picture and inline controls for
+  sound alone, with the title and date above them. **Renditions** in the toolbar: **Original** (picture and
+  sound, looked at off the main thread first, Mac warning 44), **Podcast** (`episode.mp3`), **Podcast-ready**
+  (the MP3 in `Podcast-ready/`); **Video** and **Shorts** are in the control and, chosen, say "Prakriti does not
+  make an edited video yet." / "...shorts yet." (M8, M11). Changing rendition keeps the moment, on the original's
+  clock (Mac warning 41). Space plays or pauses; L plays forward and faster each press (1, 2, 4, 8), J backward
+  where the file allows, K stops; the Playback menu has the same (without key equivalents: a menu's Space would
+  be taken from every text field). Toolbar: Back, the rendition picker, Make Again... and Approve... (v1's
+  refusals). A **banner** says in one line what stands in the way: waiting, working, needs a decision,
+  couldn't finish (Try Again), not made yet (Make Outputs), the original not on this Mac, or the newest trim
+  and cuts not in the episode (Make Again...).
+- **Timeline-lite** (`TimelineLite.swift`, design spec 3.4.3): kept time filled in the accent, removed time
+  outlined (1.5 pt) with `scissors` where 24 pt or wider, a 2 pt accent line at the moment playing (not a
+  handle). A click plays from the span and shows it above the inspector's tabs (`SelectedSpanStrip`) with
+  **Restore**. VoiceOver reads each span ("Removed: a cut, 30 s, 5:00 to 5:30."). Not built: the marks lane,
+  Everything / What Stays, zoom, Option-arrows between spans (nothing to mark until M8 and M9).
+- **The transcript** (`TranscriptView.swift`, `Transcript.swift`): every word of `transcript.json` (through
+  `EpisodeTranscript.sentences`, Mac warning 45), with the word list where the fixed sentence keeps its word
+  count, in sentences and paragraphs (a new paragraph after a 1.5 s pause or six sentences; who speaks comes
+  with M6), each under its time at 15 pt monospaced, words at 17 pt. **Click a word to play from it.**
+  **Follow Playback** (View menu and a checkbox, on by default, kept) marks the sentence playing with the
+  accent at 12 percent (`AppColor.playingHighlightNS`, measured) and keeps it in the middle of the view. Words
+  the trim or a cut take out are struck through in the secondary color. Select words (drag, Shift-click): the
+  bar under it shows "Selected: 15 words, 7:00 to 7:05." with **Remove from the Edit** and **Keep in the Edit**,
+  also on Control-click and in the Edit menu. **Find in Transcript** (Command-F) opens the system Find bar. It is
+  an `NSTextView` (Mac warning 95).
+- **Cut and Keep** (`App/ViewerActions.swift`): a run of words becomes a cut through v1's `addCut`, held clear
+  of the words on each side (`TranscriptDocument.span(of:)`, Mac warning 98); Keep takes the span out of every
+  cut and widens the trim to it; Restore on a span does the same. Every change leaves its line in Activity,
+  waits for Make Again (warning 36) and takes an approval back (warning 38).
+- **The inspector took the rest of v1's page:** Info has the trim with **Use Player Time** (while the recording
+  is open), the cuts each with **Restore**, **Cut a section** (two typed times, `typedCut`), Clear Trim and Cuts;
+  Outputs has **Outputs for this recording** and its own settings (moved to `Inspector/RecordingChoices.swift`
+  with the step rows). `RecordingPage.swift` and `RecordingsView.swift` are deleted. Every app string, notice
+  and Help line that said "page" now names the Viewer or the inspector's tab.
+- **Quick Help** (`Views/QuickHelp.swift`, Help > Show Quick Help, off by default, kept): a panel at the top of
+  the inspector with what the control under the pointer does, at 15 pt, and More in Help. Declared with
+  `.quickHelp(_:article:)` on the rendition picker, Follow Playback, each span, the transcript and Remove and
+  Keep. **The first-time tip** ("Click a word to play from it. Select words to take them out or keep them.",
+  Got It) is Prakriti's own row: TipKit's `TipView` was not proved to draw at 12 pt or more (design spec 5.5).
+- **State restoration** (`WindowState`, Mac warning 97): group or folder, selection, grid or list, inspector
+  tab and shown, the recording open in the Viewer with its rendition and the moment playing. Saved in the mode's
+  preferences on each change and each second of play; put back at launch before launch flags.
+- **`--debug-playback-log`** (Debug builds, never the installed copy, warning 77): one line a second,
+  "Playback: currentTime 12.433 s, rate 1.00, rendition podcast", the player muted.
+- **`make look`** gains four Viewer looks (Podcast, Podcast-ready, Original on a test pattern, Quick Help),
+  Space plays and pauses in `--keys` (from the log), the title field Escape check moved to the inspector's Info,
+  and the **playback check** (`--playback`, `PLAYBACK=`). Capture flags: `--rendition=`, `--sample-original=`,
+  `--sample-output=`, `--quick-help`.
+- **Help:** `viewer` switched on. Article 06's "Watch and listen in the viewer" and "Change the episode"
+  rewritten to what is built; 01, 02, 03, 04, 05 and 10 lose "the recording's page". Notes in
+  `docs/v2/help-notes/`.
+
+### Checks run, with results (PLAN M3, the checks part M3b runs: 1, 2 for the Viewer, 3 for playback, 4, 5 through the Viewer and inspector, 8)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `make test`: every test passes, snapshot list extended; `RulesTests` still fails on a planted 11 pt font and `.help` | **PASS. 201 tests, 0 failures, 8 skipped by design** (the acceptance methods and the migration check), 635.7 s (10:09 to 10:20, inside `make regress`). New: `ViewerTests` (7). `make build` **0 compiler warnings** (`build-output.log`: 0 `warning:` lines; `no-warnings.sh` passed on every build). **Proved by breaking it** (10:35, restored, `shasum` identical): `.font(.system(size: 11)).help("planted")` on the Viewer tip's Got It: `testEveryFontComesFromTheTypeScale` and `testNoTooltips` both failed naming `ViewerView.swift` |
+| 2 | Snapshots of the Viewer, each rendition, light and dark, looked at | **PASS.** 11 Viewer screens, light and dark (22, `20-viewer-*` in `screens/mac/v2-m3b/`): Podcast, Podcast-ready, Original, playing at 2:52 with the tip dismissed, edits not made yet with words selected and the Info tab, a cut chosen in the strip, Quick Help, marked as a class (Checks), approved, own choices (Outputs), the silent class (no strip, "No transcript"). 561 pictures in the folder with the library, Settings and Help. **Looked at** in contact sheets: 17 pt words, 15 pt times, struck-through cut words, the playing sentence's band in both appearances, the scissors span, "Keeps 15:08 of 15:48", the banner, the selection bar, the strip above the tabs, Use Player Time, Cut a section, the moved choices. In bitmaps the player draws grey and the selected segment black (warning 43, glass), so the real window is the judge (check 3). The first run paged the transcript into 15 pictures a screen; fixed (warning 95) |
+| 3 | `make look` plus playback from the log | **PASS, 43 of 43 lines, 0 FAIL** (10:24 to 10:31). **Playback** (`--playback`, the development store's `2026-09-13 clip 90s.mp4`, `--development --debug-playback-log`, Space sent by process id): "currentTime 12.433 s" and "15.433 s" three lines apart, **3.000 s apart, rate 1.00 and 1.00**, rendition podcast; Space again: rate 0.00 (`real/playback.txt`). An earlier run the same morning: 5.018 and 8.018 s. **Keys:** Return, Escape, Command-Down, Command-Up, Command-[ , **Space plays (log rate 1.00) and pauses (0.00)**, Escape in the inspector's title field stays in the Viewer, Command-1 and 2, Command-Option-I, Command-comma: all PASS. **Looked at:** `real/13-viewer-playback.png` (the system player's inline controls on the Podcast rendition, playing at 0:08, the sentence marked), `real/12-viewer-*` (Original playing the test pattern with the floating controls, Podcast, Podcast-ready, Quick Help, light and dark; the glass toolbar with the rendition picker, Make Again..., Approve...), the sidebar's selected row icons in looks 01 to 08 (PASS as in M3a). Live layout keys: unchanged ("changed by this run: none") |
+| 4 | A UI-model test plays from a clicked word within 0.25 s on the original's clock; Follow Playback moves on | **PASS** (`ViewerTests.testAClickedWordPlaysFromItAndTheMarkedSentenceFollows`, a real `AVPlayer` on generated media): clicked "practice" at 7.00 s: Podcast landed at 5.998 s in the episode = **6.998 s on the original's clock, 0.002 s off**; Original landed at 6.998 s, **0.002 s off**. Playing from the first word for 8 s, the marked sentence went **[0, 1, 2]**, in order |
+| 5 | `make accept-edits` through the Viewer and inspector | **PASS** (10:20 to 10:23): the Viewer read **2,948 words**; Remove from the Edit on the **15 words** said 7:00 to 7:05 cut **exactly 15**; Keep in the Edit left **no edit**; then the trim 0:10 and the typed cut 5:00 to 5:30 (`typedCut`); approve refused before Make Again ("Make Again first: the newest trim and cuts are not in the episode yet."); approved episode **38.82 s shorter (expected 38.82)**, **0 of 73** five-word runs from the cut heard again, 189 of 201 after it; marked a class: refused |
+| 8 | Regression set; `make migrate-check` | **PASS.** `make regress MILESTONE=v2-m3b` exit 0: `make test` above; **`make accept`**: 13 Sep **-16.8 LUFS** (-16.82), true peak -1.7 dBFS (-1.68 dBTP), reaching 15:47 of 15:48; `silent-60s` Needs a decision at -91 dB; the 30 s clip filed as a test; 6 Sep -16.7 LUFS (-16.72), -1.4 dBFS, 55:38 of 55:39; **`grep -c 2026-09-14 acceptance.txt`: 0**; `make accept-edits` (check 5). **`make migrate-check` PASS** (10:32): rows 11/11, 2/2, 40/40, 565/565, 2 approved; no model changed (the window's state is in preferences) |
+
+**The originals:** unchanged by `stat`, before (09:15) and after (10:35): the 13 Sep talk 730,464,600 bytes,
+modified 1789350092; the 6 Sep talk 2,578,079,009 bytes, 1788746532.
+
+### Looked at (D1)
+
+No frame of Gabriel's talks was drawn or looked at. Every Original picture in the snapshots and in `make look` is
+a `testsrc2` test pattern made in a temporary folder (`ViewerSnapshotMedia`, `--sample-original=`); the playback
+capture and `accept-edits`' pictures show the Podcast rendition, which has no picture. So there is no list of
+frames for Ivan from this part.
+
+### What the runs caught and fixed
+
+- **The snapshots paged the transcript** like a page (15 or more pictures of one screen's transcript before the run was stopped): the renderer
+  skips the transcript's scroll view (warning 95).
+- **Rebuilding the transcript cleared the words chosen**: AppKit drops the selection when the text is replaced,
+  and that reached the Viewer as Ivan's; ignored while building.
+- **Follow Playback left the sentence at the bottom edge**: it is now scrolled to the middle.
+- **Escape after Return stayed in the Viewer in the real window**: `AVPlayerView` had the focus; it never takes it
+  now (warning 94).
+- **`make look` read the window's size before the app set it** (1414 by 781 pt while the PNG was 1440 by 900):
+  it reads it again once settled. **The sidebar finder could not see the faint grey selection** on the light
+  glass with the Viewer focused; the Viewer looks do not measure the sidebar (the other looks do), and are looked at.
+- **The symbols were `film` and `waveform`**, a film strip and a drawn waveform (never skeuomorphic): now
+  `video` and `mic`.
+
+### Decisions, each with its reason
+
+1. **The transcript is an `NSTextView`.** Reason: word clicks, a selection across lines and Find in up to about
+   10,000 words; SwiftUI views per word cannot share a selection.
+2. **Remove from the Edit and Keep in the Edit**, the design spec's words, rather than "Cut". Reason: one name
+   from the menus to Help; "Restore" for a whole cut, as the design spec has it.
+3. **Paragraphs break at pauses**, not speakers. Reason: who speaks is M6's; a pause is the honest break now.
+4. **The podcast-ready rendition is read with the episode's parts and no intro.** Reason: its intro length is not
+   stored; no podcast-ready episode here has one (12 Oct). With an intro, a clicked word would play early by it.
+5. **Video and Shorts are shown, unavailable, with their reason when chosen** (the plan says so), and Help does
+   not name them (`shorts` is unbuilt).
+6. **TipKit is not used**; Prakriti's own tip row, kept dismissed in preferences.
+7. **v1's Outputs, Models and Activity screens keep their files** (`OutputsView`, `ModelsView`, `ActivityView`): they
+   are the Settings panes and the Activity window, which M4a and M5 rebuild. Only the page's files were deleted.
+8. **Not installed by this builder.** Reason: PLAN 2.1.3 installs only after an independent verifier's PASS, and the
+   M3a second fix (62c713f) is itself still waiting for its verdict; installing now would put both live unverified,
+   the order the last fix said broke the rule. The live copy stays pid 66737.
+
+### What does not work yet, or was not seen working
+
+- J (backward) depends on the file: AVFoundation plays MP3 and H.264 backward only when `canPlayReverse`; K stops
+  otherwise. Not measured on the real files.
+- Quick Help shows only for the controls named above; its floating window for a hidden inspector is not built
+  (Show Quick Help shows the inspector instead).
+- The split between picture and transcript is draggable (`VSplitView`) but not remembered across launches.
+- VoiceOver was not run over the strip or the transcript (labels set in code; the transcript is AppKit text).
+- In the inspector's Ready to upload, "Episode" and "Season" wrap mid-word at 320 pt (seen in the snapshots, from
+  M3a's layout; not changed here).
+
+### For Ivan
+
+- [ ] **Ten minutes with the Viewer** (PLAN M3, Needs Ivan), once it is installed: double-click Sun 13 Sep, press
+  Space, click a word, choose Original and Podcast-ready in the toolbar, select a few words and try Remove from
+  the Edit and Keep in the Edit (then Keep them back, or Clear Trim and Cuts in Info). Say what to change.
+- [ ] **Install after the verifier passes M3a's second fix and this part:** `cd ~/Code/prakriti/mac && make install`.

@@ -19,8 +19,8 @@ final class SnapshotTests: XCTestCase {
         let outputFolder = renderer.outputFolder
         var written: [String] = []
 
-        // `make snapshots ONLY=recording` draws just the recording pages, for quick looks while
-        // working on them; ONLY=library just the main window and Settings (v2 part M3a); the full set is
+        // `make snapshots ONLY=recording` draws just the Viewer (v1's recording page until v2 part M3b), for
+        // quick looks while working on it; ONLY=library just the main window and Settings (v2 part M3a); the full set is
         // the milestone's check.
         let only = ProcessInfo.processInfo.environment["PRAKRITI_SNAPSHOT_ONLY"].flatMap { $0.isEmpty ? nil : $0 }
         // ONLY=help draws only the Help window (testRenderHelp), ONLY=welcome only the welcome (testRenderWelcome).
@@ -141,71 +141,82 @@ final class SnapshotTests: XCTestCase {
             return
         }
 
-        // v1's recording page, opened from the browser (until the Viewer, part M3b): the 13 Sep talk and the
-        // sample class with no sound.
-        for (slug, title) in [("recording-ready", "Talk with Gabriel"), ("recording-silent", "Class")] {
-            try draw("20-\(slug)") { model in
-                let recording = try XCTUnwrap(try model.context.fetch(FetchDescriptor<Recording>())
-                    .first { $0.title == title && ($0.status == .readyForYourYes || $0.status == .needsADecision) })
-                model.open(recording)
+        // The Viewer (v2 part M3b), opened from the browser: the 13 Sep sample talk on each rendition, with
+        // edits, a span chosen, Quick Help on, marked as a class, approved, and the silent sample class. The
+        // Original plays a test pattern made here, never the talk's own picture (docs/v2/PLAN.md section 11,
+        // D1), and the Podcast-ready rendition a copy of the episode in a folder made here.
+        let media = try ViewerSnapshotMedia.make()
+        func openTalk(_ model: AppModel, rendition: Rendition? = nil, at original: Double? = nil, _ change: (Recording) -> Void = { _ in }) throws -> Recording {
+            let recording = try talk13(model)
+            recording.filePath = media.pattern.path
+            recording.outputFolder = media.outputs.path
+            change(recording)
+            model.open(recording)
+            model.restoredViewer = (recording.id, rendition, original)
+            model.openViewer(recording)
+            return recording
+        }
+        try draw("20-viewer-podcast") { model in _ = try openTalk(model) }
+        try draw("20-viewer-podcast-ready") { model in _ = try openTalk(model, rendition: .podcastReady) }
+        try draw("20-viewer-original") { model in _ = try openTalk(model, rendition: .original, at: 120) }
+        try draw("20-viewer-tip-seen-playing") { model in
+            model.dismissViewerTip()
+            _ = try openTalk(model, at: 172.5)
+        }
+        try draw("20-viewer-edits-pending") { model in
+            let recording = try openTalk(model, at: 296) { r in
+                model.setTrim(start: 10, end: nil, for: r)
+                model.addCut(TimeRange(start: 300, end: 330), to: r)
+            }
+            let chosen = model.viewer.document.words.indices.filter { (340.0...346.0).contains(model.viewer.document.words[$0].start) }
+            if let first = chosen.first, let last = chosen.last { model.viewer.selectedWords = first...last }
+            XCTAssertTrue(model.canRemoveSelectedWords(recording))
+            model.inspectorTab = .info
+        }
+        try draw("20-viewer-span-selected") { model in
+            let recording = try openTalk(model) { r in model.addCut(TimeRange(start: 300, end: 330), to: r) }
+            let span = try XCTUnwrap(TimelineSpan.spans(edits: recording.edits, duration: recording.duration ?? 0).first { $0.kind == .cut })
+            model.viewer.selectedSpan = span
+        }
+        try draw("20-viewer-quick-help") { model in
+            model.setQuickHelp(true)
+            model.quickHelp.show("Choose what plays: the Original as recorded, the Podcast episode, or the Podcast-ready episode. Video and Shorts are not made yet.",
+                                 article: "reviewing-and-approving")
+            _ = try openTalk(model)
+        }
+        try draw("20-viewer-class") { model in
+            _ = try openTalk(model) { r in model.setKind(.lesson, for: r) }
+            model.inspectorTab = .checks
+        }
+        try draw("20-viewer-approved") { model in
+            _ = try openTalk(model) { r in
+                r.status = .approved
+                r.approvedAt = Fixtures.now
+                r.statusReason = "Approved. Its files are in ~/Prakriti/Approved/2026-09-13 18-25-44. Nothing was uploaded or published."
             }
         }
-
-        // The 13 Sep talk with its own choices: the transcript turned off and its loudness at -19,
-        // as milestone 4's acceptance made it.
-        try draw("20-recording-own-choices") { model in
-            let recording = try talk13(model)
-            model.setOutput(.transcript, on: false, for: recording)
-            recording.outputSettings.first { $0.kind == .podcastEpisode }?.loudnessTarget = -19
-            model.open(recording)
-        }
-
-        // Milestone 5: the 13 Sep talk with a trim and a cut not made yet (Approve waits for Make
-        // Again), marked as a class (Speakers not checked), and approved.
-        for (slug, change) in [("edits-pending", { (model: AppModel, r: Recording) in
-                                   model.setTrim(start: 10, end: nil, for: r)
-                                   model.addCut(TimeRange(start: 300, end: 330), to: r) }),
-                               ("class-speakers-not-checked", { (model: AppModel, r: Recording) in model.setKind(.lesson, for: r) }),
-                               ("approved", { (_: AppModel, r: Recording) in
-                                   r.status = .approved
-                                   r.approvedAt = Fixtures.now
-                                   r.statusReason = "Approved. Its files are in ~/Prakriti/Approved/2026-09-13 18-25-44. Nothing was uploaded or published." })] {
-            try draw("20-recording-\(slug)") { model in
-                let recording = try talk13(model)
-                change(model, recording)
-                model.open(recording)
+        try draw("20-viewer-own-choices") { model in
+            _ = try openTalk(model) { r in
+                model.setOutput(.transcript, on: false, for: r)
+                r.outputSettings.first { $0.kind == .podcastEpisode }?.loudnessTarget = -19
             }
         }
-
-        // Milestone 6: the 13 Sep talk marked as a class, its titles not written yet, with writing set
-        // to the Claude API: the page says the privacy lock hands the writing to LM Studio.
-        try draw("20-recording-class-not-written") { model in
-            model.settings.provider[.writing] = .claudeAPI
-            let recording = try talk13(model)
-            recording.writtenJSON = nil
-            model.setKind(.lesson, for: recording)
+        try draw("20-viewer-silent") { model in
+            let recording = try XCTUnwrap(try model.context.fetch(FetchDescriptor<Recording>()).first { $0.title == "Class" && $0.status == .needsADecision })
+            recording.filePath = media.pattern.path
             model.open(recording)
         }
-
-        // 11 Oct: the 13 Sep talk marked as a class with the podcast-ready episode switched on: Ready to
-        // upload says why a class is never made ready, and nothing was made.
-        try draw("20-recording-class-not-ready") { model in
-            let recording = try talk13(model)
-            model.setKind(.lesson, for: recording)
-            model.setOutput(.podcastReady, on: true, for: recording)
-            recording.podcastReadyJSON = nil
-            recording.podcastReadyProblem = PodcastPackage.refusal(kind: .lesson)
-            model.open(recording)
-        }
+        let viewerCount = 11 * 2
 
         if only == "recording" {
-            print("Snapshots written to \(outputFolder.path): \(written.count) recording pages")
+            print("Snapshots written to \(outputFolder.path): \(written.count) Viewer pictures")
+            XCTAssertEqual(written.count, viewerCount)
             return
         }
 
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 2 * 3 + 2 * 2 + 5 * 2 + 3 * 2 + 2 * 2 + 2 + 3 * 2 + 2 + 2)
+        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 2 * 3 + 2 * 2 + 5 * 2 + 3 * 2 + viewerCount)
     }
 
     /// v2 part M2a: the Help window, open at every article this build shows, in light and dark, with a
@@ -285,5 +296,45 @@ final class SnapshotTests: XCTestCase {
         }
         print("Welcome snapshots written to \(renderer.outputFolder.path): \(written.count)")
         XCTAssertEqual(written.count, 10 + 8 + 5)
+    }
+}
+
+/// The media the Viewer's snapshots play (v2 part M3b), made once per test run in a temporary folder: a test
+/// pattern with a tone, as long as the 13 Sep talk, standing in for its original (so no picture of a person
+/// is drawn or read; the studio folder is never opened), and a copy of the sample talk's output folder with
+/// its episode copied in as the podcast-ready MP3 (no podcast-ready file of the talk exists on this Mac).
+@MainActor
+enum ViewerSnapshotMedia {
+    struct Media {
+        let pattern: URL
+        let outputs: URL
+    }
+
+    private static var made: Media?
+
+    static func make() throws -> Media {
+        if let made, FileManager.default.fileExists(atPath: made.pattern.path) { return made }
+        let root = FileManager.default.temporaryDirectory.appending(path: "prakriti-viewer-snapshots", directoryHint: .isDirectory)
+        try? FileManager.default.removeItem(at: root)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let pattern = root.appending(path: "test pattern.mp4")
+        let ffmpeg = Process()
+        ffmpeg.executableURL = ToolPaths.standard.ffmpeg
+        ffmpeg.arguments = ["-hide_banner", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=5", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000",
+                            "-t", "948", "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", pattern.path]
+        try ffmpeg.run()
+        ffmpeg.waitUntilExit()
+        guard ffmpeg.terminationStatus == 0 else { throw CocoaError(.fileWriteUnknown) }
+        let sample = AppPaths(mode: .live).root.appending(path: "Outputs/2026-09-13 18-25-44", directoryHint: .isDirectory)
+        let outputs = root.appending(path: "2026-09-13 18-25-44", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: outputs.appending(path: PodcastPackage.folderName, directoryHint: .isDirectory), withIntermediateDirectories: true)
+        for name in ["REPORT.md", "episode.mp3", "transcript.json", "transcript.srt", "transcript.txt", "transcript.vtt"] {
+            try FileManager.default.copyItem(at: sample.appending(path: name), to: outputs.appending(path: name))
+        }
+        try FileManager.default.copyItem(at: sample.appending(path: "episode.mp3"),
+                                         to: outputs.appending(path: PodcastPackage.folderName, directoryHint: .isDirectory).appending(path: "Talk with Gabriel.mp3"))
+        let media = Media(pattern: pattern, outputs: outputs)
+        made = media
+        return media
     }
 }

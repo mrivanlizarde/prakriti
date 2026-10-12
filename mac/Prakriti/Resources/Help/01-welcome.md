@@ -34,9 +34,9 @@ call.
    episode and writes a short report. If you turn them on, it also makes the podcast-ready episode and
    drafts titles, show notes and chapters. In Progress, in the sidebar, and the menu bar show the step
    it is on.
-4. **You review.** Double-click the recording to open its page. Listen to the episode or the original,
-   read the transcript, trim the start and end, cut what should not be heard, and make it again until it
-   is right.
+4. **You review.** Double-click the recording to open it in the viewer. Play the episode or the
+   original, read the transcript under it, trim the start and end, take out what should not be heard, and
+   make it again until it is right.
 5. **You approve.** Prakriti copies the finished files to your Approved folder with a receipt. You
    upload them. Prakriti never posts or uploads anything on its own.
 

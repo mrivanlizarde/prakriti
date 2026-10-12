@@ -75,8 +75,11 @@
 #                 look within 5 s both times. Writes acceptance-first-launch.txt and the welcome's picture
 #                 (takes the screen's focus for about half a minute)
 # make look       open the REAL app on sample data, capture every screen light and dark to
-#                 ../screens/mac/$(MILESTONE)/real/, and check the selected sidebar row (takes the
-#                 screen's focus for about a minute; do not touch the Mac while it runs)
+#                 ../screens/mac/$(MILESTONE)/real/, and check the selected sidebar row, the keys (Space
+#                 plays in the Viewer, read from the log); then (v2 part M3b) open PLAYBACK in a
+#                 development copy's Viewer with --debug-playback-log, press Space, and prove playback
+#                 from the log: two currentTime lines 3 s apart differ by 2.5 to 3.5 s at rate 1
+#                 (playback.txt). Takes the screen's focus for about three minutes; do not touch the Mac
 # make check      build, test, launch, prove it keeps running with its window closed, then look
 # make install    build, then put the app in ~/Applications and open it there: the live watcher and
 #                 the copy that opens at login (quits the installed copy first, cleanly)
@@ -156,8 +159,12 @@ migrate-check:
 run: build
 	open $(APP)
 
+# PLAYBACK: a recording in the DEVELOPMENT store that has an episode, opened in the Viewer for the playback check
+PLAYBACK ?= $(HOME)/Prakriti/Dev/Clips/2026-09-13 clip 90s.mp4
+
 look: build
 	swift scripts/capture-window.swift $(APP) ../screens/mac/$(MILESTONE)/real
+	swift scripts/capture-window.swift --playback $(APP) "$(PLAYBACK)" ../screens/mac/$(MILESTONE)/real
 
 check: build test
 	./scripts/check-launch.sh $(APP)

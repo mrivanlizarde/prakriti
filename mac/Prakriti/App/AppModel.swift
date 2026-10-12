@@ -64,23 +64,38 @@ final class AppModel {
             if oldValue != selection {
                 path = []
                 selectedRecordings = []
+                saveWindowState()
             }
         }
     }
-    /// The open recording: v1's recording page, shown in place of the browser until the Viewer (M3b).
-    var path: [RecordingRoute] = []
+    /// The open recording: the Viewer, shown in place of the browser (v2 part M3b).
+    var path: [RecordingRoute] = [] {
+        didSet { if oldValue != path { saveWindowState() } }
+    }
 
-    // The browser and the inspector (v2 part M3a, docs/v2/design-spec.md 3.1 to 3.5). Held for this
-    // launch only: restoring them at the next launch is part M3b's.
-    var browserMode: BrowserMode = .grid
+    // The browser and the inspector (v2 part M3a, docs/v2/design-spec.md 3.1 to 3.5), restored at the next
+    // launch with the open recording, its rendition and moment (part M3b, `WindowState`).
+    var browserMode: BrowserMode = .grid { didSet { if oldValue != browserMode { saveWindowState() } } }
     var browserSort: BrowserSort = .dateRecorded
     /// Kinds shown; every kind when empty (the Filter menu).
     var kindFilter: Set<RecordingKind> = []
     var search = LibrarySearch()
     /// The recordings selected in the browser, by id.
-    var selectedRecordings: Set<UUID> = []
-    var inspectorShown = true
-    var inspectorTab: InspectorTab = .outputs
+    var selectedRecordings: Set<UUID> = [] { didSet { if oldValue != selectedRecordings { saveWindowState() } } }
+    var inspectorShown = true { didSet { if oldValue != inspectorShown { saveWindowState() } } }
+    var inspectorTab: InspectorTab = .outputs { didSet { if oldValue != inspectorTab { saveWindowState() } } }
+    /// The Viewer (v2 part M3b): one at a time, so the inspector, the menus and state restoration read it.
+    let viewer = ViewerModel()
+    /// Quick Help (Help > Show Quick Help), shown at the top of the inspector.
+    let quickHelp = QuickHelpModel()
+    /// The Viewer's first-time tip has been dismissed (kept with the preferences).
+    var viewerTipSeen = false
+    /// Bumped by Edit > Find in Transcript: the transcript shows its Find bar.
+    var viewerFindRequest = 0
+    /// A rendition and moment to open the Viewer at, restored from the last launch (`WindowState`).
+    @ObservationIgnored var restoredViewer: (recordingID: UUID, rendition: Rendition?, original: Double?)?
+    /// False while the window's state is being put back, so restoring does not write it again halfway.
+    @ObservationIgnored var savesWindowState = true
     /// The pane the Settings window shows (Command-comma).
     var settingsPane: SettingsPane = .general
     /// A moment to go to when a recording's page opens: a "Said" search result opens it there.
@@ -127,6 +142,10 @@ final class AppModel {
         helpMenuSearch = HelpMenuSearch(index: help.index) { [weak self] articleID, search in
             self?.openHelp(article: articleID, search: search)
         }
+        viewer.followPlayback = settings.followPlayback
+        viewerTipSeen = settings.viewerTipSeen
+        quickHelp.isOn = settings.quickHelpOn
+        viewer.onPositionChange = { [weak self] _, _ in self?.saveWindowState() }
     }
 
     var context: ModelContext { container.mainContext }
@@ -175,6 +194,21 @@ final class AppModel {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { model.search.text = search }
             }
             model.log.write("Opened with sample data for a window capture, showing \(launch.title). Nothing is saved.")
+            model.startDebugSwitches()
+            // A capture never plays sound aloud.
+            model.viewer.player.isMuted = true
+            if let path = launch.sampleOriginal {
+                // A test pattern in place of the 13 Sep talk's picture, so a capture of the Original never
+                // shows a person (docs/v2/PLAN.md section 11, D1: frames of a talk are measured, not looked at).
+                let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
+                for recording in all where recording.title == "Talk with Gabriel" { recording.filePath = path }
+            }
+            if let folder = launch.sampleOutput {
+                // A copy of the sample talk's output folder with a podcast-ready MP3 in it, made by the capture
+                // script (no podcast-ready file of the talk exists on this Mac), so that rendition can be seen.
+                let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
+                for recording in all where recording.title == "Talk with Gabriel" { recording.outputFolder = folder }
+            }
             // The welcome alone (v2 part M2b): never under sample data unless asked for, at one panel, and
             // optionally with a folder chosen on the last panel (in memory, through the panel's own path).
             if launch.showsWelcome {
@@ -212,7 +246,13 @@ final class AppModel {
                         model.addCut(TimeRange(start: 300, end: 330), to: ready)
                     }
                     model.open(ready)
+                    if let rendition = launch.rendition { model.restoredViewer = (ready.id, rendition, nil) }
                 }
+            }
+            if launch.quickHelp {
+                model.quickHelp.isOn = true
+                model.quickHelp.show("Choose what plays: the Original as recorded, the Podcast episode, or the Podcast-ready episode. Video and Shorts are not made yet.",
+                                     article: "reviewing-and-approving")
             }
             return model
         }
@@ -278,7 +318,9 @@ final class AppModel {
         let sources = (try? context.fetch(FetchDescriptor<Source>())) ?? []
         log.write("Sources: \(sources.map { "\($0.name) (\($0.mode.rawValue))" }.joined(separator: " | ")).")
         recoverInterruptedWork()
+        restoreWindowState()
         LaunchOptions.current.apply(to: self)
+        startDebugSwitches()
         loginItem = paths.mode == .live ? LoginItem.ensureRegistered(log: log, home: paths.home) : .notInstalled
         if paths.mode == .development { log.write("Login item: not registered in development mode.") }
         notifier.setUp()
@@ -523,8 +565,8 @@ final class AppModel {
         menu.performActionForItem(at: index)
     }
 
-    /// Opens one recording: v1's recording page in place of the browser (until the Viewer, part M3b),
-    /// with the recording selected, so Back returns to it in the browser.
+    /// Opens one recording in the Viewer, in place of the browser (v2 part M3b), with the recording selected,
+    /// so Back returns to it in the browser.
     func open(_ recording: Recording) {
         if selection == nil { selection = .group(.all) }
         selectedRecordings = [recording.id]
@@ -711,6 +753,14 @@ struct CaptureLaunch {
     var selectStatus: RecordingStatus?
     var inspectorTab: InspectorTab?
     var search: String?
+    /// The Viewer (v2 part M3b): `--rendition=<original|podcast|podcastReady>` with `--open=ready`;
+    /// `--sample-original=<path>` puts a test pattern in place of the sample talk's original;
+    /// `--quick-help` shows Quick Help on.
+    var rendition: Rendition?
+    var sampleOriginal: String?
+    /// `--sample-output=<folder>`: the sample talk's output folder, for a capture of the Podcast-ready rendition.
+    var sampleOutput: String?
+    var quickHelp = false
 
     static var current: CaptureLaunch? {
         let args = CommandLine.arguments
@@ -733,7 +783,11 @@ struct CaptureLaunch {
                              browserMode: value("--browser").flatMap(BrowserMode.init(rawValue:)) ?? .grid,
                              selectStatus: value("--select").flatMap(RecordingStatus.init(rawValue:)),
                              inspectorTab: value("--inspector-tab").flatMap(InspectorTab.init(rawValue:)),
-                             search: value("--search"))
+                             search: value("--search"),
+                             rendition: value("--rendition").flatMap(Rendition.init(rawValue:)),
+                             sampleOriginal: value("--sample-original"),
+                             sampleOutput: value("--sample-output"),
+                             quickHelp: args.contains("--quick-help"))
     }
 
     /// The window this capture shows, for the log line.

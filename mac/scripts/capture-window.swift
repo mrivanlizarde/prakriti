@@ -1,6 +1,7 @@
 // Captures the REAL Prakriti window in light and in dark: since v2 part M3a, every smart group of the
 // Library sidebar, the list, a folder under Sources, the inspector's three tabs, a search over what was
-// said, each pane of the Settings window and the Activity window. It checks what the bitmap snapshots
+// said, each pane of the Settings window and the Activity window; since M3b the Viewer on each rendition and
+// with Quick Help, and (--playback) playback proved from the log. It checks what the bitmap snapshots
 // can only imitate: the selected sidebar row as macOS really draws it (Liquid Glass and the
 // accent-colored selection) must show its icon and its label. Reason: on 10 Oct the selected row's
 // icon was invisible in the real window (accent icon on an accent selection) while every snapshot
@@ -30,6 +31,11 @@ struct Look {
     let flags: [String]
     var window: Window = .main
     var accent = false
+    /// Whether the selected sidebar row is measured. The Viewer's looks are not: with the Viewer focused,
+    /// macOS draws the sidebar's selection as a faint grey on the light glass, which the row finder cannot
+    /// separate from the sidebar (measured 12 Oct, three of four light Viewer looks); the row's icon and label
+    /// are measured in every other look, and the Viewer's pictures are looked at.
+    var checksSidebar = true
 }
 let looks: [Look] = [
     Look(name: "01-needs-you", flags: ["--show=needs-you"], accent: true),
@@ -45,6 +51,33 @@ let looks: [Look] = [
 ] + ["general", "outputs", "models", "privacy", "advanced"].enumerated().map { index, pane in
     Look(name: String(format: "09-settings-%02d-%@", index + 1, pane), flags: ["--show=settings-" + pane], window: .settings)
 } + [Look(name: "10-activity", flags: ["--show=activity"], window: .activity)]
+
+/// The Viewer (v2 part M3b), with sample data: the sample talk opened on each rendition, and with Quick Help on.
+/// The Original plays a test pattern this script makes, never the talk's picture (docs/v2/PLAN.md section 11,
+/// D1), and the Podcast-ready rendition a copy of the sample episode in a folder this script makes (no
+/// podcast-ready file of the talk exists on this Mac). Both live in a temporary folder, never in ~/Prakriti.
+func viewerLooks() -> [Look] {
+    let root = FileManager.default.temporaryDirectory.appending(path: "prakriti-look-viewer", directoryHint: .isDirectory)
+    let pattern = root.appending(path: "test pattern.mp4")
+    let outputs = root.appending(path: "2026-09-13 18-25-44", directoryHint: .isDirectory)
+    if !FileManager.default.fileExists(atPath: pattern.path) {
+        try? FileManager.default.removeItem(at: root)
+        try? FileManager.default.createDirectory(at: outputs.appending(path: "Podcast-ready"), withIntermediateDirectories: true)
+        _ = run("/opt/homebrew/bin/ffmpeg", ["-hide_banner", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=10", "-f", "lavfi",
+                                             "-i", "sine=frequency=440:sample_rate=48000", "-t", "948", "-c:v", "libx264", "-preset", "ultrafast",
+                                             "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", pattern.path])
+        let sample = FileManager.default.homeDirectoryForCurrentUser.appending(path: "Prakriti/Outputs/2026-09-13 18-25-44")
+        for name in ["REPORT.md", "episode.mp3", "transcript.json", "transcript.srt", "transcript.txt", "transcript.vtt"] {
+            try? FileManager.default.copyItem(at: sample.appending(path: name), to: outputs.appending(path: name))
+        }
+        try? FileManager.default.copyItem(at: sample.appending(path: "episode.mp3"), to: outputs.appending(path: "Podcast-ready/Talk with Gabriel.mp3"))
+    }
+    let media = ["--sample-original=" + pattern.path, "--sample-output=" + outputs.path, "--open=ready"]
+    return [Look(name: "12-viewer-podcast", flags: ["--show=needs-you", "--rendition=podcast"] + media, checksSidebar: false),
+            Look(name: "12-viewer-podcast-ready", flags: ["--show=needs-you", "--rendition=podcastReady"] + media, checksSidebar: false),
+            Look(name: "12-viewer-original-pattern", flags: ["--show=needs-you", "--rendition=original"] + media, checksSidebar: false),
+            Look(name: "12-viewer-quick-help", flags: ["--show=needs-you", "--rendition=podcast", "--quick-help"] + media, checksSidebar: false)]
+}
 /// WorkingTicker.interval in the app: how long each working frame shows.
 let workingFrameSeconds = 0.7
 let appearances = ["light", "dark"]
@@ -984,7 +1017,9 @@ func hasTable(pid: pid_t) -> Bool {
 }
 func runKeysCheck(_ app: URL) -> Int {
     quitAll(app)
-    run("/usr/bin/open", ["-n", app.path, "--args", "--sample-data", "--show=needs-you", "--select=readyForYourYes", "--appearance=light"])
+    // The Info tab is open, for the title field; --debug-playback-log, so Space is proved from the log (v2 part M3b).
+    run("/usr/bin/open", ["-n", app.path, "--args", "--sample-data", "--show=needs-you", "--select=readyForYourYes", "--appearance=light",
+                          "--inspector-tab=info", "--debug-playback-log"])
     var pid: pid_t = 0
     let deadline = Date().addingTimeInterval(15)
     while Date() < deadline {
@@ -1014,7 +1049,21 @@ func runKeysCheck(_ app: URL) -> Int {
     expect("Command-Up comes back", title("Needs You"))
     sendKey(pid: pid, 125, flags: .maskCommand)
     expect("Command-Down opens it again", title("Sun 13 Sep"))
-    // Escape while typing in a field stays with the field: the page does not close under the typing.
+    // Space plays and pauses in the Viewer (v2 part M3b), read from the player's own lines in the log.
+    func playbackRates() -> [String] {
+        developmentLogLines().filter { $0.contains("Playback: currentTime") }.suffix(2).map { line in
+            String(line[(line.range(of: "rate ")?.upperBound ?? line.endIndex)...].prefix(4))
+        }
+    }
+    Thread.sleep(forTimeInterval: 1.5)
+    sendKey(pid: pid, 49)                                   // Space
+    Thread.sleep(forTimeInterval: 2.5)
+    expect("Space plays in the Viewer (log rates: \(playbackRates().joined(separator: ", ")))", { playbackRates().last == "1.00" })
+    sendKey(pid: pid, 49)
+    Thread.sleep(forTimeInterval: 2.5)
+    expect("Space again pauses (log rates: \(playbackRates().joined(separator: ", ")))", { playbackRates().last == "0.00" })
+    // Escape while typing in a field stays with the field: the Viewer does not close under the typing. The
+    // title field is in the inspector's Info since the Viewer retired v1's page.
     let field = axAll(AXUIElementCreateApplication(pid)).first { axString($0, kAXRoleAttribute) == kAXTextFieldRole as String
         && axString($0, kAXValueAttribute) == "Talk with Gabriel" }
     if let field {
@@ -1022,9 +1071,9 @@ func runKeysCheck(_ app: URL) -> Int {
         Thread.sleep(forTimeInterval: 0.5)
         sendKey(pid: pid, 53)
         Thread.sleep(forTimeInterval: 1.0)
-        expect("Escape while editing the title stays on the page", title("Sun 13 Sep"))
+        expect("Escape while editing the title stays in the Viewer", title("Sun 13 Sep"))
     } else {
-        print("FAIL  keys: the page's title field was not found")
+        print("FAIL  keys: the title field in the inspector's Info was not found")
         failures += 1
     }
     sendKey(pid: pid, 33, flags: .maskCommand)              // Command-[
@@ -1043,6 +1092,71 @@ func runKeysCheck(_ app: URL) -> Int {
     expect("Command-comma opens the Settings window", { layerZeroWindows(pid: pid).contains { abs($0.1.width - 760) < 2 } })
     quitAll(app)
     return failures
+}
+// Playback in the REAL app (v2 part M3b, PLAN M3 check 3): a development copy opens a recording of the
+// development store in the Viewer with --debug-playback-log, Space is sent to it, and playback is proved from
+// the player's own lines in the log, never from the picture (rule 2.1.10): two currentTime lines three
+// lines (3 s) apart must differ by 2.5 to 3.5 s with rate 1. The window is captured for a look at the system
+// player on the Podcast rendition (sound only, no picture).
+//   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --playback build/Build/Products/Debug/Prakriti.app <recording path> <output folder>
+func runPlaybackCheck(_ app: URL, file: String, out: URL) -> Int {
+    quitAll(app)
+    let before = developmentLogLines().count
+    run("/usr/bin/open", ["-n", app.path, "--args", "--development", "--debug-playback-log", "--show=viewer", "--open=" + file])
+    var pid: pid_t = 0
+    var window: (CGWindowID, CGRect)?
+    let deadline = Date().addingTimeInterval(20)
+    while Date() < deadline {
+        Thread.sleep(forTimeInterval: 0.3)
+        if let first = pids(of: app).first, let main = mainWindowID(pid: first) { pid = first; window = main; break }
+    }
+    guard pid != 0, let window else { print("FAIL  playback: the window did not appear"); quitAll(app); return 1 }
+    NSRunningApplication(processIdentifier: pid)?.activate()
+    Thread.sleep(forTimeInterval: 3)
+    let titles = windowTitles(pid: pid)
+    sendKey(pid: pid, 49)                                   // Space
+    Thread.sleep(forTimeInterval: 8)
+    try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+    let png = out.appending(path: "13-viewer-playback.png")
+    run("/usr/sbin/screencapture", ["-x", "-o", "-l", String(window.0), png.path])
+    sendKey(pid: pid, 49)
+    Thread.sleep(forTimeInterval: 1.5)
+    quitAll(app)
+    let lines = Array(developmentLogLines().dropFirst(before)).filter { $0.contains("Playback: currentTime") }
+    func parse(_ line: String) -> (time: Double, rate: Double, rendition: String)? {
+        let parts = line.components(separatedBy: "Playback: currentTime ").last?.components(separatedBy: " ") ?? []
+        guard parts.count >= 6, let t = Double(parts[0]), let r = Double(parts[3].trimmingCharacters(in: .punctuationCharacters)) else { return nil }
+        return (t, r, parts[5])
+    }
+    let playing = lines.compactMap { line in parse(line).map { (line, $0) } }.filter { $0.1.rate == 1 }
+    var report = ["Playback check, \(Date())", "Opened \(file) in the Viewer (window title: \(titles.joined(separator: ", ")))",
+                  "\(lines.count) playback lines after Space; \(playing.count) at rate 1."]
+    var failures = 0
+    if playing.count >= 4 {
+        let a = playing[playing.count - 4], b = playing[playing.count - 1]
+        let delta = b.1.time - a.1.time
+        let ok = delta >= 2.5 && delta <= 3.5
+        if !ok { failures += 1 }
+        report.append(String(format: "%@  two currentTime lines three lines apart: %.3f s and %.3f s, %.3f s apart, rate %.2f and %.2f, rendition %@",
+                             ok ? "PASS" : "FAIL", a.1.time, b.1.time, delta, a.1.rate, b.1.rate, b.1.rendition))
+        report.append("      " + a.0)
+        report.append("      " + b.0)
+    } else {
+        failures += 1
+        report.append("FAIL  fewer than four lines at rate 1: playback was not proved")
+    }
+    let paused = lines.last.flatMap(parse)?.rate == 0
+    report.append("\(paused ? "PASS" : "FAIL")  Space again paused it (last line: \(lines.last ?? "none"))")
+    if !paused { failures += 1 }
+    report.append("Window captured: \(png.path)")
+    let text = report.joined(separator: "\n") + "\n"
+    print(text)
+    try? text.write(to: out.appending(path: "playback.txt"), atomically: true, encoding: .utf8)
+    return failures
+}
+if args.first == "--playback", args.count == 4 {
+    let failures = runPlaybackCheck(URL(fileURLWithPath: args[1]).standardizedFileURL, file: args[2], out: URL(fileURLWithPath: args[3]).standardizedFileURL)
+    finish(failures == 0 ? 0 : 1)
 }
 if args.first == "--keys", args.count == 2 {
     let failures = runKeysCheck(URL(fileURLWithPath: args[1]).standardizedFileURL)
@@ -1065,8 +1179,9 @@ try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: t
 quitAll(app)
 var failures = 0
 var index = 0
+let allLooks = looks + viewerLooks()
 for appearance in appearances {
-    for look in looks {
+    for look in allLooks {
         index += 1
         let name = look.name + "-" + appearance
         // One word per flag: a value given as its own word reads to macOS as a file to open, and
@@ -1087,7 +1202,7 @@ for appearance in appearances {
                 }
             }
         }
-        guard let (windowID, bounds) = found else {
+        guard let (windowID, firstBounds) = found else {
             print("FAIL  \(name): the window did not appear within 15 s")
             failures += 1
             quitAll(app)
@@ -1097,6 +1212,9 @@ for appearance in appearances {
         // make sure the window is frontmost.
         NSRunningApplication(processIdentifier: pid)?.activate()
         Thread.sleep(forTimeInterval: 2.5)
+        // The size once it has settled: the app sets the design size a moment after the window first shows,
+        // and a launch that opens the Viewer was first seen before that (v2 part M3b).
+        let bounds = layerZeroWindows(pid: pid).first { $0.0 == windowID }?.1 ?? firstBounds
         let png = out.appending(path: name + ".png")
         let (status, text) = run("/usr/sbin/screencapture", ["-x", "-o", "-l", String(windowID), png.path])
         if status != 0 {
@@ -1112,7 +1230,7 @@ for appearance in appearances {
                     failures += 1
                 }
                 let check = analyze(png)
-                if !describe(name, check) { failures += 1 }
+                if look.checksSidebar && !describe(name, check) { failures += 1 }
                 // Needs You opens with the sidebar focused, so its selection must be the accent color: that
                 // is the state that hid the icon on 10 Oct. Grey there means the window was not frontmost
                 // and the check proved nothing.

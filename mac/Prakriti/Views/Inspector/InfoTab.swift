@@ -2,11 +2,11 @@ import AppKit
 import SwiftData
 import SwiftUI
 
-/// The inspector's Info tab (design spec 3.5.5, as built in part M3a): its title, what it is and its
-/// notes, where the episode starts and ends, when it was recorded and found, its length and size, the
-/// original and the output folder. Every change goes through the same paths as v1's recording page, so a
-/// change to an approved recording takes the approval back (START_HERE, Mac warning 38) and a trim waits
-/// for Make Again (warning 36).
+/// The inspector's Info tab (design spec 3.5.5, as built in parts M3a and M3b): its title, what it is and
+/// its notes, where the episode starts and ends and the cuts (each with Restore, and a cut typed as two
+/// times), when it was recorded and found, its length and size, the original and the output folder. Every
+/// change goes through v1's own paths, so a change to an approved recording takes the approval back
+/// (START_HERE, Mac warning 38) and the trim and cuts wait for Make Again (warning 36).
 struct InfoTab: View {
     @Bindable var recording: Recording
     @Environment(AppModel.self) private var model
@@ -52,17 +52,32 @@ struct InfoTab: View {
             }
             if showsEpisodeTimes {
                 Section {
-                    InspectorTimeField(label: "Episode starts at", placeholder: "0:00", value: recording.trimStart) {
+                    InspectorTimeField(label: "Episode starts at", placeholder: "0:00", value: recording.trimStart, playerTime: playerTime) {
                         model.setTrim(start: $0, end: recording.trimEnd, for: recording)
                     }
-                    InspectorTimeField(label: "Episode ends at", placeholder: recording.duration.map(Format.timecode) ?? "the end", value: recording.trimEnd) {
+                    InspectorTimeField(label: "Episode ends at", placeholder: recording.duration.map(Format.timecode) ?? "the end", value: recording.trimEnd,
+                                       playerTime: playerTime) {
                         model.setTrim(start: recording.trimStart, end: $0, for: recording)
                     }
-                    Text(recording.cuts.isEmpty
-                         ? "Times are from the start of the original. Cuts are made on the recording's page."
-                         : "Times are from the start of the original. \(Format.count(recording.cuts.count, "cut")) on the recording's page.")
+                    Text("Times are from the start of the original, as the transcript shows them.")
                         .font(AppFont.secondary).foregroundStyle(.appSecondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    ForEach(recording.cuts, id: \.self) { cut in
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Cut \(TimeText.string(cut.start)) to \(TimeText.string(cut.end))").font(AppFont.body)
+                                Text(Format.length(cut.end - cut.start) + " taken out").font(AppFont.secondary).foregroundStyle(.appSecondary)
+                            }
+                            Spacer(minLength: 8)
+                            Button("Restore") { model.removeCut(cut, from: recording) }
+                                .disabled(!model.canEditEpisode(recording))
+                        }
+                    }
+                    CutEntry(recording: recording)
+                    if !recording.edits.isEmpty {
+                        Button("Clear Trim and Cuts") { model.clearEdits(recording) }
+                            .disabled(!model.canEditEpisode(recording))
+                    }
                     if recording.editsPending {
                         Label {
                             Text("Not in the episode yet. Make it again to hear it, and before approving.")
@@ -96,6 +111,12 @@ struct InfoTab: View {
         .formStyle(.grouped)
     }
 
+    /// The moment playing in the Viewer, on the original's clock, while this recording is open there.
+    private var playerTime: (() -> Double?)? {
+        guard model.viewer.recordingID == recording.id, !model.path.isEmpty else { return nil }
+        return { model.viewer.hasPosition ? model.viewer.currentOriginal : nil }
+    }
+
     /// Where the episode starts and ends can be set once something has been checked or made.
     private var showsEpisodeTimes: Bool {
         switch recording.status {
@@ -106,12 +127,52 @@ struct InfoTab: View {
     }
 }
 
+/// Cut a section by typing its two times (v1's Cut from and Cut to, moved here with the page's retirement,
+/// v2 part M3b). Selecting words in the Viewer's transcript does the same with the mouse.
+struct CutEntry: View {
+    @Bindable var recording: Recording
+    @Environment(AppModel.self) private var model
+    @State private var from = ""
+    @State private var to = ""
+    @State private var problem: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Cut a section, from and to").font(AppFont.secondary).foregroundStyle(.appSecondary)
+            HStack(spacing: 8) {
+                TextField("Cut from", text: $from, prompt: Text("4:12"))
+                    .labelsHidden().textFieldStyle(.roundedBorder).font(AppFont.numbers).frame(width: 84)
+                Text("to").font(AppFont.body).foregroundStyle(.appSecondary)
+                TextField("Cut to", text: $to, prompt: Text("4:42"))
+                    .labelsHidden().textFieldStyle(.roundedBorder).font(AppFont.numbers).frame(width: 84)
+                    .onSubmit(add)
+                Button("Add Cut", action: add)
+                    .disabled(from.isEmpty || to.isEmpty || !model.canEditEpisode(recording))
+            }
+            Text(problem ?? "Or select words in the transcript and choose Remove from the Edit.")
+                .font(AppFont.secondary)
+                .foregroundStyle(problem == nil ? AppColor.secondaryText : AppColor.problemText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func add() {
+        problem = model.typedCut(from: from, to: to, for: recording)
+        if problem == nil {
+            from = ""
+            to = ""
+        }
+    }
+}
+
 /// A time Ivan types, applied on Return or when the field loses focus, with the problem in words when it
-/// cannot work (the same rules as the recording page's fields).
+/// cannot work.
 struct InspectorTimeField: View {
     let label: String
     let placeholder: String
     let value: Double?
+    /// The Viewer's moment, when the recording is open there: Use Player Time types it in.
+    var playerTime: (() -> Double?)?
     let apply: (Double?) -> String?
     @State private var text = ""
     @State private var problem: String?
@@ -120,13 +181,23 @@ struct InspectorTimeField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label).font(AppFont.secondary).foregroundStyle(.appSecondary)
-            TextField(label, text: $text, prompt: Text(placeholder))
-                .labelsHidden()
-                .textFieldStyle(.roundedBorder)
-                .font(AppFont.numbers)
-                .frame(maxWidth: 140, alignment: .leading)
-                .focused($focused)
-                .onSubmit(commit)
+            HStack(spacing: 8) {
+                TextField(label, text: $text, prompt: Text(placeholder))
+                    .labelsHidden()
+                    .textFieldStyle(.roundedBorder)
+                    .font(AppFont.numbers)
+                    .frame(maxWidth: 140, alignment: .leading)
+                    .focused($focused)
+                    .onSubmit(commit)
+                if let playerTime {
+                    Button("Use Player Time") {
+                        if let t = playerTime() {
+                            text = TimeText.string(t)
+                            commit()
+                        }
+                    }
+                }
+            }
             if let problem {
                 Text(problem).font(AppFont.secondary).foregroundStyle(AppColor.problemText)
                     .fixedSize(horizontal: false, vertical: true)
