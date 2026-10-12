@@ -2888,7 +2888,7 @@ the same SHA-256 before the install and after the second heartbeat.
   being typed in keeps Escape; `--keys` checks both.
 - **The status line and the inspector's tabs sat behind the toolbar**: both are safe-area insets now.
 - **The sidebar's section names measured 2.23 to 1**, the system's grey; they use the measured color (5.13 light,
-  4.86 dark, in the real window).
+  4.86 dark, in the real window), and so do Help's section names (M2a's sidebar).
 - **`make look` misread the list**: Accessibility reads SwiftUI's Table as an outline with columns, not a table.
 - **Settings, Outputs opened scrolled past its first lines with Show name holding the keys** (macOS gave the first
   text field the focus): a pane now opens with no field focused, at its first line (real window, looked at).
@@ -2939,7 +2939,6 @@ refusal), and the snapshots in `screens/mac/v2-m3a/` in contact sheets.
   Recording and Accessibility on the system's menu bar extra); Command-comma and the Settings scene were.
 - **Drag and drop onto the window was not dragged by hand**; its handler is v1's drop area's.
 - **VoiceOver was not run** over the cards; their labels are set in code.
-- **Help's sidebar section names** (M2a) still draw in the system's header grey.
 - **The writing section's lock line** reads the writer's stored reason ("This recording mentions Serenity"),
   from `Privacy.lockReason`; M5a rewrites the lock and that reason.
 
