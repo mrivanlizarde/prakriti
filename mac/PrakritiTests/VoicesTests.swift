@@ -293,7 +293,7 @@ final class VoicesTests: XCTestCase {
         var options = PipelineOptions()
         XCTAssertFalse(options.plannedSteps.contains(.voices))
         options.people = PeopleSetup(recordingID: UUID(), folders: PeopleFolders(support: FileManager.default.temporaryDirectory))
-        XCTAssertEqual(options.plannedSteps, [.complete, .capture, .sound, .speechAudio, .transcript, .coverage, .faces, .voices, .episode, .loudness, .report])
+        XCTAssertEqual(options.plannedSteps, [.complete, .capture, .sound, .speechAudio, .transcript, .coverage, .namesSaid, .faces, .voices, .episode, .loudness, .report])
         XCTAssertEqual(PipelineStep.voices.title, "Voices")
         XCTAssertEqual(PipelineStep.voices.doing, "Listening for voices")
         XCTAssertTrue(PipelineStep.voices.isMetered)

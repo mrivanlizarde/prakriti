@@ -43,6 +43,10 @@ of both. Passed every check it could run (the real calls wait for a yes on cost 
 **Then part M6a, faces in a recording** ("v2 part M6a"): every make looks for faces two frames a second and keeps boxes and
 times only; the People tab, the people line, the Other People Appear filter and one notice. The 13 Sep talk shows up to 6
 faces at once after 12:39 (a question for Ivan). Passed every check; not installed, for M5a's reason.
+**Then parts M6b, voices and names, and M6c, choices applied to audio** (the last section, "v2 part M6c"): every face and
+voice in the People tab is Include, Hide Face or Leave Out, everyone starting as Include (Ivan's 12 Oct note); Leave Out
+cuts that voice from both podcast episodes, a second listen checks it is gone, and names said aloud are kept or muted
+before Approve. Not installed, for M5a's reason.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -3968,3 +3972,101 @@ stays local even with Gabriel named and agreed. The live app is unchanged (the M
 - [ ] **"Serenity" in a transcript keeps a talk local even when everyone is named and agreed.** Gabriel's talks name her, so none
   will reach Anthropic until that rule changes. Say whether a teacher's name said aloud (replaced by a token anyway) should still lock.
 - [ ] The 13 Sep frames from M6a (`screens/mac/v2-m6a/for-ivan/`): the ten face rows after 12:39 keep that talk local until named.
+
+## v2 part M6c: choices applied to audio. Tue 13 Oct 2026
+
+The thirteenth part of v2 (`docs/v2/PLAN.md`, M6, part M6c; REQUEST item 3b). Built on `main`, as this run's instructions said.
+No Swift package added, nothing downloaded. **Three SwiftData fields added, all additions with a default of nil**
+(`Recording.choicesJSON`, `namesSaidJSON`, `peopleAppliedJSON`): `make migrate-check` passed. Built and checked 03:00 to 06:30.
+
+### What was built
+
+- **Choices** (`People/PeopleDecisions.swift`): `PersonChoice` Include, Hide Face, Leave Out; per output (podcast, video,
+  shorts; only the podcast is made, so only it is offered); keyed to a named person (all their rows at once), else a face
+  row, else a voice. **Everyone starts as Include** (`PeopleChoices.defaultChoice`), Set All Unnamed To, Undo and Redo.
+- **Leave Out applied to the podcast** (`LeaveOut.plan`, pipeline step **People left out**): every stretch the left-out voices
+  speak (stretches under 1 s apart joined), grown to take every word it touches whole, then a gap of 0.5 s or less taken
+  whole (to 0.03 s of the next word), a longer pause by 0.25 s; joined with Ivan's own cuts, so v1's 15 ms fades, the
+  podcast-ready episode and the transcript files follow (Mac warnings 39, 42). Speaking at once is cut and listed. Someone
+  left out with no voices from this make stops the make. Nobody left out and nothing muted: the step is not planned.
+- **The audio output check** (`People/AudioOutputCheck.swift`, step **Who is heard in the episode**): the original's first
+  track and each made episode told apart again by the diarizer **in memory** (`Diarizer.listen`), each made voice compared
+  with the original's voices (cosine of their average embeddings) and each stretch of made speech mapped back to the
+  original's clock; anyone who sounds like, or sits where, a left-out voice speaks is a finding with its time, and Approve
+  waits. Embeddings are dropped when the check returns (Mac warning 118).
+- **Names said aloud** (`People/NamesSaidAloud.swift`, step **Names said aloud**): Apple's tagger on transcript.json, every
+  person's name that is not someone named in Settings, as moments; Keep or Mute per name (all its moments). Mute silences it
+  in both episodes (`Mastering.muteFilter`, padded 0.06 s, on the original's clock) and writes "[name]" in every transcript
+  file, caption, the podcast-ready captions and the writer's input (`EpisodeTranscript.cues(mutes:)`), a two-word name once.
+- **Approve** waits for the choices to be in the episode (`choicesPending`), the audio check to pass, every name decided, and,
+  with someone left out of a mixed track, "I listened to the changes of voice"; the receipt gains a People section.
+- **People tab:** a pop-up under each face and voice, the line saying what it takes out ("Leaving out Voice 2 takes 19 s out
+  of the podcast."), Play Their Moments, Set All Unnamed To, **In the Episode** (not made yet with Make Again; what was left
+  out; the audio check; stretches spoken at once with Play; the listened box) and **Names Said Aloud**. The Viewer and Outputs
+  say when choices are not in the episode yet. The notice's second wording: "Other people appear in this recording. Everyone
+  is in the episode until you choose otherwise." REPORT.md's checklist and the ready line no longer say speakers are not checked.
+- **Capability `choices`** (separate from `people`, which is M6d's hiding in pictures); Help 02, 06, 07 and 09 and the
+  welcome's How Outputs Work rewritten to it. START_HERE Mac warnings 118 to 122.
+- Tests: `ChoicesTests` (15), `ChoicesAcceptanceTests` (in `make accept-people`), two sample pictures (4).
+
+### Checks run, with results (PLAN M6, the checks part M6c runs: 1 decisions and widening, 3, 4, 10, 11, 13)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `make test` with the decisions and the widening | **PASS.** `ChoicesTests`: everyone Include for every output; per output and back; Set All Unnamed To leaves Gabriel; a voice linked to a face goes with the face, Hide Face keeps the voice; Leave Out takes touched words whole and lands in the gaps (9.53 and 12.2 on made-up words, no word cut at either edge), speaking at once cut and listed, a 0.36 s island joined, no word times padded 0.35 s, a word stretched across a pause read as 1 s; the mute filter added only with a mute, before the split; "[name]" in captions, one for two words; names found except a named person's (`NLTagger`); the plan, the fail-closed stop, pending, Approve's refusals, the receipt, Undo and Redo, the listening rule. **`make test`: 293 tests, 0 failures, 15 skipped by design** (909 s) |
+| 3 | **two-people-mixed.mp4**: Gabriel teaching, everyone else Left Out, made again, transcribed again | **PASS on what the plan names, with one note.** Voice 2 (diarizer) 29.95 to 48.61 cut (19 s), 3 stretches spoken at once listed. Parakeet on the remade episode.mp3 and podcast-ready MP3: **0 of 59** five-word runs of the second voice heard; the 13 Sep words not removed heard in order: **98.8% and 98.8%** (169 of 171) with fillers left out, **98.3%** (171 of 174) with them. Audio output check PASS (1.7 s). Approve then refused until the changes of voice were marked listened to, as built |
+| 4 | **two-people-tracks.mov**: the same, who speaks from tracks 2 and 3 | **PASS, matches check 3.** Cut 30.00 to 48.77 (19 s), 6 stretches spoken at once listed; **0 of 59** runs heard in both files; **98.2% and 98.8%** with fillers left out (168 and 169 of 171), **97.7% and 98.9%** with them. Audio output check PASS; Approve allowed |
+| 3, 4 | The audio output check catches a miss (research-people.md 6.3) | **PASS.** Each first episode (everyone in) checked as if Voice 2 were left out: caught, 4 findings, the first at 0:23. Similarities: the made voice holding the second voice 0.983 to it and 0.377 to Gabriel; Gabriel's 0.997 to him |
+| 10 | Names said aloud on 13 Sep | **19** names said aloud (12 different), other than Gabriel. Approve waited ("A name is said aloud at 0:49 and 18 more times..."). The first muted, the rest kept, made again: that stretch of the episode measured **digital silence** (RMS -inf; the 2.5 s before it -15.8 dB), one "[name]" in transcript.srt; Approve then allowed |
+| 11 | The notice for two-people-mixed | **PASS** (`ChoicesTests`, `NotificationTests`, the acceptance): "Other People Appear: Tue 13 Oct" / "Other people appear in this recording. Everyone is in the episode until you choose otherwise." No name, title or file name |
+| 13 | Regression set; `make accept-outputs`; `make migrate-check` | **PASS.** `make build`: no warnings. `make test` above. `make accept`: 13 Sep -16.8 LUFS, -1.7 dBFS, 137 captions all Parakeet's; silent-60s stopped at -91 dB; the 30 s clip a test. `make accept-edits`: 38.82 s shorter (expected 38.82), 0 of 73 runs from the cut heard, 189 of 201 after it, a class refused (it now keeps the 19 names before approving). `make accept-outputs`: run 4 identical to engine v0. `make accept-people`, M6a's and M6b's halves: 13 Sep decoded md5 `69658a8cb8a954b92798c5e9f3ea5833`, identical to engine v0's (everyone included changes nothing); 6 Sep whole pass 111 s; 117 files under Application Support, 0 images; the crash check (a face step killed, its job folder deleted at the next launch's line 1, before its first look at line 11). The whole `make accept-people` passed again on the final code. `make migrate-check`: 13 recordings, 2 folders, 40 output settings, 788 Activity lines before and after, 2 approved; the new fields arrive nil. Originals unchanged by size and date |
+| Also | Nothing stored for strangers, after the choices | **PASS.** Faces, Voices, FaceIndex absent in development and live; Jobs empty; the store's choices, applied and names JSON and every people file: no list of 128 or more numbers, no picture |
+| Looked at | Pictures | Sample `07-inspector-people-choices-*` and `-choices-pending-*` (and their inspector pages), `07-inspector-people-voices-*`; from real files `m6c-people-two-people-mixed-*`, `-two-people-tracks-*`, `-talk-13-sep-*`, faces drawn as a test pattern (D1). **Found by looking:** Play Their Moments was cut off beside the pop-up (moved to its own line); the voice row's two menus side by side made the inspector 541 pt wide against its 520.5 pt column (now one above the other); the first "pending" sample was not pending at all, correctly, because leaving out a face nobody hears does not change the podcast (now a muted name) |
+
+**Em dashes:** 0 in every file this part changed (grep); `RulesTests` passed.
+
+### Decisions, each with its reason
+
+1. **Everyone starts as Include**, not the plan's Remove for unnamed people. Reason: Ivan's note of Mon 12 Oct (PLAN section 11),
+   releases signed; M6a and M6b left this to M6c. The notice's second wording follows, since the plan's would be false.
+2. **Choice names are Ivan's and research-people.md's: Include, Hide Face, Leave Out**, not DS 3.5.2's Blur Face and Remove.
+3. **Customize per Output is stored but not shown**: only the podcast is made, so a second pop-up would repeat the first. M8 shows it.
+4. **Hide Face is offered and changes nothing yet**, and says so under the pop-up and in Help. Hiding in pictures is M6d.
+5. **"Keep Gabriel's microphone here" is not built.** Speaking at once is cut and listed (fail closed). Keeping one microphone for a
+   stretch needs the podcast to take its sound from another track; listed for a later part.
+6. **Gaps of 0.5 s or less are taken whole; stretches under 1 s apart are one cut.** Reason: measured, half a gap left an 80 ms tail
+   of "teaching" (Parakeet: "isness"), and a 0.35 s island between two stretches was heard as a different word.
+7. **The audio check runs only when someone is left out.** With everyone included there is nobody to find, and the make stays as
+   before (the bit-for-bit check).
+8. **The kept-word share leaves out fillers ("uh", "um") and numbers; both raw shares are written down.** Reason: Parakeet's own
+   noise, measured: the uncut clip transcribed again matched 241 of 241 words; the clip cut at the same place with no second
+   voice dropped an "uh" and a "their" (98.4%); the same amount came back once as "two hundred" and once as "200".
+9. **Names said aloud keep the words as heard in the store** (`namesSaidJSON`), shown in the People tab so Ivan can decide; they
+   never reach a notice, the log or a step line (counts only), and this entry gives a count only.
+10. **New capability `choices`**, separate from `people`. Reason: Help describes only what is built.
+11. **Two flaky `WatcherTests` waits made robust** (wait up to 3 s for a notice posted in its own Task, as M6a did): both passed
+    alone and failed once each under the full suite's load.
+
+### What does not work yet
+
+- Hide Face hides nothing (M6d). Customize per Output has one output to customize. "Keep Gabriel's microphone here" is not built.
+- The tagger finds names it should not (lineage names such as Krishnamacharya count, 19 on 13 Sep) and can miss one; Keep All Not
+  Decided makes the first case quick, listening covers the second.
+- Undo was proved with a real `UndoManager` in a test, not by Command-Z in the real window.
+- Classes stay unapprovable (Mac warning 35), though Ivan's 12 Oct note allows them: not this part's change.
+
+### Installed
+
+**Not installed**, though every check passed. `make install` ships everything on `main`, which includes M5a and M5b, held since
+12 Oct for Ivan's word because the M5a lock turns his live Claude API choices back to LM Studio. The live app is unchanged (the
+M4b build).
+
+### For Ivan
+
+- [ ] **The M5a lock decision still gates the install** (now M5a to M6c together): `cd ~/Code/prakriti/mac && make install` once you
+  say yes.
+- [ ] **Everyone starts as Include**, per your 12 Oct note. If you would rather unnamed people start as Leave Out, say so: it is
+  one default, the notice and Help 07.
+- [ ] **Names said aloud on the 13 Sep talk: 19**, mostly lineage teachers. Say whether names like those should be skipped by
+  default (a list of names that are always Keep) so Approve asks only about people.
+- [ ] The 13 Sep frames from M6a (`screens/mac/v2-m6c/for-ivan/`): up to 6 faces after 12:39.

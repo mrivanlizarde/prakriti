@@ -299,6 +299,8 @@ final class PipelineRunner {
         // so its writing step's privacy lock reads this make's people check (v2 part M6b).
         options.people = PeopleSetup(recordingID: recording.id, folders: model.peopleFolders, names: recording.names,
                                      microphones: recording.source?.microphones ?? [:], people: recording.namedPeople)
+        // Who is left out of the podcast and which names said aloud are muted (v2 part M6c).
+        options.choices = recording.choices
         options.kind = recording.kind
         options.knownSerenity = recording.hasSerenity
         if make.contains(.titlesNotesChapters) && options.makeTranscript {
@@ -479,7 +481,8 @@ final class PipelineRunner {
         let lexicon = OutputResolver.details(for: .transcript, recording: recording, defaults: defaults)?.applyLexicon ?? true
         if let path = recording.outputFolder,
            let input = WritingInput.from(folder: URL(fileURLWithPath: path, isDirectory: true), clock: recording.episodeClock, duration: recording.duration ?? 0,
-                                         applyLexicon: lexicon, label: label, fileName: name, kind: recording.kind, knownSerenity: recording.hasSerenity) {
+                                         applyLexicon: lexicon, label: label, fileName: name, kind: recording.kind, knownSerenity: recording.hasSerenity,
+                                         mutes: recording.madeMutes) {
             do {
                 let writer = Writer(setup: writingSetup(), log: model.log)
                 let writing = Task { try await writer.write(input) }
@@ -628,7 +631,7 @@ final class PipelineRunner {
             let pipeline = Pipeline(tools: tools, options: options(for: recording), log: model.log)
             let record = try await pipeline.packagePodcastReady(untagged: untagged, into: staging.appending(path: PodcastPackage.folderName, directoryHint: .isDirectory),
                                                                 setup: setup, written: recording.written, transcriptFolder: hasTranscript ? folder : nil,
-                                                                clock: clock, applyLexicon: lexicon, expectedDuration: duration,
+                                                                clock: clock, applyLexicon: lexicon, mutes: recording.madeMutes, expectedDuration: duration,
                                                                 normalizationType: old.normalizationType, talkLUFS: old.talkLUFS, corrected: old.corrected, madeAt: Date())
             try? FileManager.default.removeItem(at: untagged)
             _ = try Pipeline.place(staging, into: folder, known: [PodcastPackage.folderName])
@@ -754,6 +757,13 @@ final class PipelineRunner {
             // The same for the podcast-ready files: this make's, or none.
             recording.podcastReadyJSON = result.podcastReady?.json()
             recording.podcastReadyProblem = activeOptions.makePodcastReady ? result.podcastProblem : nil
+            // The names said aloud in this make's transcript, and what it left out and muted, with the audio output
+            // check of the files it made (v2 part M6c). A make that did not look keeps the names it found before.
+            if let names = result.namesSaid { recording.namesSaidJSON = names.json() }
+            recording.peopleAppliedJSON = result.applied?.json()
+            if let check = result.applied?.check {
+                model.record("\(label) (\(recording.fileName)): who is heard. " + check.line { "Voice \($0)" }, level: check.passed ? .info : .attention, run: run)
+            }
             if result.output == nil, let ready = result.podcastReady { recording.episodeDuration = ready.duration }
         }
         recording.statusReason = result.reason

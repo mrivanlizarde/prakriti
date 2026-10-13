@@ -86,6 +86,14 @@ final class EditsAcceptanceTests: XCTestCase {
         // call these same model paths), after a Remove from the Edit and Keep in the Edit on words in the
         // Viewer's transcript, which must leave no edit behind.
         model.setKind(.talk, for: recording)
+        // Since v2 part M6c Approve waits for every name said aloud to be kept or muted: Ivan keeps them all here, so
+        // the episode is unchanged and this check stays milestone 5's.
+        let names = recording.namesSaid?.moments ?? []
+        if !names.isEmpty {
+            XCTAssertFalse(model.approvalCheck(recording).canApprove, "names said aloud wait for a decision")
+            model.decideName(.keep, moments: names, in: recording)
+        }
+        report.append("  names said aloud kept before approving (v2 part M6c): \(names.count)")
         XCTAssertTrue(model.approvalCheck(recording).canApprove, model.approvalCheck(recording).line ?? "")
         model.open(recording)
         model.openViewer(recording)

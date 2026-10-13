@@ -158,6 +158,35 @@ final class SnapshotTests: XCTestCase {
                 model.selectedRecordings = [talk.id]
                 model.inspectorTab = .people
             }
+            // Choices applied to audio (v2 part M6c): the two-people-tracks answer with Gabriel teaching and Voice 2 left
+            // out, made (two cuts, the audio output check passed) with two names said aloud, one muted and one not decided;
+            // and the same with a name muted since the make (not in the episode yet).
+            func choices(_ model: AppModel, pending: Bool) throws {
+                let talk = try talk13(model)
+                talk.facesJSON = Fixtures.facesTwoPeople(at: Fixtures.date(2026, 10, 12, 21, 40)).json()
+                model.applyVoices(Fixtures.voicesTwoTracks(at: Fixtures.date(2026, 10, 13, 1, 10)), to: talk)
+                model.setTeacher(try XCTUnwrap(model.addPerson(named: "Gabriel")), for: talk)
+                model.setChoice(.leaveOut, for: .voice(2), in: talk)
+                let names = [NameMoment(start: 312.4, end: 312.9, text: "Maria"), NameMoment(start: 640.2, end: 640.7, text: "Maria"),
+                             NameMoment(start: 702.0, end: 702.6, text: "Arjun")]
+                talk.namesSaidJSON = NamesSaid(checkedAt: Fixtures.date(2026, 10, 13, 1, 10), moments: names).json()
+                model.decideName(.mute, moments: Array(names.prefix(2)), in: talk)
+                var check = AudioCheck(checkedAt: Fixtures.date(2026, 10, 13, 1, 12), files: ["episode.mp3"])
+                check.seconds = 21.4
+                let segments = [VoiceSegment(start: 30.1, end: 40.0, voice: 2), VoiceSegment(start: 41.0, end: 49.9, voice: 2),
+                                VoiceSegment(start: 0.3, end: 89.9, voice: 1)]
+                model.choiceFigures.seed(talk, segments: segments, words: nil)
+                let plan = LeaveOut.plan(segments: segments, leftOut: [2], words: nil, mutes: Array(names.prefix(2)), duration: 947.78)
+                talk.peopleAppliedJSON = PeopleApplied(madeAt: Fixtures.date(2026, 10, 13, 1, 12), signature: talk.podcastSignature, leaveOut: plan, check: check).json()
+                // Muting the last name changes the podcast, so it is not in the episode yet. (Leaving out the corner face
+                // would not: it is never heard, so the podcast stays as made.)
+                if pending { model.decideName(.mute, moments: [names[2]], in: talk) }
+                model.selection = .group(.needsYou)
+                model.selectedRecordings = [talk.id]
+                model.inspectorTab = .people
+            }
+            try draw("07-inspector-people-choices") { model in try choices(model, pending: false) }
+            try draw("07-inspector-people-choices-pending") { model in try choices(model, pending: true) }
             try draw("07-inspector-info-teacher") { model in
                 let talk = try talk13(model)
                 talk.facesJSON = Fixtures.facesOnePerson(at: Fixtures.date(2026, 10, 12, 21, 40)).json()
@@ -347,7 +376,8 @@ final class SnapshotTests: XCTestCase {
             print("Snapshots written to \(outputFolder.path): \(written.count) library and Settings pictures")
             // v2 part M6a: the People tab joins the inspector's tabs (2), and six People and filter pictures (12).
             // v2 part M6b: four voices and names pictures (8) and Settings, Privacy with named people (2).
-            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2 + 2 + 2 + 3 * 2 + 2 + 6 * 2 + 4 * 2 + 2)
+            // v2 part M6c: two choices pictures (4).
+            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2 + 2 + 2 + 3 * 2 + 2 + 6 * 2 + 4 * 2 + 2 + 2 * 2)
             return
         }
 
@@ -434,7 +464,7 @@ final class SnapshotTests: XCTestCase {
 
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + 2 + 3 * 2 + viewerCount + 2 + 6 * 2 + 4 * 2 + 2)
+        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + 2 + 3 * 2 + viewerCount + 2 + 6 * 2 + 4 * 2 + 2 + 2 * 2)
     }
 
     /// v2 part M2a: the Help window, open at every article this build shows, in light and dark, with a

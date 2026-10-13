@@ -4,7 +4,7 @@ title: Privacy and students
 summary: What stays on this Mac, which recordings only models on this Mac may read, and how to protect students in a class.
 section: people
 order: 1
-keywords: [privacy, students, class, privacy lock, Serenity, local, cloud, Anthropic, OpenAI, Claude API, transcript, approve, cut, notifications, names, children, consent, voices, teacher, microphone]
+keywords: [privacy, students, class, privacy lock, Serenity, local, cloud, Anthropic, OpenAI, Claude API, transcript, approve, cut, notifications, names, children, consent, voices, teacher, microphone, include, leave out, hide face, mute, names said aloud]
 related: [capture-the-best-video, reviewing-and-approving, models-and-api-keys]
 ---
 
@@ -57,11 +57,12 @@ recognize them in another recording.
 - **In the inspector's People tab,** a sentence says what was found, then one row for each face, Unnamed 1,
   Unnamed 2 and so on, with how long it is on screen. The face in each row is taken from the recording while
   the tab is open, and is never saved.
-- **A notice** says "Other people appear in this recording." the first time two or more faces are seen at once.
-  Like every notice, it never names the recording or anyone in it.
+- **A notice** says "Other people appear in this recording. Everyone is in the episode until you choose otherwise."
+  the first time two or more faces are seen at once. Like every notice, it never names the recording or anyone in it.
 
-Nothing Prakriti finds changes what is made: the outputs are the same as before. A row is a face seen in one place
-in the picture, so one person who walks around can show as two rows; "up to 2 at once" is the number to go by.
+Finding someone changes nothing that is made. Only your choices do (see Choose who is in the episode, below). A row is
+a face seen in one place in the picture, so one person who walks around can show as two rows; "up to 2 at once" is
+the number to go by.
 :::
 
 :::requires voices
@@ -93,7 +94,55 @@ of a voice, and nothing that could recognize anyone in another recording. A name
 A recording found before Prakriti checked who appears and speaks shows **Check People** in its People tab.
 :::
 
-:::unless people
+:::requires choices
+## Choose who is in the episode
+
+Everyone found in a recording starts as **Include**: the participants have signed releases, so nobody is taken out
+until you choose. Under each face and voice in the People tab, choose one:
+
+- **Include:** heard as recorded.
+- **Hide Face:** heard as recorded. Hiding the face in pictures comes with the video, which Prakriti does not make
+  yet, so for now Hide Face changes nothing in the podcast.
+- **Leave Out:** every stretch they speak is cut from the podcast episode and the podcast-ready episode, with the
+  pause around it, so no syllable is left. Their words leave the transcript and the captions too.
+
+A voice with no face can be Include or Leave Out. A choice for a named person, such as Gabriel, covers every row with
+their name. Under the list, **Set All Unnamed To** sets everyone you have not named at once.
+
+The line under each choice says what it does, for example "Leaving out Voice 2 takes 22 s out of the podcast."
+**Play Their Moments** plays from where that person first speaks; click Play the Next Moment for each one after it. Every choice can be undone
+with Edit > Undo.
+
+Your choices are used the next time the recording is made: until you click Make Again, the People tab and the Viewer
+say they are not in the episode yet, and Approve waits.
+
+**When two people speak at once,** and one of them is left out, the whole stretch is cut, so the person you included
+loses those words too. The People tab lists each of those stretches, under In the Episode, to listen to.
+
+**After the episode is made,** Prakriti listens to it again on this Mac. If anyone it hears sounds like a person you
+left out, the People tab says when, such as "Speech at 0:31 in episode.mp3 sounds like Voice 2, whom you chose to leave
+out.", and Approve waits until it is made again. When the voices were told apart on one mixed track and you left
+someone out, listen to the changes of voice listed there, then select I listened to the changes of voice.
+
+## Names said aloud
+
+Prakriti looks for people's names in the transcript, other than the people you named in Settings, Privacy. Each name
+is listed in the People tab under Names Said Aloud, with the times it is said and Play. For each one, choose:
+
+- **Keep:** left as it is.
+- **Mute:** silenced in the podcast episode and the podcast-ready episode, and written as [name] in the transcript,
+  the captions and what the writing model reads.
+
+Approve waits until every name is kept or muted. Prakriti can miss a name, so listen too.
+
+## Classes
+
+- Only a recording marked **Talk, one teacher speaking** can be approved. A class or a conversation shows "Speakers
+  not checked" and cannot be approved.
+- A class is never made ready to upload as a podcast episode.
+:::
+
+:::unless choices
 ## Classes and other voices
 
 Prakriti does not yet tell one voice from another. So:
@@ -130,14 +179,12 @@ they appear, and when they speak.
 For each person, in each output, choose one:
 
 - **Include:** seen and heard as recorded.
-- **Blur Face:** heard as recorded, with their face blurred wherever it appears.
-- **Remove:** their speech is cut, and their face is blurred wherever it still shows.
+- **Hide Face:** heard as recorded, with their face blurred wherever it appears.
+- **Leave Out:** their speech is cut, and their face is blurred wherever it still shows.
 
-Where each person starts:
+Everyone starts as **Include**, because the participants have signed releases.
 
-- People you have named and who have agreed start as **Include**.
-- Everyone else starts as **Remove**. Change it only when that person has agreed to appear.
-- Thumbnails only ever show people who have agreed.
+- Thumbnails only ever show people you included.
 - The timeline for Final Cut Pro or DaVinci Resolve uses the video with your choices already applied,
   so the people you blurred or removed are not in it either.
 

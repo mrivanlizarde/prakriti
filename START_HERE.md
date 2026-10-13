@@ -655,6 +655,21 @@ names everyone in it and each named person heard has agreed (and, as before, it 
 Older recordings get **Check People**. Measured: 13 Sep one voice (14 min 49 s, linked to its face); 6 Sep whole pass under
 two minutes.
 
+**v2 part M6c, choices applied to audio, Tue 13 Oct (built, not installed: see BUILD-LOG "v2 part M6c"):** every face
+and voice in the People tab has a choice, **Include**, **Hide Face** or **Leave Out** (a voice with no face: Include or
+Leave Out), with **Set All Unnamed To**, a line saying what it takes out ("Leaving out Voice 2 takes 19 s out of the
+podcast."), **Play Their Moments**, and Edit > Undo. **Everyone starts as Include** (Ivan, 12 Oct: releases exist). A
+choice is kept on the recording (`Recording.choicesJSON`) and used at the next make: step **People left out** cuts every
+stretch a left-out voice speaks from the podcast episode and the podcast-ready episode (`LeaveOut.plan`: every word it
+touches whole, a short gap taken whole, a long pause by 0.25 s), joined with Ivan's own cuts, and the transcript files
+follow; where someone left out and someone included speak at once the stretch is cut and listed. Step **Who is heard in
+the episode** then listens to what was made again (`AudioOutputCheck`, the diarizer in memory) and stops Approve if anyone
+sounds like a person left out. Step **Names said aloud** lists every person's name Apple's tagger finds that is not someone
+named in Settings; each is **Keep** or **Mute**, and Mute silences it in both episodes and writes [name] in every
+transcript file, caption and writing request. Approve waits for the choices to be made, the check to pass, every name to
+be decided, and (someone left out of a mixed track) the changes of voice to be listened to. Hide Face changes no picture
+yet (M6d). With nobody left out and nothing muted the episode is made exactly as before.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -1703,6 +1718,34 @@ top and its end. Reading the code is not verification, and neither is a passing 
     second row of the teacher (warning 114) costs Ivan one more naming, while a guess would cost a student's words in a
     cloud request. Measured: the 13 Sep talk, Gabriel teaching and agreed, stays local (10 unnamed face rows after 12:39,
     and it says "Serenity").
+118. **The audio output check is the only code that holds a voice embedding, and only in memory, for the length of one
+    `AudioOutputCheck.run`** (`Diarizer.listen` returns `Heard` with each voice's average embedding; the check compares and
+    drops them; its decoded sound lives in a job folder deleted when it ends). Never write a `Heard`, a centroid or a
+    similarity table anywhere but the log lines of numbers it already writes. Reason: PLAN D2 and research-people.md 2.5,
+    no print of anyone is stored; `make accept-people` checks the store's JSON and every people file for a list of 128 or
+    more numbers.
+119. **Everyone starts as Include (`PeopleChoices.defaultChoice`).** Change it only on Ivan's word. Reason: his note of Mon
+    12 Oct (PLAN section 11): the participants signed releases, so the choices are editing choices, not a privacy gate. The
+    plan's section 5 default (Leave Out for anyone unnamed) predates the note. The notice says so in its fixed sentence
+    (`NoticeBuilder.otherPeopleBody`), so changing the default means changing the notice and Help 07 in the same commit.
+120. **Leave Out cuts time, never a track, and fails closed** (`LeaveOut.plan`): every word the left-out voice touches goes
+    whole, two of its stretches under 1 s apart are one cut, a gap of 0.5 s or less after or before it is taken whole (to
+    0.03 s of the next word), a longer pause by 0.25 s,
+    and speaking at once is cut, not kept on one microphone. Someone left out with no voices from this make stops the make
+    (`Pipeline.leaveOut`). Reason: research-people.md 3.4 and 3.5 (a voice bleeds into every microphone); measured 13 Oct,
+    half a short gap left an 80 ms tail of the teacher's word that Parakeet heard as "isness". With nobody left out and
+    nothing muted the step is not planned and the chain is unchanged (warning 30).
+121. **A muted name is silenced by one `volume` filter on the original's clock before anything is cut
+    (`Mastering.muteFilter`), worked out per audio frame, with each span padded 0.06 s (`LeaveOut.mutePad`), and written
+    "[name]" by `EpisodeTranscript.cues(mutes:)` in every file that carries words, Write Again and Update Podcast-Ready Files
+    included (`Recording.madeMutes`).** Reason: a frame is about 21 ms, so without the pad the start of a name could sound;
+    measured on the 13 Sep talk, the muted name's stretch of the episode reads digital silence. A name of two words is
+    one [name].
+122. **Approve waits for the choices on the page to be in the episode (`Recording.choicesPending`, a signature of who is left
+    out and which names are muted), for the audio output check to pass, for every name said aloud to be kept or muted, and,
+    with someone left out of a mixed track, for the changes of voice to be marked as listened to** (`ApprovalCheck`).
+    Reason: warning 36 (a yes covers exactly what was made), research-people.md 3.6, PLAN section 5 (zero student names
+    in anything public), warning 14 (a mixed track is a best guess).
 
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)

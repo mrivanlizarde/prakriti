@@ -94,6 +94,9 @@ final class WatcherTests: XCTestCase {
         XCTAssertEqual(r.latestRun?.outcome, .checked)
         XCTAssertNotNil(r.loudestDB)
         XCTAssertFalse(FileManager.default.fileExists(atPath: model.paths.outputs.appending(path: "2026-09-13 ask first").path), "nothing is made")
+        // The notice is posted in its own Task after the status settles; under the full suite's load it can land a moment
+        // later (measured 13 Oct, v2 part M6c: passed alone, failed once in the suite), so wait for it as the others do.
+        try await waitFor(timeout: 3) { !poster.posted.isEmpty }
         XCTAssertEqual(poster.posted.map(\.event), [.found])
         XCTAssertTrue(poster.posted.first?.body.contains("Make Outputs") == true)
 
@@ -119,6 +122,7 @@ final class WatcherTests: XCTestCase {
         let r = try await waitUntilSettled("2026-09-14 silent.m4a")
         XCTAssertEqual(r.status, .needsADecision)
         XCTAssertNil(r.outputFolder)
+        try await waitFor(timeout: 3) { poster.posted.count >= 2 }
         XCTAssertEqual(poster.posted.map(\.event), [.found, .needsADecision])
         XCTAssertEqual(poster.posted.last?.identifier, "rec-2026-09-14-silent-decision")
         XCTAssertEqual(poster.posted.last?.title, "Needs a Decision: Mon 14 Sep")

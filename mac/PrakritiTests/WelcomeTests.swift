@@ -96,13 +96,13 @@ final class WelcomeTests: XCTestCase {
     }
 
     func testOnlyWhatIsBuiltIsVisibleInThePanels() {
-        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices],
-                       "v2 part M2b adds the welcome to Help, M3b the Viewer, M4a progress, M4b the capture check, M5b the cloud providers, M6a faces, M6b voices")
+        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices],
+                       "v2 part M2b adds the welcome to Help, M3b the Viewer, M4a progress, M4b the capture check, M5b the cloud providers, M6a faces, M6b voices, M6c choices")
         XCTAssertEqual(unbuiltNamesFound(in: visibleText(built, capabilities: Capabilities.built), built: Capabilities.built), [])
         // At M2b, panel 1 lists finding recordings, the podcast and "nothing is posted without you".
         XCTAssertEqual(built.map(\.id), ["welcome", "record", "outputs", "privacy", "start"])
         XCTAssertEqual(built[0].rows.map(\.id), ["finds", "podcast", "yours"])
-        XCTAssertEqual(built.map(\.rows.count), [3, 6, 3, 3, 4], "M5b adds Choose where models write to Get Started")
+        XCTAssertEqual(built.map(\.rows.count), [3, 6, 4, 3, 4], "M5b adds Choose where models write to Get Started; M6c the People step to How Outputs Work")
         XCTAssertEqual(built[4].rows.map(\.id), ["folder", "notifications", "models", "help"])
         // M4a built `progress`, so step 1 of How Outputs Work reads its v2 sentence; M4b built `captureCheck`, so the
         // recording settings row names Hybrid MOV. No other v2 sentence yet.
@@ -147,8 +147,8 @@ final class WelcomeTests: XCTestCase {
 
     func testTheLineCountsTheRowsItShows() {
         XCTAssertEqual(built[1].line, "Prakriti does its best work with a clean recording. These six things make the biggest difference.")
-        XCTAssertEqual(built[2].line, "From a raw recording to finished files, in three steps.")
-        XCTAssertEqual(built[2].rows.map { built[2].symbol(for: $0) }, ["1.circle", "2.circle", "3.circle"], "steps are numbered as shown")
+        XCTAssertEqual(built[2].line, "From a raw recording to finished files, in four steps.", "M6c adds choosing who is in the episode")
+        XCTAssertEqual(built[2].rows.map { built[2].symbol(for: $0) }, ["1.circle", "2.circle", "3.circle", "4.circle"], "steps are numbered as shown")
         XCTAssertEqual(WelcomeContent.numberWord(6), "six")
     }
 

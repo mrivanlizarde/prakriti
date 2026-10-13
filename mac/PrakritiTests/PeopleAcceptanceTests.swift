@@ -133,7 +133,7 @@ final class PeopleAcceptanceTests: XCTestCase {
             XCTAssertEqual(corner?.first ?? 0, 20, accuracy: 1.0)
             XCTAssertEqual(corner?.last ?? 0, 60, accuracy: 1.0)
             let notices = model.notifier.sent.dropFirst(sentBefore).filter { $0.event == .otherPeople }
-            XCTAssertEqual(notices.map(\.body), ["Other people appear in this recording."], "\(name): the fixed notice, once")
+            XCTAssertEqual(notices.map(\.body), [NoticeBuilder.otherPeopleBody], "\(name): the fixed notice, once")
             report.append("\(name): \(faces.stepLine)")
             report.append("  rows: " + faces.people.map { "\($0.label) \(Format.length($0.onScreen)) (\(Format.timecode($0.first)) to \(Format.timecode($0.last)))" }.joined(separator: "; ")
                           + "; glimpses \(faces.glimpses); notice: " + notices.map { "\"\($0.title)\" \"\($0.body)\"" }.joined())

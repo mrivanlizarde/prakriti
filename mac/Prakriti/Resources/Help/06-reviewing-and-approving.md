@@ -94,9 +94,22 @@ Under What this is, choose **Talk, one teacher speaking**, **Class** or **Conver
 one teacher speaking can be approved. Under **Who is teaching**, choose the teacher, so the People tab can say
 how much of the recording is theirs.
 
+:::
+
+:::unless choices
 Prakriti lists every voice it hears in the People tab, but nothing it finds is left out of the episode yet.
 Before you approve, listen to every other voice listed there, and for any name said aloud. When the voices were
 told apart on one mixed track, the People tab lists each change of voice: listen to those too.
+:::
+
+:::requires choices
+## Choose who is in the episode
+
+In the People tab, every face and voice Prakriti found has a choice: Include, Hide Face or Leave Out. Everyone starts
+as Include. Leave Out cuts every stretch that person speaks from the podcast episodes, their words from the
+transcript and captions too; Hide Face changes nothing in the podcast. Under Names Said Aloud, choose Keep or Mute for
+each name Prakriti found; a muted name is silenced and written as [name]. Then click Make Again. See
+[Privacy and students](07-people-and-privacy.md).
 :::
 
 :::requires people
@@ -137,11 +150,20 @@ make it again, the viewer says the changes are not in the episode yet.
 
 ## Approve
 
-:::unless people
+:::unless choices
 Before you can approve:
 
 - The recording is marked Talk, one teacher speaking.
 - Every trim and cut is in the episode: click Make Again after changing them.
+:::
+:::requires choices
+Before you can approve:
+
+- The recording is marked Talk, one teacher speaking.
+- Every trim, cut and choice in the People tab is in the episode: click Make Again after changing them.
+- Every name said aloud is kept or muted.
+- Prakriti's second listen to the episode found no one you left out.
+- If you left someone out and the voices were told apart on one mixed track, you listened to the changes of voice.
 :::
 :::requires people
 Before you can approve:

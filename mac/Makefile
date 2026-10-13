@@ -165,11 +165,16 @@ accept-capture:
 #                 Teaching set to Gabriel ("Gabriel speaks for N percent."), two-people-tracks (who speaks from tracks 2
 #                 and 3, said in the log), two-people-mixed, the whole people pass on the 6 Sep talk timed (under 5
 #                 minutes), the privacy lock counted in cloud requests through the writer with a scripted cloud client.
-#                 Writes acceptance-people.txt, acceptance-voices.txt and crash-check.txt to ../screens/mac/$(MILESTONE)/
-#                 (about 15 minutes)
+#                 Then v2 part M6c's half (ChoicesAcceptanceTests): two-people-mixed and two-people-tracks made with
+#                 everyone included, then Gabriel teaching and everyone else Left Out and made again with the podcast-ready
+#                 episode; both episodes transcribed again by Parakeet (0 runs of the second voice, 98% of the 13 Sep words
+#                 kept, in order); the audio output check passing, and catching a planted miss; the names said aloud in the
+#                 13 Sep talk counted, one muted and measured silent with [name] in the captions.
+#                 Writes acceptance-people.txt, acceptance-voices.txt, acceptance-choices.txt and crash-check.txt to
+#                 ../screens/mac/$(MILESTONE)/ (about 25 minutes)
 accept-people:
 	./scripts/make-fixtures.sh --if-missing
-	TEST_RUNNER_PRAKRITI_ACCEPTANCE=people TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/PeopleAcceptanceTests -only-testing:PrakritiTests/VoicesAcceptanceTests
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=people TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/PeopleAcceptanceTests -only-testing:PrakritiTests/VoicesAcceptanceTests -only-testing:PrakritiTests/ChoicesAcceptanceTests
 	./scripts/people-crash-check.sh $(APP) ../screens/mac/$(MILESTONE)
 
 accept-outputs:

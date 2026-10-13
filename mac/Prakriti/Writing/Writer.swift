@@ -1180,11 +1180,12 @@ extension WritingInput {
     /// sentences' own text when .txt is not one of the chosen formats). Nil when there is no
     /// transcript.json to read.
     static func from(folder: URL, clock: EpisodeClock?, duration: Double, applyLexicon: Bool, label: String, fileName: String,
-                     kind: RecordingKind, knownSerenity: Bool) -> WritingInput? {
+                     kind: RecordingKind, knownSerenity: Bool, mutes: [TimeRange] = []) -> WritingInput? {
         guard let data = try? Data(contentsOf: folder.appending(path: TranscriptFiles.asHeard)),
               let sentences = EpisodeTranscript.sentences(json: data) else { return nil }
         let clock = clock ?? EpisodeClock(intro: 0, segments: [Mastering.Span(start: 0, end: max(duration, sentences.map(\.end).max() ?? 0))])
-        let cues = EpisodeTranscript.cues(sentences, clock: clock, applyLexicon: applyLexicon).cues
+        // A name said aloud that Ivan muted (v2 part M6c) reaches the writer as "[name]", never as the name.
+        let cues = EpisodeTranscript.cues(sentences, clock: clock, applyLexicon: applyLexicon, mutes: mutes).cues
         let text = (try? String(contentsOf: folder.appending(path: TranscriptFiles.fileName(.txt)), encoding: .utf8)) ?? EpisodeTranscript.text(cues)
         return WritingInput(label: label, fileName: fileName, kind: kind, knownSerenity: knownSerenity, cues: cues, transcriptText: text,
                             followsEpisode: !clock.isIdentity(duration: duration))

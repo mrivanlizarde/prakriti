@@ -140,7 +140,7 @@ extension Pipeline {
     /// the episode, the captions (.srt and .vtt) timed to it, the text file, and the upload checklist,
     /// every line measured or read back from the file. `transcriptFolder` holds transcript.json.
     func packagePodcastReady(untagged: URL, into folder: URL, setup: PodcastReadySetup, written: WrittenPackage?,
-                             transcriptFolder: URL?, clock: EpisodeClock, applyLexicon: Bool, expectedDuration: Double,
+                             transcriptFolder: URL?, clock: EpisodeClock, applyLexicon: Bool, mutes: [TimeRange] = [], expectedDuration: Double,
                              normalizationType: String, talkLUFS: Double?, corrected: Bool, madeAt: Date) async throws -> PodcastReadyRecord {
         let fm = FileManager.default
         let settings = setup.settings, facts = setup.facts
@@ -184,7 +184,7 @@ extension Pipeline {
         var captionsProblem: String?
         if let transcriptFolder, let data = try? Data(contentsOf: transcriptFolder.appending(path: TranscriptFiles.asHeard)),
            let sentences = EpisodeTranscript.sentences(json: data) {
-            let cues = EpisodeTranscript.cues(sentences, clock: clock, applyLexicon: applyLexicon).cues
+            let cues = EpisodeTranscript.cues(sentences, clock: clock, applyLexicon: applyLexicon, mutes: mutes).cues
             do {
                 try EpisodeTranscript.srt(cues).write(to: folder.appending(path: base + ".srt"), atomically: true, encoding: .utf8)
                 try EpisodeTranscript.vtt(cues).write(to: folder.appending(path: base + ".vtt"), atomically: true, encoding: .utf8)

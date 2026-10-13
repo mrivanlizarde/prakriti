@@ -150,7 +150,7 @@ final class NotificationTests: XCTestCase {
         // v2 part M6a (check 11): the fixed sentence, its own row in the recording's thread, and nothing else.
         let people = NoticeBuilder.content(.otherPeople, facts(talk))
         XCTAssertEqual(people.title, "Other People Appear: Sun 13 Sep")
-        XCTAssertEqual(people.body, "Other people appear in this recording.")
+        XCTAssertEqual(people.body, NoticeBuilder.otherPeopleBody)
         XCTAssertEqual(people.identifier, "rec-2026-09-13-18-25-44-people")
         XCTAssertEqual(people.threadIdentifier, "rec-2026-09-13-18-25-44")
 

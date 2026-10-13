@@ -109,8 +109,8 @@ Sound matters more than picture. A soft image is forgiven. A voice that cannot b
 - **Each microphone on its own track.** OBS can record each microphone, and Zoom or computer audio, as
   separate tracks in the same file, which keeps each voice on its own in the original. See
   [Set up OBS for Prakriti](03-set-up-obs-for-prakriti.md).
-:::requires people
-  Prakriti uses the tracks to keep each voice clean and to remove a voice you do not want.
+:::requires choices
+  Prakriti reads who speaks from those tracks, so a voice you choose to leave out is cut exactly where it speaks.
 :::
 - **Set the level.** Speak at teaching volume. In OBS, speech should sit in the upper part of the yellow
   on the meter, and the loudest words should only touch the start of the red. That is about -12 to -9
@@ -172,13 +172,14 @@ every track in a file.
 
 ## Record a class
 
-:::unless people
+:::unless choices
 Prakriti never makes a class ready to upload, and a recording marked as a class cannot be approved,
 because Prakriti does not yet tell one voice from another. The room can still be set up so students
 are protected from the start.
 :::
-:::requires people
-Prakriti protects students in what it makes, and it works best when the room is set up for that too.
+:::requires choices
+Prakriti never makes a class ready to upload, and a recording marked as a class cannot be approved. In a
+talk, you choose who is in the episode, and a room set up well means less to take out.
 :::
 
 - **Point the camera at the teacher.** Seat students behind the camera or beside it. If some students

@@ -270,7 +270,7 @@ final class PeopleTests: XCTestCase {
         XCTAssertFalse(options.plannedSteps.contains(.faces), "the pipeline alone does not look for faces")
         options.people = PeopleSetup(recordingID: UUID(), folders: PeopleFolders(support: work))
         let steps = options.plannedSteps
-        XCTAssertEqual(steps, [.complete, .capture, .sound, .speechAudio, .transcript, .coverage, .faces, .voices, .episode, .loudness, .report])
+        XCTAssertEqual(steps, [.complete, .capture, .sound, .speechAudio, .transcript, .coverage, .namesSaid, .faces, .voices, .episode, .loudness, .report])
         options.checksOnly = true
         XCTAssertFalse(options.plannedSteps.contains(.faces), "Ask me first checks only that the file is complete and has sound")
         XCTAssertEqual(PipelineStep.faces.title, "Faces")
@@ -291,7 +291,7 @@ final class PeopleTests: XCTestCase {
         XCTAssertTrue(model.notifier.sent.isEmpty, "one person at a time: no notice")
         model.applyFaces(Fixtures.facesTwoPeople(at: Fixtures.now), to: recording)
         XCTAssertEqual(model.notifier.sent.map(\.event), [.otherPeople])
-        XCTAssertEqual(model.notifier.sent.first?.body, "Other people appear in this recording.")
+        XCTAssertEqual(model.notifier.sent.first?.body, NoticeBuilder.otherPeopleBody)
         model.applyFaces(Fixtures.facesTwoPeople(at: Fixtures.now), to: recording)
         XCTAssertEqual(model.notifier.sent.count, 1, "told once per recording, not at every make")
 

@@ -102,6 +102,9 @@ enum NoticeBuilder {
         [facts.duration.map { Format.length($0) }, facts.folderName].compactMap { $0 }.joined(separator: ", ")
     }
 
+    /// The fixed sentence of the Other People Appear notice (v2 parts M6a, then M6c).
+    static let otherPeopleBody = "Other people appear in this recording. Everyone is in the episode until you choose otherwise."
+
     private static func body(_ event: NotificationEvent, _ facts: NoticeFacts) -> String {
         switch event {
         case .found:
@@ -141,9 +144,12 @@ enum NoticeBuilder {
             let step = facts.stoppedWhile.map { " while \($0.lowercasedFirst)" } ?? " before it finished"
             return "It stopped\(times)\(step). The original is untouched; open it to see the details."
         case .otherPeople:
-            // One fixed sentence that says only what this build does (docs/v2/PLAN.md M6): it finds faces and
-            // decides nothing yet. Never a name, a title or a count of anyone.
-            return "Other people appear in this recording."
+            // One fixed sentence that says only what this build does (docs/v2/PLAN.md M6, plan review item 6), never a
+            // name, a title or a count of anyone. Its second wording (part M6c): choices exist now, and everyone starts
+            // as Include (Ivan, 12 Oct: releases exist), so nothing is left out until he chooses. The plan's own second
+            // wording ("Their voices are left out until you decide.") was written for a Leave Out default and would be
+            // false here.
+            return Self.otherPeopleBody
         }
     }
 

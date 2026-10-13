@@ -39,6 +39,13 @@ struct EpisodeEdits: Codable, Equatable, Sendable {
         return out
     }
 
+    /// The same edits with more cuts (v2 part M6c: the speech of people left out), joined with Ivan's own.
+    func adding(cuts more: [TimeRange]) -> EpisodeEdits {
+        var copy = self
+        copy.cuts = Self.merged(cuts + more)
+        return copy
+    }
+
     func adding(cut: TimeRange) -> EpisodeEdits {
         var copy = self
         copy.cuts = Self.merged(cuts + [cut])
@@ -325,7 +332,11 @@ enum EpisodeTranscript {
     /// text; a sentence a cut goes through becomes two cues, never starting with a stray comma or
     /// full stop. `removedWords` counts the words left out; `corrections` are the word list's fixes
     /// in the cues, each at its time in the original recording.
-    static func cues(_ sentences: [Sentence], clock: EpisodeClock, applyLexicon: Bool)
+    ///
+    /// `mutes` (v2 part M6c): names said aloud that Ivan muted, on the original's clock. A word said inside one is
+    /// written "[name]", its punctuation kept, and a sentence with one is built from its words, never written as
+    /// Parakeet's own text.
+    static func cues(_ sentences: [Sentence], clock: EpisodeClock, applyLexicon: Bool, mutes: [TimeRange] = [])
         -> (cues: [TranscriptFiles.Cue], removedWords: Int, corrections: [Lexicon.Correction]) {
         var cues: [TranscriptFiles.Cue] = []
         var corrections: [Lexicon.Correction] = []
@@ -335,10 +346,11 @@ enum EpisodeTranscript {
             let tokens = sentence.tokens ?? [Token(text: sentence.text, start: sentence.start, end: sentence.end)]
             var run: [Token] = []
             var runSegment: Int?
+            var mutedHere = false
             func flush() {
                 defer { run = []; runSegment = nil }
                 guard let index = runSegment else { return }
-                let whole = run.count == tokens.count
+                let whole = run.count == tokens.count && !mutedHere
                 // Part of a sentence never opens with the punctuation that closed the words before it.
                 let pieces = whole ? run[...] : run.drop { Self.isClosingPunctuation($0.text) }
                 guard let first = pieces.first, let last = pieces.last else { return }
@@ -370,12 +382,27 @@ enum EpisodeTranscript {
                 }
                 if index != runSegment { flush() }
                 runSegment = index
-                run.append(contentsOf: word)
+                let at = Self.position(start: first.start, end: last.end)
+                if spoken, mutes.contains(where: { at >= $0.start && at <= $0.end }) {
+                    // A muted name: "[name]" in its place, with the space before it and the punctuation after it. A name
+                    // of two words ("Pattabhi Jois") is one "[name]", not two.
+                    mutedHere = true
+                    let lead = first.text.first?.isWhitespace == true ? " " : ""
+                    if run.last?.text.hasSuffix(Self.mutedWord) != true {
+                        run.append(Token(text: lead + Self.mutedWord, start: first.start, end: last.end))
+                    }
+                    run.append(contentsOf: word.dropFirst().filter { !Self.isWord($0.text) })
+                } else {
+                    run.append(contentsOf: word)
+                }
             }
             flush()
         }
         return (cues, removed, corrections)
     }
+
+    /// What a muted name is written as in the captions and the transcript files (PLAN section 5).
+    static let mutedWord = "[name]"
 
     /// "00:15:46,160"
     static func stamp(_ seconds: Double, separator: String) -> String {

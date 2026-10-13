@@ -158,6 +158,9 @@ struct StatusBlock: View {
         if recording.editsPending && (recording.status == .readyForYourYes || recording.status == .approved) {
             lines.append("The trim or cuts in the Viewer are not in the episode yet. Make it again before approving.")
         }
+        if recording.choicesPending && (recording.status == .readyForYourYes || recording.status == .approved) {
+            lines.append("Your choices in People are not in the episode yet. Make it again before approving.")
+        }
         return lines
     }
 }

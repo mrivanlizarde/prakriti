@@ -5,6 +5,38 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-13, Tue: v2 part M6c, choices applied to audio
+
+- **Every face and voice in the People tab now has a choice: Include, Hide Face or Leave Out (a voice with no face:
+  Include or Leave Out), with Set All Unnamed To, the line saying what it takes out, Play Their Moments, and Undo.** Why:
+  REQUEST item 3, "let me choose who should be included in the output videos and audio".
+- **Everyone starts as Include, not Leave Out.** Why: Ivan's note of Mon 12 Oct (PLAN section 11): the participants
+  signed releases, so the three choices are editing choices, not a privacy gate. The plan's section 5 default (Remove for
+  anyone unnamed) predates that note. The notice's second wording follows: "Other people appear in this recording.
+  Everyone is in the episode until you choose otherwise." The plan's own wording would have been false.
+- **Leave Out cuts every stretch that person speaks from the podcast episode and the podcast-ready episode, taking every
+  word it touches whole and the short gap after it, with v1's 15 ms fades; the transcript files follow.** Why:
+  research-people.md 3.4 (cut time, not a track: a voice bleeds into every microphone). Taking a short gap whole was
+  measured: with half the gap, an 80 ms tail of the teacher's "teaching" stayed and Parakeet heard "isness".
+- **Where a left-out voice and an included one speak at once, the stretch is cut and listed for listening.** Why:
+  research-people.md 3.5, fail closed. "Keep Gabriel's microphone here" is not built (it needs the podcast to take its
+  sound from another track for a stretch); listed for a later part.
+- **Someone left out with no voices found stops the make.** Why: fail closed; a make that could not find them must not
+  produce a file that may still hold them.
+- **After a make that leaves someone out, Prakriti listens to what it made again (the diarizer, in memory) and compares
+  each voice with the original's voices; anyone who sounds like a person left out stops Approve with the time.** Why:
+  research-people.md 3.6 item 2. Measured: it passes the real cuts and catches the second voice when it is planted back.
+  Embeddings live only for the length of that check (PLAN D2: no print stored).
+- **Names said aloud: Apple's tagger finds person names in the transcript, other than people named in Settings; each is
+  Keep or Mute, Mute silences it in both podcast episodes and writes [name] in every transcript file, caption and what the
+  writer reads; Approve waits until each is decided.** Why: PLAN section 5 and risk R13, Serenity's standing condition.
+- **Approve also waits for the choices to be in the episode, for the audio check to pass, and, with someone left out of a
+  mixed track, for the changes of voice to be listened to.** Why: Mac warning 36's rule (a yes covers exactly what was
+  made) and warning 14 (a mixed track is a guess).
+- **With nobody left out and nothing muted, nothing changes.** Why: Mac warning 30, the bit-for-bit check against engine v0.
+- **New capability `choices` (separate from `people`, which is hiding faces in pictures, M6d); Help 02, 06, 07 and 09 and
+  the welcome rewritten to it.** Why: Help describes only what is built; Hide Face is offered but changes no picture yet.
+
 ## 2026-10-13, Tue: v2 part M6b, voices and names
 
 - **Every make now listens for who speaks when, right after the faces: from the microphone tracks when the recording has

@@ -138,6 +138,10 @@ struct ViewerBanner: View {
             return ("exclamationmark.circle", "Your newest trim and cuts are not in the episode yet. Make it again to hear them, and before approving.",
                     model.canMakeAgain(recording) ? Action(title: "Make Again…") { model.ask(.makeAgain, for: recording) } : nil)
         }
+        if recording.choicesPending {
+            return ("exclamationmark.circle", "Your newest choices of who is in the episode are not in it yet. Make it again to hear them, and before approving.",
+                    model.canMakeAgain(recording) ? Action(title: "Make Again…") { model.ask(.makeAgain, for: recording) } : nil)
+        }
         return nil
     }
 }

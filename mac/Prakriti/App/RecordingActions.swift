@@ -126,6 +126,18 @@ extension AppModel {
         ApprovalCheck.check(recording, isBusy: runner.isCurrent(recording) || runner.isWaiting(recording))
     }
 
+    /// The receipt's People section (v2 part M6c): each person's choice for the podcast, the names muted, and the audio
+    /// output check. Empty when the people check never ran on it.
+    func receiptPeople(_ recording: Recording) -> [String] {
+        guard recording.voices != nil, recording.faces != nil else { return [] }
+        var lines = recording.choiceLines
+        let muted = recording.madeMutes.count
+        let kept = (recording.namesSaid?.moments.count ?? 0) - muted
+        if muted + kept > 0 { lines.append("Names said aloud: \(Format.number(max(0, kept))) kept, \(Format.number(muted)) muted (written as \(EpisodeTranscript.mutedWord)).") }
+        if let check = recording.peopleApplied?.check { lines.append("Who is heard: " + check.line { recording.label(forVoice: $0) }) }
+        return lines
+    }
+
     /// Where Approve puts this recording's files: ~/Prakriti/Approved/<the file's name>, beside its
     /// folder in ~/Prakriti/Outputs, which has the same name.
     func approvedFolder(for recording: Recording) -> URL {
@@ -153,7 +165,7 @@ extension AppModel {
         let at = now()
         let receipt = Approval.Receipt(label: Format.dayLabel(recording.sessionDate), title: recording.title, notes: recording.notes,
                                        recordingFile: recording.fileName,
-                                       editsSummary: recording.madeEdits.summary, approvedAt: at)
+                                       editsSummary: recording.madeEdits.summary, approvedAt: at, people: receiptPeople(recording))
         do {
             let copied = try Approval.copy(files, from: URL(fileURLWithPath: source, isDirectory: true), to: destination, receipt: receipt)
             recording.status = .approved

@@ -1,10 +1,11 @@
 import SwiftUI
 
-/// The inspector's People tab (v2 parts M6a and M6b, docs/v2/design-spec.md 3.5.2): what the face step and the voice
-/// step found, in plain sentences, then one row per face and one per voice with no face, each with Name for This
-/// Recording. A face's picture is cropped live from the original and held in memory only. Nothing is decided here
-/// yet: the choices of who appears in each output come with part M6c. A recording found before the people pass existed
-/// offers Check People instead of checking by itself (docs/v2/PLAN.md rule 2.1.7).
+/// The inspector's People tab (v2 parts M6a, M6b and M6c, docs/v2/design-spec.md 3.5.2): what the face step and the
+/// voice step found, in plain sentences, then one row per face and one per voice with no face, each with Name for This
+/// Recording and its choice (Include, Hide Face, Leave Out; PeopleChoicesViews.swift); Set All Unnamed To; the names
+/// said aloud with Keep and Mute; and whether the choices are in the episode. A face's picture is cropped live from the
+/// original and held in memory only. A recording found before the people pass existed offers Check People instead of
+/// checking by itself (docs/v2/PLAN.md rule 2.1.7).
 struct PeopleTab: View {
     let recording: Recording
     @Environment(AppModel.self) private var model
@@ -45,6 +46,7 @@ struct PeopleTab: View {
                             RowNote("Each face row is a face seen in one place in the picture. One person who moves around can make two rows, so the number at once is the one to go by.")
                         }
                         glimpses(faces, name: names.faces[0].flatMap { id in people.first { $0.id == id }?.name })
+                        if recording.voices != nil { SetAllUnnamed(recording: recording) }
                     } header: {
                         SectionHeader("In This Recording")
                     }
@@ -57,6 +59,10 @@ struct PeopleTab: View {
                                 + "\(Format.count(voices.listen.count, "change")) from one voice to another, the first at \(Format.timecode(voices.listen[0])), "
                                 + (voices.listen.count == 1 ? "is" : "are") + " worth listening to.")
                     }
+                }
+                if recording.voices != nil {
+                    ChoiceStatusSection(recording: recording)
+                    if let said = recording.namesSaid { NamesSaidSection(recording: recording, names: said) }
                 }
                 if people.isEmpty {
                     Section {
@@ -220,6 +226,8 @@ struct FaceRow: View {
                 if recording.voices != nil {
                     NameMenu(recording: recording, current: name) { model.nameFace(person.id, as: $0, in: recording) }
                         .padding(.top, 2)
+                    ChoiceControls(recording: recording, key: PersonKey.face(person.id, names: recording.resolvedNameTable), hasFace: true)
+                        .padding(.top, 2)
                 }
             }
         }
@@ -252,7 +260,7 @@ struct VoiceRow: View {
                     .font(AppFont.secondary)
                     .foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
                     NameMenu(recording: recording, current: name) { model.nameVoice(voice.id, as: $0, in: recording) }
                     if let track = voice.track, recording.source != nil {
                         Menu {
@@ -271,6 +279,8 @@ struct VoiceRow: View {
                     }
                 }
                 .padding(.top, 2)
+                ChoiceControls(recording: recording, key: PersonKey.voice(voice, names: recording.resolvedNameTable), hasFace: false)
+                    .padding(.top, 2)
             }
         }
         .padding(.vertical, 2)

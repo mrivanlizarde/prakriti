@@ -167,6 +167,8 @@ final class AppModel {
     var otherPeopleFilter = false
     /// The People tab's faces, cropped live and held in memory only (v2 part M6a).
     let faceCrops = FaceCrops()
+    /// The People tab's figures for its choices (v2 part M6c): voice stretches and word times, read once per make.
+    @ObservationIgnored let choiceFigures = ChoiceFigures()
     var providerChecks: [ModelProvider: ProviderCheck] = [:]
     /// Which cloud providers have a key in the Keychain. Read when Settings, Models opens; the keys never are.
     var keysAdded: Set<ModelProvider> = []

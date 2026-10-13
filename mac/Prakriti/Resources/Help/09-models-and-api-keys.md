@@ -33,8 +33,14 @@ These always run on this Mac, whatever you choose:
 - Transcribing the words.
 - Mastering the sound and measuring it.
 - Checking every chapter time and every quote against the transcript.
+:::requires voices
+- Finding faces and voices.
+:::
+:::requires choices
+- Leaving out the voices you choose, muting names, and listening to the episode again to check.
+:::
 :::requires people
-- Finding faces and voices, blurring faces and removing voices.
+- Blurring faces.
 :::
 :::requires video
 - Cutting, zooming and making the video.

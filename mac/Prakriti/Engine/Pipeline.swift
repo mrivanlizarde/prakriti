@@ -28,7 +28,7 @@ import Foundation
 /// The steps, in order. `title` is what the recording page lists; `doing` is what the status line
 /// says while it runs ("Working on Sun 13 Sep: making the episode audio"). Never "Processing".
 enum PipelineStep: String, CaseIterable, Sendable {
-    case complete, capture, sound, speechAudio, transcript, coverage, wordList, faces, voices, trim, edits, episode, loudness, podcastAudio, episodeTranscript, writing, podcastPackage, report
+    case complete, capture, sound, speechAudio, transcript, coverage, wordList, namesSaid, faces, voices, trim, edits, leaveOut, episode, loudness, podcastAudio, audioCheck, episodeTranscript, writing, podcastPackage, report
 
     var title: String {
         switch self {
@@ -39,13 +39,16 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .transcript: "Transcript"
         case .coverage: "Coverage check"
         case .wordList: "Word list"
+        case .namesSaid: "Names said aloud"
         case .faces: "Faces"
         case .voices: "Voices"
         case .trim: "Silence at the start and end"
         case .edits: "Your trim and cuts"
+        case .leaveOut: "People left out"
         case .episode: "Episode audio"
         case .loudness: "Loudness check"
         case .podcastAudio: "Podcast-ready audio"
+        case .audioCheck: "Who is heard in the episode"
         case .podcastPackage: "Podcast-ready files"
         case .episodeTranscript: "Transcript matched to the episode"
         case .writing: "Titles, show notes and chapters"
@@ -70,13 +73,16 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .transcript: "Writing the transcript"
         case .coverage: "Checking the transcript reaches the end"
         case .wordList: "Applying the Yoga Marga word list"
+        case .namesSaid: "Finding names said aloud"
         case .faces: "Looking for faces"
         case .voices: "Listening for voices"
         case .trim: "Finding the silence at the start and end"
         case .edits: "Applying your trim and cuts"
+        case .leaveOut: "Leaving out the people you chose"
         case .episode: "Making the episode audio"
         case .loudness: "Measuring the episode audio"
         case .podcastAudio: "Mastering the podcast-ready audio"
+        case .audioCheck: "Checking who is heard in the episode"
         case .podcastPackage: "Writing and checking the podcast-ready files"
         case .episodeTranscript: "Matching the transcript to the episode"
         case .writing: "Writing the titles, show notes and chapters"
@@ -144,11 +150,18 @@ struct PipelineOptions: Sendable {
     /// The face step of the people pass (v2 part M6a): which recording it is for and where its people file and
     /// job folder go, or nil when faces are not looked for (the tests that run the pipeline alone).
     var people: PeopleSetup?
+    /// Ivan's choices of who is in the podcast and which names said aloud are muted (v2 part M6c). The default leaves
+    /// everyone in and mutes nothing, so the episode is made exactly as before.
+    var choices = PeopleChoices.none
+
+    /// Anyone left out or any name muted: the podcast changes, so the step that applies it is planned.
+    var appliesChoices: Bool { people != nil && choices.changesPodcast && (makeEpisode || makePodcastReady) }
 
     /// Anything taken out of the recording or added to it, so the episode's clock is not the
-    /// original's and the transcript files are rewritten to follow the episode.
+    /// original's and the transcript files are rewritten to follow the episode. A muted name (v2 part M6c) keeps the
+    /// clock but changes the words, so the files are rewritten for it too.
     var changesTheClock: Bool {
-        trimSilence || !(introPath ?? "").isEmpty || !(outroPath ?? "").isEmpty || !edits.isEmpty
+        trimSilence || !(introPath ?? "").isEmpty || !(outroPath ?? "").isEmpty || !edits.isEmpty || appliesChoices
     }
 
     /// The steps this run will take, in order. The checks always run, the capture check first of all once the
@@ -159,6 +172,8 @@ struct PipelineOptions: Sendable {
         if makeTranscript {
             steps += [.speechAudio, .transcript, .coverage]
             if applyLexicon { steps.append(.wordList) }
+            // Names said aloud (v2 part M6c), from the transcript, with the people check.
+            if people != nil { steps.append(.namesSaid) }
         }
         // After the transcript and before anything is written (docs/v2/PLAN.md M6): faces, then voices; their answer
         // together is what the privacy lock reads (M6b).
@@ -166,9 +181,12 @@ struct PipelineOptions: Sendable {
         if makeEpisode || makePodcastReady {
             if trimSilence { steps.append(.trim) }
             if !edits.isEmpty { steps.append(.edits) }
+            if appliesChoices { steps.append(.leaveOut) }
         }
         if makeEpisode { steps += [.episode, .loudness] }
         if makePodcastReady { steps.append(.podcastAudio) }
+        // The audio output check, whenever someone is left out (v2 part M6c).
+        if appliesChoices && choices.leavesSomeoneOut { steps.append(.audioCheck) }
         if (makeEpisode || makePodcastReady) && makeTranscript && changesTheClock { steps.append(.episodeTranscript) }
         if makeTranscript && writing != nil { steps.append(.writing) }
         if makePodcastReady { steps.append(.podcastPackage) }
@@ -256,6 +274,11 @@ struct PipelineResult: Sendable {
     /// its step, and leaves the people check not run, so the privacy lock stays closed.
     var voices: VoicesFound?
     var voicesProblem: String?
+    /// The names said aloud this make found (v2 part M6c), or nil when it did not look (no transcript, no people check).
+    var namesSaid: NamesSaid?
+    /// What this make left out of the podcast and muted, and the audio output check of what it made (v2 part M6c).
+    /// Nil when nobody was left out and nothing was muted.
+    var applied: PeopleApplied?
 }
 
 /// Where the face and voice steps write, for one recording, and Ivan's names the writing step's privacy lock reads.
@@ -373,6 +396,9 @@ enum Mastering {
         /// faded in and out over 15 ms. Nil: `kept` (the silence trim) or the whole recording, and
         /// the chain is milestone 4's string for string.
         var parts: [Span]?
+        /// Names said aloud that Ivan muted (v2 part M6c), on the original's clock: silenced before anything is cut,
+        /// so the times are the original's. Empty: the chain is unchanged, string for string.
+        var mutes: [Span] = []
 
         /// The talk's parts, as the episode plays them.
         func talk(duration: Double) -> [Span] {
@@ -390,7 +416,8 @@ enum Mastering {
     static func pass(file: String, program: Program, loudness: String) -> [String] {
         let format = format(program.channels)
         if let parts = program.parts { return pass(file: file, parts: parts, program: program, loudness: loudness) }
-        let trim = program.kept.map { "atrim=start=\(time($0.start)):end=\(time($0.end)),asetpts=PTS-STARTPTS," } ?? ""
+        let trim = (muteFilter(program.mutes).map { $0 + "," } ?? "")
+            + (program.kept.map { "atrim=start=\(time($0.start)):end=\(time($0.end)),asetpts=PTS-STARTPTS," } ?? "")
         guard program.intro != nil || program.outro != nil else {
             return ["-i", file, "-vn", "-af", trim + format + "," + loudness]
         }
@@ -407,6 +434,18 @@ enum Mastering {
         if let outro = program.outro { add(outro.path, "\(format),volume=\(number(outro.gainDB))dB", "outro") }
         graph.append(labels.joined() + "concat=n=\(labels.count):v=0:a=1,\(loudness)[episode]")
         return inputs + ["-filter_complex", graph.joined(separator: ";"), "-map", "[episode]"]
+    }
+
+    /// Silence over each muted name (v2 part M6c): the volume falls to nothing over 30 ms before each span and rises
+    /// over 30 ms after it, worked out once per audio frame (about 21 ms), on the original's clock. The spans arrive
+    /// padded (`LeaveOut.mutePad`), so a frame that starts just before a name is already silent. Nil with no mutes:
+    /// nothing is added to the chain (Mac warning 30).
+    static func muteFilter(_ mutes: [Span]) -> String? {
+        guard !mutes.isEmpty else { return nil }
+        let factors = mutes.map { span in
+            "clip((abs(t-\(time((span.start + span.end) / 2)))-\(time(span.length / 2)))/0.03,0,1)"
+        }
+        return "volume=volume='" + factors.joined(separator: "*") + "':eval=frame"
     }
 
     /// One kept part: cut out of the recording, started at zero, faded in and out over 15 ms.
@@ -430,10 +469,11 @@ enum Mastering {
         }
         let talkInput = labels.count
         inputs += ["-i", file]
+        let mute = muteFilter(program.mutes).map { $0 + "," } ?? ""
         if parts.count == 1, let only = parts.first {
-            graph.append("[\(talkInput):a]\(part(only)),\(format)[talk]")
+            graph.append("[\(talkInput):a]\(mute)\(part(only)),\(format)[talk]")
         } else {
-            graph.append("[\(talkInput):a]asplit=\(parts.count)" + parts.indices.map { "[s\($0)]" }.joined())
+            graph.append("[\(talkInput):a]\(mute)asplit=\(parts.count)" + parts.indices.map { "[s\($0)]" }.joined())
             for (index, span) in parts.enumerated() { graph.append("[s\(index)]\(part(span))[p\(index)]") }
             graph.append(parts.indices.map { "[p\($0)]" }.joined() + "concat=n=\(parts.count):v=0:a=1,\(format)[talk]")
         }
@@ -683,6 +723,21 @@ struct Pipeline: Sendable {
                                     + fixes.map { "\($0.written) (\($0.items.count))" }.joined(separator: ", ") + ".")
                 }
                 try keepChosenFormats(in: staging, srt: srt, label: label, fileName: file.lastPathComponent)
+
+                // 5a. Names said aloud (v2 part M6c): every person's name the tagger finds in the words as heard that is
+                //     not someone Ivan named, as a moment to Keep or Mute. Arithmetic on the transcript; nothing leaves
+                //     the Mac. A transcript.json that cannot be read finds none, and says so.
+                if let people = options.people {
+                    await begin(.namesSaid)
+                    if let data = try? Data(contentsOf: staging.appending(path: TranscriptFiles.asHeard)),
+                       let sentences = EpisodeTranscript.sentences(json: data) {
+                        let found = NamesSaid(checkedAt: Date(), moments: NamesSaidAloud.find(sentences, named: people.people.map(\.name)))
+                        result.namesSaid = found
+                        await finish(.namesSaid, found.stepLine)
+                    } else {
+                        await finish(.namesSaid, "The words with their times could not be read, so names said aloud were not looked for.", state: .failed)
+                    }
+                }
             }
 
             // 5b. Faces (v2 part M6a): every face in the picture, two frames a second, as boxes and times only, into
@@ -766,7 +821,32 @@ struct Pipeline: Sendable {
                     await finish(.edits, (options.edits.summary.map { $0 + " " } ?? "")
                                  + "The episode keeps \(Format.timecode(kept)) of \(Format.timecode(ready.duration)).")
                 }
+
+                // The people Ivan chose to leave out, and the names he muted (v2 part M6c): their speech cut from both
+                // podcast episodes on top of his own trim and cuts, widened into the pauses around it; the names
+                // silenced. Someone left out with no voices found this make stops it: nothing is made that might
+                // still hold them (fail closed).
+                if options.appliesChoices, let people = options.people {
+                    await begin(.leaveOut)
+                    let applied = try leaveOut(people: people, staging: staging, duration: ready.duration, namesSaid: result.namesSaid,
+                                               faces: result.faces, voices: result.voices)
+                    if !applied.leaveOut.cuts.isEmpty {
+                        let edits = options.edits.adding(cuts: applied.leaveOut.cuts)
+                        if let problem = edits.problem(duration: ready.duration, silence: program.kept) {
+                            throw PipelineFailure(step: .leaveOut, reason: problem + " Nothing was made; change who is left out and make it again.")
+                        }
+                        let parts = edits.segments(duration: ready.duration, silence: program.kept)
+                        program.parts = parts
+                        result.parts = parts
+                    }
+                    program.mutes = applied.leaveOut.mutes.map { Mastering.Span(start: $0.start, end: $0.end) }
+                    result.applied = applied
+                    let kept = program.talk(duration: ready.duration).reduce(0) { $0 + $1.length }
+                    await finish(.leaveOut, applied.leaveOut.stepLine + " The episode keeps \(Format.timecode(kept)) of \(Format.timecode(ready.duration)).")
+                }
             }
+            // The names said aloud that this make muted, for every file that carries words (v2 part M6c).
+            let mutes = result.applied?.leaveOut.mutes ?? []
             if options.makeEpisode {
                 let mp3 = staging.appending(path: "episode.mp3")
                 await begin(.episode)
@@ -859,16 +939,52 @@ struct Pipeline: Sendable {
                 }
             }
 
+            // 6c. The audio output check (v2 part M6c): the files just made, listened to again; anyone heard who sounds
+            //     like someone left out stops Approve, with the time. A check that cannot run says so and stops
+            //     Approve the same way (fail closed).
+            if options.appliesChoices && options.choices.leavesSomeoneOut, let people = options.people, var applied = result.applied {
+                await begin(.audioCheck)
+                meter?.startPass()
+                var made: [AudioOutputCheck.Made] = []
+                if options.makeEpisode, let clock = result.clock {
+                    made.append(.init(name: "episode.mp3", url: staging.appending(path: "episode.mp3"), clock: clock))
+                }
+                if let master = podcastMaster {
+                    made.append(.init(name: "the podcast-ready episode", url: master.untagged, clock: master.clock))
+                }
+                let segments = people.folders.read(people.recordingID)?.voices?.voiceSegments ?? []
+                do {
+                    let ffmpeg = tools.ffmpeg, limit = limit(ready.duration), control = meter?.control
+                    let check = try await AudioOutputCheck.run(
+                        original: file, made: made, segments: segments, leftOut: Set(applied.leaveOut.voices), folders: people.folders, now: Date(),
+                        decode: { arguments in _ = try await Subprocess.run(ffmpeg, arguments, captureStdout: false, timeout: limit, control: control) },
+                        log: { [log] line in log?.write("\(name): who is heard. " + line) })
+                    applied.check = check
+                    result.applied = applied
+                    await finish(.audioCheck, check.line { "Voice \($0)" }, state: check.passed ? .done : .failed)
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    let detail = (error as? Diarizer.Failure)?.reason ?? (error as? ToolError)?.logLine ?? error.localizedDescription
+                    var failed = AudioCheck(checkedAt: Date(), files: made.map(\.name))
+                    failed.findings = [.init(file: made.first?.name ?? "episode.mp3", at: 0, seconds: 0, voice: applied.leaveOut.voices.first ?? 0, how: "could not be checked for")]
+                    applied.check = failed
+                    result.applied = applied
+                    log?.write("\(name): who is heard could not be checked. \(detail)")
+                    await finish(.audioCheck, "Who is heard could not be checked, so it cannot be approved until it is made again. \(detail)", state: .failed)
+                }
+            }
+
             if options.makeEpisode || options.makePodcastReady {
                 // 8. The transcript files follow the episode: the words in anything taken out are
                 //    left out, and the times are the episode's. transcript.json keeps every word as
                 //    heard, on the original's clock, for the recording page.
                 if options.makeTranscript && options.changesTheClock, let clock = result.clock {
                     await begin(.episodeTranscript)
-                    if clock.isIdentity(duration: ready.duration) {
+                    if clock.isIdentity(duration: ready.duration) && mutes.isEmpty {
                         await finish(.episodeTranscript, "Nothing was taken out or added, so its times already match the episode.")
                     } else {
-                        let made = try followEpisode(in: staging, clock: clock, label: label, fileName: file.lastPathComponent)
+                        let made = try followEpisode(in: staging, clock: clock, label: label, fileName: file.lastPathComponent, mutes: mutes)
                         let left = made.removedWords
                         result.transcriptFollowsEpisode = true
                         result.wordsLeftOut = left
@@ -879,9 +995,10 @@ struct Pipeline: Sendable {
                         }
                         let fixesGone = result.fixesLeftOut > 0 ? " (with \(Format.count(result.fixesLeftOut, "word list fix", "word list fixes")))" : ""
                         let shift = clock.intro - (clock.segments.first?.start ?? 0)
+                        let muted = mutes.isEmpty ? "" : " \(Format.count(mutes.count, "name")) said aloud written as \(EpisodeTranscript.mutedWord)."
                         await finish(.episodeTranscript, "Times match the episode"
                                      + (left > 0 ? "; \(Format.count(left, "word")) in the parts taken out are left out\(fixesGone)." : String(format: " (%.1f s %@).", abs(shift), shift >= 0 ? "later" : "earlier"))
-                                     + " transcript.json keeps every word as heard.")
+                                     + muted + " transcript.json keeps every word as heard.")
                     }
                 } else if let i = index(.episodeTranscript), steps[i].state == .waiting {
                     // Only the podcast-ready audio was asked for, and it was not made: no clock to follow.
@@ -895,7 +1012,8 @@ struct Pipeline: Sendable {
             if options.makeTranscript, let setup = options.writing {
                 await begin(.writing)
                 guard var input = WritingInput.from(folder: staging, clock: result.clock, duration: ready.duration, applyLexicon: options.applyLexicon,
-                                                    label: label, fileName: file.lastPathComponent, kind: options.kind, knownSerenity: options.knownSerenity) else {
+                                                    label: label, fileName: file.lastPathComponent, kind: options.kind, knownSerenity: options.knownSerenity,
+                                                    mutes: mutes) else {
                     throw PipelineFailure(step: .writing, reason: "The transcript could not be read to write the titles, show notes and chapters.")
                 }
                 // The privacy lock reads this make's people check (v2 part M6b): checked only when both steps ran.
@@ -930,7 +1048,7 @@ struct Pipeline: Sendable {
                     do {
                         let record = try await packagePodcastReady(untagged: master.untagged, into: staging.appending(path: PodcastPackage.folderName, directoryHint: .isDirectory),
                                                                    setup: setup, written: result.written, transcriptFolder: options.makeTranscript ? staging : nil,
-                                                                   clock: master.clock, applyLexicon: options.applyLexicon, expectedDuration: master.expectedDuration,
+                                                                   clock: master.clock, applyLexicon: options.applyLexicon, mutes: mutes, expectedDuration: master.expectedDuration,
                                                                    normalizationType: master.normalizationType, talkLUFS: master.talkLUFS, corrected: master.corrected, madeAt: Date())
                         result.podcastReady = record
                         await finish(.podcastPackage, "\(record.fileName) and its checklist, in the \(PodcastPackage.folderName) folder. Checklist: \(record.summary.lowercasedFirst).")
@@ -1045,6 +1163,9 @@ struct Pipeline: Sendable {
         var reason = made.isEmpty ? "The checks passed." : listed + (made.count > 1 ? " are ready." : " is ready.")
         if result.coverageOK == false, let reaches = result.transcriptReaches, let duration = result.duration {
             reason += " The transcript stops at \(Format.timecode(reaches)) of \(Format.timecode(duration)): listen to the end before trusting it."
+        } else if result.faces != nil && result.voices != nil {
+            // Since v2 part M6b the people check names who appears and speaks; since M6c the People tab holds the choices.
+            reason += " Who appears and speaks is in its People tab."
         } else {
             reason += " Speakers are not checked yet."
         }
@@ -1111,18 +1232,49 @@ struct Pipeline: Sendable {
     /// follow the episode: the words inside anything taken out are dropped, and every time is the
     /// episode's. Returns how many words were left out and the word list's fixes in what is left.
     /// The .txt is rewritten only when words were left out.
-    private func followEpisode(in folder: URL, clock: EpisodeClock, label: String, fileName: String) throws
+    /// What leaving people out and muting names does to this make (v2 part M6c): the voices left out, from this make's
+    /// own voice step and Ivan's names; their stretches from the people file; the words they touch from transcript.json;
+    /// the names said aloud he muted. Someone left out while the voices are unknown stops the make (fail closed).
+    func leaveOut(people: PeopleSetup, staging: URL, duration: Double, namesSaid: NamesSaid?, faces: FacesFound?, voices: VoicesFound?) throws -> PeopleApplied {
+        let choices = options.choices
+        let moments = namesSaid?.moments ?? []
+        var leftOut: [Int] = []
+        var segments: [VoiceSegment] = []
+        if choices.leavesSomeoneOut {
+            guard let voices, let file = people.folders.read(people.recordingID), let heard = file.voices else {
+                throw PipelineFailure(step: .leaveOut, reason: "Voices could not be listened for, so the people you chose to leave out could not be found. "
+                                      + "Nothing was made, so nothing could still hold them. Make it again.")
+            }
+            let names = people.names(for: voices).resolved(faces: faces, voices: voices)
+            leftOut = choices.leftOutVoices(voices, names: names)
+            segments = heard.voiceSegments
+        }
+        var words: [TimeRange]?
+        if let data = try? Data(contentsOf: staging.appending(path: TranscriptFiles.asHeard)), let sentences = EpisodeTranscript.sentences(json: data) {
+            words = EpisodeTranscript.wordSpans(sentences)
+        }
+        let plan = LeaveOut.plan(segments: segments, leftOut: Set(leftOut), words: words, mutes: choices.muted(moments), duration: duration)
+        return PeopleApplied(madeAt: Date(), signature: Self.signature(left: leftOut, muted: choices.muted(moments)), leaveOut: plan, check: nil)
+    }
+
+    /// The same line `PeopleChoices.podcastSignature` makes, from what a make applied.
+    static func signature(left: [Int], muted: [NameMoment]) -> String {
+        if left.isEmpty && muted.isEmpty { return "" }
+        return "out:" + left.sorted().map(String.init).joined(separator: ",") + ";mute:" + muted.map(\.key).sorted().joined(separator: ",")
+    }
+
+    private func followEpisode(in folder: URL, clock: EpisodeClock, label: String, fileName: String, mutes: [TimeRange] = []) throws
         -> (removedWords: Int, corrections: [Lexicon.Correction]) {
         guard let data = try? Data(contentsOf: folder.appending(path: TranscriptFiles.asHeard)),
               let sentences = EpisodeTranscript.sentences(json: data) else {
             throw PipelineFailure(step: .episodeTranscript, reason: "The transcript could not be matched to the episode: Parakeet's words with their times (transcript.json) could not be read.")
         }
-        let made = EpisodeTranscript.cues(sentences, clock: clock, applyLexicon: options.applyLexicon)
+        let made = EpisodeTranscript.cues(sentences, clock: clock, applyLexicon: options.applyLexicon, mutes: mutes)
         let formats = options.transcriptFormats
         var files: [(TranscriptFormat, String)] = []
         if formats.contains(.srt) { files.append((.srt, EpisodeTranscript.srt(made.cues))) }
         if formats.contains(.vtt) { files.append((.vtt, EpisodeTranscript.vtt(made.cues))) }
-        if formats.contains(.txt) && made.removedWords > 0 { files.append((.txt, EpisodeTranscript.text(made.cues))) }
+        if formats.contains(.txt) && (made.removedWords > 0 || !mutes.isEmpty) { files.append((.txt, EpisodeTranscript.text(made.cues))) }
         if formats.contains(.md) {
             files.append((.md, TranscriptFiles.markdown(cues: made.cues, label: label, fileName: fileName,
                                                         wordListApplied: options.applyLexicon, followsEpisode: true)))

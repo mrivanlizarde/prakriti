@@ -43,6 +43,27 @@ struct ApprovalCheck: Equatable, Sendable {
         if recording.editsPending {
             return ApprovalCheck(canApprove: false, line: "Make Again first: the newest trim and cuts are not in the episode yet.", speakersNotChecked: false)
         }
+        // Who is in it (v2 part M6c): the choices on the page must be in the episode, the audio output check must have
+        // passed, every name said aloud must be kept or muted, and with someone left out of a mixed track the changes
+        // of voice must have been listened to.
+        if recording.choicesPending {
+            return ApprovalCheck(canApprove: false, line: "Make Again first: your newest choices of who is in the episode, or of names to mute, are not in it yet.",
+                                 speakersNotChecked: false)
+        }
+        if let check = recording.peopleApplied?.check, !check.passed {
+            return ApprovalCheck(canApprove: false, line: check.line { recording.label(forVoice: $0) }
+                                 + " Listen there in the People tab, then change who is left out and make it again.", speakersNotChecked: false)
+        }
+        let undecided = recording.undecidedNames
+        if let first = undecided.first {
+            let more = undecided.count > 1 ? " and \(Format.count(undecided.count - 1, "more time"))" : ""
+            return ApprovalCheck(canApprove: false, line: "A name is said aloud at \(Format.timecode(first.start))\(more). In the People tab, choose Keep or Mute for each first.",
+                                 speakersNotChecked: false)
+        }
+        if recording.needsListening {
+            return ApprovalCheck(canApprove: false, line: "Someone is left out, and the voices were told apart on one mixed track. Listen to the changes of voice in the People tab, "
+                                 + "then mark them as listened to.", speakersNotChecked: false)
+        }
         guard let folder = recording.outputFolder, !filesToApprove(recording).isEmpty,
               filesToApprove(recording).allSatisfy({ fileExists(folder + "/" + $0) }) else {
             return ApprovalCheck(canApprove: false, line: "The finished files are not all in their folder any more. Make Again first.", speakersNotChecked: false)
@@ -50,8 +71,12 @@ struct ApprovalCheck: Equatable, Sendable {
         if recording.status == .approved {
             return ApprovalCheck(canApprove: false, line: "Any change to it takes this approval back, so the new version can be approved.", speakersNotChecked: false)
         }
+        if recording.voices != nil && recording.faces != nil {
+            return ApprovalCheck(canApprove: true, line: "Who appears and speaks was checked on this Mac, and the episode follows your choices in the People tab. Listen before you approve.",
+                                 speakersNotChecked: false)
+        }
         return ApprovalCheck(canApprove: true,
-                             line: "Prakriti does not check speakers yet. You marked this as a talk with one teacher speaking: listen before you approve.",
+                             line: "Prakriti has not checked who appears and speaks in this one. You marked it as a talk with one teacher speaking: listen before you approve.",
                              speakersNotChecked: false)
     }
 
@@ -100,6 +125,9 @@ enum Approval {
         var recordingFile: String
         var editsSummary: String?
         var approvedAt: Date
+        /// Who is in it (v2 part M6c): one line per person, and what the audio output check found. Empty when the
+        /// people check never ran on it.
+        var people: [String] = []
     }
 
     /// Copies `files` from `source` into `destination` with a receipt, through a staging folder, so
@@ -155,7 +183,11 @@ enum Approval {
         if let edits = receipt.editsSummary { text += "## Edits\n\n\(edits)\n\n" }
         text += "## Files\n\n| File | Size | SHA-256 |\n|---|---|---|\n"
         for row in rows { text += "| \(row.name) | \(Format.number(Int(row.bytes))) bytes | `\(row.sha)` |\n" }
-        text += "\nSpeakers were not checked by Prakriti: this was approved as a talk with one teacher speaking.\n"
+        if receipt.people.isEmpty {
+            text += "\nSpeakers were not checked by Prakriti: this was approved as a talk with one teacher speaking.\n"
+        } else {
+            text += "\n## People\n\n" + receipt.people.map { "- " + $0 }.joined(separator: "\n") + "\n"
+        }
         return text
     }
 }

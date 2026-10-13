@@ -184,6 +184,19 @@ final class Recording {
     /// JSON, read through `names`. Names only, never anything about a face or a voice.
     var namesJSON: String?
 
+    /// Ivan's choices of who is in each output, and the names said aloud he kept or muted (v2 part M6c): a
+    /// PeopleChoices as JSON, read through `choices`. Keys and words only, never anything about a face or a voice.
+    var choicesJSON: String?
+
+    /// The names said aloud the last finished make found in the transcript (v2 part M6c): a NamesSaid as JSON, read
+    /// through `namesSaid`. Their times and the words as heard. Nil until a make with the people check looked.
+    var namesSaidJSON: String?
+
+    /// What the last finished make applied of the choices (who was left out, the cuts, the muted names) and what the
+    /// audio output check found in the files it made (v2 part M6c): a PeopleApplied as JSON, read through
+    /// `peopleApplied`. Nil when nobody was left out and nothing was muted.
+    var peopleAppliedJSON: String?
+
     var source: Source?
 
     @Relationship(deleteRule: .cascade, inverse: \Run.recording)
@@ -261,6 +274,30 @@ final class Recording {
         get { PeopleNames.decode(namesJSON) }
         set { namesJSON = newValue.isEmpty ? nil : newValue.json() }
     }
+
+    /// Who is in each output, and the names said aloud kept or muted (v2 part M6c).
+    var choices: PeopleChoices {
+        get { PeopleChoices.decode(choicesJSON) }
+        set { choicesJSON = newValue.isEmpty ? nil : newValue.json() }
+    }
+
+    /// The names said aloud the last make found, or nil.
+    var namesSaid: NamesSaid? { NamesSaid.decode(namesSaidJSON) }
+
+    /// What the last make applied of the choices, and its audio output check, or nil (nothing left out or muted).
+    var peopleApplied: PeopleApplied? { PeopleApplied.decode(peopleAppliedJSON) }
+
+    /// The names muted in the files in the folder, on the original's clock: Write Again and Update Podcast-Ready Files
+    /// write "[name]" for them as the make did.
+    var madeMutes: [TimeRange] { peopleApplied?.leaveOut.mutes ?? [] }
+
+    /// What the choices on the page would make of the podcast, as `PeopleChoices.podcastSignature`.
+    var podcastSignature: String {
+        choices.podcastSignature(voices: voices, names: resolvedNames.resolved(faces: faces, voices: voices), moments: namesSaid?.moments ?? [])
+    }
+
+    /// The choices on the page are not in the episode yet: Make Again first (Mac warning 36's rule, for people).
+    var choicesPending: Bool { podcastSignature != (peopleApplied?.signature ?? "") }
 
     /// Only models on this Mac may read it (PrivacyLock.decide). Fails closed.
     var isPrivacyLocked: Bool { PrivacyLock.decide(lockSubject).isLocked }

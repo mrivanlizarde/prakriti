@@ -112,12 +112,21 @@ enum Report {
         } else {
             spellings = "Spellings: \"Yoga Marga\" and Sanskrit terms are often misheard; search the transcript."
         }
+        // Since v2 part M6c a make with the people check offers choices and names said aloud; without it, v1's line.
+        let voicesLine = options.people != nil
+            ? """
+            2. **Other voices and names.** Choose who is in the episode, and Keep or Mute each name said aloud, in
+               the People tab. Prakriti can miss a voice or a name, so listen too.
+            """
+            : """
+            2. **Other voices and names.** Prakriti does not yet label speakers or mute names. If a student
+               speaks or is named, do not publish until Serenity's rule is decided (PLAN.md).
+            """
         text += """
 
         ## Before this goes anywhere
         1. **Listen.** Start, end, and anywhere the transcript shows someone other than the teacher.
-        2. **Other voices and names.** Prakriti does not yet label speakers or mute names. If a student
-           speaks or is named, do not publish until Serenity's rule is decided (PLAN.md).
+        \(voicesLine)
         3. **Claims.** Check any income or health claim and any offer that may be closed (enrollment has
            been paused since January).
         4. \(spellings)
