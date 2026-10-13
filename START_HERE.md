@@ -1729,12 +1729,22 @@ top and its end. Reading the code is not verification, and neither is a passing 
     plan's section 5 default (Leave Out for anyone unnamed) predates the note. The notice says so in its fixed sentence
     (`NoticeBuilder.otherPeopleBody`), so changing the default means changing the notice and Help 07 in the same commit.
 120. **Leave Out cuts time, never a track, and fails closed** (`LeaveOut.plan`): every word the left-out voice touches goes
-    whole, two of its stretches under 1 s apart are one cut, a gap of 0.5 s or less after or before it is taken whole (to
-    0.03 s of the next word), a longer pause by 0.25 s,
-    and speaking at once is cut, not kept on one microphone. Someone left out with no voices from this make stops the make
-    (`Pipeline.leaveOut`). Reason: research-people.md 3.4 and 3.5 (a voice bleeds into every microphone); measured 13 Oct,
-    half a short gap left an 80 ms tail of the teacher's word that Parakeet heard as "isness". With nobody left out and
-    nothing muted the step is not planned and the chain is unchanged (warning 30).
+    whole, two of its stretches under 1 s apart are one cut, a gap of 0.5 s or less before it is taken whole (to 0.03 s of
+    the word before), a longer pause by 0.25 s; toward the next word the cut stops `wordLead` (0.24 s) before Parakeet's
+    start for it, never short of the words it takes. **Then each edge settles on the sound itself** (`EdgeLevels.quiet`,
+    the first audio track, the one the episode is made from, read only around the edges): the end moves to the start of
+    the quiet (20 ms windows within 10 dB of the quietest) between the left-out voice's own end and the end the words
+    gave, the start to the end of the quiet on its side, so each 15 ms fade lies in the quiet. Where there is no room to
+    search, or no sound was read, the cut reaches `voiceTail` (0.05 s) beyond the voice's own stretch. Speaking at once
+    is cut, not kept on one microphone. Someone left out with no voices from this make stops the make
+    (`Pipeline.leaveOut`). Reason: research-people.md 3.4 and 3.5 (a voice bleeds into every microphone).
+    **Never place a cut's edge on Parakeet's word times alone:** they come in 80 ms steps and a word's start is often
+    late. Measured 13 Oct (M6c verifier, then the fix): the cut ended at 48.77 s on two-people-tracks, inside Gabriel's
+    "business" (Parakeet put the word at 48.80 s on the remade file, 48.64 s on the clean clip), and the word was lost
+    in every episode, every run. **Nor at the quietest point:** before a voiced "b" the quietest 20 ms is the stop's own
+    closure; with the fades, ends at 48.505 to 48.535 s keep the word and ends at 48.54 to 48.55 s lose its "b" (Parakeet
+    hears "isness"). The earlier "isness" reading, put down to a tail of "teaching", was this same fault. With nobody left
+    out and nothing muted the step is not planned and the chain is unchanged (warning 30).
 121. **A muted name is silenced by one `volume` filter on the original's clock before anything is cut
     (`Mastering.muteFilter`), worked out per audio frame, with each span padded 0.06 s (`LeaveOut.mutePad`), and written
     "[name]" by `EpisodeTranscript.cues(mutes:)` in every file that carries words, Write Again and Update Podcast-Ready Files

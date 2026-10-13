@@ -46,7 +46,8 @@ faces at once after 12:39 (a question for Ivan). Passed every check; not install
 **Then parts M6b, voices and names, and M6c, choices applied to audio** (the last section, "v2 part M6c"): every face and
 voice in the People tab is Include, Hide Face or Leave Out, everyone starting as Include (Ivan's 12 Oct note); Leave Out
 cuts that voice from both podcast episodes, a second listen checks it is gone, and names said aloud are kept or muted
-before Approve. Not installed, for M5a's reason.
+before Approve. After the verifier, a cut that ended inside Gabriel's next word now settles on the sound ("v2 part M6c,
+fixes after the verifier"). Not installed, for M5a's reason.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -4015,7 +4016,7 @@ No Swift package added, nothing downloaded. **Three SwiftData fields added, all 
 |---|---|---|
 | 1 | `make test` with the decisions and the widening | **PASS.** `ChoicesTests`: everyone Include for every output; per output and back; Set All Unnamed To leaves Gabriel; a voice linked to a face goes with the face, Hide Face keeps the voice; Leave Out takes touched words whole and lands in the gaps (9.53 and 12.2 on made-up words, no word cut at either edge), speaking at once cut and listed, a 0.36 s island joined, no word times padded 0.35 s, a word stretched across a pause read as 1 s; the mute filter added only with a mute, before the split; "[name]" in captions, one for two words; names found except a named person's (`NLTagger`); the plan, the fail-closed stop, pending, Approve's refusals, the receipt, Undo and Redo, the listening rule. **`make test`: 293 tests, 0 failures, 15 skipped by design** (909 s) |
 | 3 | **two-people-mixed.mp4**: Gabriel teaching, everyone else Left Out, made again, transcribed again | **PASS on what the plan names, with one note.** Voice 2 (diarizer) 29.95 to 48.61 cut (19 s), 3 stretches spoken at once listed. Parakeet on the remade episode.mp3 and podcast-ready MP3: **0 of 59** five-word runs of the second voice heard; the 13 Sep words not removed heard in order: **98.8% and 98.8%** (169 of 171) with fillers left out, **98.3%** (171 of 174) with them. Audio output check PASS (1.7 s). Approve then refused until the changes of voice were marked listened to, as built |
-| 4 | **two-people-tracks.mov**: the same, who speaks from tracks 2 and 3 | **PASS, matches check 3.** Cut 30.00 to 48.77 (19 s), 6 stretches spoken at once listed; **0 of 59** runs heard in both files; **98.2% and 98.8%** with fillers left out (168 and 169 of 171), **97.7% and 98.9%** with them. Audio output check PASS; Approve allowed |
+| 4 | **two-people-tracks.mov**: the same, who speaks from tracks 2 and 3 | **FAIL, found by the verifier** (see "v2 part M6c, fixes after the verifier"): 97.7% counting every word, under 98%. As first written: **PASS, matches check 3.** Cut 30.00 to 48.77 (19 s), 6 stretches spoken at once listed; **0 of 59** runs heard in both files; **98.2% and 98.8%** with fillers left out (168 and 169 of 171), **97.7% and 98.9%** with them. Audio output check PASS; Approve allowed |
 | 3, 4 | The audio output check catches a miss (research-people.md 6.3) | **PASS.** Each first episode (everyone in) checked as if Voice 2 were left out: caught, 4 findings, the first at 0:23. Similarities: the made voice holding the second voice 0.983 to it and 0.377 to Gabriel; Gabriel's 0.997 to him |
 | 10 | Names said aloud on 13 Sep | **19** names said aloud (12 different), other than Gabriel. Approve waited ("A name is said aloud at 0:49 and 18 more times..."). The first muted, the rest kept, made again: that stretch of the episode measured **digital silence** (RMS -inf; the 2.5 s before it -15.8 dB), one "[name]" in transcript.srt; Approve then allowed |
 | 11 | The notice for two-people-mixed | **PASS** (`ChoicesTests`, `NotificationTests`, the acceptance): "Other People Appear: Tue 13 Oct" / "Other people appear in this recording. Everyone is in the episode until you choose otherwise." No name, title or file name |
@@ -4035,12 +4036,17 @@ No Swift package added, nothing downloaded. **Three SwiftData fields added, all 
 5. **"Keep Gabriel's microphone here" is not built.** Speaking at once is cut and listed (fail closed). Keeping one microphone for a
    stretch needs the podcast to take its sound from another track; listed for a later part.
 6. **Gaps of 0.5 s or less are taken whole; stretches under 1 s apart are one cut.** Reason: measured, half a gap left an 80 ms tail
-   of "teaching" (Parakeet: "isness"), and a 0.35 s island between two stretches was heard as a different word.
+   of "teaching" (Parakeet: "isness"), and a 0.35 s island between two stretches was heard as a different word. *(Corrected in
+   "v2 part M6c, fixes after the verifier": "isness" was the cut clipping the "b" of "business", not a tail of "teaching";
+   taking the gap whole toward the next word made it worse. A cut's end now stops short of the next word and settles on the
+   sound.)*
 7. **The audio check runs only when someone is left out.** With everyone included there is nobody to find, and the make stays as
    before (the bit-for-bit check).
 8. **The kept-word share leaves out fillers ("uh", "um") and numbers; both raw shares are written down.** Reason: Parakeet's own
    noise, measured: the uncut clip transcribed again matched 241 of 241 words; the clip cut at the same place with no second
    voice dropped an "uh" and a "their" (98.4%); the same amount came back once as "two hundred" and once as "200".
+   *(Reversed in "v2 part M6c, fixes after the verifier": the loss on two-people-tracks was a real cut inside "business",
+   the same in every run. The gate counts every word again, as the plan says.)*
 9. **Names said aloud keep the words as heard in the store** (`namesSaidJSON`), shown in the People tab so Ivan can decide; they
    never reach a notice, the log or a step line (counts only), and this entry gives a count only.
 10. **New capability `choices`**, separate from `people`. Reason: Help describes only what is built.
@@ -4070,3 +4076,84 @@ M4b build).
 - [ ] **Names said aloud on the 13 Sep talk: 19**, mostly lineage teachers. Say whether names like those should be skipped by
   default (a list of names that are always Keep) so Approve asks only about people.
 - [ ] The 13 Sep frames from M6a (`screens/mac/v2-m6c/for-ivan/`): up to 6 faces after 12:39.
+
+## v2 part M6c, fixes after the verifier. Tue 13 Oct 2026
+
+The verifier failed M6c check 4 and raised three issues. Fixed 07:20 to 08:45, on `main`. No Swift package, no download, no new
+stored field.
+
+### What the verifier found, and the cause
+
+- **Check 4 FAIL.** On two-people-tracks, episode.mp3 kept 170 of 174 (97.7%) of Gabriel's words counting every word, under the
+  plan's 98%. It had passed only because the test was changed to leave out fillers and numbers (decision 8 above), on the
+  builder's reading that Parakeet's run-to-run noise was the loss.
+- **The cause was the cut, not Parakeet.** The Leave Out cut ended at 48.77 s, 0.13 s inside Gabriel's "business". The cut
+  grew "to 0.03 s before the next word" on Parakeet's word times, which come in 80 ms steps and placed this word at 48.80 s on
+  the remade file (48.64 s on the clean clip). Reproduced here: transcribing the remade episode gave "mentor isness".
+- **Measured to find the right edge** (the clean clip and the fixture's first track, cut and joined with the episode's own 15 ms
+  fades, then Parakeet): ends at 48.505, 48.52, 48.525, 48.53 and 48.535 s keep "business"; 48.54, 48.545 and 48.55 s lose its
+  "b" ("isness", "isn't"). Track 1 levels, 20 ms windows: the second voice ends at 48.50 s (track 3 falls to -70 dB at 48.51);
+  a dip to -48.5 dB at 48.54 s is the closure of the voiced "b", whose burst follows at about 48.555 s. So neither the word
+  times nor the quietest point is the edge: the start of the quiet is. The old "80 ms tail of teaching, heard as isness"
+  (decision 6) was this same fault, a cut at 48.72 s clipping "bu".
+
+### What changed
+
+- **`LeaveOut.plan`:** toward the next word, the cut stops `wordLead` (0.24 s) before Parakeet's start for it, never short of
+  the words it takes. **Then each edge settles on the sound** (`EdgeLevels`): the first audio track (the one the episode is made
+  from) is decoded once to mono 16 kHz in the staging folder, read only 2.5 s either side of each edge, as 20 ms levels every
+  5 ms, and deleted when the step returns. The end moves to the start of the quiet (windows within 10 dB of the quietest)
+  between the left-out voice's own end and the end the words gave; the start to the end of the quiet on its side; so each 15 ms
+  fade lies in the quiet. With no room to search or no sound read, the cut reaches 0.05 s (`voiceTail`) beyond the voice's
+  stretch. Levels only, never a print.
+- **The acceptance gate counts every word, fillers and numbers included,** as PLAN M6 check 3 says. The share without fillers
+  and numbers is still written down as a reading, and the words not heard are listed with their times.
+- **`StoreMigrationTests`** now fails if any recording arrives with `choicesJSON`, `namesSaidJSON` or `peopleAppliedJSON`.
+- The step line says "each taking whole words and stopping short of the next word kept" (it had said "widened into the pauses",
+  which was not true at this edge). Help 07, START_HERE Mac warning 120 (rewritten with both measurements), CHANGELOG. Decisions 6
+  and 8 and the check 4 row above are marked as corrected.
+
+### Checks run, with results
+
+| # | Check | Result |
+|---|---|---|
+| 4 | **two-people-tracks.mov**, every word counted | **PASS.** Cut 29.95 to **48.51** (was 48.77). **0 of 59** runs of the second voice heard in both files. episode.mp3: **182 of 184 (98.9%)** in order (was 170 of 174, 97.7%); not heard: "uh" at 49.32, "their" at 61.32. Podcast-ready: **181 of 184 (98.4%)**; not heard: "uh", "and" at 54.92, "their". "business" heard in both. Without fillers and numbers: 99.4% and 98.8%. Audio output check PASS (1.6 s); Approve allowed |
+| 3 | **two-people-mixed.mp4**, every word counted | **PASS.** Cut 29.90 to 48.54 (the words ended at the voice's own end, so no room to search: `voiceTail`). 0 of 59 runs heard; **182 of 184 (98.9%)** and **181 of 184 (98.4%)**, the same words missing as on tracks. Audio output check PASS; Approve waits for the listened box, as built |
+| 4 | Result matches check 3 | **PASS.** Same shares, same words not heard, in both files |
+| 3, 4 | The same numbers again | **PASS, deterministic.** The M6c acceptance alone (08:00) and inside the full `make accept-people` (08:14) gave identical cuts and identical counts |
+| 3, 4 | The audio output check catches a planted miss | **PASS**, both fixtures: caught, 4 findings, the first at 0:23 |
+| 10 | Names said aloud, 13 Sep | **PASS.** 19 to check; the first muted: its stretch of the episode RMS digital silence (the 2.5 s before: -15.8 dB), one "[name]" in transcript.srt; Approve then allowed |
+| 1 | `ChoicesTests` | **PASS**, 17 (2 new: the cut stops before the next word allowing for a late start, on the fixture's real word times; with the sound, the edge settles at the start of the quiet, never before the voice's own end) |
+| 13 | `make test` | **PASS. 295 tests, 0 failures, 15 skipped by design** (894 s) |
+| 13 | `make accept-people` (M6a, M6b, M6c halves, crash check) | **PASS.** 13 Sep decoded md5 `69658a8cb8a954b92798c5e9f3ea5833`, identical to engine v0's; 161 files under Application Support, 0 images; job folder deleted at launch line 1 before the first look at line 11 |
+| 13 | `make accept`, `make accept-edits`, `make accept-outputs` | **PASS.** 13 Sep -16.8 LUFS, -1.7 dBFS; 6 Sep -16.7 LUFS; silent-60s at -91 dB. Edits: 38.82 s shorter (expected 38.82), 0 of 73 runs from the cut heard, 189 of 201 after it, a class refused. Outputs run 4 md5 identical to engine v0 |
+| 13 | `make migrate-check` | **PASS.** 13 recordings, 2 folders, 40 output settings, 808 Activity lines before and after, 2 approved; "v2 part M6c: 0 recordings with choices, 0 with names said aloud, 0 with choices applied", now asserted |
+| Looked at | `m6c-people-two-people-tracks-light-inspector-p2.png` | In the Episode: "Voice 2 left out: 19 s taken out, in 1 place", the check passed, stretches spoken at once with Play. Nothing cut off |
+
+**Em dashes:** 0 in every changed file (grep). `make build`: no warnings.
+
+### Decisions, each with its reason
+
+1. **The edge goes to the start of the quiet, not the quietest point.** Reason: measured above; before a voiced stop the
+   quietest 20 ms is the stop's own closure, and cutting there loses the consonant.
+2. **The search never starts before the left-out voice's own end** (and the start edge never ends after its start). Reason:
+   fail closed; a quieter moment inside an included word that the left-out voice spoke over must not pull the cut back into
+   their speech.
+3. **The sound read is the first audio track,** the one the episode is made from (`Mastering.pass` takes `[0:a]`), so the edge
+   is placed on the same samples the episode keeps.
+4. **Every word counts in the gate again.** Reason: the plan's wording, and a loosened gate hid a real, repeatable loss.
+
+### Not done here
+
+- The verifier's note on its own scratch `regress.log` (a stale M6a block) is about its scratch file, not the repo: nothing to
+  change. Ivan's question about the background tasks sidebar is outside Prakriti.
+
+### Installed
+
+**Not installed**, though every M6c check passes. `make install` ships everything on `main`, including M5a's lock, which turns
+the live app's Claude API choices back to LM Studio; that has waited for Ivan's word since 12 Oct and still does. The live app
+is unchanged (the M4b build).
+
+### For Ivan
+
+- [ ] **The M5a lock decision still gates the install** (M5a to M6c together): `cd ~/Code/prakriti/mac && make install` once you say yes.

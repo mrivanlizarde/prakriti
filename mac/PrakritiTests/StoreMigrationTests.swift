@@ -150,7 +150,19 @@ final class StoreMigrationTests: XCTestCase {
             XCTAssertTrue(sources.allSatisfy { $0.microphones.isEmpty }, "no folder arrives with a microphone named")
         }
         print("v2 part M6b: \(recordings.filter { $0.voicesJSON != nil }.count) recordings with voices, \(recordings.filter { $0.namesJSON != nil }.count) with names, \(sources.filter { $0.microphonesJSON != nil }.count) folders with microphones")
-        print("v2 part M3a fields: \(recordings.filter { !$0.checkedClaims.isEmpty }.count) recordings with ticked claims, \(sources.filter { !$0.forgottenPaths.isEmpty }.count) folders with removed files (\(sources.map(\.forgottenPaths.count).reduce(0, +)) files)")
+        // v2 part M6c: no recording arrives with choices made, names said aloud found, or choices applied (an upgrade
+        // decides nothing by itself, rule 2.1.7). Added 13 Oct after the verifier measured this by hand and found no test.
+        if !before.has("ZRECORDING", "ZCHOICESJSON") {
+            XCTAssertTrue(recordings.allSatisfy { $0.choicesJSON == nil }, "no recording arrives with choices made")
+        }
+        if !before.has("ZRECORDING", "ZNAMESSAIDJSON") {
+            XCTAssertTrue(recordings.allSatisfy { $0.namesSaidJSON == nil }, "no recording arrives with names said aloud found")
+        }
+        if !before.has("ZRECORDING", "ZPEOPLEAPPLIEDJSON") {
+            XCTAssertTrue(recordings.allSatisfy { $0.peopleAppliedJSON == nil }, "no recording arrives with choices applied")
+        }
+        print("v2 part M6c: \(recordings.filter { $0.choicesJSON != nil }.count) recordings with choices, \(recordings.filter { $0.namesSaidJSON != nil }.count) with names said aloud, \(recordings.filter { $0.peopleAppliedJSON != nil }.count) with choices applied")
+        print("v2 part M3a fields:\(recordings.filter { !$0.checkedClaims.isEmpty }.count) recordings with ticked claims, \(sources.filter { !$0.forgottenPaths.isEmpty }.count) folders with removed files (\(sources.map(\.forgottenPaths.count).reduce(0, +)) files)")
         print("Rows before and after: recordings \(before.count("ZRECORDING"))/\(recordings.count), folders \(before.count("ZSOURCE"))/\(sources.count), output settings \(before.count("ZOUTPUTSETTING"))/\(settings.count), Activity lines \(before.count("ZLOGENTRY"))/\(lines); approved \(recordings.filter { $0.approvedAt != nil }.count)")
         let ready = recordings.filter { $0.status == .readyForYourYes }
         print("Store copy opened: \(recordings.count) recordings (\(ready.count) ready: "

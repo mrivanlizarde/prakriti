@@ -7,7 +7,8 @@ import Foundation
 // - **Hide Face:** heard as recorded; the face is hidden wherever it appears. Nothing changes in the sound, and the
 //   pictures that hide a face are part M6d's, so in this part Hide Face changes no file yet.
 // - **Leave Out:** every stretch the person speaks is cut from the podcast episode and the podcast-ready episode,
-//   widened into the pauses around it so no syllable is left, with v1's 15 ms fades (Mac warning 42); the transcript
+//   widened to whole words and into the pauses so no syllable is left, stopping short of the next word kept (Mac
+//   warning 120), with v1's 15 ms fades (Mac warning 42); the transcript
 //   files follow (warning 39).
 //
 // Everyone starts as **Include**. Reason: Ivan, Mon 12 Oct 2026 (PLAN section 11, "releases exist"): "All the
@@ -224,7 +225,7 @@ struct PeopleChoices: Codable, Equatable, Sendable {
 struct LeaveOut: Codable, Equatable, Sendable {
     /// Voices left out, by id.
     var voices: [Int] = []
-    /// The stretches cut, widened into the pauses around them, sorted and joined.
+    /// The stretches cut, grown to whole words and toward the pauses around them (never into the next kept word), sorted and joined.
     var cuts: [TimeRange] = []
     /// Where someone left out and someone included speak at once (research-people.md 3.5): cut too, never kept on its
     /// own, and listed for listening.
@@ -250,13 +251,22 @@ struct LeaveOut: Codable, Equatable, Sendable {
     static let mutePad = 0.06
     /// Speech that touches a word for less than this does not take the word.
     static let touch = 0.04
+    /// How early a kept word may really start before the time Parakeet gives it. A cut growing toward the next word
+    /// stops this far before that word's start (never before the words it already takes), so the next word is kept
+    /// whole. Parakeet's times come in steps of 80 ms and the start of a word is often late: measured 13 Oct on the
+    /// remade two-people fixtures, Gabriel's "business" was placed at 48.80 s, while in the clean 13sep-90s clip it is
+    /// 48.64 s and cutting the clean clip at 48.77 s loses the word (cuts at 48.50 to 48.70 keep it, Parakeet).
+    static let wordLead = 0.24
+    /// How far beyond the left-out voice's own stretch a cut always reaches, wherever the words are: the voice step's
+    /// times are rounded, and the fades at a cut are 15 ms.
+    static let voiceTail = 0.05
 
     /// The cuts for the voices left out: each stretch they speak, joined where another stretch of theirs follows
     /// within a short gap, then grown to take every word it touches whole (the included person's words included,
     /// where they speak at once: fail closed, research-people.md 3.5), then grown into the gap on each side (a short
     /// gap whole, a long pause by `pauseReach`), so the cut lands in silence. Words are the transcript's (`wordSpans`).
     static func plan(segments: [VoiceSegment], leftOut: Set<Int>, words: [TimeRange]?, mutes muted: [NameMoment] = [],
-                     duration: Double) -> LeaveOut {
+                     duration: Double, audio: EdgeLevels? = nil) -> LeaveOut {
         var out = LeaveOut()
         out.voices = leftOut.sorted()
         out.mutes = muted.map { TimeRange(start: max(0, $0.start - mutePad), end: min(duration, $0.end + mutePad)) }
@@ -292,17 +302,37 @@ struct LeaveOut: Codable, Equatable, Sendable {
                 high = max(high, word.end)
             }
             // Then into the pause on each side: a short gap (up to `shortGap`) is taken whole, to within `edge` of the
-            // next word, so no tail of a word the left-out voice spoke over is left as a fragment; a longer pause gives up
-            // `pauseReach` of itself. Measured 13 Oct on two-people-mixed: with half the gap, an 80 ms tail of the
-            // teacher's "teaching" stayed before "business", and Parakeet heard "isness".
+            // word before, so no tail of a word the left-out voice spoke over is left as a fragment; a longer pause gives up
+            // `pauseReach` of itself. Toward the next word the cut stops `wordLead` before Parakeet's start for it, because
+            // that start is often late (fixed 13 Oct: the cut had ended 0.13 s inside Gabriel's "business" and lost it).
             let before = sorted.last { $0.end <= low + 0.0001 }?.end
             let after = sorted.first { $0.start >= high - 0.0001 }?.start
             func reach(_ gap: Double?) -> Double {
                 guard let gap else { return pauseReach }
                 return gap <= shortGap ? max(0, gap - edge) : pauseReach
             }
+            let taken = high
             low -= reach(before.map { max(0, low - $0) })
             high += reach(after.map { max(0, $0 - high) })
+            // Never into the next kept word, allowing for its start being late (`wordLead`): the cut may end no later than
+            // `wordLead` before it, and never earlier than the words it takes.
+            if let after { high = max(taken, min(high, after - wordLead)) }
+            if let audio, let quiet = audio.quiet(in: TimeRange(start: stretch.end, end: high), toward: .start)?.start {
+                // With the sound itself (the track the episode is made from): the end goes to the start of the quiet between
+                // the left-out voice's own end and the end worked out from the words (`EdgeLevels.quiet`). Parakeet's word
+                // edges are 80 ms steps and often late, so on real speech they can put the end inside the next word; the
+                // sound cannot. Measured 13 Oct on two-people-tracks: the words gave 48.64 s and lost "business"; the
+                // quiet after the voice's end (48.50 s) starts at 48.51 s, and the word is kept.
+                high = quiet
+            } else {
+                // Without it, always `voiceTail` beyond the left-out voice's own end, whatever the words say (fail closed).
+                high = max(high, min(duration, stretch.end + voiceTail))
+            }
+            if let audio, let quiet = audio.quiet(in: TimeRange(start: low, end: stretch.start), toward: .end)?.end {
+                low = quiet
+            } else {
+                low = min(low, max(0, stretch.start - voiceTail))
+            }
             cuts.append(TimeRange(start: max(0, low), end: min(duration, high)))
         }
         out.cuts = EpisodeEdits.merged(cuts)
@@ -320,7 +350,7 @@ struct LeaveOut: Codable, Equatable, Sendable {
         var parts: [String] = []
         if !voices.isEmpty {
             parts.append(voices.count == 1 ? "One voice left out" : "\(VoicesFound.word(voices.count).capitalizedFirst) voices left out")
-            parts[parts.count - 1] += cuts.isEmpty ? ", not heard in it." : ": \(Format.count(cuts.count, "cut")), \(Format.length(removedSeconds)) in all, each widened into the pauses around it."
+            parts[parts.count - 1] += cuts.isEmpty ? ", not heard in it." : ": \(Format.count(cuts.count, "cut")), \(Format.length(removedSeconds)) in all, each taking whole words and stopping short of the next word kept."
         }
         if !overlaps.isEmpty {
             parts.append("\(Format.count(overlaps.count, "stretch", "stretches")) where they speak at the same time as someone included " + (overlaps.count == 1 ? "is" : "are") + " cut too, to listen to.")
@@ -328,6 +358,68 @@ struct LeaveOut: Codable, Equatable, Sendable {
         if !mutes.isEmpty { parts.append("\(Format.count(mutes.count, "name")) said aloud muted.") }
         return parts.isEmpty ? "Nobody is left out." : parts.joined(separator: " ")
     }
+}
+
+/// The level of the sound the episode is made from (its first audio track, mono 16 kHz), in pieces around the edges of
+/// the cuts: what `LeaveOut.plan` settles each edge against. Levels only, dropped when the step returns; never a voice
+/// print.
+struct EdgeLevels: Sendable {
+    struct Piece: Sendable {
+        /// Seconds on the original's clock of the first sample.
+        var start: Double
+        /// RMS in dB of each `window` of samples, every `hop`.
+        var levels: [Double]
+    }
+
+    var pieces: [Piece] = []
+
+    static let hop = 0.005
+    /// Longer than the 15 ms fade at each side of a cut (`EpisodeEdits.fade`), so the fade lies in the quiet.
+    static let window = 0.02
+    /// How far either side of a cut's first edge the sound is read: more than a whole word (`longestWord`, 1 s) and a
+    /// short gap (0.5 s) beyond the voice's own edge.
+    static let reach = 2.5
+    static let sampleRate = 16_000
+
+    /// The 20 ms levels every 5 ms of a run of samples.
+    static func levels(_ samples: [Float]) -> [Double] {
+        let size = Int(Double(sampleRate) * window), step = Int(Double(sampleRate) * hop)
+        guard samples.count >= size else { return [] }
+        return stride(from: 0, through: samples.count - size, by: step).map { index in
+            var sum: Double = 0
+            for i in index..<(index + size) { let v = Double(samples[i]); sum += v * v }
+            let rms = (sum / Double(size)).squareRoot()
+            return rms > 0 ? 20 * log10(rms) : -120
+        }
+    }
+
+    /// The quiet in `range`: the quietest 20 ms lying wholly inside it, then widened to the first (`toward: .start`) or
+    /// last (`.end`) 20 ms within `quietMargin` of it. Nil when the range is shorter than 20 ms or no piece covers it.
+    /// A cut's end goes at the start of the first such window and a cut's start at the end of the last, so the 15 ms fade
+    /// of the part kept beside it falls in the quiet, as far from the next word's first sound as the quiet allows.
+    /// Measured 13 Oct on two-people-tracks' first track, the voiced "b" of "business" after a dip whose quietest 20 ms
+    /// starts at 48.54 s: an end at 48.505, 48.52, 48.525, 48.53 or 48.535 keeps the word (Parakeet, with the fades), an end
+    /// at 48.54, 48.545 or 48.55 loses its "b" ("isness"). The quietest point is the stop's own closure; the quiet begins
+    /// before it.
+    func quiet(in range: TimeRange, toward side: Side) -> TimeRange? {
+        guard range.end - range.start >= Self.window - 0.0001 else { return nil }
+        for piece in pieces {
+            let first = Int(((range.start - piece.start) / Self.hop - 0.0001).rounded(.up))
+            let last = Int(((range.end - Self.window - piece.start) / Self.hop + 0.0001).rounded(.down))
+            guard first >= 0, last < piece.levels.count, first <= last else { continue }
+            let quietest = piece.levels[first...last].min() ?? 0
+            let within = (first...last).filter { piece.levels[$0] <= quietest + Self.quietMargin }
+            guard let index = side == .start ? within.first : within.last else { continue }
+            let start = piece.start + Double(index) * Self.hop
+            return TimeRange(start: start, end: start + Self.window)
+        }
+        return nil
+    }
+
+    enum Side: Sendable { case start, end }
+
+    /// How far above the quietest 20 ms a window still counts as the same quiet, in dB.
+    static let quietMargin = 10.0
 }
 
 /// What the last make applied of Ivan's choices, and what the audio output check found in the files it made

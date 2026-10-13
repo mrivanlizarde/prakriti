@@ -104,7 +104,8 @@ until you choose. Under each face and voice in the People tab, choose one:
 - **Hide Face:** heard as recorded. Hiding the face in pictures comes with the video, which Prakriti does not make
   yet, so for now Hide Face changes nothing in the podcast.
 - **Leave Out:** every stretch they speak is cut from the podcast episode and the podcast-ready episode, with the
-  pause around it, so no syllable is left. Their words leave the transcript and the captions too.
+  pause around it, so no syllable is left. The cut stops a little before the next word someone included says, so that
+  word stays whole. Their words leave the transcript and the captions too.
 
 A voice with no face can be Include or Leave Out. A choice for a named person, such as Gabriel, covers every row with
 their name. Under the list, **Set All Unnamed To** sets everyone you have not named at once.

@@ -823,13 +823,14 @@ struct Pipeline: Sendable {
                 }
 
                 // The people Ivan chose to leave out, and the names he muted (v2 part M6c): their speech cut from both
-                // podcast episodes on top of his own trim and cuts, widened into the pauses around it; the names
+                // podcast episodes on top of his own trim and cuts, whole words, each edge settled on the quietest
+                // moment of the sound (Mac warning 120); the names
                 // silenced. Someone left out with no voices found this make stops it: nothing is made that might
                 // still hold them (fail closed).
                 if options.appliesChoices, let people = options.people {
                     await begin(.leaveOut)
-                    let applied = try leaveOut(people: people, staging: staging, duration: ready.duration, namesSaid: result.namesSaid,
-                                               faces: result.faces, voices: result.voices)
+                    let applied = try await leaveOut(people: people, staging: staging, original: file, duration: ready.duration,
+                                                     namesSaid: result.namesSaid, faces: result.faces, voices: result.voices)
                     if !applied.leaveOut.cuts.isEmpty {
                         let edits = options.edits.adding(cuts: applied.leaveOut.cuts)
                         if let problem = edits.problem(duration: ready.duration, silence: program.kept) {
@@ -1235,7 +1236,8 @@ struct Pipeline: Sendable {
     /// What leaving people out and muting names does to this make (v2 part M6c): the voices left out, from this make's
     /// own voice step and Ivan's names; their stretches from the people file; the words they touch from transcript.json;
     /// the names said aloud he muted. Someone left out while the voices are unknown stops the make (fail closed).
-    func leaveOut(people: PeopleSetup, staging: URL, duration: Double, namesSaid: NamesSaid?, faces: FacesFound?, voices: VoicesFound?) throws -> PeopleApplied {
+    func leaveOut(people: PeopleSetup, staging: URL, original: URL, duration: Double, namesSaid: NamesSaid?, faces: FacesFound?,
+                  voices: VoicesFound?) async throws -> PeopleApplied {
         let choices = options.choices
         let moments = namesSaid?.moments ?? []
         var leftOut: [Int] = []
@@ -1253,8 +1255,40 @@ struct Pipeline: Sendable {
         if let data = try? Data(contentsOf: staging.appending(path: TranscriptFiles.asHeard)), let sentences = EpisodeTranscript.sentences(json: data) {
             words = EpisodeTranscript.wordSpans(sentences)
         }
-        let plan = LeaveOut.plan(segments: segments, leftOut: Set(leftOut), words: words, mutes: choices.muted(moments), duration: duration)
+        var plan = LeaveOut.plan(segments: segments, leftOut: Set(leftOut), words: words, mutes: choices.muted(moments), duration: duration)
+        if !plan.cuts.isEmpty && words != nil {
+            // Then each edge settled on the sound itself (`LeaveOut.plan`, Mac warning 120): the first audio track, the one
+            // the episode is made from, decoded once to mono 16 kHz in the staging folder and read only around the edges.
+            let audio = try await edgeLevels(original: original, staging: staging, around: plan.cuts, duration: duration)
+            plan = LeaveOut.plan(segments: segments, leftOut: Set(leftOut), words: words, mutes: choices.muted(moments), duration: duration,
+                                 audio: audio)
+        }
         return PeopleApplied(madeAt: Date(), signature: Self.signature(left: leftOut, muted: choices.muted(moments)), leaveOut: plan, check: nil)
+    }
+
+    /// The levels of the original's first audio track for `EdgeLevels.reach` seconds either side of each cut's edges.
+    /// The decoded sound is deleted before this returns.
+    func edgeLevels(original: URL, staging: URL, around cuts: [TimeRange], duration: Double) async throws -> EdgeLevels {
+        let raw = staging.appending(path: "leave-out-edges.raw")
+        defer { try? FileManager.default.removeItem(at: raw) }
+        _ = try await tool(.leaveOut, tools.ffmpeg, ["-y", "-v", "error", "-i", original.path, "-map", "0:a:0", "-vn", "-ac", "1",
+                                                      "-ar", String(EdgeLevels.sampleRate), "-f", "f32le", raw.path],
+                           captureStdout: false, duration: duration)
+        let handle = try FileHandle(forReadingFrom: raw)
+        defer { try? handle.close() }
+        var levels = EdgeLevels()
+        for cut in cuts {
+            for edge in [cut.start, cut.end] {
+                let start = max(0, edge - EdgeLevels.reach)
+                let first = UInt64(start * Double(EdgeLevels.sampleRate))
+                let count = Int(2 * EdgeLevels.reach * Double(EdgeLevels.sampleRate))
+                try handle.seek(toOffset: first * 4)
+                guard let data = try handle.read(upToCount: count * 4), !data.isEmpty else { continue }
+                let samples = data.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
+                levels.pieces.append(.init(start: Double(first) / Double(EdgeLevels.sampleRate), levels: EdgeLevels.levels(samples)))
+            }
+        }
+        return levels
     }
 
     /// The same line `PeopleChoices.podcastSignature` makes, from what a make applied.

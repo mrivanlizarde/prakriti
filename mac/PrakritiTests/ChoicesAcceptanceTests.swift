@@ -147,22 +147,24 @@ final class ChoicesAcceptanceTests: XCTestCase {
                 let retold = try transcribe(mp3, in: work, name: slug)
                 let heardSay = sayGrams.intersection(grams(retold))
                 XCTAssertEqual(heardSay.count, 0, "\(slug) \(name): the second voice heard: \(heardSay)")
-                // Numbers are left out of both sides: Parakeet writes the same amount as "two hundred" in one run and "200"
-                // in another (measured 13 Oct on two-people-tracks), which is not a word lost.
+                // Every word counts, fillers and numbers included, as the plan says ("at least 98% of the 13 Sep words that
+                // were not removed, in order"). Until 13 Oct the gate left fillers and numbers out and blamed Parakeet's
+                // run-to-run noise; the M6c verifier showed the loss was a real cut 0.13 s inside "business", the same in
+                // every run. The share without fillers and numbers is still written down, as a reading, not the gate.
                 let kept = clipWords.filter { word in !applied.leaveOut.cuts.contains { word.at >= $0.start && word.at <= $0.end } }.map { normal($0.text) }
-                    .filter { !$0.isEmpty && !isNumber($0) }
-                let retoldWords = retold.lowercased().split { !$0.isLetter && !$0.isNumber && $0 != "'" }.map(String.init).filter { !isNumber($0) }
-                // Fillers ("uh", "um") are left out of the share, as word error rates usually leave them: Parakeet writes
-                // the same "uh" in one run and not the next (measured 13 Oct: the uncut clip transcribed again matched
-                // 241 of 241 words, but the clip cut the same way with no second voice dropped an "uh"). The share with
-                // them is written down too.
-                let raw = lcs(kept, retoldWords)
-                let words = kept.filter { !isFiller($0) }, heardWords = retoldWords.filter { !isFiller($0) }
-                let inOrder = lcs(words, heardWords)
-                let share = Double(inOrder) / Double(max(1, words.count))
-                XCTAssertGreaterThanOrEqual(share, 0.98, "\(slug) \(name): the 13 Sep words not removed, in order")
-                lines.append(String(format: "  %@ transcribed again: %d of %d runs of the second voice heard; %d of %d (%.1f%%) of the 13 Sep words not removed heard in order (with fillers: %d of %d, %.1f%%)",
-                                    name, heardSay.count, sayGrams.count, inOrder, words.count, share * 100, raw, kept.count, Double(raw) / Double(max(1, kept.count)) * 100))
+                    .filter { !$0.isEmpty }
+                let retoldWords = retold.lowercased().split { !$0.isLetter && !$0.isNumber && $0 != "'" }.map(String.init)
+                let all = lcs(kept, retoldWords)
+                let share = Double(all) / Double(max(1, kept.count))
+                XCTAssertGreaterThanOrEqual(share, 0.98, "\(slug) \(name): the 13 Sep words not removed, in order, every word counted")
+                let plain = kept.filter { !isFiller($0) && !isNumber($0) }, heardPlain = retoldWords.filter { !isFiller($0) && !isNumber($0) }
+                let plainShare = Double(lcs(plain, heardPlain)) / Double(max(1, plain.count))
+                // The words of the reference not heard, in order, so a loss can be traced to its time.
+                let missing = missingWords(clipWords.filter { word in !applied.leaveOut.cuts.contains { word.at >= $0.start && word.at <= $0.end } }
+                                            .map { (normal($0.text), $0.at) }.filter { !$0.0.isEmpty }, retoldWords)
+                lines.append(String(format: "  %@ transcribed again: %d of %d runs of the second voice heard; %d of %d (%.1f%%) of the 13 Sep words not removed heard in order, every word counted (without fillers and numbers: %.1f%%); not heard: %@",
+                                    name, heardSay.count, sayGrams.count, all, kept.count, share * 100, plainShare * 100,
+                                    missing.isEmpty ? "none" : missing.map { String(format: "\"%@\" at %.2f s", $0.0, $0.1) }.joined(separator: ", ")))
             }
             return (recording, lines)
         }
@@ -273,6 +275,26 @@ final class ChoicesAcceptanceTests: XCTestCase {
     private func isNumber(_ word: String) -> Bool {
         word.allSatisfy(\.isNumber) || ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "twenty", "thirty", "forty",
                                           "fifty", "hundred", "thousand", "dollar", "dollars"].contains(word)
+    }
+
+    /// The reference words left out of the longest in-order match with what was heard again, with their times.
+    private func missingWords(_ a: [(String, Double)], _ b: [String]) -> [(String, Double)] {
+        guard !a.isEmpty else { return [] }
+        guard !b.isEmpty else { return a }
+        var table = [[Int]](repeating: [Int](repeating: 0, count: b.count + 1), count: a.count + 1)
+        for i in stride(from: a.count - 1, through: 0, by: -1) {
+            for j in stride(from: b.count - 1, through: 0, by: -1) {
+                table[i][j] = a[i].0 == b[j] ? table[i + 1][j + 1] + 1 : max(table[i + 1][j], table[i][j + 1])
+            }
+        }
+        var missing: [(String, Double)] = []
+        var i = 0, j = 0
+        while i < a.count {
+            if j < b.count && a[i].0 == b[j] { i += 1; j += 1 }
+            else if j < b.count && table[i][j + 1] >= table[i + 1][j] { j += 1 }
+            else { missing.append(a[i]); i += 1 }
+        }
+        return missing
     }
 
     /// Lowercased five-word runs, punctuation dropped.

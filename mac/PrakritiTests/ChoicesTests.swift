@@ -118,12 +118,73 @@ final class ChoicesTests: XCTestCase {
         XCTAssertEqual(plan.overlaps[0].start, 4.15, accuracy: 0.001)
         XCTAssertEqual(plan.overlaps[0].end, 5.05, accuracy: 0.001)
         let cut = plan.cuts[0]
-        // Touched: the word 4.0 to 4.3 and the word 4.8 to 5.1; the 0.1 s gaps either side are taken to within 0.03 of
-        // the next words, so no fragment of them is left.
+        // Touched: the word 4.0 to 4.3 and the word 4.8 to 5.1; the 0.1 s gap before is taken to within 0.03 of the word
+        // before, so no fragment of it is left. After, the next word starts at 5.2, and its start may really be up to
+        // `wordLead` earlier, so the cut stops at the end of the words it takes: 5.1.
         XCTAssertEqual(cut.start, 3.93, accuracy: 0.001)
-        XCTAssertEqual(cut.end, 5.17, accuracy: 0.001)
+        XCTAssertEqual(cut.end, 5.1, accuracy: 0.001)
         // Voice 1 is never left out, and a voice nobody left out cuts nothing.
         XCTAssertTrue(LeaveOut.plan(segments: segments, leftOut: [], words: words, duration: 20).cuts.isEmpty)
+    }
+
+    /// The cause of the M6c verifier's failure, on the real word times: on two-people-tracks Parakeet placed Gabriel's
+    /// "business" at 48.80 s, and the cut grew to 0.03 s before it (48.77), but in the clean 13sep-90s clip the word
+    /// starts at 48.64 s and the cut took it. The cut now stops `wordLead` before the next word's given start, never before
+    /// the words it takes nor `voiceTail` past the left-out voice.
+    func testTheCutStopsBeforeTheNextWordAllowingForALateStart() {
+        // two-people-tracks: voice 2 from tracks, 30.0 to 48.5; "teaching" (48.40 to 48.64) is touched, so taken whole.
+        let tracksWords = [TimeRange(start: 47.92, end: 48.0), TimeRange(start: 48.0, end: 48.08), TimeRange(start: 48.40, end: 48.64),
+                           TimeRange(start: 48.80, end: 49.20), TimeRange(start: 49.28, end: 49.36)]
+        let tracks = LeaveOut.plan(segments: [VoiceSegment(start: 30, end: 48.5, voice: 2), VoiceSegment(start: 48.4, end: 50.7, voice: 1)],
+                                   leftOut: [2], words: tracksWords, duration: 90)
+        XCTAssertEqual(tracks.cuts.last!.end, 48.64, accuracy: 0.001)
+        XCTAssertLessThanOrEqual(tracks.cuts.last!.end, 48.64, "the clean clip's \"business\" starts at 48.64 s and is kept")
+        // two-people-mixed: voice 2 by the diarizer to 48.49; the next word Parakeet gives is at 48.64.
+        let mixedWords = [TimeRange(start: 47.84, end: 47.92), TimeRange(start: 48.0, end: 48.08), TimeRange(start: 48.64, end: 48.72),
+                          TimeRange(start: 48.80, end: 49.20)]
+        let mixed = LeaveOut.plan(segments: [VoiceSegment(start: 29.95, end: 48.49, voice: 2)], leftOut: [2], words: mixedWords, duration: 90)
+        XCTAssertEqual(mixed.cuts.last!.end, 48.49 + LeaveOut.voiceTail, accuracy: 0.001, "never short of the voice's own end")
+        XCTAssertLessThanOrEqual(mixed.cuts.last!.end, 48.64)
+        // A real pause is still reached into: the voice ends at 48.5 and the next word is 1 s later, so the cut goes 0.25 s in.
+        let paused = LeaveOut.plan(segments: [VoiceSegment(start: 30, end: 48.5, voice: 2)], leftOut: [2],
+                                   words: [TimeRange(start: 48.0, end: 48.4), TimeRange(start: 49.5, end: 49.9)], duration: 90)
+        XCTAssertEqual(paused.cuts.last!.end, 48.75, accuracy: 0.001)
+    }
+
+    /// With the sound: the end settles at the start of the quiet between the voice's own end and the end the words give,
+    /// so the 15 ms fade of the part kept after it lies in the quiet. Levels shaped like two-people-tracks' first track
+    /// (measured 13 Oct): "teaching" until a dip whose quietest 20 ms starts at 48.535, then "business".
+    func testWithTheSoundTheEdgeSettlesInTheQuietestMoment() {
+        func index(_ at: Double) -> Int { Int(((at - 47.0) / EdgeLevels.hop).rounded()) }
+        var levels: [Double] = Array(repeating: -25, count: 600)   // windows starting 47.0 to 50.0, every 5 ms
+        for (at, level) in [(48.50, -36.0), (48.505, -38.0), (48.51, -39.0), (48.515, -40.0), (48.52, -41.0), (48.525, -43.0),
+                            (48.53, -45.0), (48.535, -48.0), (48.54, -46.0), (48.545, -38.0), (48.55, -32.0)] { levels[index(at)] = level }
+        // A deeper silence inside "teaching" before the voice ends must not be chosen: the search starts at the voice's end.
+        levels[index(48.30)] = -80
+        let audio = EdgeLevels(pieces: [.init(start: 47.0, levels: levels)])
+        // The quietest 20 ms starts at 48.535 (-48 dB); the quiet, within 10 dB of it, begins at 48.505 (-38 dB) and ends with
+        // the window starting 48.545 (-38 dB).
+        XCTAssertEqual(audio.quiet(in: TimeRange(start: 48.50, end: 48.64), toward: .start)!.start, 48.505, accuracy: 0.0001)
+        XCTAssertEqual(audio.quiet(in: TimeRange(start: 48.50, end: 48.64), toward: .end)!.start, 48.545, accuracy: 0.0001)
+        XCTAssertNil(audio.quiet(in: TimeRange(start: 48.50, end: 48.51), toward: .start), "shorter than 20 ms")
+        XCTAssertNil(audio.quiet(in: TimeRange(start: 10, end: 11), toward: .start), "no sound read there")
+        let words = [TimeRange(start: 48.0, end: 48.08), TimeRange(start: 48.40, end: 48.64), TimeRange(start: 48.80, end: 49.20)]
+        let segments = [VoiceSegment(start: 30, end: 48.5, voice: 2), VoiceSegment(start: 48.4, end: 50.7, voice: 1)]
+        let plain = LeaveOut.plan(segments: segments, leftOut: [2], words: words, duration: 90)
+        let heard = LeaveOut.plan(segments: segments, leftOut: [2], words: words, duration: 90, audio: audio)
+        XCTAssertEqual(plain.cuts.last!.end, 48.64, accuracy: 0.001)
+        XCTAssertEqual(heard.cuts.last!.end, 48.505, accuracy: 0.0001)
+        XCTAssertGreaterThanOrEqual(heard.cuts.last!.end, 48.5, "never before the left-out voice's own end")
+        // The start settles at the end of its quiet window, so the fade out of the part before lies in the quiet.
+        var before: [Double] = Array(repeating: -25, count: 600)
+        before[Int(((29.92 - 27.0) / EdgeLevels.hop).rounded())] = -60
+        let start = LeaveOut.plan(segments: [VoiceSegment(start: 30, end: 31, voice: 2)], leftOut: [2],
+                                  words: [TimeRange(start: 29.0, end: 29.85), TimeRange(start: 30.0, end: 30.9)], duration: 90,
+                                  audio: EdgeLevels(pieces: [.init(start: 27.0, levels: before)]))
+        XCTAssertEqual(start.cuts[0].start, 29.94, accuracy: 0.0001)
+        // The 20 ms levels of a run of samples: a full-scale square wave is 0 dB, silence the floor.
+        XCTAssertEqual(EdgeLevels.levels([Float](repeating: 1, count: 640)).first!, 0, accuracy: 0.001)
+        XCTAssertEqual(EdgeLevels.levels([Float](repeating: 0, count: 640)).count, 5)
     }
 
     func testWithoutWordsALeftOutStretchIsPaddedAndJoined() {
@@ -221,14 +282,18 @@ final class ChoicesTests: XCTestCase {
         }
     }
 
-    func testSomeoneLeftOutWithNoVoicesStopsTheMake() throws {
+    func testSomeoneLeftOutWithNoVoicesStopsTheMake() async throws {
         let support = FileManager.default.temporaryDirectory.appending(path: "choices-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: support) }
         var options = PipelineOptions()
         options.people = PeopleSetup(recordingID: UUID(), folders: PeopleFolders(support: support))
         options.choices.set(.leaveOut, for: .voice(2))
         let pipeline = Pipeline(options: options, log: nil)
-        XCTAssertThrowsError(try pipeline.leaveOut(people: try XCTUnwrap(options.people), staging: support, duration: 90, namesSaid: nil, faces: nil, voices: nil)) { error in
+        do {
+            _ = try await pipeline.leaveOut(people: try XCTUnwrap(options.people), staging: support, original: support.appending(path: "none.mov"),
+                                            duration: 90, namesSaid: nil, faces: nil, voices: nil)
+            XCTFail("someone left out with no voices must stop the make")
+        } catch {
             XCTAssertEqual((error as? PipelineFailure)?.step, .leaveOut)
         }
     }

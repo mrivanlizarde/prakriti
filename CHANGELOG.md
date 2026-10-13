@@ -5,6 +5,28 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-13, Tue: v2 part M6c, fixes after the verifier
+
+- **A Leave Out cut no longer ends inside the next word someone included says.** Why: the verifier found check 4 failing
+  (97.7% of Gabriel's words kept on two-people-tracks, every word counted, under the plan's 98%) and traced it to a cut
+  ending at 48.77 s, inside "business", in every run. The builder had put it down to Parakeet's run-to-run noise and
+  changed the test to leave out fillers and numbers. The cause was real: the cut grew to "0.03 s before the next word"
+  on Parakeet's word times, which come in 80 ms steps and put this word's start 0.16 s late.
+- **Each edge of a cut now settles on the sound itself:** the start of the quiet between the left-out voice's own end and
+  the end the words give (the end), the end of the quiet on the other side (the start), read from the track the
+  episode is made from. Toward the next word the words alone now stop 0.24 s short of Parakeet's start for it. Why: the
+  verifier's suggested direction, and measured: the quietest point itself is not enough, because before a voiced "b"
+  it is the stop's own closure; ends at 48.505 to 48.535 s keep "business", ends at 48.54 to 48.55 s lose its "b". The
+  earlier "isness" was this fault too, not a tail of "teaching".
+- **The acceptance test counts every word again, as the plan says;** the share without fillers and numbers is written
+  down as a reading only, with the words not heard and their times so a loss can be traced. Why: a gate loosened to
+  pass hid a real fault.
+- **The migration check now fails if a recording arrives with choices, names said aloud or choices applied.** Why: the
+  verifier measured it by hand and found no test would catch a regression.
+- Help 07 says the cut stops a little before the next word someone included says.
+
+---
+
 ## 2026-10-13, Tue: v2 part M6c, choices applied to audio
 
 - **Every face and voice in the People tab now has a choice: Include, Hide Face or Leave Out (a voice with no face:
