@@ -3384,6 +3384,14 @@ generated video.
 - "Hybrid" itself is not detected: a finished Hybrid file looks like a plain MP4 or MOV once OBS closes it.
 - Check Capture was proved by a unit test, not by clicking it in the real window.
 
+### Installed
+
+After every check above passed and 507538d was pushed: `make install` at 18:20 ("Only the installed copy is
+registered"). `pgrep`: pid 36940, `~/Applications/Prakriti.app/Contents/MacOS/Prakriti`. Live log 18:20:07:
+"Finished launching. Mode: live.", Studio Recordings listed 13, Drop 0, "Checked 2 folders. Nothing new.", "Caught up
+on changes made while Prakriti was closed: 0 events." No independent verifier has run on this part yet (PLAN rule
+2.1.2); the install followed the builder's own checks, as this run's instructions said.
+
 ### For Ivan
 
 - [ ] **Nothing is needed for this part.** Open any recording found from now on, click Checks: Capture is at the
