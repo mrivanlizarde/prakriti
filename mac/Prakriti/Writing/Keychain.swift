@@ -1,17 +1,32 @@
 import Foundation
 import Security
 
-/// The Claude API key, kept in the login Keychain as a generic password and nowhere else: never in
-/// a file, the preferences, the store or a log (the build's rule, and SCOPE: secrets in the Keychain,
-/// never in a plist). Read only when a run will actually call the Claude API.
+/// A cloud provider's API key (Anthropic, and OpenAI since v2 part M5b), kept in the login Keychain as a
+/// generic password and nowhere else: never in a file, the preferences, the store or a log (the build's
+/// rule, and SCOPE: secrets in the Keychain, never in a plist). Read only when a run will actually call
+/// that provider.
 struct KeyStore: Sendable {
     let service: String
     let account: String
+    var label: String = "Prakriti: API key"
 
-    /// Ivan's key, shared by the live and development copies (same person, same Mac).
-    static let claude = KeyStore(service: "studio.therowan.prakriti.app.claude-api", account: "api-key")
-    /// Tests use their own item, so they never read or replace Ivan's key.
+    /// Ivan's Anthropic key, shared by the live and development copies (same person, same Mac). The service
+    /// keeps v1's name ("claude-api") so a key saved before M5b is still found.
+    static let claude = KeyStore(service: "studio.therowan.prakriti.app.claude-api", account: "api-key", label: "Prakriti: Anthropic API key")
+    /// The OpenAI key (v2 part M5b).
+    static let openAI = KeyStore(service: "studio.therowan.prakriti.app.openai-api", account: "api-key", label: "Prakriti: OpenAI API key")
+    /// Tests use their own items, so they never read or replace Ivan's keys.
     static let testing = KeyStore(service: "studio.therowan.prakriti.app.tests.claude-api", account: "api-key")
+    static let testingOpenAI = KeyStore(service: "studio.therowan.prakriti.app.tests.openai-api", account: "api-key")
+
+    /// The key for a cloud provider; nil for one on this Mac. `testing` picks the tests' own items.
+    static func forProvider(_ provider: ModelProvider, testing: Bool) -> KeyStore? {
+        switch provider {
+        case .claudeAPI: testing ? Self.testing : .claude
+        case .openAI: testing ? testingOpenAI : .openAI
+        case .lmStudio, .appleOnDevice, .ollama: nil
+        }
+    }
 
     private var query: [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
@@ -47,7 +62,7 @@ struct KeyStore: Sendable {
         guard update == errSecItemNotFound else { throw Failure(status: update) }
         var add = query
         add[kSecValueData as String] = data
-        add[kSecAttrLabel as String] = "Prakriti: Claude API key"
+        add[kSecAttrLabel as String] = label
         add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         let status = SecItemAdd(add as CFDictionary, nil)
         guard status == errSecSuccess else { throw Failure(status: status) }

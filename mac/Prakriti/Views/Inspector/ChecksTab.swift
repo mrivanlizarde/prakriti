@@ -116,7 +116,7 @@ struct ChecksTab: View {
         if let tagged = written.taggedBy { lines.append("Tags: \(tagged).") }
         if let summarized = written.summarizedBy { lines.append("Summary: \(summarized).") }
         if !written.lockedTasks.isEmpty {
-            lines.append("The lock kept the \(written.lockedTasks.joined(separator: " and ")) on this Mac. Nothing was sent to Anthropic.")
+            lines.append("The lock kept the \(written.lockedTasks.joined(separator: " and ")) on this Mac. Nothing was sent off this Mac.")
         }
         return lines
     }

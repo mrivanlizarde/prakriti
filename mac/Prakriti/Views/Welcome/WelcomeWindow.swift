@@ -97,7 +97,8 @@ struct WelcomeWindow: View {
         WelcomeActions(
             chooseFolder: { model.chooseFolderForWelcome() },
             turnOnNotifications: { Task { await model.notifier.turnOn() } },
-            openHelp: { id in model.openHelp(article: id) })
+            openHelp: { id in model.openHelp(article: id) },
+            openModels: { model.showSettings(.models) })
     }
 }
 
@@ -106,6 +107,7 @@ struct WelcomeActions {
     var chooseFolder: () -> Void = {}
     var turnOnNotifications: () -> Void = {}
     var openHelp: (String?) -> Void = { _ in }
+    var openModels: () -> Void = {}
 }
 
 /// One panel: its symbol at 48 pt in the accent color, the title at 28 pt semibold, the line at 17 pt
@@ -244,6 +246,10 @@ struct WelcomeRowView: View {
             case .waitingForAnswer, .unknown:
                 return nil
             }
+        case .models:
+            let verdict = HardwareVerdict(model.hardware)
+            return Status(text: verdict.headline, symbol: verdict.canRunWritingModel ? "checkmark.circle.fill" : "exclamationmark.triangle",
+                          color: verdict.canRunWritingModel ? .green : .orange)
         case .openHelp, nil:
             return nil
         }
@@ -261,6 +267,8 @@ struct WelcomeRowView: View {
             }
         case .openHelp:
             return ("Open Help", { actions.openHelp(nil) })
+        case .models:
+            return ("Open Settings, Models…", actions.openModels)
         case nil:
             return nil
         }

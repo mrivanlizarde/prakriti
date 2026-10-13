@@ -96,12 +96,14 @@ final class WelcomeTests: XCTestCase {
     }
 
     func testOnlyWhatIsBuiltIsVisibleInThePanels() {
-        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck], "v2 part M2b adds the welcome to Help, M3b the Viewer, M4a progress, M4b the capture check")
+        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders],
+                       "v2 part M2b adds the welcome to Help, M3b the Viewer, M4a progress, M4b the capture check, M5b the cloud providers")
         XCTAssertEqual(unbuiltNamesFound(in: visibleText(built, capabilities: Capabilities.built), built: Capabilities.built), [])
         // At M2b, panel 1 lists finding recordings, the podcast and "nothing is posted without you".
         XCTAssertEqual(built.map(\.id), ["welcome", "record", "outputs", "privacy", "start"])
         XCTAssertEqual(built[0].rows.map(\.id), ["finds", "podcast", "yours"])
-        XCTAssertEqual(built.map(\.rows.count), [3, 6, 3, 3, 3])
+        XCTAssertEqual(built.map(\.rows.count), [3, 6, 3, 3, 4], "M5b adds Choose where models write to Get Started")
+        XCTAssertEqual(built[4].rows.map(\.id), ["folder", "notifications", "models", "help"])
         // M4a built `progress`, so step 1 of How Outputs Work reads its v2 sentence; M4b built `captureCheck`, so the
         // recording settings row names Hybrid MOV. No other v2 sentence yet.
         XCTAssertEqual(built.flatMap(\.rows).filter { $0.id.hasSuffix("-v2") }.map(\.id), ["settings-v2", "found-v2"], "no v2 sentence before its part")

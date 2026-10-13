@@ -37,6 +37,9 @@ recording page is retired. M3b failed its first verifier on Space after a restor
 replaced and the text checked again before it leaves), and a cloud model reads only a talk whose people check ran
 and found everyone agreed; until M6 that is no real recording. It passed every check but is **not installed**,
 because it would undo Ivan's 12 Oct switch of writing to the Claude API; it waits for his word.
+**Then part M5b, Anthropic and OpenAI** ("v2 part M5b"): both providers in Settings, Models with keys in the Keychain,
+model pop-ups from each company's own list, Anthropic in its current streamed request shape, and the lock proved in front
+of both. Passed every check it could run (the real calls wait for a yes on cost and a key); not installed, for M5a's reason.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -3680,3 +3683,110 @@ date), words and controls; the 10-minute clip was never shown as a picture.
 - [ ] **Nothing is needed for this part.** Notifications are still off for Prakriti in System Settings (the live log
   says so): turning them on lets the progress reach you away from the window (PLAN M4, *Ivan*).
 - [ ] Open Window > Activity (Command-9) during the next make and say whether the steps list should start collapsed.
+
+## v2 part M5b: Anthropic and OpenAI. Mon 12 Oct 2026
+
+The tenth part of v2 (`docs/v2/PLAN.md`, M5, part M5b; REQUEST item 5). Built on `main`, as this run's instructions
+said. No package added, no SwiftData model changed (so no `make migrate-check` was needed: `openAIModel` is a
+preference, and `ModelProvider`/`ModelTask` gain cases stored as raw strings in preferences only).
+
+### What was built
+
+- **`Writing/AnthropicClient.swift`** (replacing v1's `ClaudeClient`): the current Messages request shape. Always
+  `"stream": true` and `max_tokens` 64,000; **no `thinking` field**; `output_config.effort` per task (writing `high`;
+  tags, summaries and the key test `low`); `fallbacks: "default"` with `anthropic-beta: server-side-fallback-2026-07-01`
+  only for Opus 5.5, Opus 5, Sonnet 5.5 and Fable 5.1. Reads `message_start`, `content_block_delta` (`text_delta`),
+  `message_delta` and `error` events; `refusal`, `max_tokens`, no stop reason, an `error` event or empty text is a
+  failure. Measures each call's cost from its tokens (`CloudPricing`, the reference's prices). The model list is
+  `GET /v1/models` (paged), keeping only entries whose `capabilities.effort.supported` is true.
+- **`Writing/OpenAIClient.swift`**: `POST /v1/responses` with `instructions`, `input`, `max_output_tokens` 32,000,
+  `stream: true`, `store: false`. Reads `response.output_text.delta`, `response.refusal.delta`, `response.completed`,
+  `response.incomplete`, `response.failed` and `error`. No model id in the code and no `reasoning.effort`. The list is
+  `GET /v1/models` filtered by name to text models. Built against developers.openai.com's Responses reference as read on
+  12 Oct (the page carries no version); event names and fields are recorded in the file's header.
+- **`Writing/Providers.swift`**: `CloudHTTP` (its own session: 9 minutes of silence allowed, 40 minutes in all; the
+  server-sent-event reader; one plain sentence per HTTP error, 401 and 403 as `keyRejected`), `CloudModel`,
+  `CloudModelList`, `CloudPricing`.
+- **Keys:** `KeyStore.openAI` (`studio.therowan.prakriti.app.openai-api`) beside `KeyStore.claude` (v1's service kept,
+  so Ivan's existing key is still found); tests use `KeyStore.testing` and `KeyStore.testingOpenAI`
+  (`AppModel.keyStores`). A key is read only when a built task uses its provider.
+- **`ModelProvider.openAI`**, and `claudeAPI` shown as "Anthropic" (stored value unchanged). `ModelTask` gains Planning
+  the edit and Choosing moments, greyed "Not built yet".
+- **`Views/Settings/ModelsPane.swift`** (was `Views/ModelsView.swift`): the truthful first sentence (design spec C3),
+  This Mac, Tasks, the lock (`PrivacyLock.settingsLine`, shared with Settings, Privacy), LM Studio, Apple on-device,
+  Ollama, and **Anthropic** and **OpenAI** each with `KeyRow` (field and Save in Keychain; "Saved in your Keychain." and
+  Remove Key; or "Anthropic did not accept this key. Check it and save it again." with the field back),
+  `CloudModelRow` (the pop-up from the provider's list, Read the List Again) and the test button.
+- **Anthropic's default model is now `claude-sonnet-5-5`** (Ivan, 12 Oct, PLAN section 11). A model already chosen keeps
+  his choice.
+- **Welcome panel 5:** "Choose where models write." with this Mac's verdict and Open Settings, Models. Panel 4's lock
+  sentence now names Anthropic or OpenAI and says nothing is sent until people are checked. `Capability.cloudProviders`
+  is on.
+- **Help** 09 rewritten for both providers, keys, model lists and cost; 07 and 10 updated; notes in
+  `docs/v2/help-notes/09`.
+- **`make accept-providers`** (`ProvidersAcceptanceTests`): check 6, behind `YES=1` and keys in the tests' Keychain items.
+
+### Checks run, with results (PLAN M5, the checks part M5b runs: 1, 6, 7, and 2 again)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `make test` with `ProviderTests` and a `URLProtocol` stub | **PASS.** `testTheAnthropicRequestHasTheCurrentShape`: path `/v1/messages`, `stream` true, **no `thinking` key**, no `temperature`, `max_tokens` 64,000, `output_config.effort` `high` for writing and `low` for tags, `fallbacks` `"default"` and header `server-side-fallback-2026-07-01` for Sonnet 5.5 and neither for Haiku 5.5, `anthropic-version` 2023-06-01, key only in `x-api-key`; the two streamed pieces joined; 1,000 read and 300 written measured at $0.005. `testTheOpenAIRequestTargetsResponsesAndStreams`: `POST /v1/responses`, `stream` true, `store` false, `instructions` and `input`, `Authorization: Bearer`, usage 900, 250, 40 thinking. `testStreamedRefusalsAndCutOffAnswersAreFailures`: Anthropic `refusal` is `refused` and not retried, `max_tokens` is `truncated`, no stop reason and an `overloaded_error` event are failures, empty text is `empty`, 401 is "Anthropic did not accept this key. Check it and save it again." with no key in the detail; OpenAI refusal delta, `max_output_tokens`, `content_filter`, `response.failed`, no `response.completed` and empty text all fail. `testTheModelListsKeepOnlyModelsThatWork`: two pages read, the two models without effort left out; OpenAI's filter keeps 3 of 12 names. `testBothKeysComeFromTheTestKeychainAndNeverReachTheLog`: both keys saved to and read from the tests' items (`...tests.claude-api`, `...tests.openai-api`), read only when a task uses them; a whole write with writing on OpenAI and tags on Anthropic sent 1 request to each, no key and no "Serenity" in any body, **no key and no "sk-" in the log file**. A grep of `~/Prakriti/Dev` and `~/Library/Logs/Prakriti` for the test keys' prefixes afterwards: 0 files |
+| 2 again | The lock, now in front of both providers, counted in HTTP requests through the real clients | **PASS** (`testTheLockCountsRequestsToBothProviders`, `screens/mac/v2-m5b/lock-counts.txt`), on `synthetic-transcript.json`: **for Anthropic and for OpenAI each: a class 0; people not checked 0; a person without cloud consent 0; an unnamed person present 0; an unnamed voice 0; checked with one consenting speaker 1.** M5a's own lock tests pass unchanged, and `testTheUnsafePathCannotBeWritten` now also proves `OpenAIClient` is not a `LanguageModelClient` |
+| 6 | `make accept-providers` | **SKIPPED, not failed** (`screens/mac/v2-m5b/acceptance-providers.txt`): "Anthropic: SKIPPED. No yes on the cost" and the same for OpenAI. There is no yes on cost, and PLAN section 11 forbids testing with Ivan's real key, so the target reads only the tests' Keychain items |
+| 7 | Snapshots of the Models pane, keys absent, saved, rejected, light and dark, looked at | **PASS, looked at.** `10-settings-models-keys-absent-*`, `-keys-saved-*`, `-keys-rejected-*` (drawn 2,600 pt tall so every section shows). Absent: "No key added. Nothing is sent to Anthropic." with Paste a key and a greyed Save in Keychain, the pop-up showing `claude-sonnet-5-5`, "Add a key to see Anthropic's models."; OpenAI the same with "None chosen". Saved: "Saved in your Keychain." with Remove Key, Claude Sonnet 5.5 chosen from "3 models that work with Prakriti, from Anthropic's own list.", the test line with its cost; OpenAI gpt-5.6 of 2. Rejected: the triangle and "Anthropic did not accept this key. Check it and save it again." with Paste a new key, Save in Keychain and Remove Key (the field was narrow on the first render and was given a 200 pt minimum). Tasks shows Planning the edit and Choosing moments greyed. Text 15 and 17 pt, readable in both appearances. Also looked at: `welcome-5-light.png` (four rows; the models row's status "Apple M5 Pro, 64 GB. This Mac can run the writing model." and Open Settings, Models..., fits without scrolling) and `welcome-4-dark.png` (the new lock sentence) |
+| Regression | `make regress` (`make test`, `make accept`, `make accept-edits`) | **PASS.** `make build`: no warnings. **`make test`: 245 tests, 0 failures, 11 skipped by design** (803 s). **`make accept`**: 13 Sep -16.8 LUFS (-16.82), true peak -1.7 dBFS; `silent-60s` stops at the sound check at -91 dB; the 30 s clip filed as a test; 6 Sep -16.7 LUFS (-16.72), -1.4 dBFS. **`make accept-edits`**: approved episode **38.82 s shorter (expected 38.82)**, 0 of 73 runs from the cut heard, 189 of 201 after it, a class refused. Originals by `stat` before and after: no difference |
+
+The first full `make test` failed 4 tests: the Help and welcome tests that pin `Capabilities.built` (updated for
+`cloudProviders`), and the welcome's every-stage test, because a third lock sentence had broken the rule that each
+sentence and its v2 twin show exactly once. The extra row was removed and today's sentence rewritten instead; the
+second run passed. `make accept-models` (M5a's check 5) was not run again: this part changed only log wording on the LM
+Studio path, and `WritingTests` cover it.
+
+**Em dashes:** 0 in every file this part changed (grep). The copy rules in `RulesTests` passed.
+
+### Looked at (D1)
+
+No frame of Gabriel's talks was drawn or opened; the regression set read the 13 Sep and 6 Sep talks as before. Every
+cloud request in a test carried only `synthetic-transcript.json` or sentences written in the tests, and none left the
+Mac (all answered by `StubProtocol`). No real key was read.
+
+### Decisions, each with its reason
+
+1. **No real call was made to either provider.** Reason: check 6 needs Ivan's yes on cost and a key; PLAN section 11
+   forbids reading or testing with his real key. The request shapes are pinned against the references, not a live
+   answer: the first real call is the verification still owed (below).
+2. **Anthropic's default is Sonnet 5.5, not the plan's Opus 5.5.** Reason: Ivan's later note in PLAN section 11, and his
+   recorded cost lever.
+3. **OpenAI gets no `reasoning.effort`.** Reason: the reference page read lists no values for it, and a value one model
+   rejects would fail every call.
+4. **Welcome panel 5 links to Settings, Models instead of the design spec's pop-up.** Reason: one pop-up would set every
+   task's provider at once from a welcome screen, and the lock decides per recording anyway.
+5. **The lock is untouched: still M5a's strict lock.** Reason: this run's instructions (fail closed, never a class or
+   other people's words), and START_HERE Mac warning 90. Section 11's later relaxations stay Ivan's decision (For Ivan).
+6. **Cost is measured from the final attempt's tokens.** Reason: simple and honest for the common case; after a server
+   fallback, `usage.iterations` would hold the earlier attempt too, so the shown cost can be low in that rare case.
+
+### What does not work yet, or was not seen working
+
+- Neither provider has answered a real request. `make accept-providers YES=1` does that once keys are in the tests' items.
+- OpenAI prices are not listed, so its calls show tokens only.
+- No real recording reaches either provider until the people check (M6a, M6b): every real recording is locked.
+
+### Installed
+
+**Not installed, on purpose, although every check passed**, for M5a's reason, which this part inherits: installing it
+installs M5a's lock, which turns the live app's Claude API choices (writing, tagging, summarizing, with a key in the
+Keychain) back to LM Studio for every recording, reversing Ivan's 12 Oct decision. The live app is still the M4b build.
+`cd ~/Code/prakriti/mac && make install` ships M5a and M5b together the moment he says so.
+
+### For Ivan
+
+- [ ] **The same one decision as M5a, now for both parts:** should your own talks with Gabriel reach Anthropic before
+  Prakriti can check who appears? Your 12 Oct note says yes; the lock in this build says no until M6. Say yes and the
+  change is small (count a recording you marked as a talk as checked, with Gabriel as its one consenting speaker), then
+  install.
+- [ ] **If you want the real calls checked (a few cents):** say yes to the cost and put a test key in the tests' own
+  Keychain items, or tell Sonny which key to use; then `cd ~/Code/prakriti/mac && make accept-providers YES=1
+  MILESTONE=v2-m5b`.
+- [ ] After installing, open Settings, Models once: your saved Anthropic key shows "Saved in your Keychain.", and the
+  model pop-up fills from Anthropic's list (Claude Sonnet 5.5 is chosen unless you had picked another).

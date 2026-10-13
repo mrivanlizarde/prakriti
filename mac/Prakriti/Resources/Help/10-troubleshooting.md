@@ -4,7 +4,7 @@ title: If something isn't working
 summary: What to check when a recording is not found, has no sound, sends no notice, or a model does not answer, and where the log is.
 section: troubleshooting
 order: 1
-keywords: [troubleshooting, problem, not found, silent, no sound, capture check, audio tracks, both channels, Check Capture, notifications, stopped, quit, flicker, bands, sync, LM Studio, API key, Claude API, cut, disk space, encoding overloaded, log, show log]
+keywords: [troubleshooting, problem, not found, silent, no sound, capture check, audio tracks, both channels, Check Capture, notifications, stopped, quit, flicker, bands, sync, LM Studio, API key, Claude API, Anthropic, OpenAI, model list, cut, disk space, encoding overloaded, log, show log]
 related: [capture-the-best-video, set-up-obs-for-prakriti, sources-and-watching, models-and-api-keys]
 ---
 
@@ -146,11 +146,14 @@ blurred.
 Writing takes about 10 to 15 minutes for a 15-minute talk. That is normal. If writing stops, the episode
 is still made, and the inspector's Outputs say why the writing stopped.
 
-### If the Claude API key doesn't work
+### If an Anthropic or OpenAI key doesn't work
 
-- Click Test Claude API in Settings, Models and read the message.
-- Check that the account on Anthropic's site has credit or a payment method.
-- Make a new key on Anthropic's site, then paste it and click Save in Keychain.
+- Click Test Anthropic or Test OpenAI in Settings, Models and read the message.
+  [Show Me](prakriti://show/settings/models)
+- If it says the company did not accept the key, make a new key on the company's site, paste it and
+  click Save in Keychain.
+- Check that the account on the company's site has credit or a payment method.
+- If the Model pop-up is empty, click Read the List Again.
 
 :::requires timelines
 ## Final Cut Pro and DaVinci Resolve

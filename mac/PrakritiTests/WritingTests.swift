@@ -51,6 +51,8 @@ extension ScriptedClient: CloudModelClient {
 final class StubProtocol: URLProtocol, @unchecked Sendable {
     nonisolated(unsafe) static var handler: ((String, String, [String: Any]?) -> (Int, Any))?
     nonisolated(unsafe) static var seen: [(method: String, path: String, body: [String: Any]?)] = []
+    /// Every request's headers, in the order seen (v2 part M5b: where the key goes).
+    nonisolated(unsafe) static var headers: [[String: String]] = []
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -72,9 +74,13 @@ final class StubProtocol: URLProtocol, @unchecked Sendable {
         let body = data.flatMap { (try? JSONSerialization.jsonObject(with: $0)) as? [String: Any] }
         let method = request.httpMethod ?? "GET", path = request.url?.path ?? ""
         Self.seen.append((method, path, body))
+        Self.headers.append(request.allHTTPHeaderFields ?? [:])
         let (status, object) = Self.handler?(method, path, body) ?? (500, [String: Any]())
-        let payload = (try? JSONSerialization.data(withJSONObject: object)) ?? Data()
-        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+        // A String answer is sent as it is: a streamed answer (server-sent events, v2 part M5b).
+        let streamed = object as? String
+        let payload = streamed.map { Data($0.utf8) } ?? (try? JSONSerialization.data(withJSONObject: object)) ?? Data()
+        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil,
+                                       headerFields: ["Content-Type": streamed == nil ? "application/json" : "text/event-stream"])!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: payload)
         client?.urlProtocolDidFinishLoading(self)
@@ -353,7 +359,7 @@ final class WritingTests: XCTestCase {
         XCTAssertEqual(lesson?.lockReason, "this is a class")
         XCTAssertEqual(lesson?.lockedTasks, ["writing", "tagging", "summarizing"])
         XCTAssertEqual(lesson?.writingProvider, "lmStudio")
-        XCTAssertTrue(lesson?.stepLine.contains("Privacy lock: this is a class, so LM Studio did the writing and tagging and summarizing chosen for the Claude API.") == true,
+        XCTAssertTrue(lesson?.stepLine.contains("Privacy lock: this is a class, so LM Studio did the writing and tagging and summarizing chosen for a cloud model.") == true,
                       lesson?.stepLine ?? "")
         XCTAssertTrue(lesson?.markdown(label: "Sun 13 Sep", fileName: "x.mp4").contains("This is a class, so it was written by a model on this Mac only.") == true)
 
@@ -505,14 +511,14 @@ final class WritingTests: XCTestCase {
         XCTAssertEqual(AppModel(container: AppModel.inMemoryContainer(), paths: AppPaths(mode: .development), settings: .ephemeral(),
                                 log: AppLog(directory: nil)).keyStore.service, KeyStore.testing.service, "tests never touch Ivan's key")
         // No key, no call: the Claude API's test sends nothing.
-        let body = ClaudeClient(model: "claude-opus-5-5", key: nil).body(for: PrivacyLock.keyCheck())
+        let body = AnthropicClient(model: "claude-opus-5-5", key: nil).body(for: PrivacyLock.keyCheck())
         XCTAssertEqual(body["model"] as? String, "claude-opus-5-5")
         XCTAssertNil(body["temperature"], "Claude Opus 5.5 takes no sampling settings")
-        XCTAssertEqual((body["thinking"] as? [String: String])?["type"], "adaptive")
+        XCTAssertNil(body["thinking"], "no thinking field at all (v2 part M5b, warning 34)")
     }
 
     func testClaudeWithoutAKeySendsNothing() async {
-        let check = await ClaudeClient(model: "claude-opus-5-5", key: nil).check()
+        let check = await AnthropicClient(model: "claude-opus-5-5", key: nil).check()
         XCTAssertEqual(check.state, .notSetUp)
         XCTAssertEqual(check.line, "No key added. Nothing is sent to Anthropic.")
     }

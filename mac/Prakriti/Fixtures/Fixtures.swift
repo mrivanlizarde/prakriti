@@ -325,7 +325,10 @@ enum Fixtures {
             .appleOnDevice: ProviderCheck(state: .ok, line: "Wrote 3 tags in 0.8 s: breath, exhale, pause.", at: tested),
             .ollama: ProviderCheck(state: .notSetUp, line: "Ollama answers. Installed: qwen3:4b. Name one above to use it.", at: tested),
             .claudeAPI: ProviderCheck(state: .notSetUp, line: "No key added. Nothing is sent to Anthropic.", at: tested),
+            .openAI: ProviderCheck(state: .notSetUp, line: "No key added. Nothing is sent to OpenAI.", at: tested),
         ]
+        // Settings, Models draws the key states set here, never this Mac's Keychain (v2 part M5b).
+        model.readsKeysOnAppear = false
         return model
     }
 

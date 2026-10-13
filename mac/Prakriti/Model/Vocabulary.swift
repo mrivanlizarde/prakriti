@@ -284,12 +284,17 @@ enum LogLevel: String, Codable, CaseIterable, Sendable {
 /// The jobs a language model does in Prakriti.
 enum ModelTask: String, Codable, CaseIterable, Sendable {
     case writing, tagging, summarizing
+    /// Listed from v2 part M5b and greyed until the part that uses them is built (Mac warning 32): the edit
+    /// plan (M9) and supporting moments (M12).
+    case planning, choosingMoments
 
     var title: String {
         switch self {
         case .writing: "Writing"
         case .tagging: "Tagging"
         case .summarizing: "Summarizing"
+        case .planning: "Planning the edit"
+        case .choosingMoments: "Choosing moments"
         }
     }
 
@@ -298,24 +303,42 @@ enum ModelTask: String, Codable, CaseIterable, Sendable {
         case .writing: "Titles, show notes and chapters."
         case .tagging: "Topics and terms for each recording."
         case .summarizing: "A short summary, in the show notes."
+        case .planning: "Which parts of a recording the edit keeps. Not built yet."
+        case .choosingMoments: "Moments from another recording that support this one. Not built yet."
         }
     }
+
+    /// The tasks that run today. The others are shown greyed, and their choice is kept for later.
+    var isBuilt: Bool {
+        switch self {
+        case .writing, .tagging, .summarizing: true
+        case .planning, .choosingMoments: false
+        }
+    }
+
+    static var built: [ModelTask] { allCases.filter(\.isBuilt) }
 }
 
 enum ModelProvider: String, Codable, CaseIterable, Sendable {
-    case lmStudio, appleOnDevice, ollama, claudeAPI
+    /// `claudeAPI` keeps its stored raw value from v1 (Ivan's live preferences hold it); it shows as Anthropic
+    /// since v2 part M5b. `openAI` is new in M5b.
+    case lmStudio, appleOnDevice, ollama, claudeAPI, openAI
 
     var title: String {
         switch self {
         case .lmStudio: "LM Studio"
         case .appleOnDevice: "Apple on-device"
         case .ollama: "Ollama"
-        case .claudeAPI: "Claude API"
+        case .claudeAPI: "Anthropic"
+        case .openAI: "OpenAI"
         }
     }
 
-    /// Runs on this Mac. Only these may read a class or anything with Serenity in it.
-    var isLocal: Bool { self != .claudeAPI }
+    /// Runs on this Mac. Only these may read a recording the privacy lock keeps here.
+    var isLocal: Bool { !Self.cloud.contains(self) }
+
+    /// The providers that send text off this Mac, each reached only through the privacy lock.
+    static let cloud: [ModelProvider] = [.claudeAPI, .openAI]
 }
 
 /// The five notices Prakriti can post (SCOPE 8.3), one per recording, updated in place.

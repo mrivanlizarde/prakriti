@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 /// Small preferences, kept in UserDefaults. Records (sources, recordings, runs) live in the store.
-/// No secret ever lives here: the Claude API key is in the Keychain (KeyStore, milestone 6).
+/// No secret ever lives here: the Anthropic and OpenAI keys are in the Keychain (KeyStore).
 @MainActor
 @Observable
 final class AppSettings {
@@ -18,6 +18,7 @@ final class AppSettings {
         static let ollamaAddress = "ollamaAddress"
         static let ollamaModel = "ollamaModel"
         static let claudeModel = "claudeModel"
+        static let openAIModel = "openAIModel"
         static let lastEventID = "lastEventID"
         static let eventDevice = "eventDevice"
         static let engineV0ImportedAt = "engineV0ImportedAt"
@@ -44,8 +45,11 @@ final class AppSettings {
     /// Ollama is optional; it runs on port 11434 unless changed. No model is chosen until Ivan names one.
     var ollamaAddress: String { didSet { defaults.set(ollamaAddress, forKey: Key.ollamaAddress) } }
     var ollamaModel: String { didSet { defaults.set(ollamaModel, forKey: Key.ollamaModel) } }
-    /// The Claude API's model. Its key is never here: it lives in the Keychain (KeyStore).
+    /// Anthropic's model (the preference keeps v1's name). Its key is never here: it lives in the Keychain (KeyStore).
     var claudeModel: String { didSet { defaults.set(claudeModel, forKey: Key.claudeModel) } }
+    /// OpenAI's model (v2 part M5b), chosen from its list; empty until Ivan picks one, because no OpenAI model
+    /// id is written into the app (PLAN M5).
+    var openAIModel: String { didSet { defaults.set(openAIModel, forKey: Key.openAIModel) } }
 
     /// The newest file-system event already looked at, and the disk it belongs to: the watcher
     /// replays from here on the next launch. Kept as text because UserDefaults has no 64-bit unsigned type.
@@ -74,7 +78,9 @@ final class AppSettings {
     nonisolated static let defaultLMStudioAddress = "http://localhost:1235/v1"
     nonisolated static let defaultLMStudioModel = "qwen/qwen3.8-27b"
     nonisolated static let defaultOllamaAddress = "http://localhost:11434"
-    nonisolated static let defaultClaudeModel = "claude-opus-5-5"
+    /// Claude Sonnet 5.5, by Ivan's decision of Mon 12 Oct (PLAN section 11: Sonnet by default, Opus 5.5 for an
+    /// accuracy pass; his recorded cost lever). A model he chose before keeps his choice.
+    nonisolated static let defaultClaudeModel = "claude-sonnet-5-5"
 
     init(defaults: UserDefaults) {
         self.defaults = defaults
@@ -96,6 +102,7 @@ final class AppSettings {
         ollamaAddress = defaults.string(forKey: Key.ollamaAddress) ?? Self.defaultOllamaAddress
         ollamaModel = defaults.string(forKey: Key.ollamaModel) ?? ""
         claudeModel = defaults.string(forKey: Key.claudeModel) ?? Self.defaultClaudeModel
+        openAIModel = defaults.string(forKey: Key.openAIModel) ?? ""
         lastEventID = defaults.string(forKey: Key.lastEventID).flatMap(UInt64.init) ?? 0
         eventDevice = defaults.string(forKey: Key.eventDevice) ?? ""
         engineV0ImportedAt = defaults.object(forKey: Key.engineV0ImportedAt) as? Date

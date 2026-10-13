@@ -13,7 +13,7 @@ import Foundation
 // - The privacy lock (PrivacyLock.swift, v2 part M5a): a cloud model reads only a talk whose people
 //   check ran and found no one unnamed and no one heard who has not agreed, and whose transcript does not
 //   name the teacher who has not agreed. Until the people check exists (part M6) that is no real
-//   recording. If the Claude API is chosen for a task on a locked recording, LM Studio does that task
+//   recording. If a cloud provider is chosen for a task on a locked recording, LM Studio does that task
 //   instead, and the files and the page say so. Every cloud request goes through
 //   `PrivacyLock.release` (names replaced by tokens, the text checked again) inside `LockedCloudClient`.
 // - A reply cut off at its length, an empty reply, or JSON that fails the checks is tried again, up
@@ -217,7 +217,7 @@ struct WrittenPackage: Codable, Equatable, Sendable {
     var summarizedBy: String?
     /// "This recording mentions Serenity", "This is a class", or nil.
     var lockReason: String?
-    /// The tasks whose chosen provider was the Claude API but ran on this Mac because of the lock.
+    /// The tasks whose chosen provider was a cloud provider but ran on this Mac because of the lock.
     var lockedTasks: [String] = []
     var writtenAt: Date
     /// The whole writing step, every task and try.
@@ -330,7 +330,7 @@ struct WrittenPackage: Codable, Equatable, Sendable {
 }
 
 /// What to write with: the provider chosen for each task and how to reach each one. Built from the
-/// Models screen for each run; the Claude API key is read from the Keychain only when a task will
+/// Models screen for each run; a cloud provider's key is read from the Keychain only when a task will
 /// use it, and is never written anywhere.
 struct WritingSetup: Sendable {
     var providers: [ModelTask: ModelProvider] = [:]
@@ -340,6 +340,9 @@ struct WritingSetup: Sendable {
     var ollamaModel = ""
     var claudeModel = AppSettings.defaultClaudeModel
     var claudeKey: String?
+    /// OpenAI (v2 part M5b): the model chosen from its list, and the key, read only when a task uses it.
+    var openAIModel = ""
+    var openAIKey: String?
     var maxAttempts = 3
     /// Makes the client for a provider on this Mac. Tests pass their own to see which provider is asked.
     var makeClient: @Sendable (ModelProvider, WritingSetup) -> any LanguageModelClient = WritingSetup.standardClient
@@ -354,12 +357,18 @@ struct WritingSetup: Sendable {
         case .lmStudio: LMStudioClient(address: setup.lmStudioAddress, model: setup.lmStudioModel)
         case .appleOnDevice: AppleOnDeviceClient()
         case .ollama: OllamaClient(address: setup.ollamaAddress, model: setup.ollamaModel)
-        case .claudeAPI: NoCloudClient(provider: provider)
+        case .claudeAPI, .openAI: NoCloudClient(provider: provider)
         }
     }
 
+    /// The cloud client for a provider. A provider on this Mac never reaches here (`Writer` checks
+    /// `isLocal` first); if one did, it gets the Anthropic client with no key, which sends nothing.
     static func standardCloudClient(_ provider: ModelProvider, _ setup: WritingSetup) -> any CloudModelClient {
-        ClaudeClient(model: setup.claudeModel, key: setup.claudeKey)
+        switch provider {
+        case .openAI: OpenAIClient(model: setup.openAIModel, key: setup.openAIKey)
+        case .claudeAPI: AnthropicClient(model: setup.claudeModel, key: setup.claudeKey)
+        case .lmStudio, .appleOnDevice, .ollama: AnthropicClient(model: setup.claudeModel, key: nil)
+        }
     }
 }
 
@@ -446,7 +455,7 @@ struct Writer: Sendable {
             let used = ModelRouting.provider(chosen: chosen, locked: lockReason != nil)
             if used != chosen {
                 lockedTasks.append(task.title.lowercased())
-                log?.write("\(input.fileName): privacy lock. \((lockReason ?? "").capitalizedFirst), so \(task.title.lowercased()) uses \(used.title) instead of \(chosen.title). Nothing is sent to Anthropic.")
+                log?.write("\(input.fileName): privacy lock. \((lockReason ?? "").capitalizedFirst), so \(task.title.lowercased()) uses \(used.title) instead of \(chosen.title). Nothing is sent to \(chosen.title).")
             }
             return used
         }
@@ -482,7 +491,8 @@ struct Writer: Sendable {
                     answer = (reply, checked)
                     log?.write("\(input.fileName): try \(attempts) passed in " + String(format: "%.0f s", reply.seconds)
                                + " (finish \(reply.finishReason ?? "?"), \(reply.promptTokens.map(String.init) ?? "?") tokens read, "
-                               + "\(reply.completionTokens.map(String.init) ?? "?") written of which \(reply.reasoningTokens.map(String.init) ?? "?") thinking): "
+                               + "\(reply.completionTokens.map(String.init) ?? "?") written of which \(reply.reasoningTokens.map(String.init) ?? "?") thinking"
+                               + (reply.costUSD.map { ", cost \(CloudPricing.text($0))" } ?? "") + (reply.servedBy.map { $0 != setup.claudeModel && $0 != setup.openAIModel ? ", answered by \($0)" : "" } ?? "") + "): "
                                + "valid JSON, \(checked.titles.count) titles, \(checked.chapters.count) chapters (\(checked.leftOutChapters) left out), "
                                + "\(checked.checklist.count) quotes found word for word (\(checked.leftOutQuotes.count) left out).")
                 } catch let failure as ModelFailure {
@@ -1206,7 +1216,7 @@ extension WrittenPackage {
         if !leftOutQuotes.isEmpty { left.append(Format.count(leftOutQuotes.count, "quote")) }
         if leftOutChapters > 0 { left.append(Format.count(leftOutChapters, "chapter")) }
         line += left.isEmpty ? "." : " (\(left.joined(separator: " and ")) not in it left out)."
-        if let lockReason { line += " Privacy lock: \(lockReason), so " + (lockedTasks.isEmpty ? "only models on this Mac read it." : "LM Studio did the \(lockedTasks.joined(separator: " and ")) chosen for the Claude API.") }
+        if let lockReason { line += " Privacy lock: \(lockReason), so " + (lockedTasks.isEmpty ? "only models on this Mac read it." : "LM Studio did the \(lockedTasks.joined(separator: " and ")) chosen for a cloud model.") }
         return line
     }
 }

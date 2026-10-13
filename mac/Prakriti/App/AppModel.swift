@@ -159,10 +159,24 @@ final class AppModel {
     var captureChecking: Set<UUID> = []
     var captureProblems: [UUID: String] = [:]
     var providerChecks: [ModelProvider: ProviderCheck] = [:]
-    /// A Claude API key is in the Keychain. Read when the Models screen opens; the key itself never is.
-    var claudeKeyAdded = false
-    /// Where the Claude API key lives. Tests use their own Keychain item, never Ivan's.
-    @ObservationIgnored var keyStore: KeyStore = AppModel.isRunningTests ? .testing : .claude
+    /// Which cloud providers have a key in the Keychain. Read when Settings, Models opens; the keys never are.
+    var keysAdded: Set<ModelProvider> = []
+    /// Cloud providers whose key was refused (401 or 403) by the last test or model list.
+    var keysRejected: Set<ModelProvider> = []
+    /// Each cloud provider's model list, for its pop-up (v2 part M5b).
+    var cloudModelLists: [ModelProvider: CloudModelList] = [:]
+    /// Settings, Models reads the Keychain and the model lists when it opens. Snapshots turn it off, so the
+    /// key states they draw are the ones they set.
+    @ObservationIgnored var readsKeysOnAppear = true
+    /// Where each cloud provider's key lives. Tests use their own Keychain items, never Ivan's.
+    @ObservationIgnored var keyStores: [ModelProvider: KeyStore] = Dictionary(uniqueKeysWithValues: ModelProvider.cloud.compactMap { provider in
+        KeyStore.forProvider(provider, testing: AppModel.isRunningTests).map { (provider, $0) }
+    })
+    /// Anthropic's key store (v1's name, kept for the tests that read it).
+    var keyStore: KeyStore { keyStores[.claudeAPI] ?? .testing }
+    func keyStore(for provider: ModelProvider) -> KeyStore? { keyStores[provider] }
+    /// The session the model lists are read with. Tests answer it on this Mac (`StubProtocol`).
+    @ObservationIgnored var modelListSession: URLSession = CloudHTTP.session
     /// This Mac's chip and memory for the hardware check (v2 part M5a). Snapshots set a smaller Mac.
     @ObservationIgnored var hardware: HardwareProfile = .current()
 

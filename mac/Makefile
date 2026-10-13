@@ -69,6 +69,9 @@
 #                 LM Studio on this Mac (it lists every name and judges each find). Needs the 13 Sep transcript from
 #                 `make accept` and LM Studio's server. Names only Gabriel and Serenity; every other name is
 #                 "name N". Writes acceptance-names.txt to ../screens/mac/$(MILESTONE)/ (about 2 to 10 minutes)
+# make accept-providers  v2 part M5b's check 6: each cloud key against its provider's free model list, then one
+#                 write of synthetic-transcript.json per provider. Costs cents: runs only with YES=1 (Ivan's yes),
+#                 reads keys only from the tests' Keychain items, and reports SKIPPED without them
 # make migrate-check  copy the live store (sqlite3 .backup, a consistent snapshot; the live store
 #                 is only read) into build/store-copy and open the COPY with this build's models.
 #                 Run it before `make install` whenever the models change. It holds on any real store
@@ -110,9 +113,10 @@ APP       = $(DERIVED)/Build/Products/Debug/Prakriti.app
 MILESTONE ?= latest
 MODE      ?= development
 ONLY      ?=
+YES       ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -166,6 +170,13 @@ accept-episode-text:
 
 accept-names:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=names TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/NameRecallAcceptanceTests
+
+# accept-providers v2 part M5b's check 6: each cloud key against its provider's free GET /v1/models, then one write of
+#                 synthetic-transcript.json per provider. Costs a few cents, so it runs only with YES=1 (Ivan's yes),
+#                 and reads keys only from the TESTS' Keychain items, never the app's. Without a yes or a key it reports
+#                 SKIPPED. Writes acceptance-providers.txt to ../screens/mac/$(MILESTONE)/
+accept-providers:
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=providers TEST_RUNNER_PRAKRITI_PROVIDERS_YES=$(YES) TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/ProvidersAcceptanceTests
 
 accept-help: build
 	swift scripts/capture-window.swift --help $(APP) ../screens/mac/$(MILESTONE)/real

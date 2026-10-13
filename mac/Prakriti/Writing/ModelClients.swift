@@ -10,8 +10,9 @@ import Foundation
 //   only, and the JSON is checked in Swift (Writer), never trusted.
 // - Apple on-device (AppleOnDevice.swift): only for inputs under its context limit.
 // - Ollama: optional, on this Mac.
-// - Claude API: optional, sends text to Anthropic, key kept in the Keychain. It is a
-//   `CloudModelClient` and takes only a `CloudPayload` from the privacy lock (PrivacyLock.swift).
+// - Anthropic and OpenAI (AnthropicClient.swift, OpenAIClient.swift, v2 part M5b): optional, send text
+//   off this Mac, keys kept in the Keychain. Each is a `CloudModelClient` and takes only a `CloudPayload`
+//   from the privacy lock (PrivacyLock.swift).
 
 /// One request: a single turn, a system message and a user message (LOCAL-MODEL.md rule 3: the
 /// family's template mishandles past assistant turns, and some runtimes reject other roles).
@@ -33,6 +34,10 @@ struct ModelReply: Sendable, Equatable {
     var completionTokens: Int?
     var reasoningTokens: Int?
     var seconds: Double
+    /// What the call cost, measured from its tokens, when the provider's price is known (cloud providers).
+    var costUSD: Double? = nil
+    /// The model that answered, when the provider says (an Anthropic fallback may answer for the one asked).
+    var servedBy: String? = nil
 }
 
 /// Why a model call did not give a usable answer: one plain sentence for Ivan, the detail for the log.
@@ -50,6 +55,8 @@ struct ModelFailure: Error, Sendable, Equatable {
         case empty
         /// The model declined the text.
         case refused
+        /// A cloud provider did not accept the key (401 or 403).
+        case keyRejected
         /// The server answered with an error.
         case server
         /// Apple's model is not available on this Mac.
@@ -98,6 +105,8 @@ struct ProviderCheck: Sendable, Equatable {
     var state: State
     var line: String
     var at: Date
+    /// The provider did not accept the key in the Keychain (v2 part M5b): the key row says so.
+    var keyRejected = false
 }
 
 /// One provider's way of answering a request.
@@ -457,80 +466,6 @@ struct OllamaClient: LanguageModelClient {
         } catch let failure as ModelFailure {
             return ProviderCheck(state: failure.kind == .notRunning ? .notSetUp : .problem,
                                  line: failure.kind == .notRunning ? "Ollama is not running at \(address). It is optional." : failure.reason, at: Date())
-        } catch {
-            return ProviderCheck(state: .problem, line: "The test stopped.", at: Date())
-        }
-    }
-}
-
-// MARK: Claude API
-
-/// The Claude API (Anthropic's Messages API, raw HTTP: there is no official Swift SDK). Optional;
-/// sends text to Anthropic, so it is a `CloudModelClient`: it takes only a `CloudPayload`, which only
-/// `PrivacyLock.release` makes (v2 part M5a). The request shape is v1's, unchanged in M5a; part M5b brings
-/// it to the current one. The key comes from the Keychain for each run and is never written to a file or a log.
-/// Claude Opus 5.5 takes no sampling settings; its effort is set to "medium" explicitly, and a declined
-/// request falls back on Anthropic's side ("fallbacks").
-struct ClaudeClient: CloudModelClient {
-    let provider = ModelProvider.claudeAPI
-    let model: String
-    let key: String?
-    var session: URLSession = ModelHTTP.session
-    static let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
-    static let context = 1_000_000
-
-    var displayName: String { model + " (Claude API)" }
-    var contextLimit: Int { Self.context }
-
-    /// The request body. Kept apart so a test can pin it.
-    func body(for payload: CloudPayload) -> [String: Any] {
-        [
-            "model": model,
-            "max_tokens": 16_000,
-            "system": payload.system,
-            "messages": [["role": "user", "content": payload.user]],
-            "thinking": ["type": "adaptive"],
-            "output_config": ["effort": "medium"],
-            "fallbacks": "default",
-        ]
-    }
-
-    func send(_ payload: CloudPayload) async throws -> ModelReply {
-        guard let key, !key.isEmpty else {
-            throw ModelFailure(kind: .notSetUp, reason: "No Claude API key is in the Keychain. Add one on the Models screen.")
-        }
-        let started = ContinuousClock.now
-        let (status, data) = try await ModelHTTP.send(
-            ModelHTTP.post(Self.endpoint, body: body(for: payload),
-                           headers: ["x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-beta": "server-side-fallback-2026-07-01"]),
-            session: session, service: "The Claude API")
-        guard status == 200, let object = ModelHTTP.object(data) else {
-            let kind: ModelFailure.Kind = status == 401 || status == 403 ? .notSetUp : .server
-            throw ModelFailure(kind: kind, reason: status == 401 ? "The Claude API did not accept the key in the Keychain." : "The Claude API answered with an error.",
-                               detail: "\(status) \(ModelHTTP.errorText(data))")
-        }
-        let stop = object["stop_reason"] as? String
-        if stop == "refusal" { throw ModelFailure(kind: .refused, reason: "The Claude API declined this text.") }
-        let text = ((object["content"] as? [[String: Any]]) ?? []).filter { ($0["type"] as? String) == "text" }
-            .compactMap { $0["text"] as? String }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
-        if stop == "max_tokens" { throw ModelFailure(kind: .truncated, reason: "The answer was cut off at its length limit.") }
-        if text.isEmpty { throw ModelFailure(kind: .empty, reason: "The model answered with nothing.") }
-        let usage = object["usage"] as? [String: Any]
-        return ModelReply(text: text, finishReason: stop, promptTokens: usage?["input_tokens"] as? Int,
-                          completionTokens: usage?["output_tokens"] as? Int, reasoningTokens: nil, seconds: ModelHTTP.seconds(since: started))
-    }
-
-    /// Without a key there is nothing to test, and nothing is sent. With one, a one-line request
-    /// with no recording in it ("Reply with OK") checks the key works.
-    func check() async -> ProviderCheck {
-        guard let key, !key.isEmpty else {
-            return ProviderCheck(state: .notSetUp, line: "No key added. Nothing is sent to Anthropic.", at: Date())
-        }
-        do {
-            let reply = try await send(PrivacyLock.keyCheck())
-            return ProviderCheck(state: .ok, line: String(format: "%@ answered in %.0f s. The key in the Keychain works.", model, reply.seconds), at: Date())
-        } catch let failure as ModelFailure {
-            return ProviderCheck(state: failure.kind == .notSetUp ? .notSetUp : .problem, line: failure.reason, at: Date())
         } catch {
             return ProviderCheck(state: .problem, line: "The test stopped.", at: Date())
         }

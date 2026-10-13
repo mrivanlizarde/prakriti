@@ -304,8 +304,8 @@ final class PipelineRunner {
         return options
     }
 
-    /// Who writes, from the Models screen. The Claude API key is read from the Keychain only when a
-    /// task is set to the Claude API (the privacy lock may still keep the recording away from it).
+    /// Who writes, from Settings, Models. A cloud provider's key is read from the Keychain only when a
+    /// task is set to that provider (the privacy lock may still keep the recording away from it).
     func writingSetup() -> WritingSetup {
         var setup = WritingSetup()
         guard let model else { return setup }
@@ -316,7 +316,10 @@ final class PipelineRunner {
         setup.ollamaAddress = settings.ollamaAddress
         setup.ollamaModel = settings.ollamaModel
         setup.claudeModel = settings.claudeModel
-        if settings.provider.values.contains(.claudeAPI) { setup.claudeKey = model.keyStore.read() }
+        setup.openAIModel = settings.openAIModel
+        let chosen = Set(ModelTask.built.map { settings.provider[$0] ?? .lmStudio })
+        if chosen.contains(.claudeAPI) { setup.claudeKey = model.keyStore(for: .claudeAPI)?.read() }
+        if chosen.contains(.openAI) { setup.openAIKey = model.keyStore(for: .openAI)?.read() }
         if let makeClient { setup.makeClient = makeClient }
         if let makeCloudClient { setup.makeCloudClient = makeCloudClient }
         return setup

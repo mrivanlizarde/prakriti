@@ -4,7 +4,7 @@ title: Privacy and students
 summary: What stays on this Mac, which recordings only models on this Mac may read, and how to protect students in a class.
 section: people
 order: 1
-keywords: [privacy, students, class, privacy lock, Serenity, local, cloud, Claude API, transcript, approve, cut, notifications, names, children, consent]
+keywords: [privacy, students, class, privacy lock, Serenity, local, cloud, Anthropic, OpenAI, Claude API, transcript, approve, cut, notifications, names, children, consent]
 related: [capture-the-best-video, reviewing-and-approving, models-and-api-keys]
 ---
 
@@ -25,9 +25,9 @@ recording on this Mac, and holds back anything a person has not checked.
 
 ## Which recordings only models on this Mac read
 
-A cloud model, such as the Claude API, reads only a talk in which everyone heard is named and has agreed to
+A cloud model, Anthropic or OpenAI, reads only a talk in which everyone heard is named and has agreed to
 cloud models, and nobody else appears or speaks. Everything else is only read by models on this Mac, even
-if a task is set to the Claude API: a class, a conversation, a test, a recording whose kind is still Not
+if a task is set to Anthropic or OpenAI: a class, a conversation, a test, a recording whose kind is still Not
 set, and any recording where other people appear or speak. Prakriti does not check who appears and speaks
 yet, so for now every recording is only read on this Mac. LM Studio does that task instead, and the
 inspector's Checks tab says why. Names are replaced before anything is sent. See

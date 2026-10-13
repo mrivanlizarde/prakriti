@@ -142,8 +142,11 @@ final class ProviderTests: XCTestCase {
 
     func testTheUnsafePathCannotBeWritten() throws {
         // A cloud client is never a LanguageModelClient, so it cannot be handed a ModelRequest.
-        XCTAssertFalse((ClaudeClient(model: "claude-opus-5-5", key: nil) as Any) is any LanguageModelClient)
+        XCTAssertFalse((AnthropicClient(model: "claude-opus-5-5", key: nil) as Any) is any LanguageModelClient)
         XCTAssertTrue(WritingSetup.standardClient(.claudeAPI, WritingSetup()) is NoCloudClient)
+        XCTAssertFalse((OpenAIClient(model: "gpt-test", key: nil) as Any) is any LanguageModelClient)
+        XCTAssertTrue(WritingSetup.standardClient(.openAI, WritingSetup()) is NoCloudClient)
+        XCTAssertTrue(WritingSetup.standardCloudClient(.openAI, WritingSetup()) is OpenAIClient)
         // CloudPayload is made in PrivacyLock.swift only.
         let sources = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appending(path: "Prakriti")
         let files = FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil)?.compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
@@ -194,8 +197,7 @@ final class ProviderTests: XCTestCase {
         let answer = Self.passingAnswer(input)
         StubProtocol.seen = []
         StubProtocol.handler = { _, path, _ in
-            (path == "/v1/messages" ? 200 : 404, ["stop_reason": "end_turn", "content": [["type": "text", "text": answer]],
-                                                  "usage": ["input_tokens": 1_000, "output_tokens": 300]])
+            (path == "/v1/messages" ? 200 : 404, Self.anthropicStream(answer))
         }
         defer { StubProtocol.handler = nil }
         var setup = WritingSetup()
@@ -203,7 +205,7 @@ final class ProviderTests: XCTestCase {
         setup.maxAttempts = 1
         setup.claudeKey = KeyStore.testing.read()
         setup.makeCloudClient = { _, setup in
-            var client = ClaudeClient(model: "claude-opus-5-5", key: setup.claudeKey)
+            var client = AnthropicClient(model: "claude-opus-5-5", key: setup.claudeKey)
             client.session = StubProtocol.session()
             return client
         }
@@ -230,10 +232,10 @@ final class ProviderTests: XCTestCase {
         addTeardownBlock { try? FileManager.default.removeItem(at: logs) }
         let log = AppLog(directory: logs)
         let span = "a sentence only someone who has not agreed said"
-        var client = ClaudeClient(model: "claude-opus-5-5", key: fakeKey)
+        var client = AnthropicClient(model: "claude-opus-5-5", key: fakeKey)
         client.session = StubProtocol.session()
         StubProtocol.seen = []
-        StubProtocol.handler = { _, _, _ in (200, ["stop_reason": "end_turn", "content": [["type": "text", "text": "{}"]]]) }
+        StubProtocol.handler = { _, _, _ in (200, Self.anthropicStream("{}")) }
         defer { StubProtocol.handler = nil }
         let locked = LockedCloudClient(inner: client, subject: LockSubject(kind: .talk, mentionsSerenity: false,
                                                                            people: PeopleFacts(checked: true, named: [Self.teacher(consent: true)]),
@@ -288,5 +290,343 @@ final class ProviderTests: XCTestCase {
         let folder = SnapshotRenderer.milestoneFolder()
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try? lines.joined(separator: "\n").appending("\n").write(to: folder.appending(path: "hardware-check.txt"), atomically: true, encoding: .utf8)
+    }
+}
+
+// MARK: - v2 part M5b: Anthropic and OpenAI (PLAN M5, checks 1 and 2 again)
+
+extension ProviderTests {
+    /// An Anthropic streamed answer, as server-sent events (claude-api reference, read 12 Oct).
+    static func anthropicStream(_ text: String, stop: String? = "end_turn", model: String = "claude-sonnet-5-5",
+                                input: Int = 1_000, output: Int = 300, error: String? = nil) -> String {
+        func event(_ name: String, _ object: [String: Any]) -> String {
+            "event: \(name)\ndata: " + String(decoding: try! JSONSerialization.data(withJSONObject: object), as: UTF8.self) + "\n\n"
+        }
+        var stream = event("message_start", ["type": "message_start", "message": ["id": "msg_1", "type": "message", "model": model, "usage": ["input_tokens": input, "output_tokens": 1]]])
+        stream += event("ping", ["type": "ping"])
+        stream += event("content_block_start", ["type": "content_block_start", "index": 0, "content_block": ["type": "text", "text": ""]])
+        let half = text.index(text.startIndex, offsetBy: text.count / 2)
+        for piece in [String(text[..<half]), String(text[half...])] where !piece.isEmpty {
+            stream += event("content_block_delta", ["type": "content_block_delta", "index": 0, "delta": ["type": "text_delta", "text": piece]])
+        }
+        stream += event("content_block_stop", ["type": "content_block_stop", "index": 0])
+        if let error { return stream + event("error", ["type": "error", "error": ["type": error, "message": "Overloaded"]]) }
+        if let stop {
+            stream += event("message_delta", ["type": "message_delta", "delta": ["stop_reason": stop], "usage": ["output_tokens": output]])
+        }
+        return stream + event("message_stop", ["type": "message_stop"])
+    }
+
+    /// An OpenAI Responses streamed answer (developers.openai.com, read 12 Oct).
+    static func openAIStream(_ text: String, refusal: String? = nil, incomplete: String? = nil, failed: Bool = false, completed: Bool = true) -> String {
+        func event(_ object: [String: Any]) -> String {
+            "event: \(object["type"] as? String ?? "")\ndata: " + String(decoding: try! JSONSerialization.data(withJSONObject: object), as: UTF8.self) + "\n\n"
+        }
+        var stream = event(["type": "response.created", "response": ["id": "resp_1", "status": "in_progress"]])
+        let half = text.index(text.startIndex, offsetBy: text.count / 2)
+        for piece in [String(text[..<half]), String(text[half...])] where !piece.isEmpty {
+            stream += event(["type": "response.output_text.delta", "item_id": "msg_1", "output_index": 0, "content_index": 0, "delta": piece])
+        }
+        if let refusal { stream += event(["type": "response.refusal.delta", "item_id": "msg_1", "output_index": 0, "content_index": 0, "delta": refusal]) }
+        if let incomplete {
+            return stream + event(["type": "response.incomplete", "response": ["id": "resp_1", "status": "incomplete", "incomplete_details": ["reason": incomplete],
+                                                                                 "usage": ["input_tokens": 900, "output_tokens": 32_000]]])
+        }
+        if failed { return stream + event(["type": "response.failed", "response": ["id": "resp_1", "status": "failed", "error": ["code": "server_error", "message": "Failed."]]]) }
+        if completed {
+            stream += event(["type": "response.completed", "response": ["id": "resp_1", "status": "completed", "model": "gpt-test",
+                                                                          "usage": ["input_tokens": 900, "output_tokens": 250, "output_tokens_details": ["reasoning_tokens": 40]]]])
+        }
+        return stream
+    }
+
+    static func payload(_ shape: ModelRequest.Shape = .writing) throws -> CloudPayload {
+        let subject = LockSubject(kind: .talk, mentionsSerenity: false, people: PeopleFacts(checked: true, named: [teacher(consent: true)]))
+        return try PrivacyLock.release(ModelRequest(system: "You write JSON.", user: "Asha Verlaine spoke about the breath.", shape: shape), for: subject)
+    }
+
+    // MARK: Check 1: the request shapes, through the real clients, answered on this Mac
+
+    func testTheAnthropicRequestHasTheCurrentShape() async throws {
+        StubProtocol.seen = []
+        StubProtocol.headers = []
+        StubProtocol.handler = { _, _, _ in (200, Self.anthropicStream("{\"ready\": true}")) }
+        defer { StubProtocol.handler = nil }
+        var client = AnthropicClient(model: "claude-sonnet-5-5", key: "sk-test-shape")
+        client.session = StubProtocol.session()
+        let reply = try await client.send(try Self.payload(.writing))
+        XCTAssertEqual(reply.text, "{\"ready\": true}", "the streamed pieces are joined in order")
+        XCTAssertEqual(reply.promptTokens, 1_000)
+        XCTAssertEqual(reply.completionTokens, 300)
+        XCTAssertEqual(try XCTUnwrap(reply.costUSD), 0.005, accuracy: 0.000_001, "1,000 read at $2 and 300 written at $10 per million")
+        let body = try XCTUnwrap(StubProtocol.seen.first?.body)
+        XCTAssertEqual(StubProtocol.seen.first?.path, "/v1/messages")
+        XCTAssertEqual(body["stream"] as? Bool, true)
+        XCTAssertNil(body["thinking"], "no thinking key: a disabled or budgeted setting is a 400 on current models (warning 34)")
+        XCTAssertNil(body["temperature"])
+        XCTAssertEqual(body["max_tokens"] as? Int, 64_000)
+        XCTAssertEqual((body["output_config"] as? [String: Any])?["effort"] as? String, "high", "writing thinks hard")
+        XCTAssertEqual(body["fallbacks"] as? String, "default")
+        let headers = try XCTUnwrap(StubProtocol.headers.first)
+        XCTAssertEqual(headers["anthropic-beta"], "server-side-fallback-2026-07-01")
+        XCTAssertEqual(headers["anthropic-version"], "2023-06-01")
+        XCTAssertEqual(headers["x-api-key"], "sk-test-shape", "the key goes in its header")
+        XCTAssertFalse(String(decoding: try JSONSerialization.data(withJSONObject: body), as: UTF8.self).contains("sk-test-shape"), "and never in the body")
+
+        // Tags think lightly; a model the reference does not list for fallbacks gets neither the field nor the header.
+        StubProtocol.seen = []
+        StubProtocol.headers = []
+        var haiku = AnthropicClient(model: "claude-haiku-5-5", key: "sk-test-shape")
+        haiku.session = StubProtocol.session()
+        _ = try await haiku.send(try Self.payload(.tags))
+        let tagsBody = try XCTUnwrap(StubProtocol.seen.first?.body)
+        XCTAssertEqual((tagsBody["output_config"] as? [String: Any])?["effort"] as? String, "low")
+        XCTAssertNil(tagsBody["fallbacks"])
+        XCTAssertNil(StubProtocol.headers.first?["anthropic-beta"])
+        for model in ["claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5", "claude-fable-5-1"] { XCTAssertTrue(AnthropicClient.usesFallbacks(model)) }
+        XCTAssertEqual(AnthropicClient.effort(for: .summary), "low")
+        XCTAssertEqual(AnthropicClient.effort(for: .check), "low")
+    }
+
+    func testTheOpenAIRequestTargetsResponsesAndStreams() async throws {
+        StubProtocol.seen = []
+        StubProtocol.headers = []
+        StubProtocol.handler = { _, _, _ in (200, Self.openAIStream("{\"ready\": true}")) }
+        defer { StubProtocol.handler = nil }
+        var client = OpenAIClient(model: "gpt-test", key: "sk-test-openai")
+        client.session = StubProtocol.session()
+        let reply = try await client.send(try Self.payload(.writing))
+        XCTAssertEqual(reply.text, "{\"ready\": true}")
+        XCTAssertEqual(reply.promptTokens, 900)
+        XCTAssertEqual(reply.completionTokens, 250)
+        XCTAssertEqual(reply.reasoningTokens, 40)
+        XCTAssertEqual(StubProtocol.seen.first?.method, "POST")
+        XCTAssertEqual(StubProtocol.seen.first?.path, "/v1/responses")
+        let body = try XCTUnwrap(StubProtocol.seen.first?.body)
+        XCTAssertEqual(body["stream"] as? Bool, true)
+        XCTAssertEqual(body["store"] as? Bool, false, "nothing kept on OpenAI's side")
+        XCTAssertEqual(body["model"] as? String, "gpt-test")
+        XCTAssertEqual(body["instructions"] as? String, "You write JSON.")
+        XCTAssertEqual(body["input"] as? String, "Asha Verlaine spoke about the breath.")
+        XCTAssertEqual(body["max_output_tokens"] as? Int, OpenAIClient.maxOutputTokens)
+        XCTAssertNil(body["messages"])
+        XCTAssertEqual(StubProtocol.headers.first?["Authorization"], "Bearer sk-test-openai")
+    }
+
+    // MARK: Check 1: a refusal, a cut-off answer and a refused key are failures
+
+    func testStreamedRefusalsAndCutOffAnswersAreFailures() async throws {
+        defer { StubProtocol.handler = nil }
+        func anthropic(_ stream: String, status: Int = 200) async -> ModelFailure? {
+            let error: [String: Any] = ["type": "error", "error": ["type": "authentication_error", "message": "invalid x-api-key"]]
+            StubProtocol.handler = { _, _, _ in status == 200 ? (200, stream as Any) : (status, error as Any) }
+            var client = AnthropicClient(model: "claude-opus-5-5", key: "sk-test")
+            client.session = StubProtocol.session()
+            do { _ = try await client.send(try Self.payload()); return nil } catch { return error as? ModelFailure }
+        }
+        let refused = await anthropic(Self.anthropicStream("I can't", stop: "refusal"))
+        XCTAssertEqual(refused?.kind, .refused)
+        XCTAssertEqual(refused?.retryable, false)
+        let got1 = await anthropic(Self.anthropicStream("{\"titles\": [", stop: "max_tokens"))
+        XCTAssertEqual(got1?.kind, .truncated)
+        let got2 = await anthropic(Self.anthropicStream("{}", stop: nil))
+        XCTAssertEqual(got2?.kind, .server, "a stream that ends without a stop reason")
+        let got3 = await anthropic(Self.anthropicStream("{}", error: "overloaded_error"))
+        XCTAssertEqual(got3?.reason, "Anthropic is busy. Try again later.")
+        let got4 = await anthropic(Self.anthropicStream("   "))
+        XCTAssertEqual(got4?.kind, .empty)
+        let rejected = await anthropic("", status: 401)
+        XCTAssertEqual(rejected?.kind, .keyRejected)
+        XCTAssertEqual(rejected?.reason, "Anthropic did not accept this key. Check it and save it again.")
+        XCTAssertFalse(rejected?.detail?.contains("sk-test") == true)
+
+        func openAI(_ stream: String) async -> ModelFailure? {
+            StubProtocol.handler = { _, _, _ in (200, stream) }
+            var client = OpenAIClient(model: "gpt-test", key: "sk-test")
+            client.session = StubProtocol.session()
+            do { _ = try await client.send(try Self.payload()); return nil } catch { return error as? ModelFailure }
+        }
+        let got5 = await openAI(Self.openAIStream("", refusal: "I can't help with that."))
+        XCTAssertEqual(got5?.kind, .refused)
+        let got6 = await openAI(Self.openAIStream("{\"titles\"", incomplete: "max_output_tokens"))
+        XCTAssertEqual(got6?.kind, .truncated)
+        let got7 = await openAI(Self.openAIStream("{}", incomplete: "content_filter"))
+        XCTAssertEqual(got7?.kind, .refused)
+        let got8 = await openAI(Self.openAIStream("{}", failed: true))
+        XCTAssertEqual(got8?.kind, .server)
+        let got9 = await openAI(Self.openAIStream("{}", completed: false))
+        XCTAssertEqual(got9?.kind, .server, "no response.completed")
+        let got10 = await openAI(Self.openAIStream(""))
+        XCTAssertEqual(got10?.kind, .empty)
+    }
+
+    // MARK: The model lists: only models this request shape works on
+
+    func testTheModelListsKeepOnlyModelsThatWork() async throws {
+        defer { StubProtocol.handler = nil }
+        StubProtocol.seen = []
+        StubProtocol.handler = { _, path, _ in
+            guard path == "/v1/models" else { return (404, [:]) }
+            let pages = StubProtocol.seen.count
+            if pages == 1 {
+                return (200, ["data": [["id": "claude-sonnet-5-5", "display_name": "Claude Sonnet 5.5", "capabilities": ["effort": ["supported": true]]],
+                                       ["id": "claude-haiku-4-5", "display_name": "Claude Haiku 4.5", "capabilities": ["effort": ["supported": false]]]],
+                              "has_more": true, "last_id": "claude-haiku-4-5"])
+            }
+            return (200, ["data": [["id": "claude-opus-5-5", "display_name": "Claude Opus 5.5", "capabilities": ["effort": ["supported": true]]],
+                                   ["id": "claude-sonnet-4-5", "display_name": "Claude Sonnet 4.5", "capabilities": ["effort": ["supported": false]]]],
+                          "has_more": false])
+        }
+        let anthropic = try await AnthropicClient.models(key: "sk-test", session: StubProtocol.session())
+        XCTAssertEqual(anthropic.map(\.id), ["claude-sonnet-5-5", "claude-opus-5-5"], "two pages read, models without effort left out")
+        XCTAssertEqual(anthropic.first?.name, "Claude Sonnet 5.5")
+        XCTAssertEqual(StubProtocol.seen.count, 2)
+        XCTAssertTrue(StubProtocol.seen.allSatisfy { $0.method == "GET" })
+
+        XCTAssertEqual(OpenAIClient.filter(["gpt-5.5", "text-embedding-3-large", "gpt-4o-realtime-preview", "tts-1", "o4-mini", "gpt-image-1",
+                                            "omni-moderation-latest", "gpt-5.6", "whisper-1", "gpt-4o-transcribe", "dall-e-3", "gpt-5.3-codex"]),
+                       ["o4-mini", "gpt-5.6", "gpt-5.5"])
+        StubProtocol.handler = { _, _, _ in (200, ["data": [["id": "gpt-5.5"], ["id": "tts-1"]]]) }
+        let listed = try await OpenAIClient.models(key: "sk-test", session: StubProtocol.session())
+        XCTAssertEqual(listed.map(\.id), ["gpt-5.5"])
+        StubProtocol.handler = { _, _, _ in (401, ["error": ["message": "Incorrect API key provided"]]) }
+        do {
+            _ = try await OpenAIClient.models(key: "sk-test", session: StubProtocol.session())
+            XCTFail("a refused key is a failure")
+        } catch let failure as ModelFailure {
+            XCTAssertEqual(failure.kind, .keyRejected)
+            XCTAssertEqual(failure.reason, "OpenAI did not accept this key. Check it and save it again.")
+        }
+    }
+
+    // MARK: Check 1: both keys from the test Keychain, never in the log
+
+    func testBothKeysComeFromTheTestKeychainAndNeverReachTheLog() async throws {
+        let model = AppModel(container: AppModel.inMemoryContainer(), paths: AppPaths(mode: .development), settings: .ephemeral(), log: AppLog(directory: nil))
+        XCTAssertEqual(model.keyStore(for: .claudeAPI)?.service, "studio.therowan.prakriti.app.tests.claude-api")
+        XCTAssertEqual(model.keyStore(for: .openAI)?.service, "studio.therowan.prakriti.app.tests.openai-api")
+        XCTAssertEqual(KeyStore.openAI.service, "studio.therowan.prakriti.app.openai-api")
+        XCTAssertNil(model.keyStore(for: .lmStudio))
+        let anthropicKey = "sk-ant-test-m5b-\(UUID().uuidString)"
+        let openAIKey = "sk-proj-test-m5b-\(UUID().uuidString)"
+        for store in [KeyStore.testing, KeyStore.testingOpenAI] { try? store.remove() }
+        addTeardownBlock { for store in [KeyStore.testing, KeyStore.testingOpenAI] { try? store.remove() } }
+        XCTAssertNil(model.saveKey(anthropicKey, for: .claudeAPI))
+        XCTAssertNil(model.saveKey(openAIKey, for: .openAI))
+        XCTAssertEqual(model.keysAdded, [.claudeAPI, .openAI])
+        model.settings.provider = [.writing: .openAI, .tagging: .claudeAPI, .summarizing: .lmStudio]
+        model.settings.openAIModel = "gpt-test"
+        let setup = model.runner.writingSetup()
+        XCTAssertEqual(setup.openAIKey, openAIKey)
+        XCTAssertEqual(setup.claudeKey, anthropicKey)
+        model.settings.provider = [.writing: .lmStudio, .tagging: .lmStudio, .summarizing: .lmStudio]
+        XCTAssertNil(model.runner.writingSetup().openAIKey, "read only when a task uses it")
+        XCTAssertNil(model.runner.writingSetup().claudeKey)
+
+        // A whole write: writing through OpenAI, tags and summary through Anthropic, every request through the lock.
+        let logs = FileManager.default.temporaryDirectory.appending(path: "prakriti-provider-log-\(UUID().uuidString)", directoryHint: .isDirectory)
+        addTeardownBlock { try? FileManager.default.removeItem(at: logs) }
+        let log = AppLog(directory: logs)
+        let input = try syntheticInput(people: PeopleFacts(checked: true, named: [Self.teacher(consent: true)]))
+        let answer = Self.passingAnswer(input)
+        StubProtocol.seen = []
+        StubProtocol.headers = []
+        StubProtocol.handler = { _, path, _ in
+            switch path {
+            case "/v1/responses": (200, Self.openAIStream(answer))
+            case "/v1/messages": (200, Self.anthropicStream("{\"tags\": [\"breath\", \"question\", \"practice\"]}"))
+            default: (404, [:])
+            }
+        }
+        defer { StubProtocol.handler = nil }
+        var writing = setup
+        writing.maxAttempts = 1
+        writing.makeCloudClient = { provider, setup in
+            if provider == .openAI {
+                var client = OpenAIClient(model: setup.openAIModel, key: setup.openAIKey)
+                client.session = StubProtocol.session()
+                return client
+            }
+            var client = AnthropicClient(model: setup.claudeModel, key: setup.claudeKey)
+            client.session = StubProtocol.session()
+            return client
+        }
+        writing.makeClient = { provider, _ in ScriptedClient(provider, limit: 200_000, replies: [.success("{\"summary\": \"A talk about a question.\"}")]) }
+        let outcome = try await Writer(setup: writing, log: log).write(input)
+        XCTAssertNotNil(outcome.package, outcome.problem ?? "")
+        XCTAssertEqual(outcome.package?.writingProvider, ModelProvider.openAI.rawValue)
+        XCTAssertEqual(StubProtocol.seen.filter { $0.path == "/v1/responses" }.count, 1)
+        XCTAssertEqual(StubProtocol.seen.filter { $0.path == "/v1/messages" }.count, 1)
+        for request in StubProtocol.seen {
+            let text = String(decoding: try JSONSerialization.data(withJSONObject: request.body ?? [:]), as: UTF8.self)
+            XCTAssertFalse(text.contains("Serenity"), "the prompt's names are replaced before sending")
+            XCTAssertFalse(text.contains(openAIKey) || text.contains(anthropicKey), "no key in any body")
+        }
+        let logText = try FileManager.default.contentsOfDirectory(at: logs, includingPropertiesForKeys: nil)
+            .map { try String(contentsOf: $0, encoding: .utf8) }.joined()
+        XCTAssertTrue(logText.contains("(OpenAI)"), logText)
+        XCTAssertFalse(logText.contains(openAIKey) || logText.contains(anthropicKey), "no key in the log")
+        XCTAssertFalse(logText.contains("sk-"), "nor anything shaped like one")
+
+        model.removeKey(for: .openAI)
+        model.removeKey(for: .claudeAPI)
+        XCTAssertEqual(model.keysAdded, [])
+        XCTAssertNil(KeyStore.testingOpenAI.read())
+    }
+
+    // MARK: Check 2 again: the lock in front of both providers, counted in HTTP requests
+
+    func testTheLockCountsRequestsToBothProviders() async throws {
+        defer { StubProtocol.handler = nil }
+        for provider in ModelProvider.cloud {
+            func requests(kind: RecordingKind = .talk, people: PeopleFacts) async throws -> Int {
+                let input = try syntheticInput(kind: kind, people: people)
+                let answer = Self.passingAnswer(input)
+                StubProtocol.seen = []
+                StubProtocol.handler = { _, path, _ in path == "/v1/responses" ? (200, Self.openAIStream(answer)) : (200, Self.anthropicStream(answer)) }
+                var setup = WritingSetup()
+                setup.providers = [.writing: provider, .tagging: .lmStudio, .summarizing: .lmStudio]
+                setup.maxAttempts = 1
+                setup.claudeKey = "sk-test-lock"
+                setup.openAIKey = "sk-test-lock"
+                setup.openAIModel = "gpt-test"
+                setup.makeClient = { _, _ in ScriptedClient(.lmStudio, limit: 200_000, replies: [.success(answer)]) }
+                setup.makeCloudClient = { provider, setup in
+                    var client: any CloudModelClient
+                    if provider == .openAI {
+                        var made = OpenAIClient(model: setup.openAIModel, key: setup.openAIKey)
+                        made.session = StubProtocol.session()
+                        client = made
+                    } else {
+                        var made = AnthropicClient(model: setup.claudeModel, key: setup.claudeKey)
+                        made.session = StubProtocol.session()
+                        client = made
+                    }
+                    return client
+                }
+                _ = try await Writer(setup: setup, log: nil).write(input)
+                return StubProtocol.seen.count
+            }
+            let checked = PeopleFacts(checked: true, named: [Self.teacher(consent: true)])
+            let counts = [
+                ("a class", try await requests(kind: .lesson, people: checked), 0),
+                ("people not checked", try await requests(people: .notChecked), 0),
+                ("a person without cloud consent", try await requests(people: PeopleFacts(checked: true, named: [Self.teacher(consent: false)])), 0),
+                ("an unnamed person present", try await requests(people: PeopleFacts(checked: true, named: [Self.teacher(consent: true)], unnamedSeen: 1)), 0),
+                ("an unnamed voice", try await requests(people: PeopleFacts(checked: true, named: [Self.teacher(consent: true)], unnamedHeard: 1)), 0),
+                ("checked, one consenting speaker", try await requests(people: checked), 1),
+            ]
+            var lines: [String] = []
+            for (label, measured, expected) in counts {
+                XCTAssertEqual(measured, expected, "\(provider.title): \(label)")
+                lines.append("\(provider.title), \(label): \(measured) requests (expected \(expected))")
+            }
+            let folder = SnapshotRenderer.milestoneFolder()
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let file = folder.appending(path: "lock-counts.txt")
+            let before = (try? String(contentsOf: file, encoding: .utf8)) ?? ""
+            let kept = before.split(separator: "\n").filter { !$0.hasPrefix(provider.title + ",") }.joined(separator: "\n")
+            try? ((kept.isEmpty ? "" : kept + "\n") + lines.joined(separator: "\n") + "\n").write(to: file, atomically: true, encoding: .utf8)
+        }
     }
 }

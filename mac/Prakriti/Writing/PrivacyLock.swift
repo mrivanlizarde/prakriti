@@ -104,6 +104,10 @@ enum PrivacyLock {
     static let unnamed = "someone in it is not named"
     static let notAgreed = "someone heard in it has not agreed to cloud models"
 
+    /// The lock in plain sentences, for Settings, Models and Settings, Privacy. True of what the build does:
+    /// until the people check exists (part M6), no recording has run it, so nothing is sent.
+    static let settingsLine = "A cloud model reads only a talk in which everyone heard is named and has agreed to cloud models, and nobody else appears or speaks. Classes, and recordings where other people appear or speak, are only read by models on this Mac. Prakriti does not check who appears and speaks yet, so for now every recording is only read on this Mac. If a task is set to Anthropic or OpenAI, LM Studio does it instead, and the recording says so. Before anything is sent, names are replaced and the text is checked again."
+
     static func kindReason(_ kind: RecordingKind) -> String? {
         switch kind {
         case .talk: nil

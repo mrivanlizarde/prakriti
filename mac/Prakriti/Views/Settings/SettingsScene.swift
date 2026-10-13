@@ -4,7 +4,7 @@ import SwiftUI
 
 /// The Settings window (Command-comma, v2 part M3a, design spec 3.13): a standard Settings scene, one
 /// pane at a time, about 760 pt wide. General (open at login, the menu bar, notifications, Pause All, the
-/// welcome), Outputs (v1's Outputs screen as it was), Models (v1's Models screen until part M5), Privacy
+/// welcome), Outputs (v1's Outputs screen as it was), Models (ModelsPane.swift, v2 part M5b), Privacy
 /// (the rules that keep recordings and people safe), Advanced (where files live). Which outputs each
 /// folder makes stays on the folder (START_HERE, Mac warning 28): select it under Sources.
 struct SettingsWindow: View {
@@ -37,18 +37,20 @@ struct SettingsWindow: View {
 /// One pane, at its own size.
 struct SettingsPaneView: View {
     let pane: SettingsPane
+    /// Snapshots only: a taller pane than the window, to draw every section.
+    var height: CGFloat? = nil
 
     var body: some View {
         Group {
             switch pane {
             case .general: GeneralPane()
             case .outputs: OutputsView()
-            case .models: ModelsView()
+            case .models: ModelsPane()
             case .privacy: PrivacyPane()
             case .advanced: AdvancedPane()
             }
         }
-        .frame(width: SettingsWindow.width, height: SettingsWindow.height(pane))
+        .frame(width: SettingsWindow.width, height: height ?? SettingsWindow.height(pane))
         // No field takes the keys when a pane opens: macOS gave the first one (Outputs' Show name) the focus,
         // which scrolled the pane past its first lines, and a key pressed would have typed into it (measured
         // in the real window, v2 part M3a).
@@ -166,9 +168,9 @@ struct PrivacyPane: View {
         Form {
             Section {
                 PrivacyRule(symbol: "lock.fill",
-                            text: "Only a recording marked as a talk can be read by the Claude API. A class, a conversation, a test, a recording not marked yet, or one whose transcript says \u{201C}Serenity\u{201D} is only read by models on this Mac. If a task is set to the Claude API, LM Studio does it for these recordings instead, and the recording says so.")
+                            text: PrivacyLock.settingsLine)
                 PrivacyRule(symbol: "externaldrive",
-                            text: "Recordings never leave this Mac. With a Claude API key, only the words of a transcript are sent, and never for the recordings above.")
+                            text: "Recordings never leave this Mac. With an Anthropic or OpenAI key, only the words of a transcript are sent, names replaced, and never for the recordings above.")
                 PrivacyRule(symbol: "person.2",
                             text: "Only a talk with one teacher speaking can be approved, and a class is never made ready to upload.")
                 PrivacyRule(symbol: "bell",

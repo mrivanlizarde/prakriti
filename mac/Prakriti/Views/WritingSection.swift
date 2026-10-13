@@ -182,16 +182,17 @@ struct WritingSection: View {
     private func lockLine(_ written: WrittenPackage) -> String? {
         guard let reason = written.lockReason else { return nil }
         if written.lockedTasks.isEmpty { return "Privacy lock: \(reason), so only models on this Mac read it." }
-        return "Privacy lock: \(reason), so LM Studio did the \(written.lockedTasks.joined(separator: " and ")) set to the Claude API. Nothing was sent to Anthropic."
+        return "Privacy lock: \(reason), so LM Studio did the \(written.lockedTasks.joined(separator: " and ")) set to a cloud model. Nothing was sent off this Mac."
     }
 
     /// Before anything is written: when the lock will change a choice, say so now.
     private var pendingLockLine: String? {
         guard recording.isPrivacyLocked else { return nil }
-        let cloud = ModelTask.allCases.filter { !(model.settings.provider[$0] ?? .lmStudio).isLocal }
+        let cloud = ModelTask.built.filter { !(model.settings.provider[$0] ?? .lmStudio).isLocal }
         guard !cloud.isEmpty else { return nil }
         let reason = PrivacyLock.decide(recording.lockSubject).reason ?? "it is privacy locked"
-        return "Privacy lock: \(reason), so LM Studio will do the \(cloud.map { $0.title.lowercased() }.joined(separator: " and ")) set to the Claude API."
+        let providers = Array(Set(cloud.map { (model.settings.provider[$0] ?? .lmStudio).title })).sorted().joined(separator: " and ")
+        return "Privacy lock: \(reason), so LM Studio will do the \(cloud.map { $0.title.lowercased() }.joined(separator: " and ")) set to \(providers)."
     }
 
     /// Each caption with its platform and its pull quote, or the numbered plain captions written before 11 Oct.

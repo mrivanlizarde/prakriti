@@ -163,6 +163,37 @@ final class SnapshotTests: XCTestCase {
                                                  appleIntelligenceUnavailable: "Apple Intelligence is turned off in System Settings, so Apple's on-device model cannot be used.")
                 try renderer.renderSettings(model: small, pane: .models, appearance: appearance, name: "10-settings-models-16gb-\(scheme)")
                 written.append("10-settings-models-16gb-\(scheme)")
+                // v2 part M5b: the whole Models pane with the cloud keys absent, saved (lists read) and refused.
+                let keyStates: [(String, (AppModel) -> Void)] = [
+                    ("keys-absent", { _ in }),
+                    ("keys-saved", { model in
+                        model.keysAdded = [.claudeAPI, .openAI]
+                        model.cloudModelLists[.claudeAPI] = CloudModelList(state: .loaded, models: [
+                            CloudModel(id: "claude-sonnet-5-5", name: "Claude Sonnet 5.5"), CloudModel(id: "claude-opus-5-5", name: "Claude Opus 5.5"),
+                            CloudModel(id: "claude-haiku-5-5", name: "Claude Haiku 5.5")])
+                        model.cloudModelLists[.openAI] = CloudModelList(state: .loaded, models: [CloudModel(id: "gpt-5.6", name: "gpt-5.6"), CloudModel(id: "gpt-5.5", name: "gpt-5.5")])
+                        model.settings.openAIModel = "gpt-5.6"
+                        model.settings.provider[.writing] = .claudeAPI
+                        let tested = Fixtures.now.addingTimeInterval(-300)
+                        model.providerChecks[.claudeAPI] = ProviderCheck(state: .ok, line: "claude-sonnet-5-5 answered in 2 s, cost less than one cent. The key in the Keychain works.", at: tested)
+                        model.providerChecks[.openAI] = ProviderCheck(state: .ok, line: "gpt-5.6 answered in 3 s. The key in the Keychain works.", at: tested)
+                    }),
+                    ("keys-rejected", { model in
+                        model.keysAdded = [.claudeAPI, .openAI]
+                        model.keysRejected = [.claudeAPI, .openAI]
+                        model.cloudModelLists[.claudeAPI] = CloudModelList(state: .rejected, line: "Anthropic did not accept this key. Check it and save it again.")
+                        model.cloudModelLists[.openAI] = CloudModelList(state: .rejected, line: "OpenAI did not accept this key. Check it and save it again.")
+                        let tested = Fixtures.now.addingTimeInterval(-300)
+                        model.providerChecks[.claudeAPI] = ProviderCheck(state: .notSetUp, line: "Anthropic did not accept this key. Check it and save it again.", at: tested, keyRejected: true)
+                        model.providerChecks[.openAI] = ProviderCheck(state: .notSetUp, line: "OpenAI did not accept this key. Check it and save it again.", at: tested, keyRejected: true)
+                    }),
+                ]
+                for (state, prepare) in keyStates {
+                    let keys = Fixtures.model()
+                    prepare(keys)
+                    try renderer.renderSettings(model: keys, pane: .models, appearance: appearance, name: "10-settings-models-\(state)-\(scheme)", height: 2_600)
+                    written.append("10-settings-models-\(state)-\(scheme)")
+                }
                 // The Activity window (v2 part M4a): Now with a make running and one waiting, the same paused, Now
                 // empty, Finished and Log.
                 let activities: [(String, ActivityTab, (AppModel) -> Void)] = [
@@ -227,7 +258,7 @@ final class SnapshotTests: XCTestCase {
         }
         if only == "library" {
             print("Snapshots written to \(outputFolder.path): \(written.count) library and Settings pictures")
-            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2 + 2)
+            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2 + 2 + 2 + 3 * 2)
             return
         }
 
@@ -314,7 +345,7 @@ final class SnapshotTests: XCTestCase {
 
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + 2 + viewerCount)
+        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + 2 + 3 * 2 + viewerCount)
     }
 
     /// v2 part M2a: the Help window, open at every article this build shows, in light and dark, with a

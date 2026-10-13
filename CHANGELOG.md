@@ -5,6 +5,28 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-12, Mon: v2 part M5b, Anthropic and OpenAI
+
+- **OpenAI joins Anthropic as a cloud provider, each with its own key in the Keychain, a model pop-up filled from the
+  company's own list, and a test button.** Why: REQUEST item 5 ("space for an OpenAI or Anthropic API in case a user
+  does not have a computer powerful enough"); a pop-up from the live list means no model id goes stale in the code.
+- **Anthropic is spoken to in the current request shape: streamed, no thinking field, effort set per task, and the
+  server's own fallback on a refusal for the models that support it.** Why: v1's body sent `thinking: adaptive` and a
+  non-streamed call; on current models an explicit thinking setting can be a 400, effort defaults to `medium` on Opus
+  5.5 so it must be set, and a silent non-streamed call hung for 10 minutes twice. Refusals and cut-off answers are
+  failures, never results.
+- **Only models that accept this request shape are offered.** Why: `/v1/models` also lists older Claude models that
+  reject `output_config.effort`; choosing one would have made every call a 400.
+- **Both providers sit behind the M5a lock, proved again in HTTP requests: a class, people not checked, someone who
+  has not agreed, or anyone unnamed sends 0 requests to either provider; a checked talk with one consenting speaker
+  sends 1.** Why: the plan ships the lock before any new provider, so OpenAI never ran under v1's weaker rule.
+- **Anthropic's default model is Claude Sonnet 5.5, and each Anthropic call's cost is measured and shown.** Why:
+  Ivan's 12 Oct note (PLAN section 11) and his recorded cost lever (Sonnet about $0.13 a call, Opus about $0.83).
+- **Settings, Models lists Planning the edit and Choosing moments, greyed as "Not built yet"; welcome panel 5 gains
+  "Choose where models write." with this Mac's verdict.** Why: the design spec's Models pane and panel 5; greyed, not
+  hidden, as Mac warning 32 asks for things that cannot run yet.
+- **Not installed, for the same reason as M5a** (see BUILD-LOG "v2 part M5b", For Ivan).
+
 ## 2026-10-12, Mon: v2 part M5a, the new privacy lock
 
 - **A cloud model now reads only a talk whose people check has run and found everyone heard named and agreed to

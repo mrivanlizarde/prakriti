@@ -84,3 +84,19 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
 - Settings, Models has "This Mac": the chip, memory and verdict ("Apple M5 Pro, 64 GB. This Mac can run the writing
   model."), and Apple Intelligence's state. The welcome panel 5 line is part M5b's.
 - Not built: OpenAI, Anthropic's current request shape, model lists from each provider (M5b); the people check (M6).
+
+## Built in v2 part M5b (Mon 12 Oct 2026)
+
+- Providers are named Anthropic and OpenAI in the app (the stored value for Anthropic is still `claudeAPI`, and its
+  Keychain item keeps v1's service name, so an existing key is still found). OpenAI's key is its own item,
+  `studio.therowan.prakriti.app.openai-api`.
+- Each key row: a field and Save in Keychain; once saved only "Saved in your Keychain." with Remove Key; refused (401
+  or 403) shows "Anthropic did not accept this key. Check it and save it again." with the field back.
+- Model pop-ups are filled from each provider's `GET /v1/models` when a key is saved or the pane opens, and Read the
+  List Again. Anthropic keeps only models whose `capabilities.effort.supported` is true; OpenAI's list is filtered by
+  name to text models. Anthropic's default is Claude Sonnet 5.5 (Ivan, 12 Oct).
+- Costs: the article now says that the Anthropic test and each writing step's log line show what the call cost
+  (from tokens and the published prices in `CloudPricing`). OpenAI calls show tokens only.
+- Tasks lists Planning the edit and Choosing moments, greyed with "Not built yet." The article still lists them only
+  under `:::requires style` and `:::requires merge`.
+- Welcome panel 5 has "Choose where models write." with this Mac's verdict and Open Settings, Models.

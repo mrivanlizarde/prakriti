@@ -40,10 +40,12 @@ final class SnapshotRenderer {
     /// One pane of the Settings window (v2 part M3a) at the size it opens at. The Settings window's own
     /// toolbar of panes is the system's and is judged in the real window (`make look`); the pane is what
     /// the bitmap shows.
-    func renderSettings(model: AppModel, pane: SettingsPane, appearance: NSAppearance.Name, name: String) throws {
+    /// `height` draws the pane taller than its window, to show every section at once (v2 part M5b: the Models
+    /// pane's key rows sit below the first screen).
+    func renderSettings(model: AppModel, pane: SettingsPane, appearance: NSAppearance.Name, name: String, height: CGFloat? = nil) throws {
         model.settingsPane = pane
-        try render(root: AnyView(SettingsPaneView(pane: pane).environment(model).modelContainer(model.container)),
-                   sidebar: nil, size: CGSize(width: SettingsWindow.width, height: SettingsWindow.height(pane)),
+        try render(root: AnyView(SettingsPaneView(pane: pane, height: height).environment(model).modelContainer(model.container)),
+                   sidebar: nil, size: CGSize(width: SettingsWindow.width, height: height ?? SettingsWindow.height(pane)),
                    title: pane.title, appearance: appearance, name: name, titleBand: 32)
     }
 

@@ -1,10 +1,10 @@
 ---
 id: models-and-api-keys
 title: Models and API keys
-summary: Which steps use a language model, how to choose one for your Mac, how to add a Claude API key, and what is sent.
+summary: Which steps use a language model, how to choose one for your Mac, how to add an Anthropic or OpenAI key, and what is sent.
 section: settings
 order: 1
-keywords: [models, LM Studio, Qwen, Apple on-device, Apple Intelligence, Ollama, Anthropic, Claude API, API key, Keychain, memory, smaller Mac, This Mac, chip, hardware, privacy lock, names replaced, data retention, cost, writing, tagging, summarizing, tasks]
+keywords: [models, LM Studio, Qwen, Apple on-device, Apple Intelligence, Ollama, Anthropic, Claude, Claude API, OpenAI, GPT, API key, model list, Keychain, memory, smaller Mac, This Mac, chip, hardware, privacy lock, names replaced, data retention, cost, writing, tagging, summarizing, tasks]
 related: [people-and-privacy, outputs, troubleshooting]
 ---
 
@@ -50,11 +50,13 @@ These always run on this Mac, whatever you choose:
   transcript is read in parts for those, and is too long for writing.
 - **Ollama, on this Mac.** Another way to run models locally, if you already use it. Name a model
   Ollama has downloaded to use it.
-- **Claude API (Anthropic).** The model runs on Anthropic's computers, using your own API key. Fast on
-  any Mac. Text is sent to Anthropic, as described below.
-:::requires cloudProviders
-- **OpenAI API.** The model runs on OpenAI's computers, using your own API key. Text is sent to OpenAI.
-:::
+- **Anthropic.** Claude runs on Anthropic's computers, using your own API key. Fast on any Mac. Text is
+  sent to Anthropic, as described below. Claude Sonnet 5.5 is chosen at first: it costs less per call.
+  Claude Opus 5.5 is more careful and costs about twice as much.
+- **OpenAI.** The model runs on OpenAI's computers, using your own API key. Text is sent to OpenAI.
+
+For Anthropic and OpenAI, the Model pop-up lists the models from the company's own list that work with
+Prakriti, read when you save a key. Click Read the List Again when a new model comes out.
 
 ## Which choice fits your Mac
 
@@ -63,36 +65,40 @@ Settings, Models shows your Mac's chip and memory under This Mac, with a verdict
 only: Prakriti never switches to a cloud model by itself.
 
 - **64 GB or more:** LM Studio for every task. Nothing leaves your Mac.
-- **Less than 64 GB:** writing a long recording needs the Claude API, or it waits for a model on this
-  Mac. Apple on-device can do tags and summaries.
+- **Less than 64 GB:** writing a long recording needs an Anthropic or OpenAI key, or it waits for a
+  model on this Mac. Apple on-device can do tags and summaries.
 
 Transcribing works on any Mac with Apple silicon. On a smaller Mac it takes longer.
 
-## Add a Claude API key
+## Add an Anthropic or OpenAI key
 
 ### Get a key
 
-Sign in at platform.claude.com, choose Settings > API keys, click Create key, and copy it. Anthropic
-shows the key once. If you lose it, make a new one.
+For Anthropic, sign in at platform.claude.com, choose Settings > API keys, click Create key, and copy it.
+Anthropic shows the key once. If you lose it, make a new one.
 
-:::requires cloudProviders
 For OpenAI, sign in at platform.openai.com, open API keys, click Create new secret key, and copy it. Add
 a payment method under Billing first. A key does not work until the account has credit.
-:::
 
 ### Add it to Prakriti
 
 1. Choose Prakriti > Settings (Command-comma), then click Models. [Show Me](prakriti://show/settings/models)
-2. Under Claude API, paste the key, then click Save in Keychain.
-3. Click Test Claude API and read what it says.
-4. Under Tasks, choose Claude API for the tasks you want it to do.
+2. Under Anthropic or OpenAI, paste the key, then click Save in Keychain. The key row then says "Saved in
+   your Keychain", and the Model pop-up fills with the company's models.
+3. Choose a model, then click Test Anthropic or Test OpenAI and read what it says. The test sends one
+   short sentence, never a recording, and for Anthropic it shows what the call cost.
+4. Under Tasks, choose Anthropic or OpenAI for the tasks you want it to do.
 
-The key is kept in your login keychain, never in a file or in Prakriti's log. To remove it, click Remove
-Key. To stop it working everywhere, delete it on Anthropic's site too.
+If the company refuses the key, the key row says so, for example "Anthropic did not accept this key.
+Check it and save it again." Paste a new one in its place.
+
+The key is kept in your login keychain, never in a file or in Prakriti's log, and is never shown again
+after you save it. To remove it, click Remove Key. To stop it working everywhere, delete it on the
+company's site too.
 
 ## What is sent, and what is not
 
-When a task uses the Claude API, Prakriti sends the transcript's lines, with their times, and the
+When a task uses Anthropic or OpenAI, Prakriti sends the transcript's lines, with their times, and the
 instructions for the task. It never sends sound, video or pictures.
 
 **The privacy lock.** A cloud model reads only a talk in which everyone heard is named and has agreed to
@@ -113,12 +119,15 @@ they are flagged for breaking its usage policy, and keeps anything you send as f
 
 :::requires cloudProviders
 OpenAI does not use what you send through the API to train its models unless you choose to share it.
-It keeps requests for up to 30 days to watch for misuse.
+It keeps requests for up to 30 days to watch for misuse. Prakriti asks OpenAI not to store the answer
+for later use.
 :::
 
 Read the company's current policy before you rely on it.
 
 ## Cost
 
-Anthropic bills you for each request, by how much text is read and written. A longer recording costs
-more. Set a monthly spending limit in your account on Anthropic's site.
+Anthropic and OpenAI bill you for each request, by how much text is read and written. A longer
+recording costs more. Prakriti shows what each Anthropic call cost, in the test's line and in the log,
+so you can compare Claude Sonnet 5.5 with Claude Opus 5.5. Set a monthly spending limit in your account
+on each company's site.

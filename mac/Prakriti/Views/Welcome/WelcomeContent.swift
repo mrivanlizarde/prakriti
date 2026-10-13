@@ -38,6 +38,8 @@ enum WelcomeAction: String, Sendable, Equatable {
     case notifications
     /// Open Help: the Help window.
     case openHelp
+    /// Settings, Models, with this Mac's verdict as the row's status (v2 part M5b).
+    case models
 }
 
 /// One row: a symbol, a headline and a sentence, read as one paragraph.
@@ -261,7 +263,7 @@ enum WelcomeContent {
                            "Notices never show a file name or a title, because they appear on the lock screen.",
                            unless: [.people]),
                 WelcomeRow("cloud", symbol: "lock",
-                           "Recordings never leave this Mac. With a Claude API key, only words are sent, and never from a class or a recording that names Serenity.",
+                           "Recordings never leave this Mac. With an Anthropic or OpenAI key, only words are sent, and only for a talk whose people have been checked. Until Prakriti checks who appears, nothing is sent.",
                            unless: [.cloudProviders, .people]),
                 WelcomeRow("cloud-v2", symbol: "lock",
                            "Recordings never leave this Mac. With an Anthropic or OpenAI key, only words are sent, and never for a class or a recording where other people appear.",
@@ -270,7 +272,9 @@ enum WelcomeContent {
             helpArticle: "people-and-privacy"),
 
         // Panel 5: three things to set now, each optional. The notification ask lives here, after a
-        // reason, never at launch (docs/v2/design-spec.md 4.2). Where models run joins with M5b.
+        // reason, never at launch (docs/v2/design-spec.md 4.2). Where models write, with this Mac's verdict,
+        // joined in M5b as a button to Settings, Models rather than the spec's pop-up: one pop-up for every
+        // task would set tasks behind Ivan's back, and the lock decides per recording anyway.
         WelcomePanel(
             id: "start", symbol: "checklist", title: "Get Started",
             lines: [WelcomeText("Each of these is optional and can be changed later.")],
@@ -282,6 +286,9 @@ enum WelcomeContent {
                 WelcomeRow("notifications", symbol: "bell", headline: "Get a notice when something needs you.",
                            "A notice says when a recording is waiting for your yes, needs a decision or could not finish.",
                            action: .notifications),
+                WelcomeRow("models", symbol: "cpu", headline: "Choose where models write.",
+                           "This Mac writes by itself when it has the memory. An Anthropic or OpenAI key can do the writing instead, only for recordings the privacy lock lets out.",
+                           requires: [.cloudProviders], action: .models),
                 WelcomeRow("help", symbol: "questionmark.circle", headline: "Find help at any time.",
                            "Choose Help > Prakriti Help, or type in the Help menu's search field.",
                            action: .openHelp),
