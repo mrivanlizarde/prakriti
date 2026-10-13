@@ -333,7 +333,15 @@ final class AppModel {
                 }
             }
             // The People overlay on (v2 part M6d), over the test pattern, with the sample talk's made-up boxes.
-            if launch.peopleOverlay { model.viewer.showsPeople = true }
+            // Its corner face set to Hide Face, so the capture shows the dashed box too (fixed 13 Oct: the first captures had
+            // only the solid one, and the hidden-face drawing was never looked at).
+            if launch.peopleOverlay {
+                let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
+                if let ready = all.sorted(by: Recording.newestFirst).first(where: { $0.status == .readyForYourYes }) {
+                    Fixtures.showPeopleOverlay(model, on: ready)
+                }
+                model.viewer.showsPeople = true
+            }
             if launch.quickHelp {
                 model.quickHelp.isOn = true
                 model.quickHelp.show("Choose what plays: the Original as recorded, the Podcast episode, or the Podcast-ready episode. Video and Shorts are not made yet.",

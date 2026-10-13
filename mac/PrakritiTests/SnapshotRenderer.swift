@@ -256,8 +256,9 @@ final class SnapshotRenderer {
     /// the PNG cannot show is the glass material itself; open the app to see that.
     private func composite(frameView: NSView, window: NSWindow, sidebar drawing: SidebarDrawing?, inspector: Standalone? = nil) throws -> NSBitmapImageRep {
         let bounds = frameView.bounds
-        let base = try XCTUnwrap(frameView.bitmapImageRepForCachingDisplay(in: bounds))
-        frameView.cacheDisplay(in: bounds, to: base)
+        let cached = try XCTUnwrap(frameView.bitmapImageRepForCachingDisplay(in: bounds))
+        frameView.cacheDisplay(in: bounds, to: cached)
+        let base = try drawLayersAroundPlatformViews(in: frameView, over: cached)
         guard let drawing, let sidebar = firstView(in: frameView, where: { $0.contains("SidebarStyleContext") }),
               let baseImage = base.cgImage else { return base }
 
@@ -304,6 +305,77 @@ final class SnapshotRenderer {
         }
         let out = NSBitmapImageRep(cgImage: try XCTUnwrap(ctx.makeImage()))
         out.size = bounds.size
+        return out
+    }
+
+    /// Once SwiftUI hosts the Viewer's player (an AppKit view), what it draws around that view (the picture's black canvas
+    /// under it; the People overlay and the picture's toggles over it, v2 part M6d) lives in loose layers of their own,
+    /// ordered around the view's layer so the screen composites them in place. `cacheDisplay` draws views, not those loose
+    /// layers, so until 13 Oct every Viewer snapshot left the picture transparent (it looked black in a dark viewer and
+    /// white in a light one) with no boxes, labels or People toggle, while the real window showed them. Each such layer is
+    /// drawn here with `render(in:)`: those under the view first, then the cached picture (transparent where they are),
+    /// then those over it, in order. Two kinds are not drawn: a view's own backing layer (its view is already in the
+    /// cached picture) and a backdrop layer (a material, which only the screen's compositor fills); the label capsules'
+    /// material and the toggle's glass are therefore only in the real window (`make look`).
+    private func drawLayersAroundPlatformViews(in root: NSView, over rep: NSBitmapImageRep) throws -> NSBitmapImageRep {
+        func drawable(_ layer: CALayer) -> Bool {
+            let kind = String(describing: type(of: layer))
+            return !layer.isHidden && layer.opacity > 0 && kind != "NSViewBackingLayer" && kind != "CABackdropLayer"
+        }
+        var below: [CALayer] = [], above: [CALayer] = []
+        // Only around the Viewer's player: tried around every hosted view, it drew some layers a second time (the Activity
+        // window's grey pending steps came out black) and lost the main window's toolbar items in dark, 13 Oct.
+        for host in views(in: root, where: { $0.hasPrefix("AppKitPlatformViewHost") && $0.contains("ViewerPlayerView") }) {
+            guard let hostLayer = host.layer, let parent = hostLayer.superlayer, let siblings = parent.sublayers,
+                  let index = siblings.firstIndex(where: { $0 === hostLayer }) else { continue }
+            below += siblings[..<index].filter(drawable)
+            above += siblings[(index + 1)...].filter(drawable)
+        }
+        // A Liquid Glass control (the People toggle) keeps its symbol and word in layers the glass shows through a portal,
+        // which `render(in:)` skips; so for glass only the layers that hold drawn content (the symbol's image, the word's
+        // text) are drawn, each where it sits. The glass itself is not drawn.
+        func isGlass(_ layer: CALayer) -> Bool {
+            String(describing: type(of: layer)) == "SDFLayer" || (layer.sublayers ?? []).contains(where: isGlass)
+        }
+        func drawnContent(_ layer: CALayer) -> [CALayer] {
+            guard !layer.isHidden, layer.opacity > 0, String(describing: type(of: layer)) != "CABackdropLayer" else { return [] }
+            return (layer.contents != nil ? [layer] : []) + (layer.sublayers ?? []).flatMap(drawnContent)
+        }
+        above = above.flatMap { isGlass($0) ? drawnContent($0) : [$0] }
+        below = below.flatMap { isGlass($0) ? drawnContent($0) : [$0] }
+        guard !(above.isEmpty && below.isEmpty), let rootLayer = root.layer, let base = rep.cgImage else { return rep }
+        let scale = CGFloat(rep.pixelsWide) / root.bounds.width
+        let space = CGColorSpace(name: CGColorSpace.sRGB)!
+        let info = CGImageAlphaInfo.premultipliedLast.rawValue
+        let ctx = try XCTUnwrap(CGContext(data: nil, width: rep.pixelsWide, height: rep.pixelsHigh, bitsPerComponent: 8,
+                                          bytesPerRow: 0, space: space, bitmapInfo: info))
+        func draw(_ layer: CALayer) {
+            var rect = rootLayer.convert(layer.bounds, from: layer)
+            if rootLayer.contentsAreFlipped() || rootLayer.isGeometryFlipped { rect.origin.y = root.bounds.height - rect.maxY }
+            // Room for a stroke's shadow outside the layer's own bounds.
+            let pad: CGFloat = 8
+            let w = Int(((rect.width + 2 * pad) * scale).rounded(.up)), h = Int(((rect.height + 2 * pad) * scale).rounded(.up))
+            guard w > 0, h > 0, let piece = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                                                     space: space, bitmapInfo: info) else { return }
+            piece.scaleBy(x: scale, y: scale)
+            piece.translateBy(x: pad, y: pad)
+            if layer.contentsAreFlipped() || layer.superlayer?.contentsAreFlipped() == true {
+                piece.translateBy(x: 0, y: rect.height)
+                piece.scaleBy(x: 1, y: -1)
+            }
+            piece.translateBy(x: -layer.bounds.minX, y: -layer.bounds.minY)
+            layer.render(in: piece)
+            guard let image = piece.makeImage() else { return }
+            ctx.saveGState()
+            ctx.setAlpha(CGFloat(layer.opacity))
+            ctx.draw(image, in: CGRect(x: (rect.minX - pad) * scale, y: (rect.minY - pad) * scale, width: CGFloat(w), height: CGFloat(h)))
+            ctx.restoreGState()
+        }
+        below.forEach(draw)
+        ctx.draw(base, in: CGRect(x: 0, y: 0, width: rep.pixelsWide, height: rep.pixelsHigh))
+        above.forEach(draw)
+        let out = NSBitmapImageRep(cgImage: try XCTUnwrap(ctx.makeImage()))
+        out.size = root.bounds.size
         return out
     }
 

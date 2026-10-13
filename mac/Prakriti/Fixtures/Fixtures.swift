@@ -69,6 +69,21 @@ enum Fixtures {
                           people: faces.people)
     }
 
+    /// The People overlay's sample (v2 part M6d), for the snapshot `20-viewer-people` and the window capture
+    /// `12-viewer-people` alike: the sample talk's made-up face, included, and a made-up second face in the corner set to
+    /// Hide Face, so both kinds of box (solid, and dashed with its choice in the label) are drawn over the picture. Boxes
+    /// in memory only; nothing is written, and no picture of anyone is involved.
+    static func showPeopleOverlay(_ model: AppModel, on recording: Recording) {
+        guard let faces = recording.faces else { return }
+        let corner = (0...1900).map { [Double($0) * 0.5, 0.8, 0.66, 0.06, 0.11, 0.9] }
+        model.peopleBoxes.seed(recording, file: samplePeopleFile(recording.id, faces: faces,
+                                                                 extra: [PeopleFile.Track(id: 2, person: 2, start: 0, end: 950, boxes: corner)]))
+        var choices = recording.choices
+        choices.set(.hideFace, for: .face(2))
+        recording.choices = choices
+        model.viewer.showsPeople = true
+    }
+
     /// The two-people-mixed fixture's answer (v2 part M6a): a second face in the corner from 0:20 to 0:60.
     static func facesTwoPeople(at checkedAt: Date, duration: Double = 90.1) -> FacesFound {
         var found = FacesFound(checkedAt: checkedAt, duration: duration)

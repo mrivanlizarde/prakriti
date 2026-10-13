@@ -4200,7 +4200,7 @@ was needed). Built and checked 09:20 to 11:40.
 | 5 | Card picture of **two-people-mixed.mp4**: Vision finds exactly one unhidden face, inside the main track's box; the corner region's variance falls 80% or more | **PASS.** Made by the app, everyone included: frame at 1:12 (rule 1), 1 face, inside the main box, 0.4 s. Gabriel teaching and everyone else Left Out: the old picture deleted at once (yes), made again at 0:17 (rule 1), 1 face, inside the main box. The rule-1 frames hold no corner face, so the chooser was also held to 20.02 to 59.53 s: frame at 0:43 with 1 face hidden (rule 2), 8 looked at, 0 refused, 1 face found, inside the main box; corner region variance **1043.0 in the original, 60.0 in the picture: a fall of 94.3%**. Measured only (D1, this run's instructions); the three pictures are listed for Ivan below |
 | 6 | Five frames with the corner track hidden; no face inside any hidden region, including 0.5 s before the corner face appears | **PASS: 0 faces inside a hidden region in all five.** 19.55 s (0.47 s before the first sighting at 20.02; held) and 20.00 s (held): no corner face there yet, so nothing to find. 20.287 s (held, held, followed), 39.873 s and 59.927 s (after the last sighting, held and followed): unhidden, Vision finds the corner face inside the region each time; hidden, 0. Motion measured on a test square moving 300 px a second (`HidingTests`): the followed box overlapped it **0.84 to 0.91** between sightings, the held box alone 0.14 to 0.60 |
 | 7 | The card pictures are the only images; nothing stored for strangers | **PASS.** `file --mime-type` on every file under ~/Library/Application Support/Prakriti: 202 files, 6 images, all card pictures in `Thumbnails/` (after the whole `make accept-people`: 208 files, 9 images, all card pictures). `People/Faces`, `Voices`, `FaceIndex` absent in both modes; development `Jobs/` empty; every people file passes the print and picture check. `HidingTests`: no picture before the face step, deleted the moment a choice changes, gone with Remove from Library, no job folder left |
-| 12 | Snapshots and the real window of the overlay | **PASS, looked at.** `20-viewer-people-light/dark` (snapshot: "Unnamed 1" solid box, "Unnamed 2, Hide Face" dashed box), `real/12-viewer-people-*` and `real/12-viewer-people-dark-fixed.png` (over a test pattern, sample boxes). Cards and list rows with the sample test-pattern picture: `04-all-recordings-*`, `real/05-all-recordings-list-dark.png`. `m6d-hide-test-pattern.png`: the moving test square as recorded and hidden, unrecognizable, soft edge. **Found by looking:** the People toggle's accent word on clear glass over the bright picture could not be read; now white on glass tinted dark, on and off shown by the symbol's fill, captured again |
+| 12 | Snapshots and the real window of the overlay | **Corrected after the verifier: this was not true; see "v2 part M6d, fixes after the verifier" below.** **PASS, looked at.** `20-viewer-people-light/dark` (snapshot: "Unnamed 1" solid box, "Unnamed 2, Hide Face" dashed box), `real/12-viewer-people-*` and `real/12-viewer-people-dark-fixed.png` (over a test pattern, sample boxes). Cards and list rows with the sample test-pattern picture: `04-all-recordings-*`, `real/05-all-recordings-list-dark.png`. `m6d-hide-test-pattern.png`: the moving test square as recorded and hidden, unrecognizable, soft edge. **Found by looking:** the People toggle's accent word on clear glass over the bright picture could not be read; now white on glass tinted dark, on and off shown by the symbol's fill, captured again |
 | 13 | Regression set | **PASS.** `make build`: no warnings. **`make test`: 306 tests, 0 failures, 16 skipped by design** (937 s; the first run failed 3: two capability lists not updated and a Help line using "blurred", a word kept for the unbuilt `people` text; fixed). `make accept-people` (M6a to M6d): 13 Sep decoded md5 `69658a8cb8a954b92798c5e9f3ea5833`, identical to engine v0's; 6 Sep whole pass 126 s; two-people fixtures 0 of 59 runs heard, 98.9% and 98.4%; crash check deleted the job folder at launch line 1 before the first look at line 11. `make accept`: 13 Sep -16.8 LUFS, -1.7 dBFS; silent-60s stopped; 6 Sep made. `make accept-edits`: 38.82 s shorter (expected 38.82), 0 of 73 runs heard, 189 of 201, a class refused. `make accept-outputs`: -19.1 LUFS run, run 4 identical to engine v0. `make look`: every window, key and playback check PASS. No SwiftData change, so no `make migrate-check`. Fixture unchanged by size and date |
 
 **Em dashes:** 0 in every file this part changed (grep); `RulesTests` passed.
@@ -4242,3 +4242,70 @@ turns the live app's Claude API choices back to LM Studio; that has waited for I
 - [ ] **Look at the card pictures of the fixture** (frames of Gabriel's talk, measured but never opened by the build):
   `~/Code/prakriti/screens/mac/v2-m6d/for-ivan/m6d-card-everyone-included.jpg`, `m6d-card-corner-left-out.jpg` and
   `m6d-card-corner-hidden.jpg` (the corner face hidden). Say if the hiding looks strong enough to you.
+
+
+## v2 part M6d, fixes after the verifier. Tue 13 Oct 2026
+
+The verifier failed check 12 and raised a leftover job folder. Fixed 12:20 to 14:50 on `main`. No Swift package, no SwiftData
+field, nothing downloaded; frames of Gabriel's talks were measured only (D1).
+
+### What was wrong, at its cause
+
+1. **The `20-viewer-people` snapshots showed no overlay, and the M6d report said they did.** Measured: over the picture's
+   area, 19,475 of 19,475 samples of the builder's `v2-m6d/20-viewer-people-light.png` were fully transparent (they look
+   black in a dark viewer). The model was right (a print in the snapshot: faces yes, people file yes, rendition Original,
+   showsPeople true, 2 boxes at 120 s); the drawing was not. Once SwiftUI hosts the player (`AVPlayerView`), the black
+   canvas under it and the boxes, labels and toggle over it are loose layers beside the player's view layer (dumped: a
+   `CALayer` for the canvas, `ColorShapeLayer` and `CGDrawingLayer` for boxes and labels, an `SDFLayer` glass for People),
+   and `cacheDisplay` draws views, not those layers. Hiding the player changed nothing, which ruled out occlusion.
+   The M6d report described the snapshot without having looked at it.
+2. **The dashed Hide Face box was in no picture**, because the window capture's fixture seeded no hidden face.
+3. **The leftover job folder** (`Jobs/B79F3281-...`, 11:07:13): the development log shows "Acceptance test for milestone 2
+   finished" at 11:07:12. That test ended while the 6 Sep talk's card picture was still being chosen in the background;
+   `CardPicture.make` made its job folder at the start of the looking, so when the test process ended the folder stayed,
+   and the next `make accept-people` failed all 4 tests on it.
+
+### What changed
+
+- `PrakritiTests/SnapshotRenderer.swift`, `drawLayersAroundPlatformViews`: around the Viewer's player only, the loose layers
+  under it are drawn first, then the cached window, then the layers over it, each with `render(in:)`; for glass, only the
+  layers holding drawn content (the symbol and the word). Materials and glass are not drawn (only the screen's compositor
+  can). First tried around every hosted view: that drew some Activity text twice (grey pending steps came out black), so
+  it is scoped to `ViewerPlayerView`.
+- `SnapshotTests`: `20-viewer-people` is now measured, not only drawn: 0 transparent samples over the picture, and at least
+  50 more near-white samples than `20-viewer-original` (`SnapshotTests.pictureArea`).
+- `Fixtures.showPeopleOverlay` (one solid face, one corner face set to Hide Face) feeds both the snapshot and the window
+  capture (`--people-overlay` in `AppModel`), so the capture now shows the dashed box.
+- `People/Thumbnails.swift`: the card picture's job folder is made only when the JPEG is staged. `PipelineAcceptanceTests`
+  waits for `cardPicturesSettled()` before it ends. I also moved the face step's job folder to its save; that broke the
+  crash check (`people-crash-check.sh` kills the face step mid-scan and needs its folder), so it is reverted and the face
+  step holds its folder for the scan as M6a designed.
+- START_HERE Mac warnings 127 (snapshots and loose layers) and 128 (job folders); CHANGELOG.
+
+### Checks run, with results
+
+| # | Check | Result |
+|---|---|---|
+| 12 | Overlay, snapshot and real window, looked at | **PASS.** Snapshot `v2-m6d-fix2/20-viewer-people-light` and `-dark`, looked at (also flattened on white, so transparency cannot pass for black): black picture, solid "Unnamed 1" box, dashed "Unnamed 2, Hide Face" box, and the People toggle (filled symbol, white word). Measured: 0 of 19,475 samples transparent, 121 near-white (the plain Original: 0 transparent, 10). `make look` (`v2-m6d-fix/real/12-viewer-people-light.png`, `-dark.png`), looked at: over the test pattern, the solid "Unnamed 1" box, the dashed "Unnamed 2, Hide Face" box with its label readable on the bright pattern, and the People toggle in both appearances. Every other `make look` check PASS; playback PASS (78.873 s to 81.873 s, 3.000 s apart) |
+| 13 | Regression set | **PASS.** `make build`: no warnings (twice). `make test`: **306 tests, 0 failures, 16 skipped by design** (920 s; run with the face step change later reverted and before the renderer was scoped, so the full snapshot set was then run again: TEST SUCCEEDED, the check above printed). Every snapshot compared with the builder's set: only the Viewer's pictures changed (the picture now drawn), library screens differ only in the sample card's test pattern colours (same in light and dark, unrelated) and Activity only in which sample recording is second in line. `make accept` (milestone 2): PASS, 13 Sep -16.8 LUFS, -1.7 dBFS; silent-60s stopped at the sound check; 6 Sep made; card pictures 13 Sep 0.4 s, 6 Sep 0.3 s, then "finished". `make accept-people` (after the revert): **4 tests, 0 failures**; 13 Sep decoded md5 `69658a8cb8a954b92798c5e9f3ea5833`, identical to engine v0's; two-people fixtures 0 of 59 runs heard, 98.9% and 98.4%; check 5c corner variance 1043.0 to 60.0, a fall of 94.3%; check 6, 0 faces inside a hidden region; crash check PASS (the folder left by SIGKILL deleted at launch line 1, first look line 11, Jobs empty). `make accept-edits`: 38.82 s shorter (expected 38.82), 0 of 73 runs heard, 189 of 201, a class refused. `make accept-outputs`: md5 identical to engine v0's, -19.1 LUFS run. No SwiftData change |
+| Jobs | No job folder left | **PASS.** Development `Jobs/` sampled every 0.2 s through `make accept` (run while the face step change was still in): 4 folders seen, the voice step's for 13.5 s each (13 Sep and 6 Sep, as designed), the card picture's once, for under 0.2 s (13:49:46), and the 90 s clip's at the start of `make accept-people`. `Jobs/` empty after `make accept`, after `make accept-people` (twice), and after `make accept-edits` and `make accept-outputs` |
+
+**Em dashes:** 0 in every file this fix changed (grep).
+
+### Not changed, and why
+
+- **Check 6's first two frames** (19.55 s and 20.00 s) still show the hidden region held over an empty corner: in the
+  fixture the corner face first appears at 20.02 s, so there is no face there to hide yet. Proving a visible face hidden
+  before it appears needs a fixture whose face is visible earlier than the first sighting; not built here.
+- **The live app is not installed.** Every M6d check passes, but `make install` ships M5a's lock, which turns the live
+  Claude API writing choices back to LM Studio, and that waits for Ivan's yes (unchanged since 12 Oct).
+
+### Found, not fixed (for Ivan)
+
+- [ ] **Card pictures pile up in the development `Thumbnails/`**: 9 after the builder's run, 65 now. Every acceptance run
+  makes recordings in a store held in memory, and their card pictures stay on disk after the store is gone, frames of
+  Gabriel's talks with nobody pointing at them. Development only (the live app deletes a picture with its recording), but
+  it is a picture kept of people for no purpose. Suggest a launch sweep that deletes any card picture whose recording is
+  not in the store, and the acceptance tests deleting their own. Say yes and it goes in the next part.
+- [ ] **The M5a lock decision still gates the install** (M5a to M6d): `cd ~/Code/prakriti/mac && make install` once you say yes.
+

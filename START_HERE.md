@@ -1794,6 +1794,22 @@ top and its end. Reading the code is not verification, and neither is a passing 
     Reason: design spec Q3 (Ivan decides who appears by seeing them) and the rule that color is never alone. The toggle is
     white on clear glass tinted dark: found by looking at the real window 13 Oct, accent text on clear glass over a bright
     picture could not be read.
+127. **A snapshot draws the loose layers SwiftUI puts around a hosted AppKit view (`SnapshotRenderer`,
+    `drawLayersAroundPlatformViews`); never judge the Viewer's picture from a snapshot without them.** Once SwiftUI hosts a
+    view (the Viewer's `AVPlayerView`), the black canvas under it and everything over it (the People overlay, the toggles)
+    live in layers of their own that `cacheDisplay` skips. Until 13 Oct every Viewer snapshot left the picture transparent
+    (black in a dark viewer, white in a light one) with no box, label or People toggle, while M6d's build report said the
+    snapshot showed both boxes; the verifier caught it by looking. `SnapshotTests` now measures the picture area of
+    `20-viewer-people` (no transparent pixel; at least 50 more white samples than `20-viewer-original`). Glass and materials
+    still draw only in the real window, so `make look`'s `12-viewer-people` stays the judge, and it now shows the dashed
+    Hide Face box too (`Fixtures.showPeopleOverlay`, shared by both).
+128. **A card picture's job folder is made only at the moment its JPEG is staged, never at the start of the minutes of
+    looking before it (`CardPicture.make`), and a test that makes outputs waits for `cardPicturesSettled()` before it
+    ends.** Reason: 13 Oct, `make accept` ended while a card picture of the 6 Sep talk was being chosen in the background;
+    the job folder made at the start was left empty in the development `Jobs/`, and all 4 `make accept-people` tests
+    failed on it until a launch's crash check removed it. The face step is different on purpose: it holds its job folder
+    for the whole scan, because PLAN M6 check 7 (`people-crash-check.sh`) kills it mid-scan to prove the next launch
+    deletes what a crash leaves. Moving the face step's folder too broke that check (tried 13 Oct, reverted).
 
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)

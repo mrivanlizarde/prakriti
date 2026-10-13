@@ -455,19 +455,22 @@ final class SnapshotTests: XCTestCase {
             model.openViewer(recording)
         }
         // The People overlay on the Original (v2 part M6d): the sample talk's made-up face, included, and a made-up second
-        // face in the corner set to Hide Face, over the test pattern (the player itself draws black in a bitmap, Mac
-        // warning 43; the real window is `make look`'s 12-viewer-people).
+        // face in the corner set to Hide Face (`Fixtures.showPeopleOverlay`), over the picture's black canvas (the player
+        // cannot draw the test pattern into a bitmap, Mac warning 43; the real window is `make look`'s 12-viewer-people).
         try draw("20-viewer-people") { model in
-            _ = try openTalk(model, rendition: .original, at: 120) { r in
-                guard let faces = r.faces else { return }
-                let corner = (0...1900).map { [Double($0) * 0.5, 0.8, 0.66, 0.06, 0.11, 0.9] }
-                model.peopleBoxes.seed(r, file: Fixtures.samplePeopleFile(r.id, faces: faces,
-                                                                          extra: [PeopleFile.Track(id: 2, person: 2, start: 0, end: 950, boxes: corner)]))
-                var choices = r.choices
-                choices.set(.hideFace, for: .face(2))
-                r.choices = choices
-            }
-            model.viewer.showsPeople = true
+            _ = try openTalk(model, rendition: .original, at: 120) { r in Fixtures.showPeopleOverlay(model, on: r) }
+        }
+        // The overlay must be in the picture, not only in the model (v2 part M6d fix, 13 Oct): the first 20-viewer-people
+        // snapshots were transparent over the picture, with no box, label or toggle, while the build's report said
+        // otherwise. Measured over the picture's area: no transparent pixel, and the boxes, labels and People add white.
+        for (scheme, _) in appearances {
+            let people = try SnapshotTests.pictureArea(outputFolder.appending(path: "20-viewer-people-\(scheme).png"))
+            let plain = try SnapshotTests.pictureArea(outputFolder.appending(path: "20-viewer-original-\(scheme).png"))
+            print("20-viewer-people-\(scheme): \(people.samples) samples, \(people.transparent) transparent, \(people.white) white; "
+                  + "20-viewer-original-\(scheme): \(plain.transparent) transparent, \(plain.white) white")
+            XCTAssertEqual(people.transparent, 0, "20-viewer-people-\(scheme): the picture is not drawn")
+            XCTAssertEqual(plain.transparent, 0, "20-viewer-original-\(scheme): the picture is not drawn")
+            XCTAssertGreaterThanOrEqual(people.white, plain.white + 50, "20-viewer-people-\(scheme): no boxes or labels over the picture")
         }
         let viewerCount = 13 * 2
 
@@ -559,6 +562,23 @@ final class SnapshotTests: XCTestCase {
         }
         print("Welcome snapshots written to \(renderer.outputFolder.path): \(written.count)")
         XCTAssertEqual(written.count, 10 + 8 + 5)
+    }
+
+    /// The Viewer's picture in a main-window snapshot (1440 by 900 at 2x, the sidebar open): every 8th pixel of the
+    /// points 240 to 1060 across and 80 to 460 down, inside the picture whatever the inspector's width. Counts the
+    /// transparent pixels (a picture the bitmap did not draw) and the near-white ones (boxes, labels, toggles).
+    static func pictureArea(_ url: URL) throws -> (samples: Int, transparent: Int, white: Int) {
+        let rep = try XCTUnwrap(NSBitmapImageRep(data: try Data(contentsOf: url)))
+        var samples = 0, transparent = 0, white = 0
+        for y in stride(from: 160, to: 920, by: 8) {
+            for x in stride(from: 480, to: 2120, by: 8) {
+                guard let color = rep.colorAt(x: x, y: y)?.usingColorSpace(.sRGB) else { continue }
+                samples += 1
+                if color.alphaComponent < 0.5 { transparent += 1 }
+                else if color.redComponent > 0.85, color.greenComponent > 0.85, color.blueComponent > 0.85 { white += 1 }
+            }
+        }
+        return (samples, transparent, white)
     }
 }
 

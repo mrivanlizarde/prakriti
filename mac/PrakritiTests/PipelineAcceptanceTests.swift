@@ -174,6 +174,9 @@ final class PipelineAcceptanceTests: XCTestCase {
         let text = report.joined(separator: "\n") + "\n"
         try text.write(to: renderer.outputFolder.appending(path: "acceptance.txt"), atomically: true, encoding: .utf8)
         print(text)
+        // The card pictures this run's makes started finish before the test does (v2 part M6d fix, 13 Oct): left running,
+        // one was cut off when the process ended and left a job folder that failed the next `make accept-people`.
+        await model.cardPicturesSettled()
         model.log.write("Acceptance test for milestone 2 finished.")
     }
 

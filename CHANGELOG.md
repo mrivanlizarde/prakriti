@@ -5,6 +5,22 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-13, Tue: v2 part M6d fix, the overlay in the snapshots, and no job folder left behind
+
+- **The Viewer's snapshots now draw the picture and what sits over it.** Why: the verifier looked at
+  `20-viewer-people` and found a picture with no box, label or People toggle, though the build report said it showed
+  both boxes. Measured: the picture area of every Viewer snapshot was fully transparent (19,475 of 19,475 samples), so
+  it looked black in a dark viewer. Once SwiftUI hosts the player, the canvas under it and the overlay over it are loose
+  layers that a bitmap capture skips; the renderer now draws them in order. A report that says a picture shows something
+  must come from looking at that picture; `SnapshotTests` now measures it too.
+- **Both kinds of box are seen, in a snapshot and in the real window.** Why: the dashed Hide Face box had never been
+  looked at anywhere, because the window capture seeded no hidden face. One fixture (`Fixtures.showPeopleOverlay`) now
+  feeds both.
+- **A card picture's job folder is made only when the picture is staged.** Why: `make accept` ended while a card
+  picture was still being chosen in the background, and the job folder made at the start of that work was left empty,
+  failing all 4 people acceptance tests on the next run. The milestone 2 acceptance also waits for its card pictures now.
+  The face step keeps its folder for the whole scan, because the crash check depends on killing it mid-scan.
+
 ## 2026-10-13, Tue: v2 part M6d, hiding in pictures
 
 - **A recording's card shows a real frame once its faces are known, and never a face Ivan chose to hide.** Why: REQUEST

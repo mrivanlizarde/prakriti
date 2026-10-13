@@ -156,8 +156,6 @@ enum CardPicture {
         let context = CIContext(options: [.cacheIntermediates: false])
         let moments = Dictionary(self.moments(people).map { (Int(($0.time * 1000).rounded()), $0) }, uniquingKeysWith: { a, _ in a })
         let hiddenTracks = Set(plan.tracks.map(\.id))
-        let job = try folders.newJob()
-        defer { try? FileManager.default.removeItem(at: job) }
 
         for (rule, times) in [(Rule.everyoneIncluded, included), (.othersHidden, hidden)] where !times.isEmpty {
             var best: (score: Double, made: Made, picture: CIImage)?
@@ -196,6 +194,11 @@ enum CardPicture {
             }
             if let best {
                 let upright = best.picture.oriented(orientation(of: transform))
+                // The job folder is made only now, for the moment the picture is staged, never for the minutes of looking
+                // before it (v2 part M6d fix, 13 Oct): made at the start, a run ended mid-look (a test process finishing
+                // while this ran in the background, or a quit) left an empty one in Jobs, and the next people check failed on it.
+                let job = try folders.newJob()
+                defer { try? FileManager.default.removeItem(at: job) }
                 let staged = job.appending(path: recordingID.uuidString + ".jpg")
                 guard let space = CGColorSpace(name: CGColorSpace.sRGB) else { break }
                 try context.writeJPEGRepresentation(of: upright.transformed(by: CGAffineTransform(translationX: -upright.extent.minX, y: -upright.extent.minY)),
