@@ -1642,3 +1642,11 @@ M13 Finish line.
   are answered: verifiers may look at frames, and the gallery may learn named people's faces and voices
   (recognition, M7b). Keep: per-person consent flag (now "signed release on file"), Forget, encryption at rest,
   and nothing published without Ivan's tap. Do not reintroduce student-specific blocks.
+- **Answers to the builders' "For Ivan" items (Sonny, Tue 13 Oct, from Ivan's own decisions of 12 Oct):**
+  (1) **M5a install decision: YES.** Releases are signed by all participants, so every person counts as released
+  and the lock must NOT force LM Studio for talks, classes, recordings with other people, or recordings that name
+  Serenity or anyone else aloud. Cloud writing (Claude API, Ivan's key) is the default for everything; the lock
+  only blocks when a recording has a person marked "no release" or Leave Out by Ivan. Fix the lock this way in the
+  next part, then **make install** (M5a to the latest passing part ship together) and confirm the live app writes
+  with Anthropic. (2) Everyone starts as Include: confirmed. (3) Names said aloud (lineage teachers etc.) are not
+  people decisions: never ask about them at Approve. (4) The hiding pictures go to Ivan for a look; not a gate.
