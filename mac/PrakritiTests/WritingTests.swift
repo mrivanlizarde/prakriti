@@ -38,6 +38,15 @@ final class ScriptedClient: LanguageModelClient {
     func check() async -> ProviderCheck { ProviderCheck(state: .ok, line: "Scripted.", at: Date()) }
 }
 
+/// The same script as a cloud client (v2 part M5a): it receives only what the privacy lock released,
+/// recorded as the request it carried, so a test sees the tokens exactly as they would have gone out.
+extension ScriptedClient: CloudModelClient {
+    var contextLimit: Int { limit }
+    func send(_ payload: CloudPayload) async throws -> ModelReply {
+        try await complete(ModelRequest(system: payload.system, user: payload.user, shape: payload.shape, maxTokens: payload.maxTokens))
+    }
+}
+
 /// Answers LM Studio's REST API and chat completions from a handler, and records every request.
 final class StubProtocol: URLProtocol, @unchecked Sendable {
     nonisolated(unsafe) static var handler: ((String, String, [String: Any]?) -> (Int, Any))?
@@ -108,15 +117,20 @@ final class WritingTests: XCTestCase {
     static let tagsAnswer = #"{"tags": ["breath", "long exhale", "Breath", "practice"]}"#
     static let summaryAnswer = #"{"summary": "The teacher explains why the breath comes first."}"#
 
-    func input(kind: RecordingKind = .talk, text: String = WritingTests.text, serenity: Bool = false) -> WritingInput {
-        WritingInput(label: "Sun 13 Sep", fileName: "test.mp4", kind: kind, knownSerenity: serenity, cues: Self.cues, transcriptText: text, followsEpisode: true)
+    func input(kind: RecordingKind = .talk, text: String = WritingTests.text, serenity: Bool = false, people: PeopleFacts = .notChecked) -> WritingInput {
+        WritingInput(label: "Sun 13 Sep", fileName: "test.mp4", kind: kind, knownSerenity: serenity, cues: Self.cues, transcriptText: text, followsEpisode: true,
+                     people: people)
     }
+
+    /// A made-up teacher, named by Ivan and agreed to cloud models (v2 part M5a).
+    static let consentingTeacher = PeopleFacts(checked: true, named: [.init(personID: UUID(), name: "Asha Verlaine", heard: true, seen: true, cloudConsent: true)])
 
     func setup(_ clients: [ModelProvider: ScriptedClient], providers: [ModelTask: ModelProvider] = [:], attempts: Int = 3) -> WritingSetup {
         var setup = WritingSetup()
         setup.providers = providers
         setup.maxAttempts = attempts
         setup.makeClient = { provider, _ in clients[provider] ?? ScriptedClient(provider, replies: []) }
+        setup.makeCloudClient = { provider, _ in clients[provider] ?? ScriptedClient(provider, replies: []) }
         return setup
     }
 
@@ -323,12 +337,12 @@ final class WritingTests: XCTestCase {
 
     func testThePrivacyLockKeepsAClassAndSerenityOnThisMac() async throws {
         let allCloud: [ModelTask: ModelProvider] = [.writing: .claudeAPI, .tagging: .claudeAPI, .summarizing: .claudeAPI]
-        func run(kind: RecordingKind, text: String, providers: [ModelTask: ModelProvider]) async throws -> (WrittenPackage?, ScriptedClient, ScriptedClient, ScriptedClient) {
+        func run(kind: RecordingKind, text: String, providers: [ModelTask: ModelProvider], people: PeopleFacts = .notChecked) async throws -> (WrittenPackage?, ScriptedClient, ScriptedClient, ScriptedClient) {
             let lm = ScriptedClient(.lmStudio, replies: [.success(Self.goodAnswer), .success(Self.tagsAnswer), .success(Self.summaryAnswer)])
             let claude = ScriptedClient(.claudeAPI, replies: [.success(Self.goodAnswer), .success(Self.tagsAnswer), .success(Self.summaryAnswer)])
             let apple = ScriptedClient(.appleOnDevice, replies: [.success(Self.tagsAnswer), .success(Self.summaryAnswer)])
             let outcome = try await Writer(setup: setup([.lmStudio: lm, .claudeAPI: claude, .appleOnDevice: apple], providers: providers), log: nil)
-                .write(input(kind: kind, text: text))
+                .write(input(kind: kind, text: text, people: people))
             return (outcome.package, lm, claude, apple)
         }
 
@@ -343,17 +357,24 @@ final class WritingTests: XCTestCase {
                       lesson?.stepLine ?? "")
         XCTAssertTrue(lesson?.markdown(label: "Sun 13 Sep", fileName: "x.mp4").contains("This is a class, so it was written by a model on this Mac only.") == true)
 
-        // A talk whose transcript says "Serenity": the same.
-        let (serenity, _, claude2, _) = try await run(kind: .talk, text: Self.text + " Serenity taught this last week.", providers: allCloud)
+        // A talk whose transcript says "Serenity": the same, with a reason that names no one (design spec C4),
+        // even when everyone heard has agreed.
+        let (serenity, _, claude2, _) = try await run(kind: .talk, text: Self.text + " Serenity taught this last week.", providers: allCloud,
+                                                       people: Self.consentingTeacher)
         XCTAssertEqual(claude2.requests.count, 0)
-        XCTAssertEqual(serenity?.lockReason, "This recording mentions Serenity")
-        XCTAssertTrue(serenity?.stepLine.contains("Privacy lock: This recording mentions Serenity, so LM Studio did") == true,
-                      "her name keeps its capital: \(serenity?.stepLine ?? "")")
-        XCTAssertTrue(serenity?.markdown(label: "Sun 13 Sep", fileName: "x.mp4").contains("This recording mentions Serenity, so it was written by a model on this Mac only.") == true)
+        XCTAssertEqual(serenity?.lockReason, "it names a teacher who has not agreed to cloud models")
+        XCTAssertTrue(serenity?.stepLine.contains("Privacy lock: it names a teacher who has not agreed to cloud models, so LM Studio did") == true,
+                      serenity?.stepLine ?? "")
+        XCTAssertTrue(serenity?.markdown(label: "Sun 13 Sep", fileName: "x.mp4").contains("It names a teacher who has not agreed to cloud models, so it was written by a model on this Mac only.") == true)
 
-        // A talk without her, writing on the Claude API: it is used (nothing else forbids it).
-        let (open, _, claude3, _) = try await run(kind: .talk, text: Self.text, providers: [.writing: .claudeAPI])
-        XCTAssertEqual(claude3.requests.count, 1)
+        // A talk whose people check has not run (every real recording until part M6): stays on this Mac.
+        let (unchecked, _, claude3, _) = try await run(kind: .talk, text: Self.text, providers: [.writing: .claudeAPI])
+        XCTAssertEqual(claude3.requests.count, 0)
+        XCTAssertEqual(unchecked?.lockReason, "who appears and speaks in it has not been checked")
+
+        // A checked talk, its one speaker named and agreed: the Claude API is used, through the lock.
+        let (open, _, claude6, _) = try await run(kind: .talk, text: Self.text, providers: [.writing: .claudeAPI], people: Self.consentingTeacher)
+        XCTAssertEqual(claude6.requests.count, 1)
         XCTAssertNil(open?.lockReason)
         XCTAssertEqual(open?.writingProvider, "claudeAPI")
 
@@ -390,6 +411,7 @@ final class WritingTests: XCTestCase {
         let lm = ScriptedClient(.lmStudio, replies: [.success(Self.goodAnswer), .success(Self.tagsAnswer), .success(Self.summaryAnswer)])
         let claude = ScriptedClient(.claudeAPI, replies: [.success(Self.goodAnswer)])
         model.runner.makeClient = { provider, _ in provider == .claudeAPI ? claude : (provider == .lmStudio ? lm : ScriptedClient(provider, replies: [])) }
+        model.runner.makeCloudClient = { _, _ in claude }
 
         XCTAssertTrue(model.canWrite(recording))
         await model.runner.write(recording)
@@ -432,6 +454,7 @@ final class WritingTests: XCTestCase {
         XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, locked: true), .lmStudio)
         XCTAssertEqual(ModelRouting.provider(chosen: .ollama, locked: true), .ollama)
         XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, locked: false), .claudeAPI)
+        XCTAssertEqual(PrivacyLock.decide(LockSubject(kind: .talk, mentionsSerenity: true, people: Self.consentingTeacher)).reason, PrivacyLock.namesTeacher)
     }
 
     // MARK: Apple on-device
@@ -482,7 +505,7 @@ final class WritingTests: XCTestCase {
         XCTAssertEqual(AppModel(container: AppModel.inMemoryContainer(), paths: AppPaths(mode: .development), settings: .ephemeral(),
                                 log: AppLog(directory: nil)).keyStore.service, KeyStore.testing.service, "tests never touch Ivan's key")
         // No key, no call: the Claude API's test sends nothing.
-        let body = ClaudeClient(model: "claude-opus-5-5", key: nil).body(for: ModelRequest(system: "S", user: "U", shape: .writing))
+        let body = ClaudeClient(model: "claude-opus-5-5", key: nil).body(for: PrivacyLock.keyCheck())
         XCTAssertEqual(body["model"] as? String, "claude-opus-5-5")
         XCTAssertNil(body["temperature"], "Claude Opus 5.5 takes no sampling settings")
         XCTAssertEqual((body["thinking"] as? [String: String])?["type"], "adaptive")

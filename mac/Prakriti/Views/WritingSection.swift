@@ -190,7 +190,7 @@ struct WritingSection: View {
         guard recording.isPrivacyLocked else { return nil }
         let cloud = ModelTask.allCases.filter { !(model.settings.provider[$0] ?? .lmStudio).isLocal }
         guard !cloud.isEmpty else { return nil }
-        let reason = Privacy.lockReason(kind: recording.kind, serenity: recording.hasSerenity) ?? "it is privacy locked"
+        let reason = PrivacyLock.decide(recording.lockSubject).reason ?? "it is privacy locked"
         return "Privacy lock: \(reason), so LM Studio will do the \(cloud.map { $0.title.lowercased() }.joined(separator: " and ")) set to the Claude API."
     }
 

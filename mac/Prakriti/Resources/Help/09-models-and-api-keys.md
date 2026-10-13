@@ -4,7 +4,7 @@ title: Models and API keys
 summary: Which steps use a language model, how to choose one for your Mac, how to add a Claude API key, and what is sent.
 section: settings
 order: 1
-keywords: [models, LM Studio, Qwen, Apple on-device, Apple Intelligence, Ollama, Anthropic, Claude API, API key, Keychain, memory, smaller Mac, privacy lock, data retention, cost, writing, tagging, summarizing, tasks]
+keywords: [models, LM Studio, Qwen, Apple on-device, Apple Intelligence, Ollama, Anthropic, Claude API, API key, Keychain, memory, smaller Mac, This Mac, chip, hardware, privacy lock, names replaced, data retention, cost, writing, tagging, summarizing, tasks]
 related: [people-and-privacy, outputs, troubleshooting]
 ---
 
@@ -58,10 +58,13 @@ These always run on this Mac, whatever you choose:
 
 ## Which choice fits your Mac
 
-Choose Apple menu > About This Mac to see how much memory your Mac has.
+Settings, Models shows your Mac's chip and memory under This Mac, with a verdict, such as "Apple M5 Pro,
+64 GB. This Mac can run the writing model." [Show Me](prakriti://show/settings/models) It is a suggestion
+only: Prakriti never switches to a cloud model by itself.
 
 - **64 GB or more:** LM Studio for every task. Nothing leaves your Mac.
-- **Less than 64 GB:** the Claude API for writing, and Apple on-device for tags and summaries.
+- **Less than 64 GB:** writing a long recording needs the Claude API, or it waits for a model on this
+  Mac. Apple on-device can do tags and summaries.
 
 Transcribing works on any Mac with Apple silicon. On a smaller Mac it takes longer.
 
@@ -92,10 +95,15 @@ Key. To stop it working everywhere, delete it on Anthropic's site too.
 When a task uses the Claude API, Prakriti sends the transcript's lines, with their times, and the
 instructions for the task. It never sends sound, video or pictures.
 
-**The privacy lock.** Only a recording you marked as a talk can be read by the Claude API. A class, a
-conversation, a test, a recording whose kind is still Not set, and any recording whose transcript names
-Serenity are only read by models on this Mac, whatever Settings, Models says. LM Studio does those tasks instead, and the
-inspector's Checks tab says so. Nothing is sent.
+**The privacy lock.** A cloud model reads only a talk in which everyone heard is named and has agreed to
+cloud models, and nobody else appears or speaks. Classes, and recordings where other people appear or
+speak, are only read by models on this Mac, whatever Settings, Models says. Prakriti does not check who
+appears and speaks yet, so for now every recording is only read on this Mac. LM Studio does those tasks
+instead, and the inspector's Checks tab says why. Nothing is sent.
+
+**Before anything is sent,** Prakriti replaces the names of people in the text with stand-ins such as
+[[NAME-1]], and puts them back in the answer. Then it reads the text again, and if it still finds a name
+it should have replaced, it sends nothing and says so in the log, without the text.
 
 ### What Anthropic keeps
 

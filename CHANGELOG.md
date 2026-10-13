@@ -5,6 +5,26 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-12, Mon: v2 part M5a, the new privacy lock
+
+- **A cloud model now reads only a talk whose people check has run and found everyone heard named and agreed to
+  cloud models, nobody unnamed, and no mention of Serenity.** Why: v1's rule let a talk with a student heard reach
+  the Claude API as long as nobody said "Serenity"; the plan ships this lock before OpenAI or the new Anthropic
+  client (M5b), so neither ever runs under the older rule. The people check is part M6, so today every real
+  recording is written on this Mac. **This undoes, for now, Ivan's 12 Oct switch of talks to the Claude API**, so
+  the part is committed and not installed until he decides: see BUILD-LOG "v2 part M5a", For Ivan.
+- **Every cloud request is a `CloudPayload`, and only `PrivacyLock.release` can make one; cloud clients take nothing
+  else.** Why: PLAN 2.2 rule 1 and warning 19: the check has to be on the data and impossible to skip, not a
+  reviewer remembering. A test fails if any other file builds a payload.
+- **Names are replaced by `[[NAME-n]]` before a request leaves the Mac, put back in the answer, and the text is read
+  again before it is allowed out.** Why: warning 19. Measured on the 13 Sep talk, Apple's tagger caught 20 of 21
+  name mentions (95%); it missed "Serenity" in the prompt's own sentence about the school's teachers, so her name,
+  muted names and named people who have not agreed are always replaced, whatever the tagger finds.
+- **A per-person switch, "Cloud models may read their words" (`Person.mayReadInCloud`), off for everyone.** Why:
+  the plan's answer to Serenity's condition (SCOPE PRV-10) that still lets a consenting teacher's talk use a key.
+- **Settings, Models shows This Mac: the chip, the memory and whether it can run the writing model.** Why: REQUEST
+  item 5; the threshold (64 GB) is the measured peak in LOCAL-MODEL.md, and it only suggests, never switches.
+
 ## 2026-10-12, Mon: v2 part M4b, the capture check
 
 - **Every new recording is checked for how it was recorded, as its first step once the file is complete: the

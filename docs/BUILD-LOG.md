@@ -33,6 +33,10 @@ is built, and the notification button that asks macOS only after saying why.
 opening a recording plays it in the app (Original, Podcast, Podcast-ready) with Timeline-lite and a transcript of
 clickable words under it, Remove from the Edit and Keep in the Edit, Follow Playback and Quick Help; v1's
 recording page is retired. M3b failed its first verifier on Space after a restored launch and on stale wording; both were fixed the same day ("v2 part M3b, fixes after the verifier") and installed.
+**Then part M5a, the new privacy lock** ("v2 part M5a"): every cloud request goes through `PrivacyLock` (names
+replaced and the text checked again before it leaves), and a cloud model reads only a talk whose people check ran
+and found everyone agreed; until M6 that is no real recording. It passed every check but is **not installed**,
+because it would undo Ivan's 12 Oct switch of writing to the Claude API; it waits for his word.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -3312,6 +3316,115 @@ events." The live log also says notices are turned off for Prakriti in System Se
 J (backward) not measured on the real files; VoiceOver not run over the strip or the transcript; the split between
 picture and transcript is not remembered; the Podcast-ready rendition assumes no intro.
 
+
+## v2 part M5a: the new privacy lock. Mon 12 Oct 2026
+
+The ninth part of v2 (`docs/v2/PLAN.md`, M5, part M5a; REQUEST item 5 and warning 19). Built on `main`, as this
+run's instructions said. No package added. **One SwiftData model added (`Person`), an addition:** `make
+migrate-check` passed on a copy of the live store.
+
+### What was built
+
+- **`Writing/PrivacyLock.swift`.** `PeopleFacts` (what the people check found: checked or not, named people with
+  heard, seen and their cloud switch, unnamed seen and heard, muted names), `LockSubject`, `LockDecision`.
+  `PrivacyLock.decide`: locked unless the recording is a talk, its people check ran, nobody unnamed is seen or
+  heard, everyone heard has agreed, and the transcript does not say "Serenity"; no recording at all is locked. The
+  reason sits in a sentence and names no one (design spec C4). **`CloudPayload`**, whose initializer is private to
+  the file; **`PrivacyLock.release`**, the only maker: it decides again, replaces names, then reads the text as it
+  would be sent and refuses (`LockRefusal`, reason only) if a name the tagger finds, a muted name, a named person
+  who has not agreed, "Serenity" or a withheld span is left. `PrivacyLock.keyCheck()` is the key test's fixed text.
+  **`CloudModelClient`** (takes only a payload) and **`LockedCloudClient`** (what the writer talks to: release,
+  send, put the names back; a refusal is a failure that is not tried again, logged by its reason).
+- **`Writing/NameTokens.swift`.** Apple's `NLTagger` (`.nameType`, `personalName`, joined names) finds names; each
+  written form gets its own `[[NAME-n]]` and is put back exactly, so quotes still match the transcript; the tagger
+  reads again after replacing (up to three rounds); a name's single words are replaced where they stand alone.
+- **`Model/Person.swift`.** `Person` with `mayReadInCloud`, off by default: the per-person switch "Cloud models may
+  read their words". No UI yet (the People parts, M6 and M7, show it); the lock reads it by id
+  (`PeopleFacts.withConsent(from:)`).
+- **v1's Claude client, unchanged in what it sends, moved behind the lock.** `ClaudeClient` is now a
+  `CloudModelClient` (`send(_ payload:)`), never a `LanguageModelClient`; `WritingSetup.makeCloudClient` makes it and
+  the writer wraps it; `standardClient(.claudeAPI)` is `NoCloudClient`, which refuses. Its request body is v1's
+  (M5b brings it to the current shape).
+- **`Recording.lockSubject`, `isPrivacyLocked`, `lockLine`, `ModelRouting`, the writing section and Write Again**
+  all read `PrivacyLock.decide`. Every real recording is "people not checked" until M6, so the Checks tab reads
+  "Who appears and speaks in it has not been checked, so only models on this Mac read it."
+- **`Writing/HardwareCheck.swift`.** `HardwareProfile` (chip from `sysctlbyname("machdep.cpu.brand_string")`,
+  `ProcessInfo.physicalMemory`, Apple Intelligence from `SystemLanguageModel.default.availability`) and
+  `HardwareVerdict`: 64 GB or more "This Mac can run the writing model."; under, "Writing a long recording needs a
+  cloud key, or it waits." with a suggestion. Shown in **Settings, Models, This Mac** (`AppModel.hardware`, which
+  snapshots replace). Welcome panel 5's line is M5b's (the welcome code says so).
+- **Help** 07 and 09 rewritten to the built lock, the name tokens and This Mac; notes in `docs/v2/help-notes/07, 09`.
+- **Tests:** `ProviderTests` (in `make test`), `NameRecallAcceptanceTests` (`make accept-names`); `WritingTests`,
+  `ModelTests`, `LibraryTests`, `ModelsAcceptanceTests`, `EpisodeTextAcceptanceTests` and `SnapshotTests` updated.
+
+### Checks run, with results (PLAN M5, the checks part M5a runs: 2, 3, 4, 5, and 1's Keychain and log parts)
+
+| # | Check | Result |
+|---|---|---|
+| 1 (Keychain, log) | Keys read from the test Keychain service, never in the log | **PASS.** `ProviderTests.testTheKeyIsReadFromTheTestKeychainAndNeverReachesTheLog`: `AppModel.keyStore` is `studio.therowan.prakriti.app.tests.claude-api` (not Ivan's `...claude-api`); a fake key saved there is what `writingSetup()` reads; a whole write through the real `ClaudeClient`, its HTTP answered on this Mac by `StubProtocol`, sent 3 or more requests to `/v1/messages` and nothing else, none with "Serenity" or the key in a body; the temporary log holds no key. `testARefusalIsLoggedWithoutTheTextOrTheKey`: a refused request sends 0 requests, the log has the reason and neither the span nor the key nor "sk-". `grep` of today's development log for the test key: 0 |
+| 2 | Lock tests, counting cloud requests | **PASS.** `testTheLockCountsCloudRequests` on `synthetic-transcript.json` (325 lines, 30:54, a made-up talk), writing set to the Claude API: **a class 0; people not checked 0; a person without cloud consent speaking 0; an unnamed person present 0; an unnamed voice 0; checked with one consenting speaker 1**, written by the cloud client and passing `WritingCheck`. **The adapter refuses a planted untokenized name** (`testNamesAreReplacedAndPutBackAndAPlantedNameIsRefused`, the tokenizer planted to miss everything; the refusal does not contain the name), a muted name, "Serenity" and a withheld span the same way; a locked recording and no recording are refused at the adapter too. `testTheUnsafePathCannotBeWritten`: `ClaudeClient` is not a `LanguageModelClient`, and no file but `PrivacyLock.swift` writes `CloudPayload(` |
+| 3 | `NLTagger` recall on the 13 Sep transcript | **Measured** (`make accept-names MILESTONE=v2-m5a`, 18:58 to 19:02, `screens/mac/v2-m5a/acceptance-names.txt`), on the exact user message a cloud writing request would carry (137 lines, 17,111 characters). Reference made on this Mac by Qwen3.8-27B in LM Studio (203 s): **8 distinct names, 21 mentions. The tagger replaced 20 of 21 mentions (95%), 7 of 8 names**; the one missed is a single mention of a name other than Gabriel's or Serenity's. **Serenity: 10 of 10.** Gabriel: not said in the talk. Tagger finds 11, of which **5 are not names: Transcript, Ashtanga Yoga, Yoga Marga, Um, Dr** (replaced needlessly, the safe direction). Above the plan's 90% bar (R18). Two limits: the reference is a model's, not a person's reading, so a name both missed would not be counted; and in the writing prompt's own sentence "The school's teachers are Gabriel and Serenity." the tagger found Gabriel but **not Serenity** (asserted in `ProviderTests`), so the lock always replaces her name, muted names and named people who have not agreed, whatever the tagger finds. The report names only Serenity; the other names are "name 1" to "name 7" |
+| 4 | Hardware check with injected profiles | **PASS.** `testTheHardwareVerdictForEachProfile`, all ten in `screens/mac/v2-m5a/hardware-check.txt`: 16, 32 and 48 GB "Apple M2, N GB. Writing a long recording needs a cloud key, or it waits." with the suggestion; 64 and 128 GB "... This Mac can run the writing model."; with Apple Intelligence on "Apple Intelligence is on, so Apple on-device can make tags and summaries.", off "Apple Intelligence is turned off in System Settings, so Apple's on-device model cannot be used." **This Mac, read for real: chip "Apple M5 Pro", 68,719,476,736 bytes, "Apple M5 Pro, 64 GB. This Mac can run the writing model."** |
+| 5 | `make accept-models MILESTONE=v2-m5a` | **PASS** (19:23 to 19:58, `screens/mac/v2-m5a/acceptance-models.txt`). Writing set to the Claude API on purpose; the 13 Sep talk is "people not checked", so the lock gave it to LM Studio: **Claude API client calls 0**, lock reason "who appears and speaks in it has not been checked", locked tasks ["writing"]. Qwen3.8-27B wrote it in 1,957 s on the first try (5,800 tokens read, 13,240 written of which 12,053 thinking): 4 titles, 3 chapters each at a cue start of `transcript.srt`, 7 quotes found word for word, 0 left out; tags and summary by Apple on-device; each provider tested for real, the Claude API "not set up" with nothing sent (the test Keychain item is empty) |
+| Regression | `make test`, `make accept`, `make accept-edits`, `make migrate-check` | **PASS.** `make build`: No warnings. **`make test`: 239 tests, 0 failures, 11 skipped by design** (788 s). **`make accept`**: 13 Sep -16.8 LUFS (-16.82), true peak -1.7 dBFS; `silent-60s` Needs a decision at -91 dB; the 30 s clip filed as a test; 6 Sep -16.7 LUFS (-16.72), -1.4 dBFS. **`make accept-edits`**: approved episode **38.82 s shorter (expected 38.82)**, 0 of 73 runs from the cut heard, 189 of 201 after it, a class refused. **`make migrate-check`**: 13 recordings, 2 folders, 40 output settings, 669 Activity lines before and after, 2 approved; the new `Person` table arrives empty. Originals by `stat` before and after the acceptances: 13 Sep 730,464,600 bytes and 6 Sep size and modification time identical (`diff` of the two `stat` outputs: no difference) |
+| Looked at | Settings, Models and the Checks tab | `10-settings-03-models-light.png` (This Mac: checkmark, "Apple M5 Pro, 64 GB. This Mac can run the writing model.", the Apple Intelligence line; the new lock paragraph) and `10-settings-models-16gb-dark.png` (triangle, "Apple M2, 16 GB. Writing a long recording needs a cloud key, or it waits.", the suggestion, Apple Intelligence off), and `07-inspector-checks-light-inspector-p4.png` (Privacy: the lock symbol and "Who appears and speaks in it has not been checked, so only models on this Mac read it."). Text 15 and 17 pt, readable in both. No frame of anyone is drawn |
+
+**Em dashes:** 0 in every file this part changed (grep). The copy rules in `RulesTests` passed in `make test`.
+
+### Looked at (D1)
+
+No frame of Gabriel's talks was drawn or opened. Check 3 read the 13 Sep transcript's text on this Mac only (the
+tagger and Qwen in LM Studio); the report written from it names only Serenity and counts the rest. Cloud requests
+in tests carried only `synthetic-transcript.json` and sentences written in the tests, and none left the Mac.
+
+### Decisions, each with its reason
+
+1. **The lock is the plan's M5 lock, strict, not the 12 Oct relaxations in PLAN section 11.** Reason: this run's
+   instructions require a lock that fails closed and never lets a class or other people's words reach a cloud
+   model, and START_HERE Mac warning 90 says M5a must stay at least as strict as the rule before it. Section 11's
+   entries of the same day (talks to the Claude API by default; releases signed, so classes may go to the cloud
+   writer) conflict with that. The code makes the relaxation a decision, not a rewrite: see For Ivan.
+2. **"Serenity" in a transcript still locks, but the line never names her.** Reason: warning 90; design spec C4.
+3. **The reasons come in the order a person would fix them**: not a talk, people not checked, the teacher named,
+   someone unnamed, someone not agreed. Reason: the 13 Sep talk names Serenity and is not checked; "not checked" is
+   the true first reason, as the plan's check 5 expects.
+4. **Muted names, named people who have not agreed and "Serenity" are always replaced, not left to the tagger.**
+   Reason: measured, the tagger missed "Serenity" in the prompt's own sentence.
+5. **A refused request is not tried again and is logged by its reason only.** Reason: trying again sends the same
+   text; the log must never hold the text (W23, warning 19).
+6. **`Person` is a SwiftData model now, with only `name` and `mayReadInCloud`.** Reason: the plan stores the switch
+   "with the person"; M6 and M7 add to it, as additions.
+7. **The key test sends only `PrivacyLock.keyCheck()`**, the one payload made without a recording. Reason: it has no
+   recording in it, and it is a constant.
+
+### What does not work yet, or was not seen working
+
+- No real recording can reach a cloud model until the people check (M6a, M6b) fills `PeopleFacts`.
+- The per-person switch has no control on screen yet (M6, M7).
+- The hardware check is not on welcome panel 5 yet (M5b, with the providers).
+- The Claude client still sends v1's request shape (`thinking`, effort medium); M5b changes it.
+- A Mac under 64 GB with no cloud key: a locked recording still tries LM Studio and fails with its reason, rather
+  than waiting with a sentence of its own (the plan's H09 gap; Ivan's Mac has 64 GB).
+
+### Installed
+
+**Not installed, on purpose, although every check passed.** Installing this build would turn the live app's
+writing, tagging and summarizing (set to the Claude API in Ivan's live settings, with a key in the Keychain) back
+to LM Studio for every recording, which reverses Ivan's 12 Oct decision in PLAN section 11 ("switch writing to the
+Claude API", Qwen took 58 min per package; measured again here, 33 min for the 13 Sep talk). That is his call, not
+a builder's (For Ivan). The live app is unchanged: still the M4b build, still v1's lock (a talk without "Serenity"
+may reach the Claude API). `cd ~/Code/prakriti/mac && make install` ships this part the moment he says so.
+
+### For Ivan
+
+- [ ] **Decide one thing: should Gabriel's own talks reach the Claude API before the people check exists?** Your
+  12 Oct note in PLAN section 11 says yes (writing switched to the Claude API, Gabriel's talks may go to the
+  cloud), and later the same day that releases are signed and classes may go too. This part follows the plan's
+  strict M5 lock and this run's instructions instead, so once installed, **every recording is written by LM Studio
+  on this Mac again** (your live settings choose the Claude API for writing, tagging and summarizing; the lock
+  turns all three to LM Studio and says why in Checks). If you say yes, the change is small and contained: count a
+  recording you marked as a talk as checked with Gabriel as its one consenting speaker until M6 runs. Nothing else
+  is needed for this part.
 
 ## v2 part M4b: the capture check. Mon 12 Oct 2026
 

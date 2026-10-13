@@ -44,6 +44,7 @@ final class EpisodeTextAcceptanceTests: XCTestCase {
         model.runner.makeClient = { provider, setup in
             provider == .claudeAPI ? RefusingClient(provider: provider, counter: claudeCalls) : WritingSetup.standardClient(provider, setup)
         }
+        model.runner.makeCloudClient = { provider, _ in RefusingClient(provider: provider, counter: claudeCalls) }
         let talk = paths.studioRecordings.appending(path: "2026-09-13/2026-09-13 18-25-44.mp4")
         XCTAssertTrue(FileManager.default.fileExists(atPath: talk.path))
         let name = talk.deletingPathExtension().lastPathComponent

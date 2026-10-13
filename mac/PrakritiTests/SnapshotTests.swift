@@ -157,6 +157,12 @@ final class SnapshotTests: XCTestCase {
                 Fixtures.waitingForPermission(notAsked)
                 try renderer.renderSettings(model: notAsked, pane: .general, appearance: appearance, name: "10-settings-general-not-asked-\(scheme)")
                 written += ["10-settings-outputs-numbered-\(scheme)", "10-settings-general-not-asked-\(scheme)"]
+                // v2 part M5a: the hardware check on a smaller Mac without Apple Intelligence.
+                let small = Fixtures.model()
+                small.hardware = HardwareProfile(chip: "Apple M2", memoryBytes: 16 * 1_073_741_824,
+                                                 appleIntelligenceUnavailable: "Apple Intelligence is turned off in System Settings, so Apple's on-device model cannot be used.")
+                try renderer.renderSettings(model: small, pane: .models, appearance: appearance, name: "10-settings-models-16gb-\(scheme)")
+                written.append("10-settings-models-16gb-\(scheme)")
                 // The Activity window (v2 part M4a): Now with a make running and one waiting, the same paused, Now
                 // empty, Finished and Log.
                 let activities: [(String, ActivityTab, (AppModel) -> Void)] = [
@@ -221,7 +227,7 @@ final class SnapshotTests: XCTestCase {
         }
         if only == "library" {
             print("Snapshots written to \(outputFolder.path): \(written.count) library and Settings pictures")
-            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2)
+            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2 + 2)
             return
         }
 
@@ -308,7 +314,7 @@ final class SnapshotTests: XCTestCase {
 
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + viewerCount)
+        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + 2 + viewerCount)
     }
 
     /// v2 part M2a: the Help window, open at every article this build shows, in light and dark, with a

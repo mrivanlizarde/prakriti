@@ -25,6 +25,15 @@ struct RefusingClient: LanguageModelClient {
     func check() async -> ProviderCheck { ProviderCheck(state: .notSetUp, line: "Not called.", at: Date()) }
 }
 
+/// The same, as a cloud client (v2 part M5a): what the privacy lock would have released, counted and refused.
+extension RefusingClient: CloudModelClient {
+    var contextLimit: Int { 1 }
+    func send(_ payload: CloudPayload) async throws -> ModelReply {
+        counter.add()
+        throw ModelFailure(kind: .notSetUp, reason: "This provider must not be called.")
+    }
+}
+
 /// Milestone 6's acceptance, on the real 13 Sep talk, through the app's own settings, runner,
 /// pipeline and writer, with the real Qwen3.8-27B in LM Studio and Apple's on-device model:
 ///
@@ -62,6 +71,7 @@ final class ModelsAcceptanceTests: XCTestCase {
         model.runner.makeClient = { provider, setup in
             provider == .claudeAPI ? RefusingClient(provider: provider, counter: claudeCalls) : WritingSetup.standardClient(provider, setup)
         }
+        model.runner.makeCloudClient = { provider, _ in RefusingClient(provider: provider, counter: claudeCalls) }
         let defaults = model.defaultSettings()
         try XCTUnwrap(defaults.first { $0.kind == .titlesNotesChapters }).isOn = true
         try model.context.save()
@@ -109,12 +119,13 @@ final class ModelsAcceptanceTests: XCTestCase {
         report.append("Run: \(recording.status.title) in \(Format.length(total)). Steps:")
         for step in run.steps { report.append("  \(step.name): \(step.state.title), \(step.seconds.map { String(format: "%.1f s", $0) } ?? "-"). \(step.detail ?? "")") }
 
-        // Privacy lock: Serenity is named in the transcript, so the Claude API was never asked.
+        // Privacy lock (v2 part M5a): the people check has not run (it does not exist until M6), and the
+        // transcript names Serenity too, so the Claude API was never asked.
         XCTAssertTrue(recording.hasSerenity, "the 13 Sep transcript names Serenity")
         XCTAssertTrue(recording.isPrivacyLocked)
-        XCTAssertEqual(claudeCalls.count, 0, "the Claude API must never be asked for a recording with Serenity in it")
+        XCTAssertEqual(claudeCalls.count, 0, "the Claude API must never be asked for a recording whose people are not checked")
         XCTAssertEqual(written.writingProvider, ModelProvider.lmStudio.rawValue)
-        XCTAssertEqual(written.lockReason, "This recording mentions Serenity")
+        XCTAssertEqual(written.lockReason, PrivacyLock.notChecked)
         XCTAssertEqual(written.lockedTasks, ["writing"])
         XCTAssertTrue(writingStep.detail?.contains("Privacy lock") == true)
         report += ["", "Privacy lock:",
@@ -233,6 +244,7 @@ final class ModelsAcceptanceTests: XCTestCase {
             try renderer.render(model: model, appearance: appearance, name: "m6-13sep-written-\(scheme)")
         }
         model.runner.makeClient = nil // the real clients now; the Claude API has no key, so its test sends nothing
+        model.runner.makeCloudClient = nil
         for provider in ModelProvider.allCases { model.testProvider(provider) }
         let deadline = Date().addingTimeInterval(240)
         while Date() < deadline && (model.providerChecks.count < ModelProvider.allCases.count

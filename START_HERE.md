@@ -506,11 +506,15 @@ written by the model chosen for each task on the Models screen (LM Studio by def
 loaded by Prakriti at 65,536 tokens; Apple on-device; Ollama; the Claude API with its key in the
 Keychain), then checked in Swift: every chapter starts at a time that is one of the transcript's own
 lines, and every quote is found word for word in `transcript.txt`, or it is left out and counted.
-Tags and a short summary are their own tasks. **The privacy lock (fails closed since 12 Oct, until
-part M5a replaces it):** only a recording marked as a talk whose transcript does not say "Serenity" may
-reach the Claude API; a class, a conversation, a test, a recording whose kind is not set, and no
-recording at all are only read by models on this Mac; a task set to the Claude API is done by LM Studio
-instead, and the page, the step and `show-notes.md` say so. The output is a draft in
+Tags and a short summary are their own tasks. **The privacy lock (v2 part M5a, `PrivacyLock`, Mon 12
+Oct):** a cloud model reads only a talk whose people check ran, with nobody unnamed seen or heard and
+everyone heard named and agreed to cloud models (`Person.mayReadInCloud`, off by default), and whose
+transcript does not say "Serenity". The people check is part M6, so **today every real recording is
+locked** ("Who appears and speaks in it has not been checked"); a task set to the Claude API is done by
+LM Studio instead, and the page, the step and `show-notes.md` say so. Every cloud request is a
+`CloudPayload` made only by `PrivacyLock.release`: names replaced by `[[NAME-n]]` tokens and put back in the
+answer, then the text read again and refused if a name is left. Settings, Models shows the hardware
+check ("Apple M5 Pro, 64 GB. This Mac can run the writing model."). The output is a draft in
 `show-notes.md` (Approve copies it) and `titles-notes-chapters.json` (Outputs only). It is off for
 every folder until Ivan turns it on, because the model holds about 33 GB and takes minutes.
 **Finish line, Sat 10 Oct:** v1 passed on real recordings. What works, what does not, what Ivan must
@@ -930,8 +934,8 @@ built, and fails if any needs more than 600 pt. `make accept-models` is mileston
 **real 13 Sep talk** with the **real models** (about 11 to 15 minutes, nearly all of it Qwen3.8-27B
 thinking; it needs LM Studio's server running at the Models screen's address with the model
 downloaded): writing is set to the Claude API on purpose, so the privacy lock must hand it to LM Studio
-(the talk names Serenity; the Claude client in the test only counts and refuses, and must be asked 0
-times); tags and summary go to Apple on-device; the model is unloaded first so Prakriti's own load at
+(since v2 part M5a because its people are not checked; the Claude client in the test only counts and
+refuses, and must be asked 0 times); tags and summary go to Apple on-device; the model is unloaded first so Prakriti's own load at
 65,536 tokens is exercised, and must be unloaded again after. It checks every chapter start against
 the cue starts of `transcript.srt` and every quote against `transcript.txt`, has Apple on-device tag a
 short input, tests each provider for real, and writes `acceptance-models.txt`, the model's own answer
@@ -966,7 +970,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `RecordingPageTests` (milestone 5: edits, the episode's clock, typed times, the cut's words gone through Parakeet with the Mac's voice, six sentences of Parakeet's real misplaced tokens, what the report names, the page's player, Approve and its refusals), `EditsAcceptanceTests` (the 13 Sep talk trimmed, cut, made again and approved, `make accept-edits` only; since v2 part M3b through the Viewer's Remove and Keep and the inspector's typed trim and cut), `ProgressTests` (v2 part M4a: the weighted percent, the time left, a stall, twice a second, ffmpeg's progress, Pause and its time limit, Stop, the line, stage times, the status log), `ProgressAcceptanceTests` (the 13 Sep talk made twice, `make accept-progress` only), `ViewerTests` (v2 part M3b: the transcript as words, sentences and paragraphs, a selection's span, Timeline-lite's spans, Remove, Keep and Restore, the window put back, and a clicked word playing within 0.25 s with Follow Playback moving on, in a real player), `StoreMigrationTests` (`make migrate-check` only), `HelpTests` (v2 part M2a: the articles, the capability blocks, links, the copy rules, what only Help may show, search, the Help menu's handler, Show Me), `WelcomeTests` (v2 part M2b: the welcome's words and symbols, what each stage of the build shows, the first-launch rule, the notification button, Choose Folder), `LibraryTests` (v2 part M3a: the smart groups as predicates, sections and sorts, search, open and back, Remove from Library with the watcher passing over it, places, the lock line, every text color's contrast), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share: the main window with its sidebar and inspector drawn on their own, the Help window, Settings panes, the Activity window) |
 | Real-window capture | `mac/scripts/capture-window.swift` (run by `make look` and `make check`); also `--analyze <png>` to check any capture, `--window <app> <png>` to capture the running app as it is, `--app-icon <app> <folder>` to draw the app's icon as Finder gets it at 512 and 32 px and measure its cut, and `--menu-bar <app> <seconds> <folder>` to read every Prakriti mark in the real menu bar over time (v2 part M1) |
 | Real-app pipeline check | `mac/scripts/process-in-app.sh <file> <folder>` |
-| The writing models (milestone 6) | `mac/Prakriti/Writing/`: `ModelClients.swift` (the request and reply, LM Studio with its load at 65,536 tokens, Ollama, the Claude API), `AppleOnDevice.swift` (Foundation Models, guided generation for tags and summaries), `Keychain.swift` (the Claude API key), `Writer.swift` (prompts, the privacy lock, tries, `WritingCheck`, `WrittenPackage` and `show-notes.md`); `App/ModelActions.swift` (test buttons, the key, Write Again, Use This Title); `Views/ModelsView.swift`, `Views/WritingSection.swift`; the pipeline step `.writing` and `PipelineRunner.write` (Write Again); tests `WritingTests` (in `make test`) and `ModelsAcceptanceTests` (`make accept-models`) |
+| The writing models (milestone 6) | `mac/Prakriti/Writing/`: `ModelClients.swift` (the request and reply, LM Studio with its load at 65,536 tokens, Ollama, the Claude API), `AppleOnDevice.swift` (Foundation Models, guided generation for tags and summaries), `Keychain.swift` (the Claude API key), `Writer.swift` (prompts, routing through the lock, tries, `WritingCheck`, `WrittenPackage` and `show-notes.md`), and since v2 part M5a `PrivacyLock.swift` (`PeopleFacts`, `LockSubject`, `PrivacyLock.decide` and `release`, `CloudPayload`, `CloudModelClient`, `LockedCloudClient`), `NameTokens.swift` (the tagger, tokens, restore), `HardwareCheck.swift` (`HardwareProfile`, `HardwareVerdict`) and `Model/Person.swift` (`Person.mayReadInCloud`); `App/ModelActions.swift` (test buttons, the key, Write Again, Use This Title); `Views/ModelsView.swift` (This Mac, Tasks, the lock), `Views/WritingSection.swift`; the pipeline step `.writing` and `PipelineRunner.write` (Write Again); tests `WritingTests`, `ProviderTests` (in `make test`), `ModelsAcceptanceTests` (`make accept-models`) and `NameRecallAcceptanceTests` (`make accept-names`, the tagger's recall on the 13 Sep talk) |
 | Written files | Beside the episode: `show-notes.md` (titles, notes, chapters, tags, summary, the checklist for review, what the checks changed, and placeholders for what is not chosen yet) and `titles-notes-chapters.json` (the checked package plus the model's own answer; never approved). On the recording: `writtenJSON` (the package without the raw answer) and `writingProblem` |
 | The Claude API key | The login Keychain, generic password, service `studio.therowan.prakriti.app.claude-api`, account `api-key`. Tests use `studio.therowan.prakriti.app.tests.claude-api` |
 | The recording page (milestone 5; retired in v2 part M3b, its functions in the Viewer and the inspector) | `App/RecordingActions.swift` (what its buttons do), `App/Approval.swift` (who may be approved, the copy and its receipt), `Engine/EpisodeEdits.swift` (the edits, the episode's clock, typed times, the transcript that follows the episode); tests `RecordingPageTests` (in `make test`) and `EditsAcceptanceTests` (`make accept-edits`) |
@@ -1239,12 +1243,13 @@ top and its end. Reading the code is not verification, and neither is a passing 
 49. **The writer reads the episode's cues (`EpisodeTranscript.cues` on the episode's clock, the words
     of every cut gone), never `transcript.json` as heard.** Reason: a chapter title or a quote must not
     name a student whose question was cut, and the times must match the audio (milestone 5's note).
-50. **The privacy lock lives in `Writer.write` (`route`), the only way any task reaches a model:** a
-    class, or a transcript that says "Serenity" (`Privacy.mentionsSerenity`, whole word, any case;
-    `Recording.hasSerenity` is then set and never unset), turns a Claude API choice into LM Studio for
-    every task, and the step line, the page and `show-notes.md` say so. Reason: SCOPE PRV-10, until
-    Serenity's yes no Claude session reads her teaching or any class. Proved: the acceptance set writing
-    to the Claude API on the 13 Sep talk and the Claude client was asked 0 times.
+50. **The privacy lock's decision is `PrivacyLock.decide`, applied in `Writer.write` (`route`), the only way any
+    task reaches a model** (since v2 part M5a; warning 109 for the adapter): a locked recording turns a Claude
+    API choice into LM Studio for every task, and the step line, the page and `show-notes.md` say so. A
+    transcript that says "Serenity" (`Privacy.mentionsSerenity`, whole word, any case; `Recording.hasSerenity`
+    is then set and never unset) still locks, as do a class and anything not marked as a talk. Reason: SCOPE
+    PRV-10, until Serenity's yes no Claude session reads her teaching or any class. Proved: the acceptance set
+    writing to the Claude API on the 13 Sep talk and the Claude client was asked 0 times.
 51. **The prompts keep private matters out:** titles, show notes, chapters, tags and summaries leave out
     illness, deaths, grief, family matters, money troubles and relationships, anyone's, the speaker's
     included; the checklist may hold the speaker's own income, health or result claims, because those
@@ -1466,9 +1471,10 @@ top and its end. Reading the code is not verification, and neither is a passing 
     your yes" (design spec C1) in the app, in notices and in Activity's line "is waiting for your yes"; the
     stored raw value `readyForYourYes` never changed, so nothing migrated. `make drop` and `process-in-app.sh`
     accept both phrasings in the log. Reason: one word must mean one thing, and "Ready" now means approved.
-90. **The privacy lock fails closed: only `kind == .talk` without Serenity may reach a cloud model**
-    (`Privacy.lockReason`, `Recording.isPrivacyLocked`, `ModelRouting.provider`, which also returns LM Studio
-    for a nil recording). Never let an unset kind read as "not locked". Reason (12 Oct): v1's rule locked only a
+90. **The privacy lock fails closed** (`PrivacyLock.decide`, `Recording.isPrivacyLocked`, `ModelRouting.provider`,
+    which also returns LM Studio for a nil recording). Until 12 Oct evening: only `kind == .talk` without Serenity;
+    since v2 part M5a also only once the people check has run (M6) and found everyone heard agreed and nobody
+    unnamed, so today no real recording reaches a cloud model. Never let an unset kind read as "not locked". Reason (12 Oct): v1's rule locked only a
     class or Serenity, while the 16, 20 and 23 Sep classes sat in the live store as kind "unknown", the live
     settings chose the Claude API for all three tasks, and a key was in the Keychain: turning titles on for one
     would have sent a class to Anthropic. Part M5a replaces this with `PrivacyLock`; it must stay at least this
@@ -1579,6 +1585,20 @@ top and its end. Reading the code is not verification, and neither is a passing 
     order, each once empty first; and ebur128 runs with `framelog=verbose`, or it prints ten lines a second into
     the text that is read. Recordings found before M4b get **Check Capture** in Checks, never a check by
     themselves (PLAN rule 2.1.7).
+109. **A cloud provider is a `CloudModelClient` and takes only a `CloudPayload`; a `CloudPayload` is made only by
+    `PrivacyLock.release` (its initializer is `fileprivate` to `PrivacyLock.swift`); the writer reaches a cloud
+    client only through `LockedCloudClient`.** Never make a cloud client a `LanguageModelClient`, never add a
+    second way to build a payload, and never send from the key test anything but `PrivacyLock.keyCheck()`.
+    `release` runs the decision again, replaces every name Apple's tagger finds that is not a consenting named
+    person's (`NameTokens`, `[[NAME-n]]`, each written form put back exactly in the answer), always replaces muted
+    names, every named person who has not agreed and "Serenity", then reads the text as it would be sent and
+    refuses if a name, an always-replaced name or a withheld span is left. A refusal is a non-retryable failure,
+    logged by its reason only, never the text. Reason: PLAN 2.2 rule 1 and warning 19: the check must be on the
+    data and impossible to skip, not a reviewer remembering. Measured 12 Oct: the tagger missed "Serenity" in the
+    writing prompt's own sentence ("The school's teachers are Gabriel and Serenity.") while finding Gabriel, which
+    is why she is always replaced; on the 13 Sep talk's text it replaced 20 of 21 name mentions (95%, 7 of 8
+    names, reference made by Qwen3.8-27B on this Mac; BUILD-LOG "v2 part M5a"). `ProviderTests` proves each
+    refusal, and `testTheUnsafePathCannotBeWritten` fails if any other file writes `CloudPayload(`.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

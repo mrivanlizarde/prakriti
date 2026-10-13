@@ -25,10 +25,13 @@ recording on this Mac, and holds back anything a person has not checked.
 
 ## Which recordings only models on this Mac read
 
-Only a recording you marked as a talk can be read by the Claude API. Everything else is only read by
-models on this Mac, even if a task is set to the Claude API: a class, a conversation, a test, a recording
-whose kind is still Not set, and any recording whose transcript names Serenity. LM Studio does that task
-instead, and the inspector's Checks tab says so. See [Models and API keys](09-models-and-api-keys.md).
+A cloud model, such as the Claude API, reads only a talk in which everyone heard is named and has agreed to
+cloud models, and nobody else appears or speaks. Everything else is only read by models on this Mac, even
+if a task is set to the Claude API: a class, a conversation, a test, a recording whose kind is still Not
+set, and any recording where other people appear or speak. Prakriti does not check who appears and speaks
+yet, so for now every recording is only read on this Mac. LM Studio does that task instead, and the
+inspector's Checks tab says why. Names are replaced before anything is sent. See
+[Models and API keys](09-models-and-api-keys.md).
 
 :::unless people
 ## Classes and other voices

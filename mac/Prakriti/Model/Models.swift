@@ -196,11 +196,13 @@ final class Recording {
 
     var fileName: String { (filePath as NSString).lastPathComponent }
 
-    /// Only a recording marked as a talk, with no Serenity in it, may be read by a cloud model; anything
-    /// else (a class, a conversation, a test, or a kind not set yet) stays on this Mac. It fails closed:
-    /// until 12 Oct a recording whose kind was never set counted as unlocked. Part M5a replaces this rule.
-    /// `hasSerenity` is set when a transcript says her name (Privacy.mentionsSerenity) and never unset.
-    var isPrivacyLocked: Bool { Privacy.lockReason(kind: kind, serenity: hasSerenity) != nil }
+    /// What the privacy lock reads about this recording (v2 part M5a). The people check does not exist
+    /// until part M6, so every recording is "not checked" and stays on this Mac. `hasSerenity` is set when
+    /// a transcript says her name (Privacy.mentionsSerenity) and never unset.
+    var lockSubject: LockSubject { LockSubject(kind: kind, mentionsSerenity: hasSerenity, people: .notChecked) }
+
+    /// Only models on this Mac may read it (PrivacyLock.decide). Fails closed.
+    var isPrivacyLocked: Bool { PrivacyLock.decide(lockSubject).isLocked }
 
     /// The titles, show notes and chapters last written, or nil.
     var written: WrittenPackage? { WrittenPackage.decode(writtenJSON) }

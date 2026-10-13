@@ -58,3 +58,16 @@ still owed; the "has agreed" checkbox records consent, it does not create it.
   words on this Mac. The help says so rather than implying Prakriti erases them.
 - "Never uploaded" holds for v1 and v2 (Prakriti never uploads). If the web app's R2 sync from SCOPE
   ships, revisit this line.
+
+## Built in v2 part M5a (Mon 12 Oct 2026)
+
+- The privacy lock is `PrivacyLock` (mac/Prakriti/Writing/PrivacyLock.swift). A cloud model reads only a talk whose
+  people check ran, with no one unnamed and everyone heard named and agreed (`Person.mayReadInCloud`, off by
+  default), and whose transcript does not name Serenity. The people check is part M6, so every real recording is
+  locked today ("Who appears and speaks in it has not been checked, so only models on this Mac read it.").
+- Every cloud request goes through `PrivacyLock.release`: names Apple's tagger finds are replaced by [[NAME-n]] and
+  put back in the answer; muted names, named people who have not agreed and Serenity are always replaced (the tagger
+  missed "Serenity" in the writing prompt when measured); the text is read again and refused if a name is left.
+- Settings, Models has "This Mac": the chip, memory and verdict ("Apple M5 Pro, 64 GB. This Mac can run the writing
+  model."), and Apple Intelligence's state. The welcome panel 5 line is part M5b's.
+- Not built: OpenAI, Anthropic's current request shape, model lists from each provider (M5b); the people check (M6).

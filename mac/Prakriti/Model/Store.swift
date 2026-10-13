@@ -3,7 +3,7 @@ import SwiftData
 
 enum PrakritiStore {
     static var modelTypes: [any PersistentModel.Type] {
-        [Source.self, Recording.self, OutputSetting.self, Run.self, LogEntry.self, StageTiming.self]
+        [Source.self, Recording.self, OutputSetting.self, Run.self, LogEntry.self, StageTiming.self, Person.self]
     }
 
     /// The store at `url`, or an in-memory store when `url` is nil (tests and snapshots).
@@ -134,9 +134,9 @@ extension OutputResolver {
     }
 }
 
-/// The privacy lock: only a recording marked as a talk, with no Serenity in it, may reach a cloud
-/// model. If the chosen provider sends text out, LM Studio is used instead, and the UI says so. It
-/// fails closed: no recording at all, or one whose kind is not set, stays on this Mac (12 Oct).
+/// The privacy lock's routing (PrivacyLock.decide, v2 part M5a): if the chosen provider sends text out and
+/// the recording is locked, LM Studio is used instead, and the UI says so. It fails closed: no recording
+/// at all stays on this Mac.
 enum ModelRouting {
     static func provider(chosen: ModelProvider, for recording: Recording?) -> ModelProvider {
         if chosen.isLocal { return chosen }

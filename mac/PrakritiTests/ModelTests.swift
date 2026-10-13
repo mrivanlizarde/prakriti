@@ -129,7 +129,9 @@ final class ModelTests: XCTestCase {
         let withSerenity = Recording(filePath: "/tmp/s.mp4", kind: .talk)
         withSerenity.hasSerenity = true
 
-        XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: talk), .claudeAPI)
+        // v2 part M5a: until the people check exists (M6), even a talk stays on this Mac.
+        XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: talk), .lmStudio)
+        XCTAssertEqual(talk.lockLine, "Who appears and speaks in it has not been checked, so only models on this Mac read it.")
         XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: lesson), .lmStudio)
         XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: withSerenity), .lmStudio)
         XCTAssertTrue(ModelRouting.isOverridden(chosen: .claudeAPI, for: lesson))
@@ -145,12 +147,10 @@ final class ModelTests: XCTestCase {
             let recording = Recording(filePath: "/tmp/\(kind.rawValue).mp4", kind: kind)
             XCTAssertTrue(recording.isPrivacyLocked, "\(kind) is locked")
             XCTAssertNotNil(recording.lockLine, "\(kind) says why")
-            XCTAssertNotNil(Privacy.lockReason(kind: kind, serenity: false), "\(kind) has a reason for the writer")
+            XCTAssertNotNil(PrivacyLock.decide(recording.lockSubject).reason, "\(kind) has a reason for the writer")
             XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: recording), .lmStudio, "\(kind) stays on this Mac")
         }
-        XCTAssertFalse(talk.isPrivacyLocked)
-        XCTAssertNil(talk.lockLine)
-        XCTAssertNil(Privacy.lockReason(kind: .talk, serenity: false))
+        XCTAssertTrue(talk.isPrivacyLocked, "people not checked")
     }
 
     func testStatusVocabulary() {

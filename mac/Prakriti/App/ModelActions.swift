@@ -18,9 +18,11 @@ extension AppModel {
                                                  : "Testing.", at: now())
         var setup = runner.writingSetup()
         if provider == .claudeAPI { setup.claudeKey = keyStore.read() }
-        let client = setup.makeClient(provider, setup)
+        // A cloud provider's test sends only PrivacyLock.keyCheck(): fixed words, no recording.
+        let local = provider.isLocal ? setup.makeClient(provider, setup) : nil
+        let cloud = provider.isLocal ? nil : setup.makeCloudClient(provider, setup)
         Task { @MainActor in
-            let check = await client.check()
+            let check = if let local { await local.check() } else { await cloud?.check() ?? ProviderCheck(state: .problem, line: "Nothing was sent.", at: Date()) }
             providerChecks[provider] = check
             record("Tested \(provider.title): \(check.line)", level: check.state == .problem ? .attention : .info)
         }
@@ -127,8 +129,8 @@ extension AppModel {
         try? context.save()
     }
 
-    /// The provider a task really uses for this recording: the privacy lock turns a cloud choice
-    /// into LM Studio for a class or anything with Serenity in it.
+    /// The provider a task really uses for this recording: the privacy lock (PrivacyLock.decide) turns a
+    /// cloud choice into LM Studio for a locked recording.
     func provider(for task: ModelTask, recording: Recording?) -> ModelProvider {
         ModelRouting.provider(chosen: settings.provider[task] ?? .lmStudio, for: recording)
     }

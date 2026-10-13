@@ -10,10 +10,12 @@ import Foundation
 // - Every chapter must start at a time that is one of the transcript's own line times; one that
 //   does not is left out and counted. Every quote in the accuracy checklist must be found word for
 //   word in transcript.txt; one that is not is left out and counted (SCOPE 13, the evidence check).
-// - The privacy lock (fails closed, 12 Oct): only a recording marked as a talk whose transcript does
-//   not say "Serenity" may reach a cloud model; anything else is only ever read by a model on this Mac. If the Claude API is chosen for a task, LM Studio does that
-//   task instead, and the files and the page say so (SCOPE PRV-10: until Serenity says yes, no
-//   Claude session reads her teaching or any class).
+// - The privacy lock (PrivacyLock.swift, v2 part M5a): a cloud model reads only a talk whose people
+//   check ran and found no one unnamed and no one heard who has not agreed, and whose transcript does not
+//   name the teacher who has not agreed. Until the people check exists (part M6) that is no real
+//   recording. If the Claude API is chosen for a task on a locked recording, LM Studio does that task
+//   instead, and the files and the page say so. Every cloud request goes through
+//   `PrivacyLock.release` (names replaced by tokens, the text checked again) inside `LockedCloudClient`.
 // - A reply cut off at its length, an empty reply, or JSON that fails the checks is tried again, up
 //   to three times, always as one system and one user message (LOCAL-MODEL.md rules 2 and 3).
 // - No em dash or en dash reaches a title, the notes or a chapter (Ivan's standing rule): each is
@@ -28,24 +30,6 @@ enum Privacy {
         text.range(of: #"\bserenity\b"#, options: [.regularExpression, .caseInsensitive]) != nil
     }
 
-    /// Why a recording may only be read on this Mac, written to sit inside a sentence ("this is a
-    /// class", "This recording mentions Serenity"; capitalize it to start one), or nil. Never lowercased
-    /// whole: her name keeps its capital (10 Oct: the page read "serenity is in this recording").
-    ///
-    /// It fails closed (12 Oct, ahead of part M5a): only a recording Ivan marked as a talk may reach a
-    /// cloud model. Before, a recording whose kind was never set read as unlocked, and the 16, 20 and
-    /// 23 Sep classes sat in the live store unmarked while the live settings chose the Claude API.
-    static func lockReason(kind: RecordingKind, serenity: Bool) -> String? {
-        if kind == .lesson { return "this is a class" }
-        if serenity { return "This recording mentions Serenity" }
-        switch kind {
-        case .talk: return nil
-        case .lesson: return "this is a class"
-        case .conversation: return "this is a conversation"
-        case .test: return "this is marked as a test"
-        case .unknown: return "it is not marked as a talk yet"
-        }
-    }
 }
 
 extension ModelRouting {
@@ -357,8 +341,11 @@ struct WritingSetup: Sendable {
     var claudeModel = AppSettings.defaultClaudeModel
     var claudeKey: String?
     var maxAttempts = 3
-    /// Makes the client for a provider. Tests pass their own to see which provider is asked.
+    /// Makes the client for a provider on this Mac. Tests pass their own to see which provider is asked.
     var makeClient: @Sendable (ModelProvider, WritingSetup) -> any LanguageModelClient = WritingSetup.standardClient
+    /// Makes the client for a cloud provider. It takes only a `CloudPayload`; the writer wraps it in
+    /// `LockedCloudClient`, so every request passes the privacy lock. Tests pass their own.
+    var makeCloudClient: @Sendable (ModelProvider, WritingSetup) -> any CloudModelClient = WritingSetup.standardCloudClient
 
     func chosen(_ task: ModelTask) -> ModelProvider { providers[task] ?? .lmStudio }
 
@@ -367,8 +354,12 @@ struct WritingSetup: Sendable {
         case .lmStudio: LMStudioClient(address: setup.lmStudioAddress, model: setup.lmStudioModel)
         case .appleOnDevice: AppleOnDeviceClient()
         case .ollama: OllamaClient(address: setup.ollamaAddress, model: setup.ollamaModel)
-        case .claudeAPI: ClaudeClient(model: setup.claudeModel, key: setup.claudeKey)
+        case .claudeAPI: NoCloudClient(provider: provider)
         }
+    }
+
+    static func standardCloudClient(_ provider: ModelProvider, _ setup: WritingSetup) -> any CloudModelClient {
+        ClaudeClient(model: setup.claudeModel, key: setup.claudeKey)
     }
 }
 
@@ -393,6 +384,13 @@ struct WritingInput: Sendable {
     var transcriptText: String
     /// The times are the episode's (something was cut or trimmed) rather than the recording's.
     var followsEpisode: Bool
+    /// Who the people check found (part M6); not checked until then, which keeps it on this Mac.
+    var people: PeopleFacts = .notChecked
+
+    /// What the privacy lock reads.
+    var lockSubject: LockSubject {
+        LockSubject(kind: kind, mentionsSerenity: knownSerenity || Privacy.mentionsSerenity(transcriptText), people: people)
+    }
 }
 
 /// Writes titles, show notes and chapters (the writing task), then tags and a summary (their own
@@ -414,7 +412,8 @@ struct Writer: Sendable {
         let started = ContinuousClock.now
         let lines = WritingLine.lines(input.cues)
         let serenity = input.knownSerenity || Privacy.mentionsSerenity(input.transcriptText)
-        let lockReason = Privacy.lockReason(kind: input.kind, serenity: serenity)
+        let subject = input.lockSubject
+        let lockReason = PrivacyLock.decide(subject).reason
         var outcome = Outcome(package: nil, problem: nil, mentionsSerenity: serenity, lockReason: lockReason)
         guard !lines.isEmpty else {
             outcome.problem = "The transcript has no words to write from."
@@ -424,7 +423,15 @@ struct Writer: Sendable {
         var clients: [ModelProvider: any LanguageModelClient] = [:]
         func client(_ provider: ModelProvider) -> any LanguageModelClient {
             if let made = clients[provider] { return made }
-            let made = setup.makeClient(provider, setup)
+            let made: any LanguageModelClient
+            if provider.isLocal {
+                made = setup.makeClient(provider, setup)
+            } else {
+                // The only way a cloud provider is reached: every request through PrivacyLock.release.
+                let log = self.log, fileName = input.fileName
+                made = LockedCloudClient(inner: setup.makeCloudClient(provider, setup), subject: subject,
+                                         onRefusal: { reason in log?.write("\(fileName): \(reason)") })
+            }
             clients[provider] = made
             return made
         }

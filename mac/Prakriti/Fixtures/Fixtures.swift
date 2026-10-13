@@ -163,7 +163,7 @@ enum Fixtures {
                 + "and another focused on the business and marketing side of running a yoga practice. Weekly yin yoga classes have been added to the schedule, and "
                 + "the online platform holds extensive recorded material covering asana, pranayama, anatomy, the sutras, and Samkhya philosophy.",
             writtenBy: "Qwen3.8-27B in LM Studio", writingProvider: ModelProvider.lmStudio.rawValue,
-            taggedBy: "Qwen3.8-27B in LM Studio", summarizedBy: "Qwen3.8-27B in LM Studio", lockReason: "This recording mentions Serenity", lockedTasks: ["writing"],
+            taggedBy: "Qwen3.8-27B in LM Studio", summarizedBy: "Qwen3.8-27B in LM Studio", lockReason: PrivacyLock.namesTeacher, lockedTasks: ["writing"],
             writtenAt: date(2026, 10, 11, 2, 20, 8), seconds: 1798.4, attempts: 1, writingSeconds: 1457.4,
             promptTokens: 5800, completionTokens: 12445, reasoningTokens: 11218, clock: "episode")
         written.oneLine = "The teacher shares the school's journey through India, the lineage of modern yoga, and how Yoga Marga is reshaping its curriculum and schedule."

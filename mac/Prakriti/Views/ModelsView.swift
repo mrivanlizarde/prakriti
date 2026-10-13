@@ -8,7 +8,27 @@ struct ModelsView: View {
         @Bindable var settings = model.settings
         Form {
             Section {
-                PageIntro(text: "Which model writes for each task. Models on this Mac keep everything here. The Claude API sends text to Anthropic, so only a recording marked as a talk, without Serenity in it, ever goes there.")
+                PageIntro(text: "Which model writes for each task. Models on this Mac keep everything here. The Claude API sends text to Anthropic, so the privacy lock below decides which recordings may ever go there.")
+            }
+
+            Section {
+                let verdict = HardwareVerdict(model.hardware)
+                Label {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(verdict.headline).font(AppFont.body)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if let suggestion = verdict.suggestion {
+                            Text(suggestion).font(AppFont.secondary).foregroundStyle(.appSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Text(verdict.appleIntelligence).font(AppFont.secondary).foregroundStyle(.appSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                } icon: {
+                    Image(systemName: verdict.canRunWritingModel ? "checkmark.circle" : "exclamationmark.triangle").font(AppFont.body)
+                }
+            } header: {
+                SectionHeader("This Mac")
             }
 
             Section {
@@ -31,7 +51,7 @@ struct ModelsView: View {
 
             Section {
                 Label {
-                    Text("Only a recording marked as a talk can use the Claude API. A class, a conversation, a test, a recording not marked yet, or one whose transcript says \"Serenity\" always uses a model on this Mac. If a task above is set to the Claude API, LM Studio does that task for these recordings instead, and the inspector and its show notes say so.")
+                    Text("A cloud model reads only a talk in which everyone heard is named and has agreed to cloud models, and nobody else appears or speaks. Classes, and recordings where other people appear or speak, are only read by models on this Mac. Prakriti does not check who appears and speaks yet, so for now every recording is only read on this Mac. If a task above is set to the Claude API, LM Studio does that task instead, and the inspector and its show notes say so. Before anything is sent, names are replaced and the text is checked again.")
                         .font(AppFont.body)
                         .fixedSize(horizontal: false, vertical: true)
                 } icon: {
@@ -75,7 +95,7 @@ struct ModelsView: View {
 
             Section {
                 ProviderRow(provider: .claudeAPI, location: "Sends text to Anthropic",
-                            note: "Optional. The key is kept in the Keychain, never in a file. Never used for a class or anything with Serenity in it.")
+                            note: "Optional. The key is kept in the Keychain, never in a file. Never used for a recording the privacy lock keeps on this Mac.")
                 ClaudeKeyRow()
                 FieldRow(label: "Model", text: $settings.claudeModel, prompt: AppSettings.defaultClaudeModel)
                 TestRow(provider: .claudeAPI, title: "Test Claude API")

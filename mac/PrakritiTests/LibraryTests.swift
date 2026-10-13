@@ -285,13 +285,15 @@ final class LibraryTests: XCTestCase {
     func testTheLockLineNamesNoOne() {
         let model = emptyModel()
         let talk = recording(.readyForYourYes, "talk", day: 13, in: model)
-        XCTAssertNil(talk.lockLine)
+        XCTAssertEqual(talk.lockLine, "Who appears and speaks in it has not been checked, so only models on this Mac read it.")
         talk.hasSerenity = true
-        let named = talk.lockLine ?? ""
-        XCTAssertEqual(named, "This recording names a teacher who has not agreed to cloud models, so only models on this Mac read it.")
+        XCTAssertEqual(talk.lockLine, "Who appears and speaks in it has not been checked, so only models on this Mac read it.")
+        let named = PrivacyLock.decide(LockSubject(kind: .talk, mentionsSerenity: true, people: PeopleFacts(checked: true))).line ?? ""
+        XCTAssertEqual(named, "It names a teacher who has not agreed to cloud models, so only models on this Mac read it.")
         talk.kind = .lesson
         XCTAssertEqual(talk.lockLine, "This is a class, so only models on this Mac read it.")
-        for line in [named, talk.lockLine ?? ""] {
+        for line in [named, talk.lockLine ?? ""] + RecordingKind.allCases.compactMap({ PrivacyLock.decide(LockSubject(kind: $0, mentionsSerenity: false)).line })
+            + [PrivacyLock.unnamed, PrivacyLock.notAgreed, PrivacyLock.noRecording] {
             XCTAssertFalse(line.contains("Serenity"))
             XCTAssertFalse(line.contains("\u{2014}") || line.contains("\u{2013}"))
         }

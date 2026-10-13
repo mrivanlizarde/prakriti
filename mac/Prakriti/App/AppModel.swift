@@ -163,6 +163,8 @@ final class AppModel {
     var claudeKeyAdded = false
     /// Where the Claude API key lives. Tests use their own Keychain item, never Ivan's.
     @ObservationIgnored var keyStore: KeyStore = AppModel.isRunningTests ? .testing : .claude
+    /// This Mac's chip and memory for the hardware check (v2 part M5a). Snapshots set a smaller Mac.
+    @ObservationIgnored var hardware: HardwareProfile = .current()
 
     /// The model the running app uses, so the app delegate and menu commands can reach it.
     static var current: AppModel?

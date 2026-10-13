@@ -17,6 +17,8 @@ final class PipelineRunner {
     /// Makes the model clients for writing. Nil: the real ones. Tests set it to see which provider
     /// the privacy lock let through, without calling any model.
     @ObservationIgnored var makeClient: (@Sendable (ModelProvider, WritingSetup) -> any LanguageModelClient)?
+    /// Tests only: the cloud client the privacy lock wraps (v2 part M5a), to count what reaches it.
+    @ObservationIgnored var makeCloudClient: (@Sendable (ModelProvider, WritingSetup) -> any CloudModelClient)?
 
     /// Recordings waiting their turn, and the one being worked on (by Recording.id), for the UI.
     private(set) var waitingIDs: [UUID] = []
@@ -316,6 +318,7 @@ final class PipelineRunner {
         setup.claudeModel = settings.claudeModel
         if settings.provider.values.contains(.claudeAPI) { setup.claudeKey = model.keyStore.read() }
         if let makeClient { setup.makeClient = makeClient }
+        if let makeCloudClient { setup.makeCloudClient = makeCloudClient }
         return setup
     }
 

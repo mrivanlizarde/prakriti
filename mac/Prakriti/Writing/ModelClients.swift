@@ -10,8 +10,8 @@ import Foundation
 //   only, and the JSON is checked in Swift (Writer), never trusted.
 // - Apple on-device (AppleOnDevice.swift): only for inputs under its context limit.
 // - Ollama: optional, on this Mac.
-// - Claude API: optional, sends text to Anthropic, key kept in the Keychain. The privacy lock
-//   (Writer) never lets a class or anything with Serenity in it reach it.
+// - Claude API: optional, sends text to Anthropic, key kept in the Keychain. It is a
+//   `CloudModelClient` and takes only a `CloudPayload` from the privacy lock (PrivacyLock.swift).
 
 /// One request: a single turn, a system message and a user message (LOCAL-MODEL.md rule 3: the
 /// family's template mishandles past assistant turns, and some runtimes reject other roles).
@@ -466,11 +466,12 @@ struct OllamaClient: LanguageModelClient {
 // MARK: Claude API
 
 /// The Claude API (Anthropic's Messages API, raw HTTP: there is no official Swift SDK). Optional;
-/// sends text to Anthropic, so the privacy lock keeps everything but a talk without Serenity in it away
-/// from it. The key comes from the Keychain for each run and is never written to a file or a log.
-/// Claude Opus 5.5 takes no sampling settings and cannot turn thinking off; its effort is set to
-/// "medium" explicitly, and a declined request falls back on Anthropic's side ("fallbacks").
-struct ClaudeClient: LanguageModelClient {
+/// sends text to Anthropic, so it is a `CloudModelClient`: it takes only a `CloudPayload`, which only
+/// `PrivacyLock.release` makes (v2 part M5a). The request shape is v1's, unchanged in M5a; part M5b brings
+/// it to the current one. The key comes from the Keychain for each run and is never written to a file or a log.
+/// Claude Opus 5.5 takes no sampling settings; its effort is set to "medium" explicitly, and a declined
+/// request falls back on Anthropic's side ("fallbacks").
+struct ClaudeClient: CloudModelClient {
     let provider = ModelProvider.claudeAPI
     let model: String
     let key: String?
@@ -479,31 +480,28 @@ struct ClaudeClient: LanguageModelClient {
     static let context = 1_000_000
 
     var displayName: String { model + " (Claude API)" }
-
-    func budget(for request: ModelRequest) async throws -> (needed: Int, limit: Int) {
-        (ModelSettings.estimatedTokens(request.system + request.user) + request.maxTokens, Self.context)
-    }
+    var contextLimit: Int { Self.context }
 
     /// The request body. Kept apart so a test can pin it.
-    func body(for request: ModelRequest) -> [String: Any] {
+    func body(for payload: CloudPayload) -> [String: Any] {
         [
             "model": model,
             "max_tokens": 16_000,
-            "system": request.system,
-            "messages": [["role": "user", "content": request.user]],
+            "system": payload.system,
+            "messages": [["role": "user", "content": payload.user]],
             "thinking": ["type": "adaptive"],
             "output_config": ["effort": "medium"],
             "fallbacks": "default",
         ]
     }
 
-    func complete(_ request: ModelRequest) async throws -> ModelReply {
+    func send(_ payload: CloudPayload) async throws -> ModelReply {
         guard let key, !key.isEmpty else {
             throw ModelFailure(kind: .notSetUp, reason: "No Claude API key is in the Keychain. Add one on the Models screen.")
         }
         let started = ContinuousClock.now
         let (status, data) = try await ModelHTTP.send(
-            ModelHTTP.post(Self.endpoint, body: body(for: request),
+            ModelHTTP.post(Self.endpoint, body: body(for: payload),
                            headers: ["x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-beta": "server-side-fallback-2026-07-01"]),
             session: session, service: "The Claude API")
         guard status == 200, let object = ModelHTTP.object(data) else {
@@ -529,7 +527,7 @@ struct ClaudeClient: LanguageModelClient {
             return ProviderCheck(state: .notSetUp, line: "No key added. Nothing is sent to Anthropic.", at: Date())
         }
         do {
-            let reply = try await complete(ModelRequest(system: "You answer with JSON only.", user: "Reply with exactly {\"ready\": true}", shape: .check))
+            let reply = try await send(PrivacyLock.keyCheck())
             return ProviderCheck(state: .ok, line: String(format: "%@ answered in %.0f s. The key in the Keychain works.", model, reply.seconds), at: Date())
         } catch let failure as ModelFailure {
             return ProviderCheck(state: failure.kind == .notSetUp ? .notSetUp : .problem, line: failure.reason, at: Date())
