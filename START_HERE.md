@@ -366,7 +366,10 @@ Each one states its reason, because a warning without a reason gets argued away.
     every archive piece before it reaches its approver, logged with who and when. Copy that says "never guesses" or "always muted" is a promise the
     process will break.
 
-15. **OBS records Hybrid MP4, never MKV.** Apple's frameworks (AVFoundation, SpeechAnalyzer,
+15. **OBS records Hybrid MOV or Hybrid MP4, never MKV.** OBS 32 records Hybrid MOV on a Mac by default,
+    and since v2 part M4b (Mon 12 Oct) Prakriti accepts it everywhere it accepts Hybrid MP4 (the watcher, the
+    readiness check, the capture check and the Viewer, tested on a fragmented MOV in `CaptureCheckTests`); the
+    capture check names an MKV file with the tip to switch. Apple's frameworks (AVFoundation, SpeechAnalyzer,
     SoundAnalysis, Vision) cannot open Matroska, so an MKV recording would stall the whole pipeline.
     And a fragmented MP4 passes a naive "is there a `moov` box" check while it is still recording,
     so the readiness rule must be format-aware, with "finished" defined only from the committed
@@ -784,6 +787,9 @@ cd ~/Code/prakriti/mac && build/Build/Products/Debug/Prakriti.app/Contents/MacOS
 cd ~/Code/prakriti/mac && make accept-progress MILESTONE=v2-m4a
 ```
 ```bash
+cd ~/Code/prakriti/mac && make accept-capture MILESTONE=v2-m4b
+```
+```bash
 cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --activity-window build/Build/Products/Debug/Prakriti.app ../screens/mac/v2-m4a/real/activity-during-a-run.png
 ```
 ```bash
@@ -805,7 +811,13 @@ cd ~/Code/prakriti/mac && make drop MODE=live MILESTONE=m3
 tail -20 ~/Library/Logs/Prakriti/$(date +%Y-%m-%d).log
 ```
 
-`make accept-progress` (v2 part M4a, about 3 minutes) makes the **real 13 Sep talk** twice in development with
+`make accept-capture` (v2 part M4b, about 2 minutes) runs the **real 13 Sep talk**, `two-people-tracks.mov`,
+`silent-60s.mp4` and the 30 s clip through the app's runner in development (in-memory store) and needs the 13 Sep
+talk at 1920 by 1080, 29.97 fps, H.264, Rec. 709, one stereo track flagged as one microphone in both channels with
+the tip "Give each speaker a microphone on its own track."; the fixture's three tracks each with its own loudness
+and none flagged; the silent fixture's track silent; the 30 s clip filed as a test with no output folder and its
+check in the store; the originals unchanged. It draws the Checks tab of each, light and dark, and writes
+`acceptance-capture.txt`. `make accept-progress` (v2 part M4a, about 3 minutes) makes the **real 13 Sep talk** twice in development with
 the podcast-ready episode on, writes every progress snapshot the window would see to `progress-trace.txt` (time,
 stage, percent, time left, and the seconds behind it) and `acceptance-progress.txt`, and passes when each run
 rises from 0 to 100% without going back and with at most two updates in any second, the second run's time left
@@ -979,6 +991,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | App icon | `mac/Prakriti/Resources/AppIcon.icon`, an Icon Composer document (two glass layers on stone; default, dark, clear and tinted), copied from the master `docs/v2/icons/source/Prakriti.icon`. `actool` compiles it into `Assets.car` and `AppIcon.icns`, and Info.plist gets `CFBundleIconName` by itself. Design, sources and previews: `docs/v2/icons/` (since v2 part M1; v1's `make_icon.swift` is retired) |
 | Prakriti Help (v2 part M2a) | The articles: `mac/Prakriti/Resources/Help/00-index.md` to `10-troubleshooting.md` (user text only, copied into the app as `Contents/Resources/Help`); their notes: `docs/v2/help-notes/`; how to write one: `docs/v2/help/README.md`. Code: `mac/Prakriti/Help/` (`Capabilities` (what is built), `HelpArticle` (front matter), `HelpLibrary` (loading, the `:::` pass, links, places), `HelpRenderer` (swift-markdown to blocks), `HelpSearch`, `HelpMenuSearch` (the Help menu's search field), `HelpModel` (the open article, Back and Forward, Show Me)), `Views/Help/` (`HelpWindow`, `HelpArticleView`), `App/DebugSwitches.swift` (`--debug-help-search`); the Help menu in `App/PrakritiApp.swift`; tests `HelpTests` and `SnapshotTests.testRenderHelp` |
 | The welcome window (v2 part M2b) | `mac/Prakriti/Views/Welcome/`: `WelcomeContent.swift` (the five panels' words, each row with the capabilities it describes, `requires` and `unless`; `WelcomeContent.version`), `WelcomeModel.swift` (the open panel, the first-launch rule, Choose Folder), `WelcomeWindow.swift` (the window, its rows and buttons, its own fit measurement); the scene and Help, Welcome to Prakriti in `App/PrakritiApp.swift`; `welcomeSeenVersion` in `App/AppSettings.swift`; Turn On Notifications and `Notifier.openSystemSettings` in `App/Notices.swift`; the copy source and its status: `docs/v2/help-notes/welcome-panels.md`; tests `WelcomeTests` and `SnapshotTests.testRenderWelcome` |
+| The capture check (v2 part M4b) | `mac/Prakriti/Engine/CaptureCheck.swift` (`CaptureReport`, `CaptureFinding`, reading ffprobe and the per-track ffmpeg call, the findings and their tips, `run`), the pipeline's `.capture` step, `Recording.captureJSON`, `Views/Inspector/CaptureSection.swift` (the Checks tab's Capture section), `App/CaptureActions.swift` (Check Capture for older recordings); tests `CaptureCheckTests` (in `make test`) and `CaptureAcceptanceTests` (`make accept-capture`) |
 | Progress and Activity (v2 part M4a) | `mac/Prakriti/Progress/`: `JobProgress.swift` (`ProgressTracker`, the pure arithmetic: weights, the percent that never goes back, the time left only from a measured rate, the stall line; `ProgressSnapshot` with its status line; `TimeLeft`; `JobProgress`, published at most twice a second), `ProgressMeter.swift` (what the pipeline and ffmpeg report, read twice a second; `ProcessControl`, Pause by SIGSTOP and SIGCONT), `StageTimings.swift` (`StageTiming`, a SwiftData model, the last 10 runs of each stage, seeded once from the store; `firstGuess`, measured 12 Oct). `Engine/Subprocess.swift` (`onStdoutLine`, `control`), `Engine/Pipeline.swift` (`meter`, `passes`, ffmpeg's `-progress pipe:1` in `tool`), `App/PipelineRunner.swift` (`currentJob`, `pause`, `resume`, `stop`, `makeNext`, `queueFraction`, `queueTimeLeft`, `showSample`), `App/StatusSummary.swift` (`noteStatusLine`, `--debug-status-log`); views: `Views/Activity/ActivityWindow.swift` (the window, Now, Finished, Log, `ActivityButton`), `Views/ProgressViews.swift` (`ProgressRing`, `ProgressBlock`, `ProgressButtons`), the card's `StatusCapsule`, the list's Status column, `StatusBlock` in `OutputsTab`, `ViewerBanner`, `Views/MenuBar.swift`; `Fixtures.showProgress` (the sample talk being made, for snapshots and captures); tests `ProgressTests` (in `make test`) and `ProgressAcceptanceTests` (`make accept-progress`) |
 | Swift packages | `swift-markdown` 0.9.0 (21 Sep 2026, with `swift-cmark` 0.9.0), pinned in `mac/project.yml` and `mac/Prakriti.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, both committed (v2 part M2a) |
 | Menu bar mark | Seven template image sets in `Assets.xcassets` (`prakriti-menubar`, `-working-1`, `-working-2`, `-waiting`, `-problem`, `-paused`, `-not-watching`), copied from `docs/v2/icons/source/menubar/imagesets/`; which one each state draws is `StatusSummary.Icon.menuBarAsset`; the working frames are turned by `App/WorkingTicker.swift` |
@@ -1555,6 +1568,17 @@ top and its end. Reading the code is not verification, and neither is a passing 
     passed 13 of 13 runs, the log shows the late report set aside in each, and the inspector is on screen 1.5 s
     later. Dragging the inspector shut still reaches the model (it is not within 1 s of a key). Do not "fix" this
     by waiting longer in the check: the check now reads the inspector again 1.5 s later on purpose.
+108. **The capture check never stops a make and never changes a status; it only measures and says.** It is the
+    first step once the file is complete (`.capture`, before the 60 s test rule, so a test keeps its check), its
+    report is kept on the recording whatever the outcome (`captureJSON`), and a track that ffmpeg cannot read is
+    written down as not measured rather than failing the make. Reason: every studio file so far has one track
+    with one microphone in both channels (the 13 Sep talk measures left minus right at -91 dB), so a check that
+    held recordings back would hold every one; the plan's answer to poor input is a warning and a tip in Checks
+    (REQUEST item 1), and the sound check stays the only rule that refuses a recording. Each volumedetect in the
+    per-track ffmpeg call is named (`volumedetect@level`, `@difference`) because ffmpeg prints the two in either
+    order, each once empty first; and ebur128 runs with `framelog=verbose`, or it prints ten lines a second into
+    the text that is read. Recordings found before M4b get **Check Capture** in Checks, never a check by
+    themselves (PLAN rule 2.1.7).
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

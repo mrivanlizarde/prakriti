@@ -39,6 +39,37 @@ enum Fixtures {
                                           .init(name: PodcastPackage.textName, bytes: 4_265), .init(name: PodcastPackage.checklistName, bytes: 3_453)])
     }
 
+    /// The capture check as it measured the 13 Sep talk on Mon 12 Oct (v2 part M4b): 1920 by 1080 at 29.97 fps,
+    /// H.264 High, Rec. 709, one stereo AAC track at -26.6 LUFS whose left and right differ by -91 dB (one
+    /// microphone copied to both). A clip cut from it with `-c copy` measures the same.
+    static func capture13(at measuredAt: Date) -> CaptureReport {
+        var report = CaptureReport(container: "MP4",
+                                   video: .init(codec: "h264", profile: "High", width: 1920, height: 1080, frameRate: 30000.0 / 1001, averageFrameRate: 30000.0 / 1001,
+                                                colorSpace: "bt709", colorTransfer: "bt709", colorPrimaries: "bt709", colorRange: "tv"),
+                                   audio: [.init(number: 1, codec: "aac", sampleRate: 48000, channels: 2, layout: "stereo", integratedLUFS: -26.6, truePeakDBTP: -3.4,
+                                                 loudestDB: -3.4, averageDB: -30, differenceDB: -91)],
+                                   duration: 947.78, measuredAt: measuredAt)
+        report.findings = CaptureCheck.findings(report)
+        return report
+    }
+
+    /// A clean recording as the plan designs for (docs/v2/REQUEST.md, "design for clean inputs"): 4K at 30 fps in
+    /// a Hybrid MOV, the mix on track 1 and each of two microphones on its own track. Sample data only.
+    static func captureClean(at measuredAt: Date) -> CaptureReport {
+        var report = CaptureReport(container: "MOV",
+                                   video: .init(codec: "hevc", profile: "Main", width: 3840, height: 2160, frameRate: 30, averageFrameRate: 30,
+                                                colorSpace: "bt709", colorTransfer: "bt709", colorPrimaries: "bt709", colorRange: "tv"),
+                                   audio: [.init(number: 1, codec: "aac", sampleRate: 48000, channels: 2, layout: "stereo", integratedLUFS: -24.1, truePeakDBTP: -4.2,
+                                                 loudestDB: -4.4, averageDB: -29, differenceDB: -18.5),
+                                           .init(number: 2, codec: "aac", sampleRate: 48000, channels: 1, layout: "mono", integratedLUFS: -25.3, truePeakDBTP: -5.0,
+                                                 loudestDB: -5.2, averageDB: -31),
+                                           .init(number: 3, codec: "aac", sampleRate: 48000, channels: 1, layout: "mono", integratedLUFS: -27.8, truePeakDBTP: -7.1,
+                                                 loudestDB: -7.3, averageDB: -36)],
+                                   chapters: 2, duration: 3600, measuredAt: measuredAt)
+        report.findings = CaptureCheck.findings(report)
+        return report
+    }
+
     static func populate(_ context: ModelContext, paths: AppPaths) {
         // Default outputs.
         var defaults: [OutputKind: OutputSetting] = [:]
@@ -157,6 +188,7 @@ enum Fixtures {
         ]
         talk13.writtenJSON = written.json()
         talk13.podcastReadyJSON = podcastReady13(talk13).json()
+        talk13.captureJSON = capture13(at: date(2026, 10, 9, 16, 16, 11)).json()
         context.insert(talk13)
         talk13.source = studio
         addRun(context, to: talk13, start: date(2026, 10, 9, 16, 15, 11), trigger: .fileEvent, outcome: .ready,
@@ -182,6 +214,12 @@ enum Fixtures {
         class14.statusReason = "No usable sound: the loudest point is -91 dB. Nothing was made from it."
         class14.loudestDB = -91
         class14.averageDB = -91
+        // The silent class's capture check: its one stereo track measured -91 dB, digital silence.
+        var silentCapture = capture13(at: date(2026, 10, 9, 21, 5))
+        silentCapture.audio[0] = .init(number: 1, codec: "aac", sampleRate: 48000, channels: 2, layout: "stereo", loudestDB: -91, averageDB: -91, differenceDB: -91)
+        silentCapture.duration = 3702.27
+        silentCapture.findings = CaptureCheck.findings(silentCapture)
+        class14.captureJSON = silentCapture.json()
         context.insert(class14)
         class14.source = studio
         addRun(context, to: class14, start: date(2026, 10, 9, 21, 4), trigger: .fileEvent, outcome: .needsADecision,
@@ -219,6 +257,9 @@ enum Fixtures {
         let clip45 = Recording(filePath: dropFolder + "/2026-09-13 clip 45s.mp4", recordedAt: date(2026, 9, 13, 18, 25, 44),
                                foundAt: date(2026, 10, 10, 10, 31), duration: 45, sizeBytes: 34_700_000, status: .skipped, kind: .test)
         clip45.statusReason = "Under 60 seconds, so it was filed as a test. No notice was sent."
+        var clipCapture = capture13(at: date(2026, 10, 10, 10, 31))
+        clipCapture.duration = 45
+        clip45.captureJSON = clipCapture.json()
         context.insert(clip45)
         clip45.source = drop
 

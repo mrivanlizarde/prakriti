@@ -151,6 +151,11 @@ final class Recording {
     /// Why the podcast-ready files were not made, in one plain sentence, or nil.
     var podcastReadyProblem: String?
 
+    /// What the capture check measured when the recording was last checked (v2 part M4b): a CaptureReport as
+    /// JSON, read through `capture`. Kept for every outcome, a test under 60 s included, because it is about
+    /// how the file was recorded, not about what was made from it. Nil for a recording found before M4b.
+    var captureJSON: String?
+
     var source: Source?
 
     @Relationship(deleteRule: .cascade, inverse: \Run.recording)
@@ -202,6 +207,9 @@ final class Recording {
 
     /// What the last podcast-ready make measured and checked, or nil.
     var podcastReady: PodcastReadyRecord? { PodcastReadyRecord.decode(podcastReadyJSON) }
+
+    /// What the capture check measured, or nil.
+    var capture: CaptureReport? { CaptureReport.decode(captureJSON) }
 
     /// The facts the podcast-ready package reads from this recording.
     var podcastFacts: PodcastEpisodeFacts {

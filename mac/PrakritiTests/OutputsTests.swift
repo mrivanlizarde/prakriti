@@ -180,7 +180,7 @@ final class OutputsTests: XCTestCase {
         XCTAssertLessThanOrEqual(output.truePeakDBFS, -1.0)
         XCTAssertEqual(try channels(folder.appending(path: "episode.mp3")), 2)
         XCTAssertEqual(result.files, ["REPORT.md", "episode.mp3"], "the transcript was off, so none was made")
-        XCTAssertEqual(result.steps.map(\.name), PipelineOptions.titles([.complete, .sound, .trim, .episode, .loudness, .report]))
+        XCTAssertEqual(result.steps.map(\.name), PipelineOptions.titles([.complete, .capture, .sound, .trim, .episode, .loudness, .report]))
         let report = try String(contentsOf: folder.appending(path: "REPORT.md"), encoding: .utf8)
         XCTAssertTrue(report.contains("stereo 128 kbps"), report)
         XCTAssertTrue(report.contains("(target -19 LUFS"), report)

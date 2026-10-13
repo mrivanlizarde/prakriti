@@ -5,6 +5,27 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-12, Mon: v2 part M4b, the capture check
+
+- **Every new recording is checked for how it was recorded, as its first step once the file is complete: the
+  file type, picture size, frame rate, codec, color tags and chapter markers, and every audio track on its own
+  (loudness, true peak, silence, and whether left and right are one microphone copied to both).** Why: REQUEST
+  item 1, "plan for clean inputs": a poor input gets a check, a warning and a capture tip, never silence. Every
+  studio file so far is one track with one microphone in both channels (13 Sep: left minus right -91 dB), the
+  reason one voice cannot be told from another (warnings 6 and 14).
+- **The findings sit at the top of the inspector's Checks, what to change first, each with a tip and a link to
+  the Help article that explains it.** Why: design spec 3.5.4; the plan asks for a plain line, a capture tip and
+  a Help link per finding.
+- **The check never stops a make or changes a status.** Why: it would hold back every studio recording made so
+  far; the sound check stays the only rule that refuses one (Mac warning 108).
+- **A test under 60 s keeps its capture check.** Why: the 10-second OBS test is exactly when Ivan needs to see
+  the tracks (Help 02 and 03).
+- **Older recordings get a Check Capture button instead of being checked by themselves.** Why: PLAN rule 2.1.7,
+  an upgrade never starts work on recordings that already exist.
+- **Hybrid MOV is accepted everywhere Hybrid MP4 is, and Help, the welcome, warning 15 and SCOPE SET-04 say so.**
+  Why: OBS 32 records Hybrid MOV on a Mac by default; a fragmented MOV is now tested through the watcher,
+  readiness, the capture check and AVFoundation.
+
 ## 2026-10-12, Mon: v2 part M4a, fixes after the verifier
 
 - **Pressing Command-Option-I twice quickly now leaves the inspector shown.** Why: the verifier saw the second

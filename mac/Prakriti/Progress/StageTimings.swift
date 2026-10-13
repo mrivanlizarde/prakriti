@@ -88,8 +88,9 @@ struct StageTimings: Sendable, Equatable {
     /// audio for the transcript 0.5 s, transcript 10.7 s, silence 0.6 s, episode audio 21.2 to 22.2 s,
     /// loudness 1.7 to 1.8 s), and from BUILD-LOG 10 Oct for the podcast-ready episode (40 s for 15:48, about
     /// 36 of them mastering). Used only until this Mac has measured the stage itself.
+    /// The capture check (v2 part M4b) was measured the same day: 3.2 s for the 15:48 talk's one stereo track.
     static let firstGuess: [PipelineStep: Double] = [
-        .sound: 0.04, .speechAudio: 0.035, .transcript: 0.68, .coverage: 0.0, .wordList: 0.0,
+        .capture: 0.21, .sound: 0.04, .speechAudio: 0.035, .transcript: 0.68, .coverage: 0.0, .wordList: 0.0,
         .trim: 0.04, .edits: 0.0, .episode: 1.4, .loudness: 0.11, .podcastAudio: 2.3,
         .episodeTranscript: 0.0, .podcastPackage: 0.25, .report: 0.0,
     ]

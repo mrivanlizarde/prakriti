@@ -155,6 +155,9 @@ final class AppModel {
     var notice: Notice?
 
     /// What each model's test button found, shown on the Models screen (milestone 6).
+    /// Recordings whose capture check runs now from Check Capture, and why one could not run (v2 part M4b).
+    var captureChecking: Set<UUID> = []
+    var captureProblems: [UUID: String] = [:]
     var providerChecks: [ModelProvider: ProviderCheck] = [:]
     /// A Claude API key is in the Keychain. Read when the Models screen opens; the key itself never is.
     var claudeKeyAdded = false

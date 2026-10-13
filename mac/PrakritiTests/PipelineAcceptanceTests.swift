@@ -126,6 +126,7 @@ final class PipelineAcceptanceTests: XCTestCase {
         XCTAssertEqual(clip.status, .skipped)
         XCTAssertEqual(clip.kind, .test)
         XCTAssertFalse(FileManager.default.fileExists(atPath: outputFolder(clip30).path), "something was made from a test clip")
+        XCTAssertNotNil(clip.capture, "a test keeps its capture check (v2 part M4b)")
         report += summary("30 s clip", clip, folder: nil, remeasured: nil)
 
         // 4. The 6 Sep talk, the hour-long case (engine v0: -16.7 LUFS, reaches 55:38 of 55:39).

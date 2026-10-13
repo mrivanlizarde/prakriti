@@ -4,7 +4,7 @@ title: Set up OBS for Prakriti
 summary: The OBS Studio settings that give Prakriti a crash-safe file, a sharp picture, and every microphone on its own track.
 section: recording
 order: 2
-keywords: [OBS, settings, Hybrid MP4, canvas, 4K, 1080p, frame rate, encoder, Apple VT, HEVC, CRF, quality, keyframe interval, audio tracks, multitrack, Zoom, macOS Audio Capture, vertical, file name, ffprobe]
+keywords: [OBS, settings, Hybrid MOV, Hybrid MP4, MKV, capture check, canvas, 4K, 1080p, frame rate, encoder, Apple VT, HEVC, CRF, quality, keyframe interval, audio tracks, multitrack, Zoom, macOS Audio Capture, vertical, file name, ffprobe]
 related: [capture-the-best-video, sources-and-watching, troubleshooting]
 ---
 
@@ -35,14 +35,10 @@ Click the **Recording** tab and set:
 
 - **Type:** Standard.
 - **Recording Path:** the folder Prakriti watches. Prakriti finds each new recording there.
-:::unless captureCheck
-- **Recording Format:** Hybrid MP4 (.mp4). It survives a crash or a power cut. Never plain MP4, which a
-  crash makes unreadable, and never MKV, which the Mac's own video tools cannot open.
-:::
 :::requires captureCheck
 - **Recording Format:** Hybrid MOV (.mov). It survives a crash or power cut, and it is the default for
   new installs on a Mac since OBS 32. Hybrid MP4 (.mp4) also works. Never plain MP4: a crash makes it
-  unreadable.
+  unreadable. Never MKV: the Mac's own video tools cannot open it, and the capture check says so.
 :::
 - **Video Encoder:** Apple VT HEVC Hardware Encoder. It uses the Mac's video chip, so OBS stays light,
   and makes files about half the size of H.264 at the same quality.

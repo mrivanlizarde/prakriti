@@ -1,16 +1,17 @@
 import SwiftData
 import SwiftUI
 
-/// The inspector's Checks tab (design spec 3.5.4, as built in part M3a): what was measured on the
-/// recording and its files (v1's report numbers), the accuracy checklist with a checkbox for each claim,
-/// the privacy lock and where each model step ran, and the steps of the last make with their times.
-/// The capture and platform checks come with their parts (M4b, M8, M11).
+/// The inspector's Checks tab (design spec 3.5.4, as built in part M3a): how the recording was made (the
+/// capture check, part M4b), what was measured on the recording and its files (v1's report numbers), the
+/// accuracy checklist with a checkbox for each claim, the privacy lock and where each model step ran, and the
+/// steps of the last make with their times. The platform checks come with their parts (M8, M11).
 struct ChecksTab: View {
     @Bindable var recording: Recording
     @Environment(AppModel.self) private var model
 
     var body: some View {
         Form {
+            CaptureSection(recording: recording)
             Section {
                 if measured.isEmpty {
                     RowNote(recording.status == .found ? "Nothing is measured until it is made." : "Nothing was measured.")

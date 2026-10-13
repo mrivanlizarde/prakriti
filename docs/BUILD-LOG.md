@@ -3313,6 +3313,83 @@ J (backward) not measured on the real files; VoiceOver not run over the strip or
 picture and transcript is not remembered; the Podcast-ready rendition assumes no intro.
 
 
+## v2 part M4b: the capture check. Mon 12 Oct 2026
+
+The eighth part of v2 (`docs/v2/PLAN.md`, M4, part M4b; REQUEST item 1, "plan for clean inputs"). Built on `main`,
+as this run's instructions said. No package added. **One SwiftData field added (`Recording.captureJSON`), an
+addition:** `make migrate-check` passed on a copy of the live store.
+
+### What was built
+
+- **`Engine/CaptureCheck.swift`.** `CaptureReport` (container, the first picture stream, every audio track,
+  chapters, findings, kept as JSON) and `CaptureFinding` (what was checked, the measured value, the limit in words,
+  a capture tip and a Help article for anything short of a pass). ffprobe once (`-show_streams -show_format
+  -show_chapters`); then one ffmpeg read per audio track on its own (`[0:a:N]`): ebur128 (integrated loudness, true
+  peak) and volumedetect, and for two or more channels volumedetect on left minus right. Findings: file type (MKV
+  warns), picture size (under 1080p warns), frame rate (under 24 or changing warns), codec (H.264, HEVC, ProRes),
+  color tags (Rec. 709 limited passes), chapter markers, number of audio tracks (one warns, none fails), and per
+  track: silent (track 1 fails, others warn), **one microphone in both channels** (left minus right at or under
+  -60 dB), quiet (under -35 LUFS), peak at the top (-0.5 dB or more), sample rate not 48 kHz.
+- **The pipeline's `.capture` step**, "Capture check" / "Checking how it was recorded", first once the file is
+  complete and before the 60 s test rule, metered by ffmpeg's progress (one pass per track) and held by Pause.
+  It never stops a make and never changes a status (Mac warning 108). The runner keeps the report for every
+  outcome and writes one Activity line ("capture check. Two things to change ... Audio tracks; Track 1, one
+  microphone in both channels.").
+- **The Checks tab's Capture section** (`Views/Inspector/CaptureSection.swift`), first in Checks: a summary
+  sentence, when it was checked, the findings to act on first, then every measurement; each row a symbol
+  (checkmark, triangle, octagon), the measured value, "Limit:", "Tip:" and a link that opens the Help article.
+- **Check Capture** for recordings found before M4b (`App/CaptureActions.swift`): reads the original only,
+  refuses a missing file or an iCloud placeholder with a sentence, changes nothing but the report.
+- **Hybrid MOV accepted everywhere Hybrid MP4 is.** The watcher already listed `.mov`; now proved on a fragmented
+  MOV through the watcher, readiness, the capture check and AVFoundation. START_HERE warning 15 and SCOPE SET-04
+  say Hybrid MOV or Hybrid MP4.
+- **Help:** `captureCheck` switched on. Article 03's Hybrid MP4 paragraph (the `:::unless` block) deleted; the
+  Hybrid MOV paragraph now also says MKV is named by the capture check. Article 10 gained "If the capture check says
+  one microphone is in both channels", "... a track is silent" and "If an older recording has no capture check",
+  and its one-track section points at Checks. Keywords added to 02, 03, 10. The welcome's "settings-v2" row (Hybrid
+  MOV or Hybrid MP4) now shows. Notes in `docs/v2/help-notes/02, 03, 04, 10`.
+- **`make accept-capture`** (`CaptureAcceptanceTests`), and `make accept` now also needs the 30 s clip's check.
+
+### Checks run, with results (PLAN M4, the checks part M4b runs: 3, 4 for the Capture section, 5)
+
+| # | Check | Result |
+|---|---|---|
+| 3 | `make accept-capture MILESTONE=v2-m4b`, real files through the runner in development | **PASS** (17:42 to 17:44, 102 s). **13 Sep:** 1920 by 1080, 29.97 fps, H.264 (High), Rec. 709 limited, MP4, one stereo AAC track at 48 kHz, -26.6 LUFS, true peak -3.4 dB, **left minus right -91.0 dB: flagged one microphone in both channels, tip "Give each speaker a microphone on its own track."**; also "Audio tracks: 1 track" warned; still made (waiting for your yes). **`two-people-tracks.mov`:** MOV, 3 mono tracks at -27.4, -28.8 and -26.6 LUFS (three different loudnesses), none flagged, "Recorded well". **`silent-60s.mp4`:** track 1 loudest -91.0 dB, "Track 1, silent" fail; still Needs a decision by the sound check. **30 s clip:** filed as a test, status skipped, **no output folder**, its capture check in the store (-28.4 LUFS, flagged one microphone in both channels). Originals unchanged by size and date (13 Sep 730,464,600 bytes, mtime 1789350092 before and after). File: `screens/mac/v2-m4b/acceptance-capture.txt` |
+| 4 | Snapshots of the Checks tab's Capture section, light and dark, looked at | **PASS.** Looked at: `07-inspector-checks-capture-clean-light` (4K HEVC MOV, three tracks, "Recorded well"), `07-inspector-checks-capture-silent-dark` (warnings first: Audio tracks with its tip and "Set up OBS for Prakriti" link; Track 1 silent with the octagon and "If something isn't working"), `07-inspector-checks-capture-none-light` ("Not checked..." and Check Capture), and from the real measurements `m4b-checks-talk-13-sep-light` and `-dark-inspector-p2` (dual mono with its tip and the "Capture the best video" link). Text 15 to 17 pt, readable in both. No frame of anyone is drawn: the cards are neutral tiles |
+| 5 | Regression set; `make migrate-check` | **PASS.** `make test`: **229 tests, 0 failures, 10 skipped by design** (772 s; the first run caught one rule, a small progress spinner under 12 pt, fixed and run again). `CaptureCheckTests` (9): the 13 Sep talk's exact ffprobe and ffmpeg text read; every warning has a tip and a Help article that exists; a fragmented **Hybrid MOV and Hybrid MP4** pass the watcher, readiness (6 s), AVFoundation (3 and 1 audio tracks, playable) and the check (MOV, 3 tracks, the silent third named); one microphone in both channels against real stereo; MKV, 720p, 15 fps, no color tags, 44.1 kHz, quiet and clipping each named; a 5 s test keeps its check with nothing made; the runner stores it and writes the Activity line; Check Capture stores a report and refuses a missing file. **`make accept`**: 13 Sep -16.8 LUFS (-16.82 again), true peak -1.7 dBFS; `silent-60s` Needs a decision at -91 dB; 30 s clip a test with its capture check; 6 Sep -16.7 LUFS (-16.72), -1.4 dBFS; originals unchanged. **`make accept-edits`**: approved episode **38.82 s shorter (expected 38.82)**, 0 of 73 runs from the cut heard, 189 of 201 after it, a class refused. **`make migrate-check`**: 13 recordings, 2 folders, 40 output settings, 657 Activity lines before and after; `ZCAPTUREJSON` added, 0 recordings arrive with a check |
+
+### Looked at (D1)
+
+No frame of Gabriel's talks was drawn or opened. The capture check reads stream numbers and sound only; every
+picture of this part is words, symbols and neutral tiles. Synthetic test patterns (testsrc2) were used for every
+generated video.
+
+### Decisions, each with its reason
+
+1. **The check informs; it never holds a recording.** Reason: every studio file would be held (one dual-mono
+   track); the plan's answer to poor input is a warning and a tip. Nothing in Prakriti publishes, so nothing goes
+   out silently.
+2. **One track warns, even for a single speaker.** Reason: the clean-input design is a track per microphone
+   (REQUEST decisions, Help 03).
+3. **A silent track 1 fails; a silent extra track warns.** Reason: everything is made from track 1; an extra
+   silent track may be a microphone left off.
+4. **What to change is listed first.** Reason: the first look at the section showed six passes before the one
+   thing to fix.
+5. **Older recordings get Check Capture, never a check by themselves.** Reason: PLAN rule 2.1.7.
+
+### What does not work yet, or was not seen working
+
+- Design spec 3.5.4 also lists the speaker's place in the frame, light on the face and steadiness. They need the
+  face work of M6 and are not built.
+- "Hybrid" itself is not detected: a finished Hybrid file looks like a plain MP4 or MOV once OBS closes it.
+- Check Capture was proved by a unit test, not by clicking it in the real window.
+
+### For Ivan
+
+- [ ] **Nothing is needed for this part.** Open any recording found from now on, click Checks: Capture is at the
+  top. For older ones, click Check Capture. Today's studio files will all say "one microphone in both channels",
+  which is the known state; the fix is in the studio (a microphone per speaker, each on its own OBS track).
+
 ## v2 part M4a, fixes after the verifier. Mon 12 Oct 2026
 
 The verifier's verdict on be0f5c9: check 4 (`make look`) intermittent, the second Command-Option-I failing in 2

@@ -97,7 +97,7 @@ extension PipelineStep {
     /// how long they have run against how long they usually take, held at 95% until they finish.
     var isMetered: Bool {
         switch self {
-        case .sound, .speechAudio, .trim, .episode, .loudness, .podcastAudio, .podcastPackage: true
+        case .capture, .sound, .speechAudio, .trim, .episode, .loudness, .podcastAudio, .podcastPackage: true
         default: false
         }
     }

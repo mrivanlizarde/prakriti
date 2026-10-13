@@ -4,7 +4,7 @@ title: If something isn't working
 summary: What to check when a recording is not found, has no sound, sends no notice, or a model does not answer, and where the log is.
 section: troubleshooting
 order: 1
-keywords: [troubleshooting, problem, not found, silent, no sound, notifications, stopped, quit, flicker, bands, sync, LM Studio, API key, Claude API, cut, disk space, encoding overloaded, log, show log]
+keywords: [troubleshooting, problem, not found, silent, no sound, capture check, audio tracks, both channels, Check Capture, notifications, stopped, quit, flicker, bands, sync, LM Studio, API key, Claude API, cut, disk space, encoding overloaded, log, show log]
 related: [capture-the-best-video, set-up-obs-for-prakriti, sources-and-watching, models-and-api-keys]
 ---
 
@@ -63,9 +63,27 @@ track, it marks the recording Needs a decision and makes nothing from it. The or
 :::requires captureCheck
 ### If only one audio track is found
 
-OBS is set to record one track, or every source is on track 1 only. See "Sources and tracks" in
+The capture check, at the top of the inspector's Checks, lists every audio track in the file. One track
+means OBS is set to record one track, or every source is on track 1 only. See "Sources and tracks" in
 [Set up OBS for Prakriti](03-set-up-obs-for-prakriti.md). A player plays only the first track, so a file
 can sound right and still be missing the others.
+
+### If the capture check says one microphone is in both channels
+
+The left and right of that track carry the same sound: one microphone copied to both. It plays fine,
+but one voice cannot be told from another in it. Give each speaker a microphone on its own track, as in
+"Sources and tracks" in [Set up OBS for Prakriti](03-set-up-obs-for-prakriti.md).
+
+### If the capture check says a track is silent
+
+A microphone recorded nothing on that track. In OBS, check the microphone is not muted and moves on its
+meter, and that it is set to that track in Advanced Audio Properties. If the silent track is track 1,
+the recording has no usable sound and nothing is made from it.
+
+### If an older recording has no capture check
+
+Recordings found before the capture check existed are not checked by themselves. Select one, click
+Checks in the inspector, then click Check Capture. It only reads the file.
 :::
 
 ### If the transcript stops before the end

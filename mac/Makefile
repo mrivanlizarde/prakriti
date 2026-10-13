@@ -24,6 +24,11 @@
 #                 run's time left at 50% is within 25% of what really remained, and the menu bar's status line
 #                 (written to the development log, as --debug-status-log does) matches the trace at three
 #                 moments. Writes acceptance-progress.txt to ../screens/mac/$(MILESTONE)/ (about 3 minutes)
+# make accept-capture  v2 part M4b's acceptance: the capture check through the app's runner in development on
+#                 the REAL 13 Sep talk (1080p, 29.97 fps, H.264, Rec. 709, one track with one microphone in both
+#                 channels), the two-people-tracks.mov fixture (three tracks, each its own loudness), silent-60s.mp4
+#                 (its track silent) and the 30 s clip (a test, no output folder, its check in the store). Draws the
+#                 Checks tab of each and writes acceptance-capture.txt to ../screens/mac/$(MILESTONE)/ (about 2 minutes)
 # make accept-outputs  milestone 4's acceptance on the REAL 13 Sep talk: the standard choices, the
 #                 Outputs screen's loudness changed to -19 and made again, the transcript turned off
 #                 on the recording's page and made again, then everything off (must equal engine v0
@@ -102,7 +107,7 @@ MODE      ?= development
 ONLY      ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -134,6 +139,10 @@ regress:
 
 accept-progress:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=progress TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/ProgressAcceptanceTests
+
+accept-capture:
+	./scripts/make-fixtures.sh --if-missing
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=capture TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/CaptureAcceptanceTests
 
 accept-outputs:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=outputs TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/OutputsAcceptanceTests

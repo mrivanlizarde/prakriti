@@ -28,11 +28,12 @@ import Foundation
 /// The steps, in order. `title` is what the recording page lists; `doing` is what the status line
 /// says while it runs ("Working on Sun 13 Sep: making the episode audio"). Never "Processing".
 enum PipelineStep: String, CaseIterable, Sendable {
-    case complete, sound, speechAudio, transcript, coverage, wordList, trim, edits, episode, loudness, podcastAudio, episodeTranscript, writing, podcastPackage, report
+    case complete, capture, sound, speechAudio, transcript, coverage, wordList, trim, edits, episode, loudness, podcastAudio, episodeTranscript, writing, podcastPackage, report
 
     var title: String {
         switch self {
         case .complete: "Checked the file is complete"
+        case .capture: "Capture check"
         case .sound: "Sound check"
         case .speechAudio: "Audio for the transcript"
         case .transcript: "Transcript"
@@ -61,6 +62,7 @@ enum PipelineStep: String, CaseIterable, Sendable {
     var doing: String {
         switch self {
         case .complete: "Checking the file is complete"
+        case .capture: "Checking how it was recorded"
         case .sound: "Checking the sound"
         case .speechAudio: "Preparing the audio for the transcript"
         case .transcript: "Writing the transcript"
@@ -141,9 +143,10 @@ struct PipelineOptions: Sendable {
         trimSilence || !(introPath ?? "").isEmpty || !(outroPath ?? "").isEmpty || !edits.isEmpty
     }
 
-    /// The steps this run will take, in order. The checks always run.
+    /// The steps this run will take, in order. The checks always run, the capture check first of all once the
+    /// file is complete (v2 part M4b), so even a test under 60 s has one.
     var plannedSteps: [PipelineStep] {
-        var steps: [PipelineStep] = [.complete, .sound]
+        var steps: [PipelineStep] = [.complete, .capture, .sound]
         if checksOnly { return steps }
         if makeTranscript {
             steps += [.speechAudio, .transcript, .coverage]
@@ -232,6 +235,8 @@ struct PipelineResult: Sendable {
     /// The podcast-ready episode as made and checked, or why it was not made (10 Oct).
     var podcastReady: PodcastReadyRecord?
     var podcastProblem: String?
+    /// What the capture check measured (v2 part M4b), or nil when the file never got that far.
+    var capture: CaptureReport?
 }
 
 struct PipelineProgress: Sendable {
@@ -531,7 +536,18 @@ struct Pipeline: Sendable {
             await finish(.complete, (ready.waitedForICloud ? "Downloaded from iCloud. " : "")
                          + "Opens, its size held steady for \(stable) s, and its last seconds play.")
 
-            // 2. Under 60 seconds is a test.
+            // 2. The capture check (v2 part M4b): every stream and every audio track measured, each finding with a
+            //    capture tip. It never stops the make; a test under 60 s keeps its check too.
+            await begin(.capture)
+            let capture = try await CaptureCheck.run(file: file, tools: tools, now: Date(), control: meter?.control,
+                                                     tracksKnown: { meter?.begin(.capture, passes: max(1, $0)) },
+                                                     measureTrack: { arguments in
+                                                         try await tool(.capture, tools.ffmpeg, arguments, duration: ready.duration).stderr
+                                                     })
+            result.capture = capture
+            await finish(.capture, capture.stepLine)
+
+            // 3. Under 60 seconds is a test.
             if ready.duration < options.testUnder {
                 skipTheRest()
                 result.outcome = .test
@@ -543,7 +559,7 @@ struct Pipeline: Sendable {
 
             await emit(.fileReady)
 
-            // 3. Sound check: the whole audio track, fast (about 2 s per hour).
+            // 4. Sound check: the whole audio track, fast (about 2 s per hour).
             await begin(.sound)
             var volume = Measure.Volume(max: -.infinity, mean: -.infinity)
             if ready.hasAudio {
@@ -583,7 +599,7 @@ struct Pipeline: Sendable {
             defer { try? FileManager.default.removeItem(at: staging) }
             let speech = staging.appending(path: "speech.wav")
 
-            // 4. Mono 16 kHz audio, then the transcript (Parakeet), the coverage check, the word list.
+            // 5. Mono 16 kHz audio, then the transcript (Parakeet), the coverage check, the word list.
             if options.makeTranscript {
                 await begin(.speechAudio)
                 _ = try await tool(.speechAudio, tools.ffmpeg, ["-y", "-v", "error", "-i", file.path, "-vn", "-ac", "1", "-ar", "16000", speech.path],
@@ -627,7 +643,7 @@ struct Pipeline: Sendable {
                 try keepChosenFormats(in: staging, srt: srt, label: label, fileName: file.lastPathComponent)
             }
 
-            // 5. The episode audio: the silence trim, two-pass loudness, the MP3 (Apple Podcasts spec).
+            // 6. The episode audio: the silence trim, two-pass loudness, the MP3 (Apple Podcasts spec).
             //    The trim and cuts are found first, for the episode and the podcast-ready episode alike.
             var program = Mastering.Program(kept: nil, channels: options.channels)
             if options.makeEpisode || options.makePodcastReady {
@@ -696,7 +712,7 @@ struct Pipeline: Sendable {
                 await finish(.episode, "\(options.channels.title) MP3, 128 kbps, from \(talk.inputI) LUFS. "
                              + Self.piecesLine(intro: intro, outro: outro) + Self.levelingLine(result.normalizationType))
 
-                // 6. Measure what was made, rather than trust it, and decode its tail.
+                // 7. Measure what was made, rather than trust it, and decode its tail.
                 await begin(.loudness)
                 let check = try await tool(.loudness, tools.ffmpeg, ["-hide_banner", "-nostats", "-i", mp3.path, "-af", "ebur128=peak=true:framelog=verbose",
                                                                      "-f", "null", "-"], duration: ready.duration)
@@ -750,7 +766,7 @@ struct Pipeline: Sendable {
             }
 
             if options.makeEpisode || options.makePodcastReady {
-                // 7. The transcript files follow the episode: the words in anything taken out are
+                // 8. The transcript files follow the episode: the words in anything taken out are
                 //    left out, and the times are the episode's. transcript.json keeps every word as
                 //    heard, on the original's clock, for the recording page.
                 if options.makeTranscript && options.changesTheClock, let clock = result.clock {
@@ -779,7 +795,7 @@ struct Pipeline: Sendable {
                 }
             }
 
-            // 8. Titles, show notes and chapters, from the transcript as the episode plays it. A model
+            // 9. Titles, show notes and chapters, from the transcript as the episode plays it. A model
             //    that is closed or answers badly costs only this step: the episode and transcript are
             //    kept, the step says why, and Write Again on the page tries once more.
             if options.makeTranscript, let setup = options.writing {
@@ -831,7 +847,7 @@ struct Pipeline: Sendable {
                 }
             }
 
-            // 9. The report Ivan reads before he listens.
+            // 10. The report Ivan reads before he listens.
             result.outcome = .ready
             if options.makeReport {
                 await begin(.report)
@@ -846,7 +862,7 @@ struct Pipeline: Sendable {
                 await finish(.report, "Written to REPORT.md, beside the episode.")
             }
 
-            // 10. Only now do the new files take the place of the old ones.
+            // 11. Only now do the new files take the place of the old ones.
             let placed: (files: [String], replaced: [String])
             do {
                 placed = try Self.place(staging, into: outputFolder)

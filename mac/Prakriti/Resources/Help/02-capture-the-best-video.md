@@ -4,7 +4,7 @@ title: Capture the best video
 summary: Light, framing, camera, sound and room choices that give Prakriti a clean recording to work from.
 section: recording
 order: 1
-keywords: [lighting, window, key light, framing, eye level, camera, iPhone, webcam, 4K, 1080p, frame rate, shutter, microphone, lavalier, shotgun, levels, headphones, echo, background, test recording, class, students, tracks]
+keywords: [lighting, window, key light, framing, eye level, camera, iPhone, webcam, 4K, 1080p, frame rate, shutter, microphone, lavalier, shotgun, levels, headphones, echo, background, test recording, class, students, tracks, capture check]
 related: [set-up-obs-for-prakriti, people-and-privacy, troubleshooting]
 ---
 

@@ -86,6 +86,31 @@ final class SnapshotTests: XCTestCase {
                 model.selectedRecordings = [talk.id]
                 model.inspectorTab = .checks
             }
+            // The Checks tab's Capture section (v2 part M4b): a clean 4K recording with a track per microphone, the
+            // silent class (its track fails), a test under 60 s (its check is kept), and a recording found before
+            // the check existed (Check Capture).
+            try draw("07-inspector-checks-capture-clean") { model in
+                let talk = try talk13(model)
+                talk.captureJSON = Fixtures.captureClean(at: Fixtures.date(2026, 10, 12, 9, 30)).json()
+                model.selection = .group(.needsYou)
+                model.selectedRecordings = [talk.id]
+                model.inspectorTab = .checks
+            }
+            for (name, title, status) in [("silent", "Class", RecordingStatus.needsADecision), ("test", "", .skipped)] {
+                try draw("07-inspector-checks-capture-\(name)") { model in
+                    let recording = try XCTUnwrap(try model.context.fetch(FetchDescriptor<Recording>()).first { $0.title == title && $0.status == status })
+                    model.selection = .group(.all)
+                    model.selectedRecordings = [recording.id]
+                    model.inspectorTab = .checks
+                }
+            }
+            try draw("07-inspector-checks-capture-none") { model in
+                let talk = try talk13(model)
+                talk.captureJSON = nil
+                model.selection = .group(.needsYou)
+                model.selectedRecordings = [talk.id]
+                model.inspectorTab = .checks
+            }
             // Several selected.
             try draw("07-inspector-several") { model in
                 model.selection = .group(.all)
@@ -196,7 +221,7 @@ final class SnapshotTests: XCTestCase {
         }
         if only == "library" {
             print("Snapshots written to \(outputFolder.path): \(written.count) library and Settings pictures")
-            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2)
+            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2)
             return
         }
 
@@ -283,7 +308,7 @@ final class SnapshotTests: XCTestCase {
 
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + viewerCount)
+        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + viewerCount)
     }
 
     /// v2 part M2a: the Help window, open at every article this build shows, in light and dark, with a

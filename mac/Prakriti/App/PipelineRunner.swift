@@ -684,6 +684,15 @@ final class PipelineRunner {
             recording.loudestDB = volume.max.isFinite ? volume.max : nil
             recording.averageDB = volume.mean.isFinite ? volume.mean : nil
         }
+        // The capture check is about the file, so it is kept whatever the make's outcome (a test, a silent
+        // recording, a make that stopped later). A run that never reached it leaves the last one in place.
+        if let capture = result.capture {
+            recording.captureJSON = capture.json()
+            let warnings = capture.warnings
+            model.record("\(label) (\(recording.fileName)): capture check. " + capture.summary
+                         + (warnings.isEmpty ? "" : " " + warnings.map { $0.title }.joined(separator: "; ") + "."),
+                         level: warnings.isEmpty ? .info : .attention, run: run)
+        }
         // Once a transcript says "Serenity", the recording stays privacy locked (never unset).
         if result.mentionsSerenity && !recording.hasSerenity {
             recording.hasSerenity = true

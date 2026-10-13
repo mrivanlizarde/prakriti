@@ -48,3 +48,13 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
 - "If you don't get notifications": Open Notification Settings opens System Settings at Prakriti's own page
   (the address carries the app's id; measured on macOS 27.2), so the step is now "turn on Allow
   notifications". A `:::requires welcome` block adds the welcome's last panel as a second way.
+
+## Built in v2 part M4b (Mon 12 Oct 2026)
+
+- `captureCheck` is on. Measured, not assumed: the capture check runs as the first step once a file is complete,
+  before the 60 s test rule, so a test file keeps its check; it shows at the top of the inspector's Checks as
+  "Capture" (summary line, then each finding with "Limit:", "Tip:" and a Help link). The 13 Sep talk reads 1920 by
+  1080, 29.97 frames per second, H.264 (High), Rec. 709, one stereo track with one microphone in both channels
+  (left minus right -91 dB). Hybrid MOV is accepted (a fragmented MOV passes the watcher, readiness, the capture
+  check and AVFoundation in `CaptureCheckTests`). Older recordings show Check Capture. Not built: the speaker's
+  place in the frame, light on the face and steadiness (design spec 3.5.4 lists them; they need the face work of M6).

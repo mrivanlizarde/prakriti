@@ -378,7 +378,8 @@ final class ProgressTests: XCTestCase {
         XCTAssertEqual(trace.last?.percent, 100)
         for (a, b) in zip(trace, trace.dropFirst()) { XCTAssertGreaterThanOrEqual(b.overall, a.overall) }
         let learned = StageTimings.load(model.context)
-        XCTAssertFalse(learned.isMeasured(.sound), "a stage that was paused is not learned")
+        // The pause holds the first tool after the readiness wait: the capture check's (v2 part M4b; before it, the sound check's).
+        XCTAssertFalse(learned.isMeasured(.capture), "a stage that was paused is not learned")
         XCTAssertTrue(learned.isMeasured(.episode), "the stages after the resume are")
     }
 

@@ -117,22 +117,22 @@ final class PipelineTests: XCTestCase {
 
     func testPlannedStepsFollowTheOutputs() {
         var options = PipelineOptions()
-        XCTAssertEqual(options.plannedSteps, [.complete, .sound, .speechAudio, .transcript, .coverage, .episode, .loudness, .report],
+        XCTAssertEqual(options.plannedSteps, [.complete, .capture, .sound, .speechAudio, .transcript, .coverage, .episode, .loudness, .report],
                        "PipelineOptions() is engine v0's run")
         options.applyLexicon = true
         options.trimSilence = true
         // Once anything is taken out of the episode, the transcript files are matched to it (milestone 5).
-        XCTAssertEqual(options.plannedSteps, [.complete, .sound, .speechAudio, .transcript, .coverage, .wordList, .trim, .episode, .loudness, .episodeTranscript, .report])
+        XCTAssertEqual(options.plannedSteps, [.complete, .capture, .sound, .speechAudio, .transcript, .coverage, .wordList, .trim, .episode, .loudness, .episodeTranscript, .report])
         options.edits = EpisodeEdits(start: 10, end: nil, cuts: [TimeRange(start: 300, end: 330)])
-        XCTAssertEqual(options.plannedSteps, [.complete, .sound, .speechAudio, .transcript, .coverage, .wordList, .trim, .edits, .episode, .loudness, .episodeTranscript, .report])
+        XCTAssertEqual(options.plannedSteps, [.complete, .capture, .sound, .speechAudio, .transcript, .coverage, .wordList, .trim, .edits, .episode, .loudness, .episodeTranscript, .report])
         options.edits = EpisodeEdits()
         options.applyLexicon = false
         options.trimSilence = false
         options.makeTranscript = false
-        XCTAssertEqual(options.plannedSteps, [.complete, .sound, .episode, .loudness, .report])
+        XCTAssertEqual(options.plannedSteps, [.complete, .capture, .sound, .episode, .loudness, .report])
         options.makeEpisode = false
         options.makeReport = false
-        XCTAssertEqual(options.plannedSteps, [.complete, .sound], "the checks always run")
+        XCTAssertEqual(options.plannedSteps, [.complete, .capture, .sound], "the checks always run")
         XCTAssertEqual(PipelineOptions().stableWait, .seconds(60), "engine v0 waits 60 s for the size to hold still")
         for step in PipelineStep.allCases {
             XCTAssertFalse(step.doing.localizedCaseInsensitiveContains("processing"))
@@ -240,8 +240,8 @@ final class PipelineTests: XCTestCase {
         XCTAssertEqual(result.outcome, .test)
         XCTAssertEqual(result.duration ?? 0, 30, accuracy: 0.2)
         XCTAssertFalse(FileManager.default.fileExists(atPath: folder.path), "nothing is made from a test")
-        XCTAssertEqual(result.steps.first?.state, .done)
-        XCTAssertTrue(result.steps.dropFirst().allSatisfy { $0.state == .skipped })
+        XCTAssertEqual(result.steps.prefix(2).map(\.state), [.done, .done], "the file is complete, and its capture check is kept (v2 part M4b)")
+        XCTAssertTrue(result.steps.dropFirst(2).allSatisfy { $0.state == .skipped })
     }
 
     func testSilenceNeedsADecisionAndNothingIsMade() async throws {
