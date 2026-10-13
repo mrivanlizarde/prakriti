@@ -127,6 +127,21 @@ struct PeopleFile: Codable, Equatable, Sendable {
         people = found.people
     }
 
+    /// A people file made up for sample data and the tests (v2 part M6d): boxes and times as given, no scan behind them.
+    init(recordingID: UUID, duration: Double, frameWidth: Int, frameHeight: Int, tracks: [Track], people: [FacePerson], cuts: [Double] = []) {
+        self.recordingID = recordingID
+        madeAt = Date(timeIntervalSince1970: 0)
+        self.duration = duration
+        hasPicture = true
+        self.frameWidth = frameWidth
+        self.frameHeight = frameHeight
+        every = FaceScan.every
+        samples = Int(duration / FaceScan.every)
+        self.cuts = cuts
+        self.tracks = tracks
+        self.people = people
+    }
+
     static let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601

@@ -138,7 +138,7 @@ struct WorkingRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            NeutralTile(recording: recording, compact: true)
+            RecordingPicture(recording: recording, compact: true)
                 .frame(width: 64, height: 36)
             VStack(alignment: .leading, spacing: 7) {
                 Text(recording.cardTitle)
@@ -262,7 +262,7 @@ struct WaitingRow: View {
     var body: some View {
         let runner = model.runner
         HStack(alignment: .top, spacing: 14) {
-            NeutralTile(recording: recording, compact: true)
+            RecordingPicture(recording: recording, compact: true)
                 .frame(width: 64, height: 36)
             VStack(alignment: .leading, spacing: 6) {
                 Text(recording.cardTitle)
@@ -338,7 +338,7 @@ struct FinishedRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            NeutralTile(recording: recording, compact: true)
+            RecordingPicture(recording: recording, compact: true)
                 .frame(width: 64, height: 36)
             VStack(alignment: .leading, spacing: 4) {
                 Text(recording.cardTitle)

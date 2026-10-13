@@ -5,6 +5,33 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-13, Tue: v2 part M6d, hiding in pictures
+
+- **A recording's card shows a real frame once its faces are known, and never a face Ivan chose to hide.** Why: REQUEST
+  items 3b and 11 (choose who is included; browse by picture like Photos), and Ivan's 12 Oct rule that faces of anyone
+  not Included are never in a thumbnail. The frame is chosen after the people pass: first one where everyone seen is
+  included (a named person first, the sharpest by Vision's capture quality), else one with every other face hidden, else
+  none (the plain tile). Every candidate is checked by Vision before it is kept: a face inside a hidden region, or one the
+  people pass never saw, refuses it. Fail closed, because a face the pass missed is a face nobody decided about.
+- **`FaceHide` and `FaceFollower`, the hiding the video will use (M8d).** Padded 1.6 times, a soft ellipse, a blur of 30%
+  of the face's width, then pixelated 5 blocks across the face; held 0.5 s before and after each sighting; followed at
+  the full frame rate by Vision's tracker between the two-a-second sightings. Why: research-people.md 3.2 and plan review
+  item 12, a held box loses a moving face. Measured on a moving test square: the followed box overlapped the square 0.84
+  to 0.91, the held box alone 0.14 to 0.60.
+- **A change of choice or name deletes the card picture at once, then chooses again in the background, one at a time
+  per recording.** Why: a picture made under older choices must never stay on screen, and an older make finishing late
+  must never overwrite a newer one.
+- **Set All Unnamed To now covers the faces seen for under a second.** Why: otherwise their faces would stay in pictures
+  after Ivan hid everyone not named.
+- **The Viewer's People overlay** (on the Original, toggle at the top right or View > People): a box and a name per
+  face, dashed with the choice in words for anyone hidden. Why: design spec 3.4.1 and Q3; Ivan sees who is where in his
+  own app. Found by looking at the real window: accent text on clear glass over a bright picture could not be read, so
+  the toggle is white on darkened glass and on or off shows in the symbol's fill.
+- **New Help capability `hiding`, separate from `people`.** Why: the `people` blocks describe hiding in every output,
+  the video and timelines, which are not built; Help says only what the app does.
+
+---
+
 ## 2026-10-13, Tue: v2 part M6c, fixes after the verifier
 
 - **A Leave Out cut no longer ends inside the next word someone included says.** Why: the verifier found check 4 failing

@@ -107,7 +107,8 @@ told apart on one mixed track, the People tab lists each change of voice: listen
 
 In the People tab, every face and voice Prakriti found has a choice: Include, Hide Face or Leave Out. Everyone starts
 as Include. Leave Out cuts every stretch that person speaks from the podcast episodes, their words from the
-transcript and captions too; Hide Face changes nothing in the podcast. Under Names Said Aloud, choose Keep or Mute for
+transcript and captions too; Hide Face keeps their voice in the podcast and hides their face in the recording's picture.
+To see who is where, choose Original and click People at the top right of the picture. Under Names Said Aloud, choose Keep or Mute for
 each name Prakriti found; a muted name is silenced and written as [name]. Then click Make Again. See
 [Privacy and students](07-people-and-privacy.md).
 :::

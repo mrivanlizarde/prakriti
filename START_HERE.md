@@ -670,6 +670,16 @@ transcript file, caption and writing request. Approve waits for the choices to b
 be decided, and (someone left out of a mixed track) the changes of voice to be listened to. Hide Face changes no picture
 yet (M6d). With nobody left out and nothing muted the episode is made exactly as before.
 
+**v2 part M6d, hiding in pictures, Tue 13 Oct (built, not installed: see BUILD-LOG "v2 part M6d"):** once faces are
+known, a recording's card, list row and Activity row show a frame from it instead of the plain tile, chosen so everyone
+in it is someone Ivan included; failing that, with the face of everyone set to Hide Face or Leave Out hidden by
+`FaceHide` (padded 1.6 times, blurred and pixelated, held 0.5 s around each sighting, followed at the full frame rate by
+Vision's tracker); failing that, the tile. Vision checks every frame before it is kept. The picture lives in
+`<Application Support>/Thumbnails/` and is the only picture Prakriti keeps; a change of choice or name deletes it at once
+and chooses again. In the Viewer, on the Original, **People** (top right of the picture, or View > People) draws a box and
+a name on each face, dashed with the choice for anyone hidden. Hide Face now changes the recording's picture; the video
+that hides faces is M8d.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -883,7 +893,11 @@ that the build never opens), both two-people fixtures (two at once, the corner f
 the step alone on the **real 6 Sep talk** timed (under 5 minutes), nothing stored for strangers (no `People/Faces`,
 `Voices` or `FaceIndex` in either mode, no job folder, no list of 128 or more numbers and no picture word in any people
 file, `file --mime-type` finds no image under Application Support/Prakriti), the People tab and cards drawn with a test
-pattern in each face circle; then `scripts/people-crash-check.sh` kills a `--debug-face-scan` with SIGKILL mid-scan and
+pattern in each face circle; since v2 part M6d also the card picture of two-people-mixed (everyone included, then the corner
+face left out, then the chooser held to 0:20 to 0:60 so the corner face is hidden: one face, inside the main box, the
+corner's variance down 80% or more), five frames hidden by `FaceHide` with no face left in a hidden region, the card
+pictures the only images under Application Support, and `m6d-hide-test-pattern.png` (the hiding over a moving test
+square) to look at; then `scripts/people-crash-check.sh` kills a `--debug-face-scan` with SIGKILL mid-scan and
 needs the next development launch to delete its job folder before its first look. It writes `acceptance-people.txt`
 and `crash-check.txt`. `make test` runs every unit test (data, rules, copy and type checks, and the snapshot render).
 `make snapshots` writes every screen, light and dark, at the window's real size (1440 by 900 since v2
@@ -1756,6 +1770,30 @@ top and its end. Reading the code is not verification, and neither is a passing 
     with someone left out of a mixed track, for the changes of voice to be marked as listened to** (`ApprovalCheck`).
     Reason: warning 36 (a yes covers exactly what was made), research-people.md 3.6, PLAN section 5 (zero student names
     in anything public), warning 14 (a mixed track is a best guess).
+123. **A card picture is written only by `CardPicture.make`, only after the face step ran, and only once Vision has
+    looked at the finished picture and found every face inside the box of someone included at that moment** (a face in a
+    hidden region, or one the people pass never saw, refuses the frame; no frame passing means the plain tile). Reason:
+    Ivan, Mon 12 Oct, "Faces of anyone not Included are never in a thumbnail", and design spec 3.1.2; a face the pass
+    missed is a face nobody decided about, so it fails closed. A face is hidden in pictures when its choice is Hide Face or
+    Leave Out for **any** output (`Recording.hidesFace`): the card is not an output, so it takes the strictest.
+    `Thumbnails/<recording id>.jpg` is the only picture Prakriti keeps (PLAN M6 check 7; `make accept-people` fails on any
+    other image under Application Support), written through a job folder and never into a watched folder (warning 12).
+124. **Every change of choice or name deletes the card picture at once and makes it again in the background, one at a
+    time per recording, the newest last** (`AppModel.refreshCardPicture` waits for the one before it). Never skip the
+    deletion or run two at once. Reason: a picture made under older choices must not stay on screen while a new one is
+    chosen, and an older make that finishes late would otherwise overwrite a newer one with a face Ivan has since hidden.
+    Upgrading never makes card pictures for older recordings (PLAN rule 2.1.7): Check People or a make does.
+125. **Hiding follows each hidden face at the full frame rate between sightings (`FaceFollower`, Vision's
+    `TrackObjectRequest` started again from every sighting), and also keeps each sighting within 0.5 s of the frame and
+    the last place a lost face was seen, plus the head of any body there.** Never hide from held or interpolated boxes
+    alone. Reason: research-people.md 3.2 and plan review item 12; measured 13 Oct on a test square moving 300 px a second,
+    the followed box overlapped it 0.84 to 0.91 between sightings, the held box alone 0.14 to 0.60. `FaceHide` pads 1.6
+    times, blurs 30% of the face's width and pixelates 5 blocks across the face (research: at least a quarter, at most 8).
+126. **The People overlay shows the Original as recorded and hides nothing; its boxes come from the people file, two a
+    second, moved in a straight line between sightings, and a hidden face's box is dashed with its choice in words.**
+    Reason: design spec Q3 (Ivan decides who appears by seeing them) and the rule that color is never alone. The toggle is
+    white on clear glass tinted dark: found by looking at the real window 13 Oct, accent text on clear glass over a bright
+    picture could not be read.
 
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)

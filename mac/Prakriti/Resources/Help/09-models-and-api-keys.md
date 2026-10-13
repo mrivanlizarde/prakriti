@@ -39,8 +39,8 @@ These always run on this Mac, whatever you choose:
 :::requires choices
 - Leaving out the voices you choose, muting names, and listening to the episode again to check.
 :::
-:::requires people
-- Blurring faces.
+:::requires hiding
+- Hiding faces in the pictures of a recording.
 :::
 :::requires video
 - Cutting, zooming and making the video.

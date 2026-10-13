@@ -101,8 +101,8 @@ struct BrowserGrid: View {
     }
 }
 
-/// One recording as a card (design spec 3.1.1): a neutral tile with its date and the symbol of its kind
-/// (no frame is shown until faces can be checked, design spec 3.1.2 rule 3), its status in symbol and
+/// One recording as a card (design spec 3.1.1): its card picture once the people pass chose a safe frame (v2 part
+/// M6d, design spec 3.1.2), else a neutral tile with its date and the symbol of its kind, its status in symbol and
 /// words, its length, its title at 17 pt semibold and the day and time it was recorded. During a search,
 /// the sentences that matched, each opening the recording at that moment.
 struct RecordingCard: View {
@@ -113,7 +113,7 @@ struct RecordingCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            NeutralTile(recording: recording)
+            RecordingPicture(recording: recording)
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .overlay(alignment: .topLeading) {
                     StatusCapsule(status: recording.status, progress: model.runner.progress(for: recording)).padding(8)

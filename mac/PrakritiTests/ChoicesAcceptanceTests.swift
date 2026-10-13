@@ -238,6 +238,7 @@ final class ChoicesAcceptanceTests: XCTestCase {
         // Pictures: the People tab with its choices, light and dark; faces drawn as a test pattern (D1).
         var drawn: [String] = []
         model.faceCrops.useTestPattern = true
+        model.cardPictures.useTestPattern = true
         for (scheme, appearance) in SnapshotRenderer.appearances {
             for (slug, recording) in [("two-people-mixed", mixedRec), ("two-people-tracks", tracksRec), ("talk-13-sep", talk)] {
                 model.path = []

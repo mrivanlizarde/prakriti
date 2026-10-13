@@ -5,7 +5,7 @@ import Foundation
 //
 // - **Include:** seen and heard as recorded.
 // - **Hide Face:** heard as recorded; the face is hidden wherever it appears. Nothing changes in the sound, and the
-//   pictures that hide a face are part M6d's, so in this part Hide Face changes no file yet.
+//   pictures that hide a face are part M6d's (`FaceHide`): today the card picture, from M8d the video.
 // - **Leave Out:** every stretch the person speaks is cut from the podcast episode and the podcast-ready episode,
 //   widened to whole words and into the pauses so no syllable is left, stopping short of the next word kept (Mac
 //   warning 120), with v1's 15 ms fades (Mac warning 42); the transcript

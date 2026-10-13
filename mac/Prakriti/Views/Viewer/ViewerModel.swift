@@ -61,6 +61,8 @@ final class ViewerModel {
     private(set) var hasPosition = false
     /// Follow Playback (View menu, on by default, design spec 3.4.4): the sentence playing stays in view.
     var followPlayback = true
+    /// The People overlay on the Original (v2 part M6d, design spec 3.4.1): off until turned on, for this session.
+    var showsPeople = false
     /// The words chosen in the transcript (indices into `document.words`), for Cut and Keep.
     var selectedWords: ClosedRange<Int>?
     /// The Timeline-lite span chosen: shown above the inspector's tabs with Restore or Remove.

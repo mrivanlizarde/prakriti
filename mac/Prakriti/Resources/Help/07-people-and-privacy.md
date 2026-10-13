@@ -101,8 +101,8 @@ Everyone found in a recording starts as **Include**: the participants have signe
 until you choose. Under each face and voice in the People tab, choose one:
 
 - **Include:** heard as recorded.
-- **Hide Face:** heard as recorded. Hiding the face in pictures comes with the video, which Prakriti does not make
-  yet, so for now Hide Face changes nothing in the podcast.
+- **Hide Face:** heard as recorded, so the podcast does not change. Their face is hidden in the recording's
+  picture in the browser.
 - **Leave Out:** every stretch they speak is cut from the podcast episode and the podcast-ready episode, with the
   pause around it, so no syllable is left. The cut stops a little before the next word someone included says, so that
   word stays whole. Their words leave the transcript and the captions too.
@@ -125,6 +125,29 @@ left out, the People tab says when, such as "Speech at 0:31 in episode.mp3 sound
 out.", and Approve waits until it is made again. When the voices were told apart on one mixed track and you left
 someone out, listen to the changes of voice listed there, then select I listened to the changes of voice.
 
+:::
+
+:::requires hiding
+## Pictures of a recording
+
+Once Prakriti has looked for faces, a recording's card in the browser shows a frame from it instead of its date. The
+frame is chosen so that everyone in it is someone you included. When no such frame can be found, the face of everyone
+you chose Hide Face or Leave Out for is hidden in the frame, under a heavy blur and large blocks. Before a frame is kept, Prakriti looks for
+faces in it again, and any face that is not someone you included means the frame is not used. If no frame passes, the
+card keeps its date.
+
+When you change a choice or a name, the card's picture is removed at once and chosen again. The card picture is the
+only picture Prakriti keeps. It is kept on this Mac, never in a folder Prakriti watches.
+
+## See who is where
+
+Open a recording, choose Original in the toolbar, and click **People** at the top right of the picture (or choose
+View > People). Each face gets a box with its name, or Unnamed. A face you chose to hide has a dashed box, and its label
+says the choice, such as "Unnamed 2, Hide Face". The Original always plays as recorded: the boxes show who is where, they
+hide nothing.
+:::
+
+:::requires choices
 ## Names said aloud
 
 Prakriti looks for people's names in the transcript, other than the people you named in Settings, Privacy. Each name

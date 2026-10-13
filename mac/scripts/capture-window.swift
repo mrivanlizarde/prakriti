@@ -81,6 +81,8 @@ func viewerLooks() -> [Look] {
     return [Look(name: "12-viewer-podcast", flags: ["--show=needs-you", "--rendition=podcast"] + media, checksSidebar: false),
             Look(name: "12-viewer-podcast-ready", flags: ["--show=needs-you", "--rendition=podcastReady"] + media, checksSidebar: false),
             Look(name: "12-viewer-original-pattern", flags: ["--show=needs-you", "--rendition=original"] + media, checksSidebar: false),
+            // v2 part M6d: the People overlay over the test pattern, with the sample talk's made-up boxes.
+            Look(name: "12-viewer-people", flags: ["--show=needs-you", "--rendition=original", "--people-overlay"] + media, checksSidebar: false),
             Look(name: "12-viewer-quick-help", flags: ["--show=needs-you", "--rendition=podcast", "--quick-help"] + media, checksSidebar: false)]
 }
 /// WorkingTicker.interval in the app: how long each working frame shows.

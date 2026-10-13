@@ -174,7 +174,7 @@ accept-capture:
 #                 ../screens/mac/$(MILESTONE)/ (about 25 minutes)
 accept-people:
 	./scripts/make-fixtures.sh --if-missing
-	TEST_RUNNER_PRAKRITI_ACCEPTANCE=people TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/PeopleAcceptanceTests -only-testing:PrakritiTests/VoicesAcceptanceTests -only-testing:PrakritiTests/ChoicesAcceptanceTests
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=people TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/PeopleAcceptanceTests -only-testing:PrakritiTests/VoicesAcceptanceTests -only-testing:PrakritiTests/ChoicesAcceptanceTests -only-testing:PrakritiTests/HidingAcceptanceTests
 	./scripts/people-crash-check.sh $(APP) ../screens/mac/$(MILESTONE)
 
 accept-outputs:

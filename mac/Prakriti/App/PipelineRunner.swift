@@ -721,6 +721,8 @@ final class PipelineRunner {
         } else if let problem = result.voicesProblem {
             model.record("\(label) (\(recording.fileName)): \(problem)", level: .attention, run: run)
         }
+        // The card picture (v2 part M6d), chosen from what the face step just found and Ivan's choices; never before it.
+        if result.faces != nil { model.refreshCardPicture(recording) }
         // Once a transcript says "Serenity", the recording stays privacy locked (never unset).
         if result.mentionsSerenity && !recording.hasSerenity {
             recording.hasSerenity = true

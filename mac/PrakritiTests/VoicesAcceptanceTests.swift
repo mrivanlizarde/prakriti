@@ -270,6 +270,7 @@ final class VoicesAcceptanceTests: XCTestCase {
         // Pictures: the People tab and the Info tab of each, light and dark; faces drawn as a test pattern (D1).
         var drawn: [String] = []
         model.faceCrops.useTestPattern = true
+        model.cardPictures.useTestPattern = true
         for (scheme, appearance) in SnapshotRenderer.appearances {
             for (slug, recording) in [("talk-13-sep", talk), ("two-people-tracks", tracksRec), ("two-people-mixed", mixedRec)] {
                 model.path = []

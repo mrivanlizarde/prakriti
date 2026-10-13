@@ -17,7 +17,7 @@ struct BrowserList: View {
         let rows = recordings.sorted(using: order)
         Table(rows, selection: $model.selectedRecordings, sortOrder: $order) {
             TableColumn("") { recording in
-                NeutralTile(recording: recording, compact: true)
+                RecordingPicture(recording: recording, compact: true)
                     .frame(width: 64, height: 36)
             }
             .width(72)

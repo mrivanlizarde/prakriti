@@ -4157,3 +4157,88 @@ is unchanged (the M4b build).
 ### For Ivan
 
 - [ ] **The M5a lock decision still gates the install** (M5a to M6c together): `cd ~/Code/prakriti/mac && make install` once you say yes.
+
+## v2 part M6d: hiding in pictures. Tue 13 Oct 2026
+
+The fourteenth part of v2 (`docs/v2/PLAN.md`, M6, part M6d; REQUEST items 3b and 11). Built on `main`, as this run's
+instructions said. No Swift package added, nothing downloaded, **no SwiftData field added** (so no `make migrate-check`
+was needed). Built and checked 09:20 to 11:40.
+
+### What was built
+
+- **`People/FaceHide.swift`:** `HidePlan` (the people file's tracks whose row Ivan chose to hide), `FaceFollower` (each
+  hidden face followed at the full frame rate by Vision's `TrackObjectRequest`, started again from every two-a-second
+  sighting; each sighting within 0.5 s of the frame also hidden, so a region is held 0.5 s before a face first appears
+  and after it last shows; a lost face keeps its last place hidden, plus the head of any body Vision finds there) and
+  `FaceHide` (Core Image: padded 1.6 times, soft ellipse, Gaussian blur of 30% of the face's width, then pixelated 5
+  blocks across the face; drawn over the whole frame, so where a hidden region covers an included face, hiding wins).
+- **The card picture** (`People/Thumbnails.swift`, `CardPicture`): after the face step, the sharpest frame where everyone
+  seen is included (a named person first, Vision's capture quality), else the best frame with every other face hidden,
+  else none (the plain tile). Every candidate is checked by Vision on the finished picture: a face inside a hidden region,
+  or one the people pass never saw, refuses it. 1280 by 720 JPEG in `<Application Support>/Thumbnails/<id>.jpg`, through a
+  job folder. A face is hidden when its choice is Hide Face or Leave Out for any output (`Recording.hidesFace`).
+- **When it is made** (`App/HidingActions.swift`): after every make that ran the face step, after Check People, and after
+  every change of choice or name (Settings name removed, Who is teaching, Name for This Recording, a folder's microphone);
+  the old picture is deleted at once, then one make at a time per recording, the newest last. Remove from Library deletes
+  it. Never for an older recording by itself (rule 2.1.7). **Set All Unnamed To** now also covers the faces seen for under
+  a second.
+- **Cards, list rows and Activity rows** show it (`Views/Library/RecordingPicture.swift`), else the plain tile.
+- **The Viewer's People overlay** (`Views/Viewer/PeopleOverlay.swift`): on the Original, **People** at the top right of
+  the picture (clear glass tinted dark, 12 pt word under the symbol) or View > People: a rounded box and a name on each face
+  from the people file, moved in a straight line between sightings; a hidden face's box dashed and its label "Unnamed 2,
+  Hide Face". It hides nothing (design spec Q3). `--people-overlay` for captures.
+- Hide Face's line in the People tab and the receipt say it hides the face in the recording's picture. Capability
+  **`hiding`** (the `people` blocks describe hiding in the video and timelines, not built); Help 06, 07 and 09.
+  START_HERE Mac warnings 123 to 126.
+- Tests: `HidingTests` (10), `HidingAcceptanceTests` (in `make accept-people`), snapshot `20-viewer-people`, look
+  `12-viewer-people`.
+
+### Checks run, with results (PLAN M6, the checks part M6d runs: 5, 6, 7 thumbnails only images, 12 overlay, 13)
+
+| # | Check | Result |
+|---|---|---|
+| 5 | Card picture of **two-people-mixed.mp4**: Vision finds exactly one unhidden face, inside the main track's box; the corner region's variance falls 80% or more | **PASS.** Made by the app, everyone included: frame at 1:12 (rule 1), 1 face, inside the main box, 0.4 s. Gabriel teaching and everyone else Left Out: the old picture deleted at once (yes), made again at 0:17 (rule 1), 1 face, inside the main box. The rule-1 frames hold no corner face, so the chooser was also held to 20.02 to 59.53 s: frame at 0:43 with 1 face hidden (rule 2), 8 looked at, 0 refused, 1 face found, inside the main box; corner region variance **1043.0 in the original, 60.0 in the picture: a fall of 94.3%**. Measured only (D1, this run's instructions); the three pictures are listed for Ivan below |
+| 6 | Five frames with the corner track hidden; no face inside any hidden region, including 0.5 s before the corner face appears | **PASS: 0 faces inside a hidden region in all five.** 19.55 s (0.47 s before the first sighting at 20.02; held) and 20.00 s (held): no corner face there yet, so nothing to find. 20.287 s (held, held, followed), 39.873 s and 59.927 s (after the last sighting, held and followed): unhidden, Vision finds the corner face inside the region each time; hidden, 0. Motion measured on a test square moving 300 px a second (`HidingTests`): the followed box overlapped it **0.84 to 0.91** between sightings, the held box alone 0.14 to 0.60 |
+| 7 | The card pictures are the only images; nothing stored for strangers | **PASS.** `file --mime-type` on every file under ~/Library/Application Support/Prakriti: 202 files, 6 images, all card pictures in `Thumbnails/` (after the whole `make accept-people`: 208 files, 9 images, all card pictures). `People/Faces`, `Voices`, `FaceIndex` absent in both modes; development `Jobs/` empty; every people file passes the print and picture check. `HidingTests`: no picture before the face step, deleted the moment a choice changes, gone with Remove from Library, no job folder left |
+| 12 | Snapshots and the real window of the overlay | **PASS, looked at.** `20-viewer-people-light/dark` (snapshot: "Unnamed 1" solid box, "Unnamed 2, Hide Face" dashed box), `real/12-viewer-people-*` and `real/12-viewer-people-dark-fixed.png` (over a test pattern, sample boxes). Cards and list rows with the sample test-pattern picture: `04-all-recordings-*`, `real/05-all-recordings-list-dark.png`. `m6d-hide-test-pattern.png`: the moving test square as recorded and hidden, unrecognizable, soft edge. **Found by looking:** the People toggle's accent word on clear glass over the bright picture could not be read; now white on glass tinted dark, on and off shown by the symbol's fill, captured again |
+| 13 | Regression set | **PASS.** `make build`: no warnings. **`make test`: 306 tests, 0 failures, 16 skipped by design** (937 s; the first run failed 3: two capability lists not updated and a Help line using "blurred", a word kept for the unbuilt `people` text; fixed). `make accept-people` (M6a to M6d): 13 Sep decoded md5 `69658a8cb8a954b92798c5e9f3ea5833`, identical to engine v0's; 6 Sep whole pass 126 s; two-people fixtures 0 of 59 runs heard, 98.9% and 98.4%; crash check deleted the job folder at launch line 1 before the first look at line 11. `make accept`: 13 Sep -16.8 LUFS, -1.7 dBFS; silent-60s stopped; 6 Sep made. `make accept-edits`: 38.82 s shorter (expected 38.82), 0 of 73 runs heard, 189 of 201, a class refused. `make accept-outputs`: -19.1 LUFS run, run 4 identical to engine v0. `make look`: every window, key and playback check PASS. No SwiftData change, so no `make migrate-check`. Fixture unchanged by size and date |
+
+**Em dashes:** 0 in every file this part changed (grep); `RulesTests` passed.
+
+### Decisions, each with its reason
+
+1. **A face is hidden in pictures when its choice is anything but Include for any output.** The card is not an output, so
+   it takes the strictest; Ivan's 12 Oct rule is about anyone not Included.
+2. **Every candidate frame is checked by Vision, and an unaccounted face refuses it.** A face the people pass missed is
+   one nobody decided about: fail closed, then the plain tile.
+3. **Rule 1 needs no hidden face within 0.5 s**, not only none in the sampled frame, so a face turning into view is never
+   in a kept picture.
+4. **New capability `hiding`, not `people`.** The `people` text promises hiding in the video and timelines.
+5. **Glimpses go with Set All Unnamed To.** Without it, a face seen for under a second would stay in pictures after Ivan
+   hid everyone not named.
+6. **The overlay toggle is off by default and not remembered.** It is a looking aid; nothing depends on it.
+7. **Frames of Gabriel were measured, never looked at**, as this run's instructions said, though PLAN section 11 records
+   releases. Pictures I looked at were test patterns and sample data.
+
+### What does not work yet
+
+- Hiding in the video, the picture output check and the notice's third wording are M8d. The overlay does not yet show the
+  hiding as it will be in a video (there is no video).
+- The overlay's boxes are two a second, moved in a straight line; a fast turn between sightings can lag on screen (the
+  hiding itself follows at the full frame rate).
+- A recording made on its side (a phone held upright): the card picture is turned upright, the overlay is not checked
+  for it (no such recording on this Mac).
+
+### Installed
+
+**Not installed**, though every M6d check passes. `make install` ships everything on `main`, including M5a's lock, which
+turns the live app's Claude API choices back to LM Studio; that has waited for Ivan's word since 12 Oct and still does
+(M6a to M6c held for the same reason). The live app is unchanged (the M4b build, pid 36940).
+
+### For Ivan
+
+- [ ] **The M5a lock decision still gates the install** (M5a to M6d together): `cd ~/Code/prakriti/mac && make install` once
+  you say yes.
+- [ ] **Look at the card pictures of the fixture** (frames of Gabriel's talk, measured but never opened by the build):
+  `~/Code/prakriti/screens/mac/v2-m6d/for-ivan/m6d-card-everyone-included.jpg`, `m6d-card-corner-left-out.jpg` and
+  `m6d-card-corner-hidden.jpg` (the corner face hidden). Say if the hiding looks strong enough to you.

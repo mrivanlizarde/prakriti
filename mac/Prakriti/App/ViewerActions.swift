@@ -58,6 +58,11 @@ extension AppModel {
         saveWindowState()
     }
 
+    /// The Viewer's People toggle and View > People (v2 part M6d).
+    func setShowsPeople(_ on: Bool) {
+        viewer.showsPeople = on
+    }
+
     func setFollowPlayback(_ on: Bool) {
         viewer.followPlayback = on
         settings.followPlayback = on

@@ -58,11 +58,14 @@ extension AppModel {
                 guard let current = fetchRecording(id) else { return }
                 applyVoices(voices.found, to: current)
                 try? context.save()
+                refreshCardPicture(current)
             } catch {
                 let detail = (error as? FaceScan.Failure)?.reason ?? (error as? VoiceStep.Failure)?.reason ?? (error as? Diarizer.Failure)?.reason
                     ?? (error as? ToolError)?.logLine ?? error.localizedDescription
                 faceProblems[id] = "People could not be checked. \(detail)"
                 record("People could not be checked in \(recording.fileName). \(detail)", level: .attention)
+                // The faces may have been found before the voices failed: the card picture follows them.
+                if let current = fetchRecording(id), current.faces != nil { refreshCardPicture(current) }
             }
         }
     }
@@ -94,8 +97,10 @@ extension AppModel {
     /// Removes a name. Recordings that used it count that face or voice as not named again, so their lock closes.
     func removePerson(_ person: Person) {
         let name = person.name
+        let id = person.id
         context.delete(person)
         try? context.save()
+        refreshCardPictures(naming: id)
         record("Removed the name \(name). Recordings where it was given count that person as not named.")
     }
 
@@ -118,6 +123,7 @@ extension AppModel {
         recording.names = names
         record("\(Format.dayLabel(recording.sessionDate)) (\(recording.fileName)): " + (person.map { "\($0.name) is teaching." } ?? "who is teaching is cleared."))
         try? context.save()
+        refreshCardPicture(recording)
     }
 
     /// Name for This Recording, for a face row (0: the faces seen for under a second). Nil takes the name off.
@@ -127,6 +133,7 @@ extension AppModel {
         recording.names = names
         record("\(Format.dayLabel(recording.sessionDate)) (\(recording.fileName)): a face is " + (person.map { "named \($0.name)" } ?? "not named any more") + " for this recording.")
         try? context.save()
+        refreshCardPicture(recording)
     }
 
     /// Name for This Recording, for a voice. Nil takes the name off.
@@ -136,6 +143,7 @@ extension AppModel {
         recording.names = names
         record("\(Format.dayLabel(recording.sessionDate)) (\(recording.fileName)): a voice is " + (person.map { "named \($0.name)" } ?? "not named any more") + " for this recording.")
         try? context.save()
+        refreshCardPicture(recording)
     }
 
     /// "Track 2 is Gabriel's microphone" for the recording's folder: every recording from it heard on that track
@@ -147,5 +155,7 @@ extension AppModel {
         source.microphones = microphones
         record("\(source.name): track \(track) is " + (person.map { "\($0.name)'s microphone." } ?? "no one's microphone now."))
         try? context.save()
+        // A voice named by its track crosses its link to a face, so the folder's card pictures follow.
+        for other in source.recordings where other.voices?.source == .tracks { refreshCardPicture(other) }
     }
 }

@@ -454,7 +454,22 @@ final class SnapshotTests: XCTestCase {
             model.open(recording)
             model.openViewer(recording)
         }
-        let viewerCount = 12 * 2
+        // The People overlay on the Original (v2 part M6d): the sample talk's made-up face, included, and a made-up second
+        // face in the corner set to Hide Face, over the test pattern (the player itself draws black in a bitmap, Mac
+        // warning 43; the real window is `make look`'s 12-viewer-people).
+        try draw("20-viewer-people") { model in
+            _ = try openTalk(model, rendition: .original, at: 120) { r in
+                guard let faces = r.faces else { return }
+                let corner = (0...1900).map { [Double($0) * 0.5, 0.8, 0.66, 0.06, 0.11, 0.9] }
+                model.peopleBoxes.seed(r, file: Fixtures.samplePeopleFile(r.id, faces: faces,
+                                                                          extra: [PeopleFile.Track(id: 2, person: 2, start: 0, end: 950, boxes: corner)]))
+                var choices = r.choices
+                choices.set(.hideFace, for: .face(2))
+                r.choices = choices
+            }
+            model.viewer.showsPeople = true
+        }
+        let viewerCount = 13 * 2
 
         if only == "recording" {
             print("Snapshots written to \(outputFolder.path): \(written.count) Viewer pictures")

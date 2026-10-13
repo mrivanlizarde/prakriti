@@ -159,7 +159,9 @@ final class AppModel {
     var captureChecking: Set<UUID> = []
     var captureProblems: [UUID: String] = [:]
     /// Where the face step keeps the people files and its job folders, for this mode (v2 part M6a).
-    @ObservationIgnored var peopleFolders: PeopleFolders
+    @ObservationIgnored var peopleFolders: PeopleFolders {
+        didSet { cardPictures.folders = peopleFolders }
+    }
     /// Recordings being looked at from Look for Faces now, and why one could not be (v2 part M6a).
     var faceChecking: Set<UUID> = []
     var faceProblems: [UUID: String] = [:]
@@ -169,6 +171,14 @@ final class AppModel {
     let faceCrops = FaceCrops()
     /// The People tab's figures for its choices (v2 part M6c): voice stretches and word times, read once per make.
     @ObservationIgnored let choiceFigures = ChoiceFigures()
+    /// The browser's card pictures, read from Thumbnails/ and held in memory (v2 part M6d).
+    let cardPictures: CardPictures
+    /// The card picture being made for each recording, one at a time per recording (v2 part M6d).
+    @ObservationIgnored var cardPictureWork: [UUID: Task<Void, Never>] = [:]
+    /// What the last card picture of each recording kept, for the log and the acceptance (in memory only).
+    @ObservationIgnored var cardPictureOutcomes: [UUID: CardPicture.Outcome] = [:]
+    /// The Viewer's People overlay: the people file's boxes, read once per recording (v2 part M6d).
+    @ObservationIgnored let peopleBoxes = PeopleBoxes()
     var providerChecks: [ModelProvider: ProviderCheck] = [:]
     /// Which cloud providers have a key in the Keychain. Read when Settings, Models opens; the keys never are.
     var keysAdded: Set<ModelProvider> = []
@@ -201,6 +211,7 @@ final class AppModel {
         self.log = log
         self.now = now
         peopleFolders = PeopleFolders(support: paths.applicationSupport)
+        cardPictures = CardPictures(folders: PeopleFolders(support: paths.applicationSupport))
         help = HelpModel(library: .bundled(), lastArticle: settings.helpLastArticle) { [settings] id in
             settings.helpLastArticle = id
         }
@@ -321,6 +332,8 @@ final class AppModel {
                     if let rendition = launch.rendition { model.restoredViewer = (ready.id, rendition, nil) }
                 }
             }
+            // The People overlay on (v2 part M6d), over the test pattern, with the sample talk's made-up boxes.
+            if launch.peopleOverlay { model.viewer.showsPeople = true }
             if launch.quickHelp {
                 model.quickHelp.isOn = true
                 model.quickHelp.show("Choose what plays: the Original as recorded, the Podcast episode, or the Podcast-ready episode. Video and Shorts are not made yet.",
@@ -844,6 +857,8 @@ struct CaptureLaunch {
     /// `--sample-output=<folder>`: the sample talk's output folder, for a capture of the Podcast-ready rendition.
     var sampleOutput: String?
     var quickHelp = false
+    /// `--people-overlay`: the Viewer's People overlay on (v2 part M6d).
+    var peopleOverlay = false
     /// `--activity-tab=<now|finished|log>`: the Activity window's tab (v2 part M4a).
     var activityTab: ActivityTab?
 
@@ -873,6 +888,7 @@ struct CaptureLaunch {
                              sampleOriginal: value("--sample-original"),
                              sampleOutput: value("--sample-output"),
                              quickHelp: args.contains("--quick-help"),
+                             peopleOverlay: args.contains("--people-overlay"),
                              activityTab: value("--activity-tab").flatMap(ActivityTab.init(rawValue:)))
     }
 

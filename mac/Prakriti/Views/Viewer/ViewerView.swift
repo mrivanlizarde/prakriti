@@ -158,6 +158,10 @@ struct ViewerPicture: View {
             Color.black
             ViewerPlayerView(player: viewer.player, hasPicture: viewer.rendition.hasPicture)
                 .accessibilityLabel(viewer.rendition.title + " player")
+            // Who is where, over the Original (v2 part M6d): boxes and names, and the toggle that shows them.
+            PeopleOverlay(recording: recording)
+            ViewerPictureToggles(recording: recording)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
             if !viewer.rendition.hasPicture {
                 VStack(spacing: 8) {
                     Image(systemName: viewer.rendition.symbol)

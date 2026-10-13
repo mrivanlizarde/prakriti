@@ -56,6 +56,19 @@ enum Fixtures {
         return found
     }
 
+    /// The sample talk's people file (v2 part M6d), made up from `facesOnePerson`: one face near its key box, drifting a
+    /// little, two sightings a second, as the People overlay reads it. Boxes and times only; never written to disk.
+    static func samplePeopleFile(_ id: UUID, faces: FacesFound, extra: [PeopleFile.Track] = []) -> PeopleFile {
+        let key = faces.people.first?.keyBox ?? FaceBox(x: 0.43, y: 0.27, width: 0.13, height: 0.24)
+        let boxes = stride(from: 0.0, through: faces.duration, by: 0.5).map { time -> [Double] in
+            let drift = sin(time / 7) * 0.03
+            return [time, key.x + drift, key.y + drift / 3, key.width, key.height, 0.98].map(PeopleFile.round)
+        }
+        return PeopleFile(recordingID: id, duration: faces.duration, frameWidth: 1920, frameHeight: 1080,
+                          tracks: [PeopleFile.Track(id: 1, person: faces.people.first?.id, start: 0, end: faces.duration, boxes: boxes)] + extra,
+                          people: faces.people)
+    }
+
     /// The two-people-mixed fixture's answer (v2 part M6a): a second face in the corner from 0:20 to 0:60.
     static func facesTwoPeople(at checkedAt: Date, duration: Double = 90.1) -> FacesFound {
         var found = FacesFound(checkedAt: checkedAt, duration: duration)
@@ -369,6 +382,12 @@ enum Fixtures {
         }
         // No face of anyone is drawn from sample data: the People tab shows a test pattern in each circle.
         model.faceCrops.useTestPattern = true
+        // Nor in a card picture (v2 part M6d): a calm test pattern stands in for each recording whose people were checked,
+        // and the Viewer's People overlay draws the sample talk's made-up boxes (`samplePeopleFile`), over a test pattern.
+        model.cardPictures.useTestPattern = true
+        for recording in (try? model.context.fetch(FetchDescriptor<Recording>())) ?? [] where recording.title == "Talk with Gabriel" {
+            if let faces = recording.faces { model.peopleBoxes.seed(recording, file: samplePeopleFile(recording.id, faces: faces)) }
+        }
         model.isWatching = true
         model.watcher.isRunning = true
         model.watcher.lastCheck = Fixtures.now.addingTimeInterval(-120)

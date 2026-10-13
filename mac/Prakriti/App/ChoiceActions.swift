@@ -78,7 +78,7 @@ extension Recording {
             case .named: true
             case .voice: false
             }
-            let words = choice == .hideFace && hasFace ? "in the podcast as recorded (Hide Face changes the pictures only, which are not made yet)" : choice.meaning
+            let words = choice == .hideFace && hasFace ? "in the podcast as recorded, face hidden in the recording's picture" : choice.meaning
             return "\(label(for: key)): \(words)."
         }
     }
@@ -97,6 +97,7 @@ extension AppModel {
                + (output.map { " in the \($0.title.lowercased())" } ?? "") + ". Make it again to put it in the episode.")
         changedAfterApproval(recording, what: "who is in it")
         try? context.save()
+        refreshCardPicture(recording)
         return before
     }
 
@@ -105,12 +106,15 @@ extension AppModel {
     func setAllUnnamed(_ choice: PersonChoice, in recording: Recording) -> PeopleChoices {
         let before = recording.choices
         var choices = before
-        choices.setAll(choice, unnamed: recording.unnamedKeys)
+        // The faces seen for under a second go with everyone not named (v2 part M6d): their pictures are hidden too.
+        let glimpses = (recording.faces?.glimpses ?? 0) > 0 ? [PersonKey.face(0, names: recording.resolvedNameTable)] : []
+        choices.setAll(choice, unnamed: recording.unnamedKeys + glimpses)
         guard choices != before else { return before }
         recording.choices = choices
         record("\(Format.dayLabel(recording.sessionDate)) (\(recording.fileName)): everyone not named is now \(choice.title). Make it again to put it in the episode.")
         changedAfterApproval(recording, what: "who is in it")
         try? context.save()
+        refreshCardPicture(recording)
         return before
     }
 
@@ -136,6 +140,7 @@ extension AppModel {
         record("\(Format.dayLabel(recording.sessionDate)) (\(recording.fileName)): a choice of who is in it was undone.")
         changedAfterApproval(recording, what: "who is in it")
         try? context.save()
+        refreshCardPicture(recording)
     }
 
     /// Ivan listened to the changes of voice, for the voices as last checked.

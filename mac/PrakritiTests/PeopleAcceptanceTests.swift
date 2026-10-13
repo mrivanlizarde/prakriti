@@ -14,7 +14,8 @@ import XCTest
 ///   0:60, the fixed notice once;
 /// - the face step alone on the **6 Sep talk** (55:39), timed: under 5 minutes;
 /// - nothing stored for strangers: no Faces, Voices or FaceIndex folder, no job folder left, no print and no
-///   picture in any people file, and no image file anywhere under Application Support/Prakriti.
+///   picture in any people file, and no image file anywhere under Application Support/Prakriti but the card pictures in
+///   Thumbnails/ (v2 part M6d).
 ///
 ///   cd ~/Code/prakriti/mac && make accept-people MILESTONE=v2-m6a
 ///
@@ -181,8 +182,11 @@ final class PeopleAcceptanceTests: XCTestCase {
             let kind = try output(URL(fileURLWithPath: "/usr/bin/file"), ["-b", "--mime-type", url.path])
             if kind.hasPrefix("image/") { images.append("\(url.path): \(kind)") }
         }
-        XCTAssertEqual(images, [], "no image under Application Support/Prakriti")
-        report.append("`file --mime-type` on every file under \(root.path): \(examined) files, \(images.count) images" + (images.isEmpty ? "" : ": \(images)"))
+        // Since v2 part M6d the card pictures in Thumbnails/ are the one kind of image allowed (PLAN M6 check 7).
+        let strays = images.filter { !HidingAcceptanceTests.isCardPicture(String($0.prefix { $0 != ":" })) }
+        XCTAssertEqual(strays, [], "no image under Application Support/Prakriti but the card pictures")
+        report.append("`file --mime-type` on every file under \(root.path): \(examined) files, \(images.count) images, \(images.count - strays.count) of them card pictures in Thumbnails/"
+                      + (strays.isEmpty ? "" : ", and: \(strays)"))
         report.append("")
 
         // Check 12: the People tab of each, and the cards with their people lines, light and dark. The face circles
@@ -190,6 +194,7 @@ final class PeopleAcceptanceTests: XCTestCase {
         var drawn: [String] = []
         // A test pattern in every face circle, so these pictures can be looked at (D1): the layout is what is checked.
         model.faceCrops.useTestPattern = true
+        model.cardPictures.useTestPattern = true
         for (scheme, appearance) in SnapshotRenderer.appearances {
             for (slug, recording) in [("talk-13-sep", talk)] + fixtureRecordings {
                 model.path = []

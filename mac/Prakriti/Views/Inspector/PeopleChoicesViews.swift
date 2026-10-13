@@ -36,8 +36,8 @@ struct ChoiceControls: View {
         case .include:
             return voices.isEmpty ? "Not heard in the recording." : "In the podcast as recorded."
         case .hideFace:
-            return voices.isEmpty ? "Not heard, so the podcast does not change. Hiding a face in pictures is not built yet."
-                                  : "The podcast keeps their voice. Hiding a face in pictures is not built yet."
+            return voices.isEmpty ? "Not heard, so the podcast does not change. Their face is hidden in the recording's picture."
+                                  : "The podcast keeps their voice. Their face is hidden in the recording's picture."
         case .leaveOut:
             return LeaveOut.consequence(label: label, seconds: model.choiceFigures.removed(voices: voices, in: recording, folders: model.peopleFolders))
         }

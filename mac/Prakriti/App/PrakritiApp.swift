@@ -240,6 +240,9 @@ struct AppCommands: Commands {
         }
         CommandGroup(after: .sidebar) {
             Toggle("Follow Playback", isOn: Binding(get: { model.viewer.followPlayback }, set: { model.setFollowPlayback($0) }))
+            // The People overlay over the Original (v2 part M6d), the same as the toggle on the picture.
+            Toggle("People", isOn: Binding(get: { model.viewer.showsPeople }, set: { model.setShowsPeople($0) }))
+                .disabled(model.path.isEmpty || model.viewer.rendition != .original)
             Divider()
             Button(model.inspectorShown ? "Hide Inspector" : "Show Inspector") { model.inspectorShown.toggle() }
                 .keyboardShortcut("i", modifiers: [.command, .option])
