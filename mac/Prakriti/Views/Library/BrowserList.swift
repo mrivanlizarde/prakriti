@@ -48,6 +48,14 @@ struct BrowserList: View {
                     .monospacedDigit()
             }
             .width(min: 70, ideal: 80)
+            // Who was seen (v2 part M6a, design spec 3.2): the people line, empty until faces were looked for.
+            TableColumn(Self.heading("People")) { recording in
+                Text(recording.faces?.shortLine ?? "")
+                    .font(AppFont.body)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .width(min: 130, ideal: 150)
             TableColumn(Self.heading("Status")) { recording in
                 if let progress = model.runner.progress(for: recording) {
                     // While it is made (v2 part M4a): a small bar, the percent and the time left.

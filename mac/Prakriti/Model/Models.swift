@@ -156,6 +156,11 @@ final class Recording {
     /// how the file was recorded, not about what was made from it. Nil for a recording found before M4b.
     var captureJSON: String?
 
+    /// What the face step found when the recording was last looked at (v2 part M6a): a FacesFound as JSON, read
+    /// through `faces`. Counts, times and one key moment per row of the People tab; never a picture or a print.
+    /// Nil for a recording found before M6a, or not looked at yet.
+    var facesJSON: String?
+
     var source: Source?
 
     @Relationship(deleteRule: .cascade, inverse: \Run.recording)
@@ -212,6 +217,9 @@ final class Recording {
 
     /// What the capture check measured, or nil.
     var capture: CaptureReport? { CaptureReport.decode(captureJSON) }
+
+    /// What the face step found, or nil.
+    var faces: FacesFound? { FacesFound.decode(facesJSON) }
 
     /// The facts the podcast-ready package reads from this recording.
     var podcastFacts: PodcastEpisodeFacts {

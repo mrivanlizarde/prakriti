@@ -71,3 +71,15 @@ still owed; the "has agreed" checkbox records consent, it does not create it.
 - Settings, Models has "This Mac": the chip, memory and verdict ("Apple M5 Pro, 64 GB. This Mac can run the writing
   model."), and Apple Intelligence's state. The welcome panel 5 line is part M5b's.
 - Not built: OpenAI, Anthropic's current request shape, model lists from each provider (M5b); the people check (M6).
+
+## Built in v2 part M6a (Mon 12 Oct 2026)
+
+- New capability `faces` (Help/Capabilities.swift), separate from `people`: the article's "Faces in a recording"
+  section and the lock paragraph's second sentence are `:::requires faces` blocks. `people` (voices, Include, Blur
+  Face, Remove) is still off, so "What Prakriti looks for" and the choices stay hidden.
+- What the article says is built: the face step in every make, boxes and times kept, the people line ("One person at
+  a time." / "Other people appear, up to 2 at once."), Sort > Other People Appear, the People tab with Unnamed rows and
+  live crops never saved, the one notice, Look for Faces for older recordings.
+- `HelpTests.unbuiltNames`: "People" and "Unnamed" (case sensitive), "Other People Appear" and "Look for Faces" now
+  belong to `faces`; "Blur Face" and the print words stay with `people`.
+- Not built: voices, names, Who Is Teaching (M6b); choices and removing speech (M6c); hiding faces (M6d).

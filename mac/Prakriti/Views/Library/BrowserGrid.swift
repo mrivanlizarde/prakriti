@@ -144,6 +144,11 @@ struct RecordingCard: View {
                 Text(Format.cardDate(recording.sessionDate))
                     .font(AppFont.secondary)
                     .foregroundStyle(.appSecondary)
+                // Who was seen (v2 part M6a, design spec 3.1.1); hidden until faces were looked for.
+                if let faces = recording.faces {
+                    PeopleLine(faces: faces)
+                        .padding(.top, 2)
+                }
             }
             if let match, !match.said.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
@@ -177,6 +182,7 @@ struct RecordingCard: View {
         var parts = [Format.dayLabel(recording.sessionDate), recording.cardTitle]
         if let duration = recording.duration { parts.append(Format.spokenLength(duration)) }
         parts.append(recording.status.title)
+        if let faces = recording.faces { parts.append(faces.line) }
         if let progress = model.runner.progress(for: recording) { parts.append(ProgressWords.spoken(progress)) }
         return parts.joined(separator: ", ")
     }

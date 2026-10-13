@@ -172,8 +172,8 @@ struct MainToolbar: ToolbarContent {
     }
 }
 
-/// Sort and filter, in one menu (design spec 3.1.3). The filter is the kind of recording; the people and
-/// edited-video filters come with their parts.
+/// Sort and filter, in one menu (design spec 3.1.3). The filters are the kind of recording and, since v2 part
+/// M6a, Other People Appear (two or more faces seen at once); the edited-video filter comes with its part.
 struct SortMenu: View {
     @Environment(AppModel.self) private var model
 
@@ -195,8 +195,11 @@ struct SortMenu: View {
                 Button("Show Every Kind") { model.kindFilter = [] }
                     .disabled(model.kindFilter.isEmpty)
             }
+            Section("People") {
+                Toggle("Other People Appear", isOn: $model.otherPeopleFilter)
+            }
         } label: {
-            Label(model.kindFilter.isEmpty ? "Sort" : "Sort and Filter", systemImage: "line.3.horizontal.decrease.circle")
+            Label(model.kindFilter.isEmpty && !model.otherPeopleFilter ? "Sort" : "Sort and Filter", systemImage: "line.3.horizontal.decrease.circle")
                 .labelStyle(.titleAndIcon)
         }
         .accessibilityLabel("Sort and filter")

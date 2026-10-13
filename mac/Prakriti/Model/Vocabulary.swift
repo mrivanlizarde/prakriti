@@ -344,6 +344,8 @@ enum ModelProvider: String, Codable, CaseIterable, Sendable {
 /// The five notices Prakriti can post (SCOPE 8.3), one per recording, updated in place.
 enum NotificationEvent: String, Codable, CaseIterable, Sendable {
     case found, started, ready, needsADecision, couldntFinish
+    /// Two or more faces were seen at once (v2 part M6a), told once per recording in one fixed sentence.
+    case otherPeople
 
     var title: String {
         switch self {
@@ -352,6 +354,7 @@ enum NotificationEvent: String, Codable, CaseIterable, Sendable {
         case .ready: "Waiting for Your Yes"
         case .needsADecision: "Needs a Decision"
         case .couldntFinish: "Couldn't Finish"
+        case .otherPeople: "Other People Appear"
         }
     }
 
@@ -363,6 +366,7 @@ enum NotificationEvent: String, Codable, CaseIterable, Sendable {
         case .found, .started, .ready: "status"
         case .needsADecision: "decision"
         case .couldntFinish: "problem"
+        case .otherPeople: "people"
         }
     }
 
@@ -375,6 +379,7 @@ enum NotificationEvent: String, Codable, CaseIterable, Sendable {
         case .ready: RecordingStatus.readyForYourYes.title
         case .needsADecision: RecordingStatus.needsADecision.title
         case .couldntFinish: RecordingStatus.couldntFinish.title
+        case .otherPeople: "Other people appear"
         }
     }
 
@@ -382,7 +387,7 @@ enum NotificationEvent: String, Codable, CaseIterable, Sendable {
     /// that wait on Ivan make a sound. Never Time Sensitive (SCOPE 8.1 rule 8).
     var playsSound: Bool {
         switch self {
-        case .found, .started: false
+        case .found, .started, .otherPeople: false
         case .ready, .needsADecision, .couldntFinish: true
         }
     }
@@ -391,7 +396,7 @@ enum NotificationEvent: String, Codable, CaseIterable, Sendable {
 
     var soundLine: String {
         switch self {
-        case .found: "Shown without a sound."
+        case .found, .otherPeople: "Shown without a sound."
         case .started: "Quiet: goes straight to Notification Center."
         case .ready, .needsADecision, .couldntFinish: "Shown with a sound."
         }

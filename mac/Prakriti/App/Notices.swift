@@ -140,6 +140,10 @@ enum NoticeBuilder {
             let times = facts.tries >= 3 ? " three times" : (facts.tries == 2 ? " twice" : "")
             let step = facts.stoppedWhile.map { " while \($0.lowercasedFirst)" } ?? " before it finished"
             return "It stopped\(times)\(step). The original is untouched; open it to see the details."
+        case .otherPeople:
+            // One fixed sentence that says only what this build does (docs/v2/PLAN.md M6): it finds faces and
+            // decides nothing yet. Never a name, a title or a count of anyone.
+            return "Other people appear in this recording."
         }
     }
 

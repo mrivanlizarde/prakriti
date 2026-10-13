@@ -61,7 +61,7 @@ final class StoreMigrationTests: XCTestCase {
         // not have the field yet (the upgrade that adds it); once a store has it, its values are Ivan's.
         let gates = [("ZRECORDING", "ZEPISODEDURATION"), ("ZRECORDING", "ZEPISODEPARTS"), ("ZRECORDING", "ZWRITTENJSON"), ("ZRECORDING", "ZPODCASTREADYJSON"),
                      ("ZOUTPUTSETTING", "ZNUMBERINGRAW"), ("ZRECORDING", "ZCHECKEDCLAIMS"), ("ZSOURCE", "ZFORGOTTENPATHS"),
-                     ("ZRECORDING", "ZCAPTUREJSON")]
+                     ("ZRECORDING", "ZCAPTUREJSON"), ("ZRECORDING", "ZFACESJSON")]
         print("Fields this open adds, so checked at their defaults: \(gates.filter { !before.has($0.0, $0.1) }.map(\.1)); already in the store, so compared as stored: \(gates.filter { before.has($0.0, $0.1) }.map(\.1))")
         if !before.has("ZRECORDING", "ZEPISODEDURATION") {
             // Milestone 4: nothing made by the app yet.
@@ -134,6 +134,11 @@ final class StoreMigrationTests: XCTestCase {
             XCTAssertTrue(recordings.allSatisfy { $0.captureJSON == nil }, "no recording arrives with a capture check")
         }
         print("v2 part M4b: \(recordings.filter { $0.captureJSON != nil }.count) recordings with a capture check")
+        // v2 part M6a: no recording arrives with faces looked for (an upgrade looks at nothing by itself, rule 2.1.7).
+        if !before.has("ZRECORDING", "ZFACESJSON") {
+            XCTAssertTrue(recordings.allSatisfy { $0.facesJSON == nil }, "no recording arrives with faces looked for")
+        }
+        print("v2 part M6a: \(recordings.filter { $0.facesJSON != nil }.count) recordings with faces looked for")
         print("v2 part M3a fields: \(recordings.filter { !$0.checkedClaims.isEmpty }.count) recordings with ticked claims, \(sources.filter { !$0.forgottenPaths.isEmpty }.count) folders with removed files (\(sources.map(\.forgottenPaths.count).reduce(0, +)) files)")
         print("Rows before and after: recordings \(before.count("ZRECORDING"))/\(recordings.count), folders \(before.count("ZSOURCE"))/\(sources.count), output settings \(before.count("ZOUTPUTSETTING"))/\(settings.count), Activity lines \(before.count("ZLOGENTRY"))/\(lines); approved \(recordings.filter { $0.approvedAt != nil }.count)")
         let ready = recordings.filter { $0.status == .readyForYourYes }

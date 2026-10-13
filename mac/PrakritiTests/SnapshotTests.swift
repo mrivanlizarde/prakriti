@@ -111,6 +111,50 @@ final class SnapshotTests: XCTestCase {
                 model.selectedRecordings = [talk.id]
                 model.inspectorTab = .checks
             }
+            // The People tab (v2 part M6a): two faces at once (the two-people fixture's answer), a recording found
+            // before faces were looked for (Look for Faces), and one with no face in its picture. Every face circle is
+            // a test pattern: sample data never draws anyone's face.
+            try draw("07-inspector-people-two") { model in
+                let talk = try talk13(model)
+                talk.facesJSON = Fixtures.facesTwoPeople(at: Fixtures.date(2026, 10, 12, 21, 40)).json()
+                model.selection = .group(.needsYou)
+                model.selectedRecordings = [talk.id]
+                model.inspectorTab = .people
+            }
+            try draw("07-inspector-people-none") { model in
+                let talk = try talk13(model)
+                talk.facesJSON = nil
+                model.selection = .group(.needsYou)
+                model.selectedRecordings = [talk.id]
+                model.inspectorTab = .people
+            }
+            try draw("07-inspector-people-nofaces") { model in
+                let talk = try talk13(model)
+                var found = FacesFound(checkedAt: Fixtures.date(2026, 10, 12, 21, 40), duration: 947.78)
+                found.samples = 1896
+                talk.facesJSON = found.json()
+                model.selection = .group(.needsYou)
+                model.selectedRecordings = [talk.id]
+                model.inspectorTab = .people
+            }
+            // The cards and the list with their people lines, and the Other People Appear filter.
+            try draw("05-all-recordings-people") { model in
+                let talk = try talk13(model)
+                talk.facesJSON = Fixtures.facesTwoPeople(at: Fixtures.date(2026, 10, 12, 21, 40)).json()
+                model.selection = .group(.all)
+            }
+            try draw("05-all-recordings-list-people") { model in
+                let talk = try talk13(model)
+                talk.facesJSON = Fixtures.facesTwoPeople(at: Fixtures.date(2026, 10, 12, 21, 40)).json()
+                model.selection = .group(.all)
+                model.browserMode = .list
+            }
+            try draw("05-all-recordings-filter-other-people") { model in
+                let talk = try talk13(model)
+                talk.facesJSON = Fixtures.facesTwoPeople(at: Fixtures.date(2026, 10, 12, 21, 40)).json()
+                model.selection = .group(.all)
+                model.otherPeopleFilter = true
+            }
             // Several selected.
             try draw("07-inspector-several") { model in
                 model.selection = .group(.all)
@@ -258,7 +302,8 @@ final class SnapshotTests: XCTestCase {
         }
         if only == "library" {
             print("Snapshots written to \(outputFolder.path): \(written.count) library and Settings pictures")
-            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2 + 2 + 2 + 3 * 2)
+            // v2 part M6a: the People tab joins the inspector's tabs (2), and six People and filter pictures (12).
+            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2 + 2 + 2 + 3 * 2 + 2 + 6 * 2)
             return
         }
 
@@ -345,7 +390,7 @@ final class SnapshotTests: XCTestCase {
 
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + 2 + 3 * 2 + viewerCount)
+        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + 2 + 3 * 2 + viewerCount + 2 + 6 * 2)
     }
 
     /// v2 part M2a: the Help window, open at every article this build shows, in light and dark, with a

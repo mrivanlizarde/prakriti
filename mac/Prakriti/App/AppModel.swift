@@ -158,6 +158,15 @@ final class AppModel {
     /// Recordings whose capture check runs now from Check Capture, and why one could not run (v2 part M4b).
     var captureChecking: Set<UUID> = []
     var captureProblems: [UUID: String] = [:]
+    /// Where the face step keeps the people files and its job folders, for this mode (v2 part M6a).
+    @ObservationIgnored var peopleFolders: PeopleFolders
+    /// Recordings being looked at from Look for Faces now, and why one could not be (v2 part M6a).
+    var faceChecking: Set<UUID> = []
+    var faceProblems: [UUID: String] = [:]
+    /// The Filter menu's Other People Appear: only recordings where two or more faces were seen at once.
+    var otherPeopleFilter = false
+    /// The People tab's faces, cropped live and held in memory only (v2 part M6a).
+    let faceCrops = FaceCrops()
     var providerChecks: [ModelProvider: ProviderCheck] = [:]
     /// Which cloud providers have a key in the Keychain. Read when Settings, Models opens; the keys never are.
     var keysAdded: Set<ModelProvider> = []
@@ -189,6 +198,7 @@ final class AppModel {
         self.settings = settings
         self.log = log
         self.now = now
+        peopleFolders = PeopleFolders(support: paths.applicationSupport)
         help = HelpModel(library: .bundled(), lastArticle: settings.helpLastArticle) { [settings] id in
             settings.helpLastArticle = id
         }
@@ -328,6 +338,12 @@ final class AppModel {
             model.isDuplicate = true
             current = model
             return model
+        }
+        // Before anything else, and only by the copy that holds this mode's lock (another copy's running job must
+        // never lose its folder): any job folder a crash left is deleted (research-people.md 5.4, v2 part M6a).
+        let leftover = PeopleFolders(support: paths.applicationSupport).deleteLeftoverJobs()
+        if leftover > 0 {
+            log.write("Deleted \(Format.count(leftover, "job folder")) a crash left in \(paths.display(paths.applicationSupport.appending(path: "Jobs").path)), before anything else.")
         }
         let container: ModelContainer
         do {

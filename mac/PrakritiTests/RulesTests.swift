@@ -279,6 +279,20 @@ final class RulesTests: XCTestCase {
         XCTAssertGreaterThan(appSourceFiles.count, 10, "the rule checks below must actually read the app's files")
     }
 
+    /// docs/v2/PLAN.md 2.2, privacy by construction, rule 2: face and voice work cannot reach the network. No file
+    /// under People/ (v2 part M6a on), Render/ or Export/ may name a network type or a cloud provider's client.
+    func testFaceWorkCannotReachTheNetwork() throws {
+        let banned = ["URLSession", "URLRequest", "AnthropicClient", "OpenAIClient", "CloudHTTP", "LockedCloudClient", "CloudPayload", "LMStudioClient"]
+        let guarded = appSourceFiles.filter { url in ["People", "Render", "Export"].contains(url.deletingLastPathComponent().lastPathComponent) }
+        XCTAssertGreaterThanOrEqual(guarded.count, 4, "the People folder's files are read: \(guarded.map(\.lastPathComponent))")
+        for file in guarded {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for word in banned where text.contains(word) {
+                XCTFail("\(file.lastPathComponent) names \(word): face and voice work must not reach the network")
+            }
+        }
+    }
+
     func testNoEmDashesAnywhereInTheApp() throws {
         for file in appSourceFiles {
             let text = try String(contentsOf: file, encoding: .utf8)

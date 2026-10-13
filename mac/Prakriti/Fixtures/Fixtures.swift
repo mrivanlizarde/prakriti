@@ -42,6 +42,39 @@ enum Fixtures {
     /// The capture check as it measured the 13 Sep talk on Mon 12 Oct (v2 part M4b): 1920 by 1080 at 29.97 fps,
     /// H.264 High, Rec. 709, one stereo AAC track at -26.6 LUFS whose left and right differ by -91 dB (one
     /// microphone copied to both). A clip cut from it with `-c copy` measures the same.
+    /// What the face step finds in a talk with one person at a time (v2 part M6a): the shape of the 13 Sep talk's
+    /// first 12 minutes as measured on Mon 12 Oct (one face in every frame, one track group), as sample data.
+    static func facesOnePerson(at checkedAt: Date, duration: Double = 947.78) -> FacesFound {
+        var found = FacesFound(checkedAt: checkedAt, duration: duration)
+        found.samples = Int(duration * 2)
+        found.samplesWithFaces = found.samples
+        found.mostAtOnce = 1
+        found.tracks = 3
+        found.people = [FacePerson(id: 1, label: "Unnamed 1", onScreen: duration - 0.5, first: 0, last: duration - 0.5, appearances: 3,
+                                   keyTime: 312.5, keyBox: FaceBox(x: 0.43, y: 0.27, width: 0.13, height: 0.24))]
+        found.seconds = 30.1
+        return found
+    }
+
+    /// The two-people-mixed fixture's answer (v2 part M6a): a second face in the corner from 0:20 to 0:60.
+    static func facesTwoPeople(at checkedAt: Date, duration: Double = 90.1) -> FacesFound {
+        var found = FacesFound(checkedAt: checkedAt, duration: duration)
+        found.samples = 181
+        found.samplesWithFaces = 181
+        found.mostAtOnce = 2
+        found.samplesWithOthers = 80
+        found.firstWithOthers = 20.02
+        found.tracks = 2
+        found.people = [
+            FacePerson(id: 1, label: "Unnamed 1", onScreen: 90.1, first: 0, last: 90.1, appearances: 1,
+                       keyTime: 41.5, keyBox: FaceBox(x: 0.42, y: 0.27, width: 0.13, height: 0.24)),
+            FacePerson(id: 2, label: "Unnamed 2", onScreen: 40, first: 20.02, last: 59.53, appearances: 1,
+                       keyTime: 30.5, keyBox: FaceBox(x: 0.81, y: 0.72, width: 0.04, height: 0.07)),
+        ]
+        found.seconds = 4.9
+        return found
+    }
+
     static func capture13(at measuredAt: Date) -> CaptureReport {
         var report = CaptureReport(container: "MP4",
                                    video: .init(codec: "h264", profile: "High", width: 1920, height: 1080, frameRate: 30000.0 / 1001, averageFrameRate: 30000.0 / 1001,
@@ -189,6 +222,7 @@ enum Fixtures {
         talk13.writtenJSON = written.json()
         talk13.podcastReadyJSON = podcastReady13(talk13).json()
         talk13.captureJSON = capture13(at: date(2026, 10, 9, 16, 16, 11)).json()
+        talk13.facesJSON = facesOnePerson(at: date(2026, 10, 9, 16, 16, 40)).json()
         context.insert(talk13)
         talk13.source = studio
         addRun(context, to: talk13, start: date(2026, 10, 9, 16, 15, 11), trigger: .fileEvent, outcome: .ready,
@@ -309,6 +343,8 @@ enum Fixtures {
         } else {
             populate(model.context, paths: paths)
         }
+        // No face of anyone is drawn from sample data: the People tab shows a test pattern in each circle.
+        model.faceCrops.useTestPattern = true
         model.isWatching = true
         model.watcher.isRunning = true
         model.watcher.lastCheck = Fixtures.now.addingTimeInterval(-120)

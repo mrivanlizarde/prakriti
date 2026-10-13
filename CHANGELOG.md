@@ -5,6 +5,33 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-12, Mon: v2 part M6a, faces in a recording
+
+- **Every make now looks for faces: two frames a second, Vision's revision 4 face finder, boxes and times only, into a
+  people file per recording.** Why: REQUEST item 3 ("let me know when it includes other people"); boxes and times are
+  what hiding a face needs later (M6d), and they are not a print of anyone's face, so nothing biometric is kept about
+  a stranger (the biometric decision, research-people.md 5.1).
+- **"Other people appear" rests on how many faces are in one frame, never on telling people apart.** Why: without a
+  face print nobody can be told from anybody, and the plan's own tracking (overlap 0.3) split one moving speaker into
+  111 tracks on the 6 Sep talk. Two faces in one frame needs no guess about identity, and errs toward saying "other
+  people" (the safe direction, research-people.md 1.6).
+- **Tracks also join when two boxes are near and the same size, not only when they overlap by 0.3.** Why: measured,
+  a speaker's head moves up to 0.115 of the picture in half a second (overlap 0.26); without it the fixture's main
+  face split at 58 s and 70 s.
+- **The People tab (read only), the people line on cards and in the list, the Other People Appear filter, and one
+  fixed notice, "Other people appear in this recording."** Why: the plan's M6a parts; the notice says only what this
+  build does, never a name or title (Mac warning 23).
+- **Faces on the People tab are cropped from the original while the tab is open and held in memory only.** Why: a
+  stored crop of every face would be a collection of students' faces (plan section 5, review item 8).
+- **A job folder for every face step, deleted when it ends, and every launch deletes any a crash left, before
+  anything else.** Why: research-people.md 5.4; proved with a SIGKILL mid-scan.
+- **Faces never open the privacy lock.** Why: a student can be heard without being seen; the check counts as run
+  only once the voice step (M6b) exists (review item 5).
+- **New capability `faces` for Help, separate from `people`.** Why: Help and the welcome may describe only what is
+  built, and `people` also covers voices and choices that do not exist yet.
+- **Not installed.** Why: installing ships M5a and M5b with it, which Ivan has not said yes to (BUILD-LOG "v2 part
+  M6a", For Ivan).
+
 ## 2026-10-12, Mon: v2 part M5b, Anthropic and OpenAI
 
 - **OpenAI joins Anthropic as a cloud provider, each with its own key in the Keychain, a model pop-up filled from the

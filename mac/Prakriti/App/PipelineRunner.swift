@@ -293,6 +293,9 @@ final class PipelineRunner {
             options.applyLexicon = transcript.applyLexicon
         }
         options.edits = recording.edits
+        // Faces are looked for in every make (v2 part M6a): a check, like the capture check, that keeps boxes and
+        // times only. It runs only when a make runs, so an upgrade never starts it on its own (PLAN rule 2.1.7).
+        options.people = PeopleSetup(recordingID: recording.id, folders: model.peopleFolders)
         options.kind = recording.kind
         options.knownSerenity = recording.hasSerenity
         if make.contains(.titlesNotesChapters) && options.makeTranscript {
@@ -698,6 +701,13 @@ final class PipelineRunner {
             model.record("\(label) (\(recording.fileName)): capture check. " + capture.summary
                          + (warnings.isEmpty ? "" : " " + warnings.map { $0.title }.joined(separator: "; ") + "."),
                          level: warnings.isEmpty ? .info : .attention, run: run)
+        }
+        // What the face step found is about the original, so it is kept whatever the make's outcome, like the
+        // capture check (v2 part M6a). A make that never reached it leaves the last one in place.
+        if let faces = result.faces {
+            model.applyFaces(faces, to: recording, run: run)
+        } else if let problem = result.facesProblem {
+            model.record("\(label) (\(recording.fileName)): \(problem)", level: .attention, run: run)
         }
         // Once a transcript says "Serenity", the recording stays privacy locked (never unset).
         if result.mentionsSerenity && !recording.hasSerenity {

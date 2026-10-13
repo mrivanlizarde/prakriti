@@ -629,6 +629,17 @@ All, then **Now** (the make with every stage and its time, the line waiting), **
 Show and Show in Finder) and **Log** (v1's lines, with a search field). The menu bar menu has Show Activity, "N
 recordings need you" and Prakriti Help. See `docs/BUILD-LOG.md`, "v2 part M4a".
 
+**v2 part M6a, faces in a recording, Mon 12 Oct (built, not installed: see BUILD-LOG "v2 part M6a"):** every make
+looks for faces after the transcript (step "Faces"): every frame decoded with AVAssetReader, two a second given to
+Vision's face finder (revision 4) with the capture quality, joined into tracks (overlap 0.3, or near and the same size;
+broken by a change of picture or 1.5 s unseen), and the tracks into rows by place. It keeps **boxes and times only**, in
+`<Application Support>/People/Recordings/<recording id>.json`, through a job folder deleted when the step ends. A
+recording shows "One person at a time." or "Other people appear, up to 2 at once." on its card (the list says "Up to 2 at
+once"), the Sort menu filters to Other People Appear, the inspector's **People** tab (second) says what was found with a
+row per face (Unnamed 1, 2...) whose picture is cropped live and never saved, and the first time two faces share a frame
+one notice says "Other people appear in this recording." Older recordings get **Look for Faces**. Nobody is named, nothing
+made changes, and the privacy lock does not move (voices are M6b). Measured: 13 Sep 30 s, 6 Sep 120 s.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -800,6 +811,9 @@ cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --activity-window b
 cd ~/Code/prakriti/mac && open -n build/Build/Products/Debug/Prakriti.app --args --development --show=activity --debug-status-log
 ```
 ```bash
+cd ~/Code/prakriti/mac && make accept-people MILESTONE=v2-m6a
+```
+```bash
 cd ~/Code/prakriti/mac && make migrate-check
 ```
 ```bash
@@ -832,7 +846,16 @@ to the log. `capture-window.swift --activity-window <app> <png>` captures the Ac
 already running (a development copy making a dropped clip: `make drop MODE=development` opens it with
 `--show=activity`). `make look` captures the Activity window's Now (the sample talk being made), Finished and Log
 (`--activity-tab=<now|finished|log>`).
-`make test` runs every unit test (data, rules, copy and type checks, and the snapshot render).
+`make accept-people` (v2 part M6a, about 5 minutes) runs the face step through the runner in development on the **real 13
+Sep talk** (on engine v0's chain: its episode must equal v0's bit for bit; one face track group over 95% of the frames,
+or, when two faces ever share a frame, their times and counts written down for Ivan with three frames in `for-ivan/`
+that the build never opens), both two-people fixtures (two at once, the corner face 0:20 to 0:60, the notice once),
+the step alone on the **real 6 Sep talk** timed (under 5 minutes), nothing stored for strangers (no `People/Faces`,
+`Voices` or `FaceIndex` in either mode, no job folder, no list of 128 or more numbers and no picture word in any people
+file, `file --mime-type` finds no image under Application Support/Prakriti), the People tab and cards drawn with a test
+pattern in each face circle; then `scripts/people-crash-check.sh` kills a `--debug-face-scan` with SIGKILL mid-scan and
+needs the next development launch to delete its job folder before its first look. It writes `acceptance-people.txt`
+and `crash-check.txt`. `make test` runs every unit test (data, rules, copy and type checks, and the snapshot render).
 `make snapshots` writes every screen, light and dark, at the window's real size (1440 by 900 since v2
 part M3a) to `screens/mac/<milestone>/` (gitignored): every smart group filled and empty, the list, a folder,
 the inspector's tabs and states, a search, a filter, the Settings panes, the Activity window and v1's
@@ -997,6 +1020,8 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | The welcome window (v2 part M2b) | `mac/Prakriti/Views/Welcome/`: `WelcomeContent.swift` (the five panels' words, each row with the capabilities it describes, `requires` and `unless`; `WelcomeContent.version`), `WelcomeModel.swift` (the open panel, the first-launch rule, Choose Folder), `WelcomeWindow.swift` (the window, its rows and buttons, its own fit measurement); the scene and Help, Welcome to Prakriti in `App/PrakritiApp.swift`; `welcomeSeenVersion` in `App/AppSettings.swift`; Turn On Notifications and `Notifier.openSystemSettings` in `App/Notices.swift`; the copy source and its status: `docs/v2/help-notes/welcome-panels.md`; tests `WelcomeTests` and `SnapshotTests.testRenderWelcome` |
 | The capture check (v2 part M4b) | `mac/Prakriti/Engine/CaptureCheck.swift` (`CaptureReport`, `CaptureFinding`, reading ffprobe and the per-track ffmpeg call, the findings and their tips, `run`), the pipeline's `.capture` step, `Recording.captureJSON`, `Views/Inspector/CaptureSection.swift` (the Checks tab's Capture section), `App/CaptureActions.swift` (Check Capture for older recordings); tests `CaptureCheckTests` (in `make test`) and `CaptureAcceptanceTests` (`make accept-capture`) |
 | Progress and Activity (v2 part M4a) | `mac/Prakriti/Progress/`: `JobProgress.swift` (`ProgressTracker`, the pure arithmetic: weights, the percent that never goes back, the time left only from a measured rate, the stall line; `ProgressSnapshot` with its status line; `TimeLeft`; `JobProgress`, published at most twice a second), `ProgressMeter.swift` (what the pipeline and ffmpeg report, read twice a second; `ProcessControl`, Pause by SIGSTOP and SIGCONT), `StageTimings.swift` (`StageTiming`, a SwiftData model, the last 10 runs of each stage, seeded once from the store; `firstGuess`, measured 12 Oct). `Engine/Subprocess.swift` (`onStdoutLine`, `control`), `Engine/Pipeline.swift` (`meter`, `passes`, ffmpeg's `-progress pipe:1` in `tool`), `App/PipelineRunner.swift` (`currentJob`, `pause`, `resume`, `stop`, `makeNext`, `queueFraction`, `queueTimeLeft`, `showSample`), `App/StatusSummary.swift` (`noteStatusLine`, `--debug-status-log`); views: `Views/Activity/ActivityWindow.swift` (the window, Now, Finished, Log, `ActivityButton`), `Views/ProgressViews.swift` (`ProgressRing`, `ProgressBlock`, `ProgressButtons`), the card's `StatusCapsule`, the list's Status column, `StatusBlock` in `OutputsTab`, `ViewerBanner`, `Views/MenuBar.swift`; `Fixtures.showProgress` (the sample talk being made, for snapshots and captures); tests `ProgressTests` (in `make test`) and `ProgressAcceptanceTests` (`make accept-progress`) |
+| Faces (v2 part M6a) | `mac/Prakriti/People/`: `FaceScan.swift` (the reader, Vision at two frames a second, the change-of-picture measure), `Tracks.swift` (`FaceBox` and the Vision conversion, `FaceTracker`, `FaceGrouping`, `FacesFound` with its lines), `PeopleFile.swift` (`PeopleFolders`, the people file, `FaceStep` with its job folder), `FaceCrops.swift` (the People tab's live crops, memory only); the pipeline's `.faces` step and `PipelineOptions.people`; `Recording.facesJSON`; `App/FaceActions.swift` (`applyFaces`, Look for Faces); `Views/Inspector/PeopleTab.swift` (`PeopleTab`, `FaceRow`, `PeopleLine`); the job cleanup in `AppModel.launch`; `--debug-face-scan` in `App/DebugSwitches.swift`; tests `PeopleTests` (in `make test`), `PeopleAcceptanceTests` and `scripts/people-crash-check.sh` (`make accept-people`) |
+| People files and job folders | `~/Library/Application Support/Prakriti/People/Recordings/<recording id>.json` and `.../Jobs/` (live); `.../Prakriti/Development/People/...` and `.../Development/Jobs/` (development) |
 | Swift packages | `swift-markdown` 0.9.0 (21 Sep 2026, with `swift-cmark` 0.9.0), pinned in `mac/project.yml` and `mac/Prakriti.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, both committed (v2 part M2a) |
 | Menu bar mark | Seven template image sets in `Assets.xcassets` (`prakriti-menubar`, `-working-1`, `-working-2`, `-waiting`, `-problem`, `-paused`, `-not-watching`), copied from `docs/v2/icons/source/menubar/imagesets/`; which one each state draws is `StatusSummary.Icon.menuBarAsset`; the working frames are turned by `App/WorkingTicker.swift` |
 
@@ -1622,6 +1647,25 @@ top and its end. Reading the code is not verification, and neither is a passing 
     day: developers.openai.com, 12 Oct, event names in the client's header); effort values differ by model and none
     are documented on that page, so sending one could fail every call. Built without a real key: the first call with
     one is the verification still owed (BUILD-LOG "v2 part M5b").
+
+112. **The people file holds boxes and times only: no landmarks, no embedding, no picture, for anyone** (`PeopleFile`; a
+    box is `[time, x, y, width, height, confidence]`). `PeopleTests.assertNoPrintAndNoPicture` fails on any list of 128 or
+    more numbers or any picture word, and `make accept-people` runs it on every real people file and `file --mime-type`
+    on everything under Application Support. A picture is kept later only for a named person who may appear (plan
+    section 5); every other face is cropped live (`FaceCrops`, memory only, emptied when another recording is shown).
+    Reason: a stored crop or print of every face is a collection of students' faces, the exact thing the biometric
+    decision forbids (REQUEST, research-people.md 5.1, plan review item 8). Files under `People/` never name a network
+    type or a cloud client (`RulesTests.testFaceWorkCannotReachTheNetwork`).
+113. **Every face step works in its own job folder (`Application Support/Jobs/<uuid>/`), deleted when it ends, and a
+    launch deletes every job folder it finds right after taking its mode's lock and before anything else.** Only the
+    copy holding the lock cleans, so a second copy can never delete a running job's folder. Reason: research-people.md
+    5.4, a crash must not leave a pass's work behind; proved by `scripts/people-crash-check.sh` (SIGKILL mid-scan, the next
+    launch's "Deleted 1 job folder" line comes before its first "Checked" line).
+114. **"Other people appear" means two or more faces in one sampled frame (`FacesFound.mostAtOnce`), never the number of
+    rows.** Rows join tracks by place and size, so one person who walks around can make two rows (the 6 Sep talk: one
+    face at a time, two rows), and two people who take turns in one place could make one. Reason: without a face
+    print nobody can be told apart, and counting faces in one frame needs no guess about identity. Faces alone never
+    open the privacy lock (`lockSubject` stays `.notChecked` until the voice step, M6b): a student can be heard unseen.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

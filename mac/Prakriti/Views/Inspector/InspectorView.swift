@@ -41,7 +41,7 @@ struct InspectorView: View {
     }
 }
 
-/// A recording's three tabs.
+/// A recording's tabs: Outputs, People (v2 part M6a), Checks and Info.
 struct RecordingInspector: View {
     @Bindable var recording: Recording
     @Environment(AppModel.self) private var model
@@ -51,6 +51,7 @@ struct RecordingInspector: View {
         Group {
             switch model.inspectorTab {
             case .outputs: OutputsTab(recording: recording)
+            case .people: PeopleTab(recording: recording)
             case .checks: ChecksTab(recording: recording)
             case .info: InfoTab(recording: recording)
             }

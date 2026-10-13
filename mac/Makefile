@@ -116,7 +116,7 @@ ONLY      ?=
 YES       ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -152,6 +152,20 @@ accept-progress:
 accept-capture:
 	./scripts/make-fixtures.sh --if-missing
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=capture TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/CaptureAcceptanceTests
+
+# accept-people  v2 part M6a's acceptance: the face step through the app's runner in development on the REAL 13 Sep
+#                 talk (made on engine v0's chain: one face track group over 95% of the frames, or its second faces written
+#                 down for Ivan; the episode equal to engine v0's bit for bit), the two-people-mixed and two-people-tracks
+#                 fixtures (two faces at once, the corner one from 0:20 to 0:60, the notice once), the face step alone on
+#                 the REAL 6 Sep talk timed (under 5 minutes), nothing stored for strangers (no Faces, Voices or FaceIndex
+#                 folder, no job folder, no print or picture in a people file, no image under Application Support), the
+#                 People tab and cards drawn; then the crash check (scripts/people-crash-check.sh): a face step killed
+#                 with SIGKILL leaves its job folder, and the next development launch deletes it before its first look.
+#                 Writes acceptance-people.txt and crash-check.txt to ../screens/mac/$(MILESTONE)/ (about 5 minutes)
+accept-people:
+	./scripts/make-fixtures.sh --if-missing
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=people TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/PeopleAcceptanceTests
+	./scripts/people-crash-check.sh $(APP) ../screens/mac/$(MILESTONE)
 
 accept-outputs:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=outputs TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/OutputsAcceptanceTests

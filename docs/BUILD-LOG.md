@@ -40,6 +40,9 @@ because it would undo Ivan's 12 Oct switch of writing to the Claude API; it wait
 **Then part M5b, Anthropic and OpenAI** ("v2 part M5b"): both providers in Settings, Models with keys in the Keychain,
 model pop-ups from each company's own list, Anthropic in its current streamed request shape, and the lock proved in front
 of both. Passed every check it could run (the real calls wait for a yes on cost and a key); not installed, for M5a's reason.
+**Then part M6a, faces in a recording** ("v2 part M6a"): every make looks for faces two frames a second and keeps boxes and
+times only; the People tab, the people line, the Other People Appear filter and one notice. The 13 Sep talk shows up to 6
+faces at once after 12:39 (a question for Ivan). Passed every check; not installed, for M5a's reason.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -3790,3 +3793,92 @@ Keychain) back to LM Studio for every recording, reversing Ivan's 12 Oct decisio
   MILESTONE=v2-m5b`.
 - [ ] After installing, open Settings, Models once: your saved Anthropic key shows "Saved in your Keychain.", and the
   model pop-up fills from Anthropic's list (Claude Sonnet 5.5 is chosen unless you had picked another).
+
+## v2 part M6a: faces in a recording. Mon 12 Oct 2026
+
+The eleventh part of v2 (`docs/v2/PLAN.md`, M6, part M6a; REQUEST item 3a). Built on `main`, as this run's instructions
+said. No Swift package added. One SwiftData field added (`Recording.facesJSON`, a default of nil), so `make
+migrate-check` was run. Finished after midnight; the checks ran Mon 12 Oct 22:56 to Tue 13 Oct 00:10.
+
+### What was built
+
+- **The face step** (`People/FaceScan.swift`): every frame decoded with `AVAssetReader` through `try reader.start()` and
+  `outputProvider(for:)`, two a second given to Vision's `DetectFaceRectanglesRequest` revision 4 with
+  `DetectFaceCaptureQualityRequest`, a 4K frame analyzed at 1080, Vision warmed on one frame before progress counts, and a
+  change of picture measured on a 64 by 36 brightness grid (over 60 of 255 between samples). Pausable, stoppable,
+  metered by how far through the picture it is.
+- **Tracks and rows** (`People/Tracks.swift`): Vision's bottom-left boxes converted to top-left `FaceBox`es; tracks join
+  at overlap 0.3 or more, or near (centers within one face width) and the same size (0.67 to 1.5); broken by a change of
+  picture or 1.5 s unseen. Rows join tracks that never share a frame, in the same place (2.5 widths) and size (0.5 to 2),
+  the most recent row first. `FacesFound` holds the facts: frames, frames with a face, most faces in one frame, frames
+  with two or more and the first, rows (two sightings or more) with on-screen time and one key moment, glimpses.
+- **The people file and job folder** (`People/PeopleFile.swift`): `People/Recordings/<recording id>.json` with boxes as
+  `[time, x, y, width, height, confidence]`, written in `Jobs/<uuid>/` and moved into place whole, the job folder deleted
+  when the step ends. **No landmarks, no embedding, no picture for anyone.** Every launch deletes leftover job folders
+  right after taking its lock, before anything else. Remove from Library deletes the people file.
+- **The pipeline step "Faces"** after the transcript, in every make (not "Ask me first" checks), its failure costing only
+  its step. `Recording.facesJSON` keeps what was found whatever the outcome. **Look for Faces** in the People tab for a
+  recording found before this part (never started by an upgrade, rule 2.1.7).
+- **The People tab** (second, `person.2`): the summary sentence, "Looked at ..., two frames a second. Only when and where
+  each face was seen is kept, never a picture of it.", a row per face (Unnamed 1, 2...) with its face cropped live from
+  the original (`People/FaceCrops.swift`, memory only, emptied when another recording is shown) and its time on screen,
+  the note that one person can make two rows, glimpses counted, Look for Faces Again.
+- **The people line** on cards ("One person at a time." / "Other people appear, up to 2 at once." / "No faces seen." /
+  "No picture to look at."), the list's **People** column ("One at a time", "Up to 2 at once"), Sort's **Other People
+  Appear** filter, and one notice, **"Other People Appear: <day>" / "Other people appear in this recording."**, once per
+  recording, no sound, its own row in the recording's thread.
+- `--debug-face-scan=<file>` (Debug builds, development only) for the crash check; `make accept-people`;
+  `scripts/people-crash-check.sh`; capability `faces` for Help; Help 07's "Faces in a recording".
+
+### Checks run, with results (PLAN M6, the checks part M6a runs: 1, 2, 7, 8, 11, 12, 13)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `make test` with `PeopleTests` (tracking, coordinates) | **PASS.** 13 tests: Vision to top-left and back on 200 random boxes to 1e-12 (and (0.1, 0.7, 0.2, 0.25) reads y 0.05); overlapping faces one track (61 sightings); the fixture's measured 57.5 to 58.0 s move (overlap 0.26) one face, far or twice the size another; unseen 1.5 s joins, 2 s breaks (tracks end 5.0, start 7.0); a cut ends both tracks (4); two faces two tracks that never swap; rows join a face that came back; the facts and every sentence; the people file of a 3,000-sample track keeps lists of 6 numbers and no picture word, and the check finds a planted 128-number list; the face step on a generated pattern leaves only its people file, no job folder; no picture on an audio file; the step planned after the transcript only when asked; one notice per recording; the filter; the lock still `notChecked`; Remove from Library deletes the people file |
+| 2 | `make accept-people` on the **13 Sep talk** (faces; bit for bit) | **Faces: IVAN, not a FAIL** (plan review item 22). 1,896 frames, a face in all of them. One track group, Unnamed 1, covers 79.8% of all frames and **99.7% of the frames before 12:39**; at 12:36 the picture changes (measured 141 of 255) and from 12:39 to the end **up to 6 faces share a frame** (358 frames, 2 min 59 s), 10 more rows (3 min 12 s down to 1 s). For Ivan to look at (the build never opened them): `screens/mac/v2-m6a/for-ivan/13sep-1-12-39.png` (first frame with two or more), `13sep-2-13-09.png` (six faces), `13sep-3-15-48.png` (last). **Bit for bit: PASS**, episode decoded md5 `69658a8cb8a954b92798c5e9f3ea5833`, identical to engine v0's episode. Privacy lock still locked |
+| 7 | Nothing stored for strangers | **PASS.** `People/Faces`, `Voices`, `FaceIndex`: absent in development and live. Development `Jobs/` empty. Three real people files (13 Sep 116,605 bytes; the fixtures 12,110 each): longest list of numbers 8 (the cuts) and 6, no picture or print word. `file --mime-type` on all 18 files under `~/Library/Application Support/Prakriti`: 0 images. **Crash:** `--debug-face-scan` killed with SIGKILL 1.5 s after its job folder appeared; the folder stayed; the next development launch logged "Deleted 1 job folder a crash left in ..." as its first line and "Checked 1 folder." 10 lines later; Jobs empty (`crash-check.txt`) |
+| 8 | Speed on the **6 Sep talk** (faces) | **PASS: 105 s** for 6,679 frames (limit 300 s; first run 120 s). One person at a time, 2 rows. 13 Sep: 29.3 s |
+| 11 | The notice for `two-people-mixed` | **PASS** (`NotificationTests` and the acceptance): "Other People Appear: Tue 13 Oct" / "Other people appear in this recording.", identifier `rec-...-people`, once; title case, full sentence, no name, title or file name, no sound |
+| 12 | Snapshots: People tab for both fixtures, the cards | **PASS, looked at.** `m6a-people-*` (13 Sep talk, two-people-mixed, two-people-tracks), `m6a-cards-*`, `m6a-list-*`, light and dark, from what was measured, every face circle a test pattern (no frame of Gabriel drawn); sample-data `07-inspector-people*` (two faces, none looked for with Look for Faces, no faces), `05-all-recordings-people`, `-list-people`, `-filter-other-people`. Both fixtures: Unnamed 1 1 min 30 s (0:00 to 1:30), Unnamed 2 40 s (0:20 to 1:00). The list column first cut "Other people app..." and the Status column; it now reads "Up to 2 at once" at 150 pt |
+| 13 | Regression set; `make accept-outputs`; `make migrate-check` | **PASS.** `make build`: no warnings. `make test`: **261 tests, 0 failures, 13 skipped by design** (847 s). `make accept`: 13 Sep -16.8 LUFS, -1.7 dBFS; `silent-60s` stopped at -91 dB; the 30 s clip a test; 6 Sep -16.7 LUFS, -1.4 dBFS. `make accept-edits`: 38.82 s shorter (expected 38.82), 0 of 73 runs from the cut heard, 189 of 201 after it, a class refused. `make accept-outputs`: -19.1 LUFS run, and run 4 identical to engine v0 (md5 above). `make migrate-check` on a copy of the live store: `ZFACESJSON` arrives nil on all 13 recordings, every row and value through (724 Activity lines, 2 approved). Originals unchanged by size and date |
+
+The first full `make test` failed 3: the snapshot counts (14 new pictures) and `WatcherTests` reading the notices before
+the third (Waiting for Your Yes, posted in its own Task) had landed; it passed 3 of 3 alone, and now waits up to 3 s for
+the third. Em dashes: 0 in every file this part changed (grep).
+
+### Decisions, each with its reason
+
+1. **"Other people appear" is two or more faces in one frame, not two or more rows.** Reason: without a print nobody can
+   be told apart; rows split one walking person (6 Sep: one face at a time, 2 rows). Counting faces in a frame needs no
+   identity and errs toward saying others are there.
+2. **Tracks also join when near and the same size** (the plan said overlap 0.3). Reason: measured, a head moves 0.115 of
+   the picture in half a second (overlap 0.26): the fixture's main face split at 58 s, the 6 Sep talk made 111 tracks
+   (30 now). Hiding (M6d) follows faces at full rate anyway.
+3. **Rows seen in one sample only are counted, not listed** (`glimpses`); they still count in "at once".
+4. **Every make looks for faces, with no switch.** Reason: it is a check like the capture check, keeps no picture, costs
+   about 2 s a minute of recording, and runs only when a make runs (no backfill).
+5. **New capability `faces`**, separate from `people`. Reason: Help and the welcome describe only what is built.
+6. **The defaults of section 5 and Ivan's 12 Oct "releases exist" note were not applied here**: M6a decides nothing
+   about who appears; Include, Hide Face, Leave Out and their defaults are M6c's.
+7. **Frames of Gabriel were measured, never looked at**, as this run's instructions said (D1), though PLAN section 11
+   records a later note that releases exist.
+
+### What does not work yet
+
+- Nobody is named; voices, Who Is Teaching, linking, the lock fed by the people check: M6b. Choices: M6c. Hiding: M6d.
+- Needs You does not yet list recordings with other people first (the plan's M6 scope, not in M6a's parts).
+- A row is a place, not a person.
+
+### Installed
+
+**Not installed**, though every check passed. `make install` ships everything on `main`, which includes M5a and M5b; both
+are held for Ivan's word because the M5a lock turns his live Claude API choices back to LM Studio (BUILD-LOG "v2 part
+M5a", "v2 part M5b"). The live app is still the M4b build (`~/Applications/Prakriti.app`, pid 36940, untouched).
+
+### For Ivan
+
+- [ ] **The M5a and M5b decision still gates every install**, now this part's too: say yes (or say how the lock should treat
+  your talks) and `cd ~/Code/prakriti/mac && make install` ships M5a, M5b and M6a together.
+- [ ] **Look at the three 13 Sep frames** in `~/Code/prakriti/screens/mac/v2-m6a/for-ivan/`: from 12:39 to the end the
+  picture holds up to 6 faces. Is someone else really there (a screen, a photo, people in the room)? If they are real
+  people, the 13 Sep talk is not "one person" and its last three minutes need a choice once M6c exists.

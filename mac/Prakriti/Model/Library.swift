@@ -123,13 +123,15 @@ enum BrowserSort: String, CaseIterable, Identifiable, Hashable, Sendable {
 
 /// The inspector's tabs as built in part M3a (People and Direction come with their parts).
 enum InspectorTab: String, CaseIterable, Identifiable, Hashable, Sendable {
-    case outputs, checks, info
+    /// People (v2 part M6a) sits second, where the design spec puts it (3.5): Outputs, People, Direction, Checks, Info.
+    case outputs, people, checks, info
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .outputs: "Outputs"
+        case .people: "People"
         case .checks: "Checks"
         case .info: "Info"
         }
@@ -138,6 +140,7 @@ enum InspectorTab: String, CaseIterable, Identifiable, Hashable, Sendable {
     var symbol: String {
         switch self {
         case .outputs: "shippingbox"
+        case .people: "person.2"
         case .checks: "checklist"
         case .info: "info.circle"
         }
@@ -200,10 +203,13 @@ enum Library {
         }
     }
 
-    /// Recordings of the chosen kinds; every kind when none is chosen.
-    static func filtered(_ recordings: [Recording], kinds: Set<RecordingKind>) -> [Recording] {
-        guard !kinds.isEmpty else { return recordings }
-        return recordings.filter { kinds.contains($0.kind == .test ? .unknown : $0.kind) }
+    /// Recordings of the chosen kinds; every kind when none is chosen. With `otherPeople` (the Filter menu's
+    /// Other People Appear, v2 part M6a), only recordings where two or more faces were seen at once.
+    static func filtered(_ recordings: [Recording], kinds: Set<RecordingKind>, otherPeople: Bool = false) -> [Recording] {
+        var shown = recordings
+        if !kinds.isEmpty { shown = shown.filter { kinds.contains($0.kind == .test ? .unknown : $0.kind) } }
+        if otherPeople { shown = shown.filter { $0.faces?.otherPeopleAppear == true } }
+        return shown
     }
 
     /// The browser's sections for a selection, in the design spec's order (3.1.3):

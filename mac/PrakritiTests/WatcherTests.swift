@@ -70,7 +70,10 @@ final class WatcherTests: XCTestCase {
         XCTAssertEqual(r.intent, .none)
         XCTAssertEqual(r.latestRun?.trigger, .fileEvent)
         XCTAssertTrue(FileManager.default.fileExists(atPath: model.paths.outputs.appending(path: "2026-09-13 drop test/episode.mp3").path))
-        // Found, Started, Ready: one notice, updated in place.
+        // Found, Started, Ready: one notice, updated in place. The notifier hands each to macOS in a Task of its own,
+        // so the last can land a moment after the status settles (seen in the full suite after v2 part M6a's step).
+        let posted = Date().addingTimeInterval(3)
+        while poster.posted.count < 3 && Date() < posted { try await Task.sleep(for: .milliseconds(50)) }
         XCTAssertEqual(poster.posted.map(\.event), [.found, .started, .ready])
         XCTAssertEqual(Set(poster.posted.map(\.identifier)), ["rec-2026-09-13-drop-test-status"])
         XCTAssertEqual(poster.posted.last?.title, "Waiting for Your Yes: Sun 13 Sep")

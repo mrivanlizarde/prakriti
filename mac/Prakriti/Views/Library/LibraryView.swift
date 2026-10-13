@@ -82,7 +82,7 @@ struct SearchResultsBrowser: View {
 
     var body: some View {
         let search = model.search
-        let candidates = Library.filtered(all, kinds: model.kindFilter)
+        let candidates = Library.filtered(all, kinds: model.kindFilter, otherPeople: model.otherPeopleFilter)
         var matches: [UUID: LibrarySearch.Match] = [:]
         for recording in candidates {
             let match = search.match(recording) { model.transcripts.lines(for: recording) }
@@ -111,13 +111,13 @@ struct BrowserBody: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let filtered = Library.filtered(recordings, kinds: model.kindFilter)
+        let filtered = Library.filtered(recordings, kinds: model.kindFilter, otherPeople: model.otherPeopleFilter)
         let sections = Library.sections(for: item, recordings: filtered, sort: model.browserSort, waitingOrder: model.runner.waitingOrder)
         if filtered.isEmpty {
             if !recordings.isEmpty {
                 LibraryEmptyState(symbol: "line.3.horizontal.decrease.circle", title: "No recordings match these filters",
-                                  message: "Every kind of recording shows again when the filter is cleared.",
-                                  buttons: [("Show Every Kind", { model.kindFilter = [] })])
+                                  message: "Every recording shows again when the filters are cleared.",
+                                  buttons: [("Clear Filters", { model.kindFilter = []; model.otherPeopleFilter = false })])
             } else {
                 EmptyLibrary(item: item)
             }

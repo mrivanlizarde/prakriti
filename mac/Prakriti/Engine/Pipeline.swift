@@ -28,7 +28,7 @@ import Foundation
 /// The steps, in order. `title` is what the recording page lists; `doing` is what the status line
 /// says while it runs ("Working on Sun 13 Sep: making the episode audio"). Never "Processing".
 enum PipelineStep: String, CaseIterable, Sendable {
-    case complete, capture, sound, speechAudio, transcript, coverage, wordList, trim, edits, episode, loudness, podcastAudio, episodeTranscript, writing, podcastPackage, report
+    case complete, capture, sound, speechAudio, transcript, coverage, wordList, faces, trim, edits, episode, loudness, podcastAudio, episodeTranscript, writing, podcastPackage, report
 
     var title: String {
         switch self {
@@ -39,6 +39,7 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .transcript: "Transcript"
         case .coverage: "Coverage check"
         case .wordList: "Word list"
+        case .faces: "Faces"
         case .trim: "Silence at the start and end"
         case .edits: "Your trim and cuts"
         case .episode: "Episode audio"
@@ -68,6 +69,7 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .transcript: "Writing the transcript"
         case .coverage: "Checking the transcript reaches the end"
         case .wordList: "Applying the Yoga Marga word list"
+        case .faces: "Looking for faces"
         case .trim: "Finding the silence at the start and end"
         case .edits: "Applying your trim and cuts"
         case .episode: "Making the episode audio"
@@ -137,6 +139,10 @@ struct PipelineOptions: Sendable {
     var podcastReady: PodcastReadySetup?
     var makePodcastReady: Bool { podcastReady != nil }
 
+    /// The face step of the people pass (v2 part M6a): which recording it is for and where its people file and
+    /// job folder go, or nil when faces are not looked for (the tests that run the pipeline alone).
+    var people: PeopleSetup?
+
     /// Anything taken out of the recording or added to it, so the episode's clock is not the
     /// original's and the transcript files are rewritten to follow the episode.
     var changesTheClock: Bool {
@@ -152,6 +158,9 @@ struct PipelineOptions: Sendable {
             steps += [.speechAudio, .transcript, .coverage]
             if applyLexicon { steps.append(.wordList) }
         }
+        // After the transcript and before anything is written (docs/v2/PLAN.md M6): its answer is what the
+        // privacy lock will read once the voice step exists (M6b).
+        if people != nil { steps.append(.faces) }
         if makeEpisode || makePodcastReady {
             if trimSilence { steps.append(.trim) }
             if !edits.isEmpty { steps.append(.edits) }
@@ -237,6 +246,16 @@ struct PipelineResult: Sendable {
     var podcastProblem: String?
     /// What the capture check measured (v2 part M4b), or nil when the file never got that far.
     var capture: CaptureReport?
+    /// What the face step found (v2 part M6a), or why it could not look. A face step that fails costs only its
+    /// step: the episode and transcript are made as usual.
+    var faces: FacesFound?
+    var facesProblem: String?
+}
+
+/// Where the face step writes, for one recording.
+struct PeopleSetup: Sendable, Equatable {
+    var recordingID: UUID
+    var folders: PeopleFolders
 }
 
 struct PipelineProgress: Sendable {
@@ -464,7 +483,7 @@ struct Pipeline: Sendable {
     /// right), and each later pass takes half of what is left.
     func passes(_ step: PipelineStep) -> Int? {
         switch step {
-        case .sound, .speechAudio, .trim, .loudness: return 1
+        case .sound, .speechAudio, .trim, .loudness, .faces: return 1
         case .episode:
             let intro = !(options.introPath ?? "").isEmpty, outro = !(options.outroPath ?? "").isEmpty
             return 2 + (intro ? 1 : 0) + (outro ? 1 : 0) + (intro || outro ? 1 : 0)
@@ -641,6 +660,27 @@ struct Pipeline: Sendable {
                                     + fixes.map { "\($0.written) (\($0.items.count))" }.joined(separator: ", ") + ".")
                 }
                 try keepChosenFormats(in: staging, srt: srt, label: label, fileName: file.lastPathComponent)
+            }
+
+            // 5b. Faces (v2 part M6a): every face in the picture, two frames a second, as boxes and times only, into
+            //     the recording's people file through a job folder deleted when the step ends. A failure costs only
+            //     this step, and nothing it found changes what is made in this part.
+            if let people = options.people {
+                await begin(.faces)
+                meter?.startPass()
+                do {
+                    let outcome = try await FaceStep.run(file: file, recordingID: people.recordingID, folders: people.folders, now: Date(),
+                                                         control: meter?.control, progress: { [meter] fraction in meter?.passProgress(fraction) })
+                    result.faces = outcome.found
+                    await finish(.faces, outcome.found.stepLine)
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    let detail = (error as? FaceScan.Failure)?.reason ?? error.localizedDescription
+                    result.facesProblem = "Faces could not be looked for. \(detail)"
+                    log?.write("\(name): faces failed. \(detail)")
+                    await finish(.faces, "Faces could not be looked for. The rest is made as usual.", state: .failed)
+                }
             }
 
             // 6. The episode audio: the silence trim, two-pass loudness, the MP3 (Apple Podcasts spec).

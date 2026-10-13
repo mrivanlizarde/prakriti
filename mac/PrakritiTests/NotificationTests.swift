@@ -38,6 +38,7 @@ final class NotificationTests: XCTestCase {
             (.ready, facts(talk)), (.ready, readyGap), (.ready, readyTranscriptOnly), (.ready, readyChecksOnly),
             (.needsADecision, facts(silentClass, duration: 3702.27)), (.needsADecision, noTrack), (.needsADecision, noLength),
             (.couldntFinish, threeTries), (.couldntFinish, oneTry), (.couldntFinish, twoTries), (.couldntFinish, noLength),
+            (.otherPeople, facts(talk)), (.otherPeople, noLength),
         ]
     }
 
@@ -105,6 +106,7 @@ final class NotificationTests: XCTestCase {
             .ready: (true, .active),           // Waiting for Your Yes: sound
             .needsADecision: (true, .active),
             .couldntFinish: (true, .active),
+            .otherPeople: (false, .active),   // Other People Appear (v2 part M6a): shown, no sound
         ]
         for event in NotificationEvent.allCases {
             let c = NoticeBuilder.content(event, f)
@@ -114,7 +116,7 @@ final class NotificationTests: XCTestCase {
         }
         // Hidden previews say the status words the app shows (SCOPE 8.1 rule 10).
         XCTAssertEqual(NotificationEvent.allCases.map(\.hiddenPreview),
-                       ["Found", "Working", "Waiting for your yes", "Needs a decision", "Couldn't finish"])
+                       ["Found", "Working", "Waiting for your yes", "Needs a decision", "Couldn't finish", "Other people appear"])
     }
 
     /// The exact words for the 13 Sep talk and the silent 14 Sep class, pinned.
@@ -144,6 +146,13 @@ final class NotificationTests: XCTestCase {
         XCTAssertEqual(NoticeBuilder.content(.couldntFinish, stopped).title, "Couldn't Finish: Sun 13 Sep")
         XCTAssertEqual(NoticeBuilder.content(.couldntFinish, stopped).body,
                        "It stopped three times while writing the transcript. The original is untouched; open it to see the details.")
+
+        // v2 part M6a (check 11): the fixed sentence, its own row in the recording's thread, and nothing else.
+        let people = NoticeBuilder.content(.otherPeople, facts(talk))
+        XCTAssertEqual(people.title, "Other People Appear: Sun 13 Sep")
+        XCTAssertEqual(people.body, "Other people appear in this recording.")
+        XCTAssertEqual(people.identifier, "rec-2026-09-13-18-25-44-people")
+        XCTAssertEqual(people.threadIdentifier, "rec-2026-09-13-18-25-44")
 
         var ask = facts(talk, folder: "Drop folder")
         ask.askFirst = true

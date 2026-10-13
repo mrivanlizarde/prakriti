@@ -28,10 +28,41 @@ recording on this Mac, and holds back anything a person has not checked.
 A cloud model, Anthropic or OpenAI, reads only a talk in which everyone heard is named and has agreed to
 cloud models, and nobody else appears or speaks. Everything else is only read by models on this Mac, even
 if a task is set to Anthropic or OpenAI: a class, a conversation, a test, a recording whose kind is still Not
-set, and any recording where other people appear or speak. Prakriti does not check who appears and speaks
-yet, so for now every recording is only read on this Mac. LM Studio does that task instead, and the
-inspector's Checks tab says why. Names are replaced before anything is sent. See
-[Models and API keys](09-models-and-api-keys.md).
+set, and any recording where other people appear or speak.
+
+:::unless faces
+Prakriti does not check who appears and speaks yet, so for now every recording is only read on this Mac.
+:::
+
+:::requires faces
+Prakriti looks for faces now, but not yet for voices, so it cannot tell that nobody else speaks. For now every
+recording is only read on this Mac.
+:::
+
+LM Studio does that task instead, and the inspector's Checks tab says why. Names are replaced before anything
+is sent. See [Models and API keys](09-models-and-api-keys.md).
+
+:::requires faces
+## Faces in a recording
+
+While it makes a recording's outputs, Prakriti looks for faces in the picture, two frames a second, on this
+Mac. It keeps only when and where each face was seen: never a picture of anyone's face, and nothing that could
+recognize them in another recording.
+
+- **In the browser,** each recording shows a line such as "One person at a time." or "Other people appear, up
+  to 2 at once." To see only the recordings with other people, click Sort in the toolbar and choose Other
+  People Appear.
+- **In the inspector's People tab,** a sentence says what was found, then one row for each face, Unnamed 1,
+  Unnamed 2 and so on, with how long it is on screen. The face in each row is taken from the recording while
+  the tab is open, and is never saved.
+- **A notice** says "Other people appear in this recording." the first time two or more faces are seen at once.
+  Like every notice, it never names the recording or anyone in it.
+- **A recording found before Prakriti looked for faces** shows Look for Faces in its People tab.
+
+Prakriti does not know who anyone is, and nothing it finds changes what is made: the outputs are the same as
+before. A row is a face seen in one place in the picture, so one person who walks around can show as two rows;
+"up to 2 at once" is the number to go by.
+:::
 
 :::unless people
 ## Classes and other voices

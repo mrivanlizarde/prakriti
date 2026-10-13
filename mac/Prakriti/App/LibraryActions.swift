@@ -182,6 +182,8 @@ extension AppModel {
             source.forgottenPaths.append(recording.filePath)
         }
         let sourceName = recording.source?.name
+        // Its people file goes with it (research-people.md 5.4): what Prakriti knew of the faces in it.
+        peopleFolders.removePeopleFile(for: recording.id)
         selectedRecordings.remove(recording.id)
         if let route = path.last, route.id == recording.persistentModelID { path = [] }
         context.delete(recording)

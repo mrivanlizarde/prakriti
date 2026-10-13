@@ -45,6 +45,8 @@ let looks: [Look] = [
     Look(name: "05-all-recordings-list", flags: ["--show=all-recordings", "--browser=list", "--select=readyForYourYes"]),
     Look(name: "06-source", flags: ["--show=source"]),
     Look(name: "07-inspector-outputs", flags: ["--show=needs-you", "--select=readyForYourYes", "--inspector-tab=outputs"]),
+    // v2 part M6a: the People tab, with sample data (a test pattern in every face circle, never a face).
+    Look(name: "07-inspector-people", flags: ["--show=needs-you", "--select=readyForYourYes", "--inspector-tab=people"]),
     Look(name: "07-inspector-checks", flags: ["--show=needs-you", "--select=readyForYourYes", "--inspector-tab=checks"]),
     Look(name: "07-inspector-info", flags: ["--show=needs-you", "--select=readyForYourYes", "--inspector-tab=info"]),
     Look(name: "08-search-said", flags: ["--show=all-recordings", "--search=Krishnamacharya"]),
