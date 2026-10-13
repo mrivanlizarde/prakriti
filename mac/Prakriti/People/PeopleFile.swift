@@ -84,9 +84,25 @@ struct PeopleFile: Codable, Equatable, Sendable {
     var cuts: [Double]
     var tracks: [Track]
     var people: [FacePerson]
-    /// Which steps of the people pass ran: "faces" from part M6a; "voices" arrives with M6b. The people check
-    /// counts as run only once both have (docs/v2/PLAN.md M6), so this part never opens the privacy lock.
+    /// Which steps of the people pass ran: "faces" (part M6a), then "voices" (M6b). The people check counts as run
+    /// only once both have (docs/v2/PLAN.md M6).
     var steps: [String] = ["faces"]
+    /// Who speaks when (part M6b): times only, never a voice print. Nil until the voice step ran.
+    var voices: Voices?
+
+    /// The voice step's part of the file. Each segment is `[start, end, voice]` and each link `[voice, face row]`:
+    /// short lists of numbers, never a print.
+    struct Voices: Codable, Equatable, Sendable {
+        /// "tracks" or "diarizer".
+        var source: String
+        var tracks: [Int]
+        var segments: [[Double]]
+        var links: [[Int]]
+
+        var voiceSegments: [VoiceSegment] {
+            segments.compactMap { $0.count >= 3 ? VoiceSegment(start: $0[0], end: $0[1], voice: Int($0[2])) : nil }
+        }
+    }
 
     static func round(_ value: Double) -> Double { (value * 10_000).rounded() / 10_000 }
 

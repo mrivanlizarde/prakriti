@@ -137,6 +137,43 @@ final class SnapshotTests: XCTestCase {
                 model.selectedRecordings = [talk.id]
                 model.inspectorTab = .people
             }
+            // Voices and names (v2 part M6b): the two-people-tracks answer with Gabriel teaching (the second voice on
+            // track 3 has no face, the corner face no name), one voice with nobody named in Settings, and the Info tab's
+            // Who is teaching.
+            try draw("07-inspector-people-voices") { model in
+                let talk = try talk13(model)
+                talk.facesJSON = Fixtures.facesTwoPeople(at: Fixtures.date(2026, 10, 12, 21, 40)).json()
+                model.applyVoices(Fixtures.voicesTwoTracks(at: Fixtures.date(2026, 10, 13, 1, 10)), to: talk)
+                model.setTeacher(try XCTUnwrap(model.addPerson(named: "Gabriel")), for: talk)
+                _ = model.addPerson(named: "Serenity")
+                model.selection = .group(.needsYou)
+                model.selectedRecordings = [talk.id]
+                model.inspectorTab = .people
+            }
+            try draw("07-inspector-people-voices-unnamed") { model in
+                let talk = try talk13(model)
+                talk.facesJSON = Fixtures.facesOnePerson(at: Fixtures.date(2026, 10, 12, 21, 40)).json()
+                model.applyVoices(Fixtures.voicesOneTeacher(at: Fixtures.date(2026, 10, 13, 1, 10)), to: talk)
+                model.selection = .group(.needsYou)
+                model.selectedRecordings = [talk.id]
+                model.inspectorTab = .people
+            }
+            try draw("07-inspector-info-teacher") { model in
+                let talk = try talk13(model)
+                talk.facesJSON = Fixtures.facesOnePerson(at: Fixtures.date(2026, 10, 12, 21, 40)).json()
+                model.applyVoices(Fixtures.voicesOneTeacher(at: Fixtures.date(2026, 10, 13, 1, 10)), to: talk)
+                model.setTeacher(try XCTUnwrap(model.addPerson(named: "Gabriel")), for: talk)
+                model.selection = .group(.needsYou)
+                model.selectedRecordings = [talk.id]
+                model.inspectorTab = .info
+            }
+            try draw("05-all-recordings-people-named") { model in
+                let talk = try talk13(model)
+                talk.facesJSON = Fixtures.facesTwoPeople(at: Fixtures.date(2026, 10, 12, 21, 40)).json()
+                model.applyVoices(Fixtures.voicesTwoTracks(at: Fixtures.date(2026, 10, 13, 1, 10)), to: talk)
+                model.setTeacher(try XCTUnwrap(model.addPerson(named: "Gabriel")), for: talk)
+                model.selection = .group(.all)
+            }
             // The cards and the list with their people lines, and the Other People Appear filter.
             try draw("05-all-recordings-people") { model in
                 let talk = try talk13(model)
@@ -207,6 +244,12 @@ final class SnapshotTests: XCTestCase {
                                                  appleIntelligenceUnavailable: "Apple Intelligence is turned off in System Settings, so Apple's on-device model cannot be used.")
                 try renderer.renderSettings(model: small, pane: .models, appearance: appearance, name: "10-settings-models-16gb-\(scheme)")
                 written.append("10-settings-models-16gb-\(scheme)")
+                // v2 part M6b: People You Name, with Gabriel allowed to cloud models and Serenity not.
+                let named = Fixtures.model()
+                named.setCloudConsent(true, for: try XCTUnwrap(named.addPerson(named: "Gabriel")))
+                _ = named.addPerson(named: "Serenity")
+                try renderer.renderSettings(model: named, pane: .privacy, appearance: appearance, name: "10-settings-privacy-people-\(scheme)", height: 900)
+                written.append("10-settings-privacy-people-\(scheme)")
                 // v2 part M5b: the whole Models pane with the cloud keys absent, saved (lists read) and refused.
                 let keyStates: [(String, (AppModel) -> Void)] = [
                     ("keys-absent", { _ in }),
@@ -303,7 +346,8 @@ final class SnapshotTests: XCTestCase {
         if only == "library" {
             print("Snapshots written to \(outputFolder.path): \(written.count) library and Settings pictures")
             // v2 part M6a: the People tab joins the inspector's tabs (2), and six People and filter pictures (12).
-            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2 + 2 + 2 + 3 * 2 + 2 + 6 * 2)
+            // v2 part M6b: four voices and names pictures (8) and Settings, Privacy with named people (2).
+            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2 + 2 + 2 + 3 * 2 + 2 + 6 * 2 + 4 * 2 + 2)
             return
         }
 
@@ -390,7 +434,7 @@ final class SnapshotTests: XCTestCase {
 
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + 2 + 3 * 2 + viewerCount + 2 + 6 * 2)
+        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + 2 + 3 * 2 + viewerCount + 2 + 6 * 2 + 4 * 2 + 2)
     }
 
     /// v2 part M2a: the Help window, open at every article this build shows, in light and dark, with a

@@ -90,9 +90,10 @@ struct StageTimings: Sendable, Equatable {
     /// 36 of them mastering). Used only until this Mac has measured the stage itself.
     /// The capture check (v2 part M4b) was measured the same day: 3.2 s for the 15:48 talk's one stereo track.
     /// Faces (v2 part M6a) too: 30.1 s for the 15:48 talk and 120 s for the 55:39 one, with the capture quality,
-    /// about 2 s a minute.
+    /// about 2 s a minute. Voices (v2 part M6b): a first guess of half a second a minute (the diarizer runs at
+    /// about 300 times real time, research-people.md 2.5), replaced by this Mac's own measure after one run.
     static let firstGuess: [PipelineStep: Double] = [
-        .capture: 0.21, .sound: 0.04, .speechAudio: 0.035, .transcript: 0.68, .coverage: 0.0, .wordList: 0.0, .faces: 2.0,
+        .capture: 0.21, .sound: 0.04, .speechAudio: 0.035, .transcript: 0.68, .coverage: 0.0, .wordList: 0.0, .faces: 2.0, .voices: 0.5,
         .trim: 0.04, .edits: 0.0, .episode: 1.4, .loudness: 0.11, .podcastAudio: 2.3,
         .episodeTranscript: 0.0, .podcastPackage: 0.25, .report: 0.0,
     ]

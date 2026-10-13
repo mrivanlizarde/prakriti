@@ -146,7 +146,7 @@ struct RecordingCard: View {
                     .foregroundStyle(.appSecondary)
                 // Who was seen (v2 part M6a, design spec 3.1.1); hidden until faces were looked for.
                 if let faces = recording.faces {
-                    PeopleLine(faces: faces)
+                    PeopleLine(faces: faces, recording: recording)
                         .padding(.top, 2)
                 }
             }

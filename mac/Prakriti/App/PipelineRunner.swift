@@ -295,7 +295,10 @@ final class PipelineRunner {
         options.edits = recording.edits
         // Faces are looked for in every make (v2 part M6a): a check, like the capture check, that keeps boxes and
         // times only. It runs only when a make runs, so an upgrade never starts it on its own (PLAN rule 2.1.7).
-        options.people = PeopleSetup(recordingID: recording.id, folders: model.peopleFolders)
+        // Voices are listened for right after, and Ivan's names and the people named in Settings travel with the make,
+        // so its writing step's privacy lock reads this make's people check (v2 part M6b).
+        options.people = PeopleSetup(recordingID: recording.id, folders: model.peopleFolders, names: recording.names,
+                                     microphones: recording.source?.microphones ?? [:], people: recording.namedPeople)
         options.kind = recording.kind
         options.knownSerenity = recording.hasSerenity
         if make.contains(.titlesNotesChapters) && options.makeTranscript {
@@ -707,6 +710,12 @@ final class PipelineRunner {
         if let faces = result.faces {
             model.applyFaces(faces, to: recording, run: run)
         } else if let problem = result.facesProblem {
+            model.record("\(label) (\(recording.fileName)): \(problem)", level: .attention, run: run)
+        }
+        // And what the voice step heard (v2 part M6b), kept the same way.
+        if let voices = result.voices {
+            model.applyVoices(voices, to: recording, run: run)
+        } else if let problem = result.voicesProblem {
             model.record("\(label) (\(recording.fileName)): \(problem)", level: .attention, run: run)
         }
         // Once a transcript says "Serenity", the recording stays privacy locked (never unset).

@@ -75,6 +75,30 @@ enum Fixtures {
         return found
     }
 
+    /// One teacher speaking, linked to the one face (v2 part M6b): the 13 Sep talk's shape, made up.
+    static func voicesOneTeacher(at checkedAt: Date, duration: Double = 947.78) -> VoicesFound {
+        var found = VoicesFound(checkedAt: checkedAt, duration: duration, source: .diarizer)
+        found.voices = [FoundVoice(id: 1, label: "Voice 1", speaking: 871, first: 2.1, last: 946.2, track: nil, face: 1, linkedBy: SpeakerLink.byOnlyFace)]
+        found.speech = 871
+        found.seconds = 9.4
+        return found
+    }
+
+    /// The two-people-tracks fixture's shape (v2 part M6b): the teacher on track 2, linked to the main face, and a second
+    /// voice on track 3 from 0:30 to 0:50 with no face linked.
+    static func voicesTwoTracks(at checkedAt: Date, duration: Double = 90.1) -> VoicesFound {
+        var found = VoicesFound(checkedAt: checkedAt, duration: duration, source: .tracks)
+        found.tracksUsed = [2, 3]
+        found.voices = [
+            FoundVoice(id: 1, label: "Voice 1", speaking: 78.4, first: 0.3, last: 89.9, track: 2, face: 1, linkedBy: SpeakerLink.byOnlyFace),
+            FoundVoice(id: 2, label: "Voice 2", speaking: 19.6, first: 30.1, last: 49.9, track: 3, face: nil, linkedBy: nil),
+        ]
+        found.speech = 82.0
+        found.overlap = 16.0
+        found.seconds = 3.2
+        return found
+    }
+
     static func capture13(at measuredAt: Date) -> CaptureReport {
         var report = CaptureReport(container: "MP4",
                                    video: .init(codec: "h264", profile: "High", width: 1920, height: 1080, frameRate: 30000.0 / 1001, averageFrameRate: 30000.0 / 1001,

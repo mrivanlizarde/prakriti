@@ -3882,3 +3882,89 @@ M5a", "v2 part M5b"). The live app is still the M4b build (`~/Applications/Prakr
 - [ ] **Look at the three 13 Sep frames** in `~/Code/prakriti/screens/mac/v2-m6a/for-ivan/`: from 12:39 to the end the
   picture holds up to 6 faces. Is someone else really there (a screen, a photo, people in the room)? If they are real
   people, the 13 Sep talk is not "one person" and its last three minutes need a choice once M6c exists.
+
+## v2 part M6b: voices and names. Tue 13 Oct 2026
+
+The twelfth part of v2 (`docs/v2/PLAN.md`, M6, part M6b; REQUEST item 3a). Built on `main`, as this run's instructions said.
+**One Swift package added: FluidAudio 0.15.5** (revision `19600a485baa4998812e4654b70d2bab8f2c9949`, 7 Jul 2026), exactly the
+version Hark's `Package.resolved` records (PLAN section 11, Ivan's yes); its diarizer models were already on this Mac and were
+only read (nothing downloaded). **Three SwiftData fields added, all additions with a default of nil** (`Recording.voicesJSON`,
+`Recording.namesJSON`, `Source.microphonesJSON`): `make migrate-check` passed. Built and checked 01:00 to 02:10.
+
+### What was built
+
+- **The voice step** (`People/VoiceStep.swift`, pipeline step "Voices", right after "Faces", in every make): with two or more audio
+  tracks, tracks 2 and up (OBS: one microphone each) are decoded to 16 kHz in the step's job folder and read by `TrackActivity`
+  (`People/VoiceActivity.swift`): a track speaks in a tenth of a second at -45 dB or more and within 6 dB of the loudest track; gaps
+  under 0.4 s joined, bits under 0.3 s dropped, a track under 1 s in all is no voice; the log says "Who speaks is read from
+  microphone tracks 2, 3, not guessed from the mix". With one track, **FluidAudio's offline diarizer** (`People/Diarizer.swift`) on
+  track 1, its changes of voice listed to listen to. Voices numbered by speaking time ("Voice 1"...). A failed step costs only its
+  step and leaves the people check not run.
+- **Linking** (`People/SpeakerLink.swift`): evidence per voice and face row, the only face on screen (half seconds) and, on
+  stretches with two or more faces, Vision's face landmarks at 10 fps (inner-lip opening over face height, its movement correlated
+  with each voice, 0.2 and a 0.1 margin); a link needs half the evidence, twice the next row and 2 s, one voice per row, the
+  strongest first. Landmarks live in memory only.
+- **The people file** gains `voices` (segments `[start, end, voice]`, links `[voice, row]`) and step "voices". No embedding, no
+  print, no sound.
+- **Naming without prints** (`People/PeopleNames.swift`, `App/PeopleActions.swift`): Settings, Privacy, **People You Name** (add,
+  remove, "Cloud models may read their words", off by default); Info, **Who is teaching** (names the voice that speaks most and its
+  face); People, **Name for This Recording** on every face, voice and the glimpses, and **Track N in This Folder** (a folder's
+  microphone, `Source.microphones`). A name crosses a link; a hand-given name wins.
+- **The lock fed by the people check** (`PeopleFacts.from`, `Recording.lockSubject`, and the writing step from the make's own
+  results): checked only when both steps ran; every unnamed face row, voice and glimpse counts as someone unnamed; a removed
+  person counts as unnamed; consent read from the store. `PrivacyLock.settingsLine` rewritten to say so.
+- **People tab:** the sentence ("Gabriel speaks for 96 percent. One other voice, not named. One face is not named. Up to 2 people
+  are on screen at once, first at 0:20."), where the voices came from, face rows with their voice, voice rows with no face
+  (`waveform.circle`), the changes to listen to, **Check People** (replaces Look for Faces: faces then voices). Cards: "Gabriel. Up
+  to 2 people at once. 1 other voice."
+- **Capability `voices`**; Help 07 (voices, naming, the lock), 06 (Who is teaching, listen to other voices) and 03 (tracks 2 and up)
+  rewritten to it. START_HERE Mac warnings 115 to 117.
+- Tests: `VoicesTests` (15), `VoicesAcceptanceTests` (in `make accept-people`), snapshot pictures (10), migration assertions.
+
+### Checks run, with results (PLAN M6, the checks part M6b runs: 1 `embeddingsPath`, 2 voice, 4, 8 whole pass, 9, 13)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `embeddingsPath` nil in every diarizer configuration built | **PASS.** `VoicesTests.testEveryDiarizerConfigurationExportsNoEmbedding` reads `export.embeddingsPath` and `embeddingExportPath` (both nil) and chunk embeddings (off) from `Diarizer.configuration()`, the only one built; the field exists in 0.15.5 (it compiled). The acceptance printed `["nil", "nil"]`. FluidAudio's model folder unchanged by size and date after every run |
+| 2 (voice) | 13 Sep talk, Who is teaching Gabriel | **Voice: PASS, faces half IVAN (as M6a).** Diarizer: **one voice, 14 min 49 s (888.8 s) from 0:04 to 15:48**, linked to face row 1 ("the only face on screen"), 0 changes to listen to, step 13.3 s. People tab sentence: **"Gabriel speaks for 100 percent. Ten faces are not named."** The ten faces are M6a's rows after 12:39 (up to 6 at once, pictures in `screens/mac/v2-m6a/for-ivan/`), not a second voice: for Ivan, per review item 22. Episode decoded md5 `69658a8cb8a954b92798c5e9f3ea5833`, identical to engine v0's |
+| 4 | two-people-tracks.mov: who speaks from tracks 2 and 3 | **PASS.** Source tracks [2, 3]; Voice 1 track 2, 75.6 s, 0:00 to 1:30, linked to the main face; Voice 2 track 3, 18.0 s, **0:30 to 0:48.5**; overlap 13.4 s. Log: "two-people-tracks.mov: voices. Who speaks is read from microphone tracks 2, 3, not guessed from the mix: 2 tracks with a voice." The `say` speech ends at 48.51 s by ffmpeg silencedetect on track 3 (its slot runs to 0:50), so the check compares with 48.5. "Matches check 3": two-people-mixed, Voice 2 0:30 to 0:48 (below) |
+| 8 | Whole people pass on the 6 Sep talk (55:39) | **PASS: 119 s** (faces 105, voices and links 14; limit 300). One voice, 46 min 54 s, linked to face row 1; 2 face rows |
+| 9 | The privacy lock, writing set to Anthropic, cloud requests counted (scripted cloud client, nothing left the Mac) | **PASS where the build decides; the "on" half is locked by the talk itself.** two-people-mixed, nobody named: **0**; Gabriel teaching and agreed: **0**. 13 Sep talk, Gabriel teaching, switch off: **0**; on: **0**, and 13sep-90s off **0**, on **0**: every 13 Sep recording's transcript says "Serenity", which M5a's lock keeps local (Mac warning 90), and the full talk also has 10 unnamed face rows; the clip's people facts are complete (Gabriel heard and seen, 0 unnamed). The open case through the same runner: **a made-up one-voice recording** (test pattern, `say`, 70 s, no names): voice named Gabriel, switch off **0** ("someone heard in it has not agreed"), on **1** (open) |
+| 13 | Regression set; `make accept-outputs`; `make migrate-check` | **PASS.** `make build`: No warnings. **`make test`: 277 tests, 0 failures, 14 skipped by design** (884 s). `make accept`: 13 Sep -16.8 LUFS (-16.82), true peak -1.7 dBFS; silent-60s at -91 dB, nothing made; 6 Sep made. `make accept-edits`: 38.82 s shorter (expected 38.82), 0 of 73 runs from the cut heard, 189 of 201 after it. `make accept-outputs`: run 4 identical to engine v0 (md5 above). `make migrate-check`: 13 recordings, 2 folders, 40 output settings, 748 Activity lines before and after, 2 approved; the three new fields arrive nil. M6a's own half of `make accept-people` ran again and passed (faces, bit for bit, crash check: "Deleted 1 job folder" at line 1, first look at line 11) |
+| Also | Nothing stored for strangers, after the voice step | **PASS.** Faces, Voices, FaceIndex absent in development and live; Jobs empty; five people files with steps `["faces", "voices"]`, longest list of numbers 8, no picture or print word. Originals unchanged by size and date |
+| Looked at | Pictures | `07-inspector-people-voices-*` (Gabriel row with "Speaks 1 min 18 s, on track 2", Unnamed 2, Voice 2 with Track 3 in This Folder), `07-inspector-people-voices-unnamed-*` (Open Settings, Privacy), `07-inspector-info-teacher-*`, `05-all-recordings-people-named-*`, `10-settings-privacy-people-*` (Gabriel ticked, Serenity not), and `m6b-people-*`, `m6b-info-teacher-*`, `m6b-cards-*` from the real files, faces drawn as test patterns (D1). Text 15 and 17 pt in both appearances. **Found by looking:** a voice row and a face row with the same number drew the face row twice (ids collided); fixed with distinct row ids and drawn again |
+
+**Em dashes:** 0 in every file this part changed (grep); `RulesTests` passed.
+
+### Decisions, each with its reason
+
+1. **"Within 6 dB of the loudest track", not "6 dB above the others".** Read literally, two people speaking at once both vanish; this
+   still leaves bleed out and keeps overlap, which M6c cuts.
+2. **The diarizer keeps overlapping speech** (`exclusiveSegments` and `excludeOverlap` off). Measured on two-people-mixed: defaults
+   one voice (85.5 s); overlap kept two voices, Voice 2 29.9 to 48.5 s; only excludeOverlap off 69.1 and 16.4 s; only exclusive off
+   85.5 and 14.9 s; both off with threshold 0.5 one voice. The 13 Sep, 6 Sep and clip results stayed one voice.
+3. **Every unnamed face row, voice and glimpse is someone unnamed** for the lock. Fail closed; a second row of the teacher costs
+   one more naming.
+4. **New capability `voices`**, separate from `people` (choices, M6c).
+5. **No notice for voices.** Until someone is named, every voice is unnamed, the teacher's too.
+6. **Frames of Gabriel measured, never looked at** (D1, this run's instructions), though PLAN section 11 records releases.
+
+### What does not work yet
+
+- Nothing is removed from any output: decisions, Remove, overlapping speech and the audio output check are M6c.
+- The diarizer did not link two-people-mixed's second voice to the corner face (no face linked): honest doubt, not an error.
+- A mixed-track recording's changes of voice are listed, not yet required before Approve (M6c).
+
+### Installed
+
+**Not installed.** `make install` ships everything on `main`, which includes M5a and M5b, held since 12 Oct for Ivan's word because
+the lock turns his live Claude API choices back to LM Studio. M6b keeps that true: every 13 Sep recording says "Serenity", so it
+stays local even with Gabriel named and agreed. The live app is unchanged (the M4b build).
+
+### For Ivan
+
+- [ ] **The M5a lock decision still gates the install** (now M5a, M5b, M6a and M6b together): `cd ~/Code/prakriti/mac && make install`
+  once you say yes. After it, add Gabriel in Settings, Privacy and pick him under Info, Who is teaching on a talk.
+- [ ] **"Serenity" in a transcript keeps a talk local even when everyone is named and agreed.** Gabriel's talks name her, so none
+  will reach Anthropic until that rule changes. Say whether a teacher's name said aloud (replaced by a token anyway) should still lock.
+- [ ] The 13 Sep frames from M6a (`screens/mac/v2-m6a/for-ivan/`): the ten face rows after 12:39 keep that talk local until named.

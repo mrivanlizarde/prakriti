@@ -28,7 +28,7 @@ struct SettingsWindow: View {
         switch pane {
         case .general: 620
         case .outputs, .models: 700
-        case .privacy: 560
+        case .privacy: 700
         case .advanced: 460
         }
     }
@@ -180,8 +180,60 @@ struct PrivacyPane: View {
             } header: {
                 SectionHeader("What Prakriti does to keep recordings private")
             }
+            NamedPeopleSection()
         }
         .formStyle(.grouped)
+    }
+}
+
+/// The people Ivan names (v2 part M6b, docs/v2/PLAN.md M6): a list of names to give the faces and voices of a
+/// recording (Who Is Teaching, Name for This Recording), each with the switch "Cloud models may read their words",
+/// off until he turns it on (PLAN section 5, item 2). A name only: nothing about anyone's face or voice is kept.
+struct NamedPeopleSection: View {
+    @Environment(AppModel.self) private var model
+    @State private var newName = ""
+
+    var body: some View {
+        let people = model.namedPeopleList()
+        Section {
+            if people.isEmpty {
+                RowNote("No one is named yet. Add the teachers who appear in your recordings, such as Gabriel.")
+            }
+            ForEach(people) { person in
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(person.name).font(AppFont.body)
+                        Toggle("Cloud models may read their words", isOn: Binding(get: { person.mayReadInCloud },
+                                                                                  set: { model.setCloudConsent($0, for: person) }))
+                            .font(AppFont.secondary)
+                            .toggleStyle(.checkbox)
+                    }
+                    Spacer(minLength: 8)
+                    Button("Remove") { model.removePerson(person) }
+                        .font(AppFont.body)
+                }
+                .padding(.vertical, 2)
+            }
+            HStack(spacing: 8) {
+                TextField("Name", text: $newName, prompt: Text("Add a name"))
+                    .labelsHidden()
+                    .textFieldStyle(.roundedBorder)
+                    .font(AppFont.body)
+                    .frame(minWidth: 200)
+                    .onSubmit(add)
+                Button("Add", action: add)
+                    .font(AppFont.body)
+                    .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        } header: {
+            SectionHeader("People You Name")
+        } footer: {
+            RowNote("Give these names to the people in a recording: in the inspector, Info, Who is teaching, or People, Name for This Recording. Prakriti keeps only the name, nothing about a face or a voice. A recording can be read by a cloud model only when everyone heard in it is named and has this switch on.")
+        }
+    }
+
+    func add() {
+        if model.addPerson(named: newName) != nil { newName = "" }
     }
 }
 

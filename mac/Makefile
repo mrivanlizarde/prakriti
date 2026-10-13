@@ -161,10 +161,15 @@ accept-capture:
 #                 folder, no job folder, no print or picture in a people file, no image under Application Support), the
 #                 People tab and cards drawn; then the crash check (scripts/people-crash-check.sh): a face step killed
 #                 with SIGKILL leaves its job folder, and the next development launch deletes it before its first look.
-#                 Writes acceptance-people.txt and crash-check.txt to ../screens/mac/$(MILESTONE)/ (about 5 minutes)
+#                 Then v2 part M6b's half (VoicesAcceptanceTests): the voices of the 13 Sep talk (diarizer) with Who Is
+#                 Teaching set to Gabriel ("Gabriel speaks for N percent."), two-people-tracks (who speaks from tracks 2
+#                 and 3, said in the log), two-people-mixed, the whole people pass on the 6 Sep talk timed (under 5
+#                 minutes), the privacy lock counted in cloud requests through the writer with a scripted cloud client.
+#                 Writes acceptance-people.txt, acceptance-voices.txt and crash-check.txt to ../screens/mac/$(MILESTONE)/
+#                 (about 15 minutes)
 accept-people:
 	./scripts/make-fixtures.sh --if-missing
-	TEST_RUNNER_PRAKRITI_ACCEPTANCE=people TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/PeopleAcceptanceTests
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=people TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/PeopleAcceptanceTests -only-testing:PrakritiTests/VoicesAcceptanceTests
 	./scripts/people-crash-check.sh $(APP) ../screens/mac/$(MILESTONE)
 
 accept-outputs:

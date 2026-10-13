@@ -23,7 +23,11 @@ enum Capability: String, CaseIterable, Sendable {
     /// Faces found in a recording: the People tab, the people line, the Other People Appear filter and notice
     /// (M6a). Voices and choices are not part of it.
     case faces
-    /// Voices found in a recording, and Include, Blur Face or Remove per person (M6b to M6d).
+    /// Voices found in a recording (from microphone tracks, else told apart on the mixed track), linked to faces;
+    /// People You Name in Settings, Privacy, Who is teaching, Name for This Recording, Check People, and the privacy
+    /// lock fed by the people check (M6b).
+    case voices
+    /// Include, Blur Face or Remove per person (M6c and M6d).
     case people
     /// The People gallery of named people (M7).
     case gallery
@@ -43,9 +47,9 @@ enum Capability: String, CaseIterable, Sendable {
 
 enum Capabilities {
     /// What this build does: Help (M2a), the welcome window (M2b), the Viewer (M3b), progress with the
-    /// Activity window (M4a), the capture check (M4b), Anthropic and OpenAI (M5b) and faces (M6a). Each later
-    /// part switches its own on.
-    static let built: Set<Capability> = [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces]
+    /// Activity window (M4a), the capture check (M4b), Anthropic and OpenAI (M5b), faces (M6a) and voices and names
+    /// (M6b). Each later part switches its own on.
+    static let built: Set<Capability> = [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices]
 
     /// Every capability, for the test that every article and every block is visible once all are built.
     static let all = Set(Capability.allCases)

@@ -5,6 +5,29 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-13, Tue: v2 part M6b, voices and names
+
+- **Every make now listens for who speaks when, right after the faces: from the microphone tracks when the recording has
+  them, else told apart on the one mixed track by FluidAudio's diarizer (0.15.5, Hark's pin).** Why: REQUEST item 3, and
+  PLAN review item 5: faces alone could read as "nobody else" where a student is heard but not seen. Microphone tracks are
+  the clean-input path (REQUEST item 1); the diarizer is the fallback for every studio file so far.
+- **A microphone track speaks when it is within 6 dB of the loudest track, not "6 dB above the others".** Why: read
+  literally, two people speaking at once would both vanish; within 6 dB still leaves a voice's bleed into a neighbour's
+  microphone out, and keeps overlapping speech, which the cut of overlapping speech needs (research-people.md 3.5).
+- **The diarizer keeps overlapping speech.** Why: measured, with FluidAudio's defaults a voice speaking only over the
+  teacher vanished into the teacher; with overlap kept it was found to the tenth of a second. That voice is a student.
+- **No voice print is written or kept, and nothing is downloaded.** Why: the biometric decision; `embeddingsPath` nil is
+  tested, only times leave the diarizer, offline mode is on, and the model folder Hark shares is only read.
+- **Voices are linked to faces by the only face on screen and by mouth movement on crowded stretches; doubt leaves a voice
+  with no face.** Why: research-people.md 2.6; a wrong link would carry a name to the wrong person.
+- **People You Name in Settings, Who is teaching in Info, Name for This Recording and Track N in This Folder in People.**
+  Why: until releases are on file (D2) Prakriti cannot recognize anyone, so Ivan names; a name is not biometric.
+- **The privacy lock reads the people check: complete only with both steps, every unnamed face, voice and glimpse counts
+  as someone else.** Why: Mac warning 90, fail closed. The 13 Sep talk stays local even with Gabriel named and agreed (other
+  faces after 12:39; it says "Serenity"); a made-up one-voice recording opens once its voice is named and agreed.
+- **Check People replaces Look for Faces.** Why: an older recording needs both steps for the check to count.
+- **New capability `voices`; Help 03, 06 and 07 rewritten to it.** Why: Help describes only what is built.
+
 ## 2026-10-12, Mon: v2 part M6a, faces in a recording
 
 - **Every make now looks for faces: two frames a second, Vision's revision 4 face finder, boxes and times only, into a

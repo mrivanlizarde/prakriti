@@ -28,7 +28,7 @@ import Foundation
 /// The steps, in order. `title` is what the recording page lists; `doing` is what the status line
 /// says while it runs ("Working on Sun 13 Sep: making the episode audio"). Never "Processing".
 enum PipelineStep: String, CaseIterable, Sendable {
-    case complete, capture, sound, speechAudio, transcript, coverage, wordList, faces, trim, edits, episode, loudness, podcastAudio, episodeTranscript, writing, podcastPackage, report
+    case complete, capture, sound, speechAudio, transcript, coverage, wordList, faces, voices, trim, edits, episode, loudness, podcastAudio, episodeTranscript, writing, podcastPackage, report
 
     var title: String {
         switch self {
@@ -40,6 +40,7 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .coverage: "Coverage check"
         case .wordList: "Word list"
         case .faces: "Faces"
+        case .voices: "Voices"
         case .trim: "Silence at the start and end"
         case .edits: "Your trim and cuts"
         case .episode: "Episode audio"
@@ -70,6 +71,7 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .coverage: "Checking the transcript reaches the end"
         case .wordList: "Applying the Yoga Marga word list"
         case .faces: "Looking for faces"
+        case .voices: "Listening for voices"
         case .trim: "Finding the silence at the start and end"
         case .edits: "Applying your trim and cuts"
         case .episode: "Making the episode audio"
@@ -158,9 +160,9 @@ struct PipelineOptions: Sendable {
             steps += [.speechAudio, .transcript, .coverage]
             if applyLexicon { steps.append(.wordList) }
         }
-        // After the transcript and before anything is written (docs/v2/PLAN.md M6): its answer is what the
-        // privacy lock will read once the voice step exists (M6b).
-        if people != nil { steps.append(.faces) }
+        // After the transcript and before anything is written (docs/v2/PLAN.md M6): faces, then voices; their answer
+        // together is what the privacy lock reads (M6b).
+        if people != nil { steps += [.faces, .voices] }
         if makeEpisode || makePodcastReady {
             if trimSilence { steps.append(.trim) }
             if !edits.isEmpty { steps.append(.edits) }
@@ -250,12 +252,33 @@ struct PipelineResult: Sendable {
     /// step: the episode and transcript are made as usual.
     var faces: FacesFound?
     var facesProblem: String?
+    /// What the voice step found (v2 part M6b), or why it could not listen. Like the face step, a failure costs only
+    /// its step, and leaves the people check not run, so the privacy lock stays closed.
+    var voices: VoicesFound?
+    var voicesProblem: String?
 }
 
-/// Where the face step writes, for one recording.
+/// Where the face and voice steps write, for one recording, and Ivan's names the writing step's privacy lock reads.
 struct PeopleSetup: Sendable, Equatable {
     var recordingID: UUID
     var folders: PeopleFolders
+    /// Who Is Teaching and Name for This Recording, with the folder's microphones applied (v2 part M6b).
+    var names: PeopleNames = .none
+    /// The folder's microphones: a voice heard on one of these tracks takes the person's name.
+    var microphones: [Int: UUID] = [:]
+    /// The people named in Settings, Privacy, with their cloud switch.
+    var people: [NamedPerson] = []
+
+    /// The names once this make's voices are known: the folder's microphones fill any voice not named by hand.
+    func names(for voices: VoicesFound?) -> PeopleNames {
+        var out = names
+        if let voices, voices.source == .tracks {
+            for voice in voices.voices where out.voices[voice.id] == nil {
+                if let track = voice.track, let person = microphones[track] { out.voices[voice.id] = person }
+            }
+        }
+        return out
+    }
 }
 
 struct PipelineProgress: Sendable {
@@ -483,7 +506,7 @@ struct Pipeline: Sendable {
     /// right), and each later pass takes half of what is left.
     func passes(_ step: PipelineStep) -> Int? {
         switch step {
-        case .sound, .speechAudio, .trim, .loudness, .faces: return 1
+        case .sound, .speechAudio, .trim, .loudness, .faces, .voices: return 1
         case .episode:
             let intro = !(options.introPath ?? "").isEmpty, outro = !(options.outroPath ?? "").isEmpty
             return 2 + (intro ? 1 : 0) + (outro ? 1 : 0) + (intro || outro ? 1 : 0)
@@ -681,6 +704,37 @@ struct Pipeline: Sendable {
                     log?.write("\(name): faces failed. \(detail)")
                     await finish(.faces, "Faces could not be looked for. The rest is made as usual.", state: .failed)
                 }
+
+                // 5c. Voices (v2 part M6b): who speaks when, from the microphone tracks when there are any, else told
+                //     apart on the one mixed track; then each voice linked to a face. Times only, into the same people
+                //     file. Needs the face step's file, so a failed face step skips it, and the lock stays closed.
+                await begin(.voices)
+                meter?.startPass()
+                if result.faces == nil {
+                    result.voicesProblem = "Voices were not listened for, because faces could not be looked for."
+                    await finish(.voices, result.voicesProblem, state: .failed)
+                } else {
+                    do {
+                        var tracks = result.capture?.audio.count ?? 0
+                        if result.capture == nil { tracks = await VoiceStep.audioTracks(file) }
+                        let ffmpeg = tools.ffmpeg, limit = limit(ready.duration), control = meter?.control
+                        let outcome = try await VoiceStep.run(
+                            file: file, recordingID: people.recordingID, folders: people.folders, audioTracks: tracks, now: Date(),
+                            decode: { arguments in _ = try await Subprocess.run(ffmpeg, arguments, captureStdout: false, timeout: limit, control: control) },
+                            control: meter?.control, log: { [log] line in log?.write("\(name): voices. " + line) },
+                            progress: { [meter] fraction in meter?.passProgress(fraction) })
+                        result.voices = outcome.found
+                        await finish(.voices, outcome.found.stepLine)
+                    } catch is CancellationError {
+                        throw CancellationError()
+                    } catch {
+                        let detail = (error as? VoiceStep.Failure)?.reason ?? (error as? Diarizer.Failure)?.reason
+                            ?? (error as? ToolError)?.logLine ?? error.localizedDescription
+                        result.voicesProblem = "Voices could not be listened for. \(detail)"
+                        log?.write("\(name): voices failed. \(detail)")
+                        await finish(.voices, "Voices could not be listened for. The rest is made as usual.", state: .failed)
+                    }
+                }
             }
 
             // 6. The episode audio: the silence trim, two-pass loudness, the MP3 (Apple Podcasts spec).
@@ -840,9 +894,14 @@ struct Pipeline: Sendable {
             //    kept, the step says why, and Write Again on the page tries once more.
             if options.makeTranscript, let setup = options.writing {
                 await begin(.writing)
-                guard let input = WritingInput.from(folder: staging, clock: result.clock, duration: ready.duration, applyLexicon: options.applyLexicon,
+                guard var input = WritingInput.from(folder: staging, clock: result.clock, duration: ready.duration, applyLexicon: options.applyLexicon,
                                                     label: label, fileName: file.lastPathComponent, kind: options.kind, knownSerenity: options.knownSerenity) else {
                     throw PipelineFailure(step: .writing, reason: "The transcript could not be read to write the titles, show notes and chapters.")
+                }
+                // The privacy lock reads this make's people check (v2 part M6b): checked only when both steps ran.
+                if let people = options.people {
+                    input.people = PeopleFacts.from(faces: result.faces, voices: result.voices, names: people.names(for: result.voices),
+                                                    people: people.people)
                 }
                 let outcome = try await Writer(setup: setup, log: log).write(input)
                 result.mentionsSerenity = result.mentionsSerenity || outcome.mentionsSerenity

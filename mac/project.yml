@@ -37,6 +37,13 @@ packages:
   swift-markdown:
     url: https://github.com/swiftlang/swift-markdown
     exactVersion: 0.9.0
+  # FluidAudio 0.15.5 (revision 19600a4, 7 Jul 2026): the offline speaker diarizer for a recording with one mixed
+  # track (v2 part M6b). Pinned to exactly the version Hark's Package.resolved records (PLAN section 11, Ivan's yes).
+  # Its models are read from ~/Library/Application Support/FluidAudio/Models/speaker-diarization, already on this
+  # Mac, with FluidAudio's offline mode on, so it never downloads anything (People/Diarizer.swift).
+  FluidAudio:
+    url: https://github.com/FluidInference/FluidAudio.git
+    exactVersion: 0.15.5
 
 targets:
   Prakriti:
@@ -54,6 +61,8 @@ targets:
     dependencies:
       - package: swift-markdown
         product: Markdown
+      - package: FluidAudio
+        product: FluidAudio
     settings:
       base:
         PRODUCT_NAME: Prakriti

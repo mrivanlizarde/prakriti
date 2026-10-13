@@ -640,6 +640,21 @@ row per face (Unnamed 1, 2...) whose picture is cropped live and never saved, an
 one notice says "Other people appear in this recording." Older recordings get **Look for Faces**. Nobody is named, nothing
 made changes, and the privacy lock does not move (voices are M6b). Measured: 13 Sep 30 s, 6 Sep 120 s.
 
+**v2 part M6b, voices and names, Tue 13 Oct (built, not installed: see BUILD-LOG "v2 part M6b"):** right after the faces,
+every make listens for who speaks when (step "Voices"). With two or more audio tracks (OBS: track 1 the mix, tracks 2 and up
+one microphone each) a track speaks when it is speech (-45 dB or more a tenth of a second) and within 6 dB of the loudest
+track at that moment; with one mixed track, FluidAudio's offline diarizer (0.15.5, Hark's pin) tells voices apart, a best
+guess, and every change of voice is listed to listen to. Each voice is linked to a face by being the only face on screen or by
+the mouth moving with it (Vision landmarks at 10 fps on stretches with two or more faces, measured in memory, never kept).
+The people file gains the voices as times only. **Naming without prints:** Settings, Privacy, **People You Name** (a name and
+"Cloud models may read their words", off by default); the Info tab's **Who is teaching** (the voice that speaks most and its
+face take the name); the People tab's **Name for This Recording** on any face or voice, and **Track N in This Folder** for a
+microphone that is always one person's. **The privacy lock now reads the people check:** checked only once both steps ran,
+and every face row, voice and glimpse without a name counts as someone else, so a recording stays on this Mac until Ivan
+names everyone in it and each named person heard has agreed (and, as before, it is a talk that does not say "Serenity").
+Older recordings get **Check People**. Measured: 13 Sep one voice (14 min 49 s, linked to its face); 6 Sep whole pass under
+two minutes.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -1665,7 +1680,30 @@ top and its end. Reading the code is not verification, and neither is a passing 
     rows.** Rows join tracks by place and size, so one person who walks around can make two rows (the 6 Sep talk: one
     face at a time, two rows), and two people who take turns in one place could make one. Reason: without a face
     print nobody can be told apart, and counting faces in one frame needs no guess about identity. Faces alone never
-    open the privacy lock (`lockSubject` stays `.notChecked` until the voice step, M6b): a student can be heard unseen.
+    open the privacy lock (`PeopleFacts.from` returns `.notChecked` until the voice step ran too, M6b): a student can be
+    heard unseen.
+115. **The diarizer never writes or keeps a voice print: `Diarizer.configuration()` is the only configuration built,
+    `export.embeddingsPath` stays nil and chunk embeddings off, only times leave `Diarizer.diarize`, and FluidAudio's
+    offline mode is on before its models load from `~/Library/Application Support/FluidAudio/Models/speaker-diarization`.
+    Never call `OfflineDiarizerManager.prepareModels`.** Reason: with `embeddingsPath` set FluidAudio writes every
+    embedding to disk, a voice print of everyone in the room (research-people.md 2.5); and `prepareModels`, on a failed
+    load, deletes that model folder (Hark's too) and downloads it again, which is a fetch nobody said yes to (PLAN 2.2).
+    `VoicesTests.testEveryDiarizerConfigurationExportsNoEmbedding` reads the field; `make accept-people` checks the model
+    folder is unchanged by size and date.
+116. **The diarizer keeps overlapping speech (`exclusiveSegments` and `embedding.excludeOverlap` both off).** Reason:
+    measured 13 Oct on two-people-mixed.mp4, a voice that speaks only over the teacher (0:30 to 0:48.5) vanished into the
+    teacher with FluidAudio's defaults (one voice) and was found exactly with both off (Voice 2, 29.9 to 48.5 s). That
+    voice is a student heard while the teacher talks; missing it would open the privacy lock. Change these only with that
+    fixture measured again.
+117. **The people check counts as run only when both the face step and the voice step ran for the recording, and every
+    face row, voice and glimpse Ivan has not named counts as someone unnamed (`PeopleFacts.from`).** A name whose person
+    was removed from Settings counts as unnamed, never as agreed. Who Is Teaching names only the voice that speaks most
+    and its linked face (or, with no link, the face on screen most, if no other voice is linked to it); a name crosses a
+    link; a hand-given name always wins. Reason: PLAN review item 5 and Mac warning 90: the lock fails closed, and a
+    second row of the teacher (warning 114) costs Ivan one more naming, while a guess would cost a student's words in a
+    cloud request. Measured: the 13 Sep talk, Gabriel teaching and agreed, stays local (10 unnamed face rows after 12:39,
+    and it says "Serenity").
+
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

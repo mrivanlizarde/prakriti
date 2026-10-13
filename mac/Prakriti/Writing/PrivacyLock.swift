@@ -7,8 +7,8 @@ import Foundation
 //    recording marked as a talk, whose people check has run, in which everyone heard is named and has
 //    agreed to cloud models and nobody unnamed appears or speaks, and whose transcript does not name the
 //    teacher who has not agreed (v1's rule, kept: START_HERE Mac warning 90 says the lock must stay at
-//    least that strict). Until the people check exists (part M6), no real recording has run it, so every
-//    real recording stays on this Mac; only test fixtures marked as checked can reach a cloud model.
+//    least that strict). The people check (faces, part M6a, and voices, M6b) fills `PeopleFacts`; it counts
+//    as run only when both steps ran, and every face and voice Ivan has not named is someone unnamed.
 //
 // 2. What a request may carry (`PrivacyLock.release`), the cloud adapter's own check (warning 19). The
 //    only way to make a `CloudPayload`, and a cloud client takes nothing else (`CloudModelClient`), so no
@@ -17,8 +17,8 @@ import Foundation
 //    and refuses if a name, a muted name or a withheld span is still there. A refusal is logged with its
 //    reason only, never the text.
 
-/// What the people check found in one recording (part M6 fills it; until then every recording is
-/// `notChecked`). Names are Ivan's own naming per recording; nothing here is a face or voice print.
+/// What the people check found in one recording (`PeopleFacts.from`, part M6b: not checked until both the face
+/// step and the voice step ran). Names are Ivan's own naming per recording; nothing here is a face or voice print.
 struct PeopleFacts: Sendable, Equatable, Codable {
     struct Named: Sendable, Equatable, Codable {
         var personID: UUID
@@ -104,9 +104,9 @@ enum PrivacyLock {
     static let unnamed = "someone in it is not named"
     static let notAgreed = "someone heard in it has not agreed to cloud models"
 
-    /// The lock in plain sentences, for Settings, Models and Settings, Privacy. True of what the build does:
-    /// until the people check exists (part M6), no recording has run it, so nothing is sent.
-    static let settingsLine = "A cloud model reads only a talk in which everyone heard is named and has agreed to cloud models, and nobody else appears or speaks. Classes, and recordings where other people appear or speak, are only read by models on this Mac. Prakriti does not check who appears and speaks yet, so for now every recording is only read on this Mac. If a task is set to Anthropic or OpenAI, LM Studio does it instead, and the recording says so. Before anything is sent, names are replaced and the text is checked again."
+    /// The lock in plain sentences, for Settings, Models and Settings, Privacy. True of what the build does: the
+    /// people check (faces and voices, part M6b) feeds it, and a recording nobody named anyone in stays on this Mac.
+    static let settingsLine = "A cloud model reads only a talk in which everyone heard is named and has agreed to cloud models, and nobody else appears or speaks. Classes, and recordings where other people appear or speak, are only read by models on this Mac. Prakriti checks who appears and speaks while it makes a recording, and every face and voice you have not named counts as someone else, so until you name the teacher a recording is only read on this Mac. If a task is set to Anthropic or OpenAI, LM Studio does it instead, and the recording says so. Before anything is sent, names are replaced and the text is checked again."
 
     static func kindReason(_ kind: RecordingKind) -> String? {
         switch kind {

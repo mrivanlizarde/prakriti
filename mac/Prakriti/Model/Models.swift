@@ -24,6 +24,10 @@ final class Source {
     /// watcher passes over them, so a removed recording is not found again as new and made again; adding
     /// one by hand takes it off this list. Paths only: nothing about the recording itself is kept.
     var forgottenPaths: [String] = []
+    /// Which named person speaks into which microphone track in this folder (v2 part M6b, research-people.md 2.5:
+    /// "Track 2 is Gabriel's microphone"), as JSON of track number to `Person` id, read through `microphones`. Set once
+    /// from a recording's People tab; every recording from the folder heard on that track takes the name.
+    var microphonesJSON: String?
 
     @Relationship(deleteRule: .nullify, inverse: \Recording.source)
     var recordings: [Recording] = []
@@ -52,6 +56,17 @@ final class Source {
     }
 
     var url: URL { URL(fileURLWithPath: path, isDirectory: true) }
+
+    /// Track number to the named person whose microphone it is.
+    var microphones: [Int: UUID] {
+        get {
+            guard let data = microphonesJSON?.data(using: .utf8) else { return [:] }
+            return (try? JSONDecoder().decode([Int: UUID].self, from: data)) ?? [:]
+        }
+        set {
+            microphonesJSON = newValue.isEmpty ? nil : (try? JSONEncoder().encode(newValue)).flatMap { String(data: $0, encoding: .utf8) }
+        }
+    }
 
     func setting(for kind: OutputKind) -> OutputSetting? {
         outputSettings.first { $0.kind == kind }
@@ -161,6 +176,14 @@ final class Recording {
     /// Nil for a recording found before M6a, or not looked at yet.
     var facesJSON: String?
 
+    /// What the voice step found when the recording was last listened to (v2 part M6b): a VoicesFound as JSON, read
+    /// through `voices`. Times, counts and links to face rows; never a voice print. Nil until the voice step ran.
+    var voicesJSON: String?
+
+    /// Who Ivan named in this recording (v2 part M6b): Who Is Teaching and Name for This Recording, a PeopleNames as
+    /// JSON, read through `names`. Names only, never anything about a face or a voice.
+    var namesJSON: String?
+
     var source: Source?
 
     @Relationship(deleteRule: .cascade, inverse: \Run.recording)
@@ -201,10 +224,43 @@ final class Recording {
 
     var fileName: String { (filePath as NSString).lastPathComponent }
 
-    /// What the privacy lock reads about this recording (v2 part M5a). The people check does not exist
-    /// until part M6, so every recording is "not checked" and stays on this Mac. `hasSerenity` is set when
-    /// a transcript says her name (Privacy.mentionsSerenity) and never unset.
-    var lockSubject: LockSubject { LockSubject(kind: kind, mentionsSerenity: hasSerenity, people: .notChecked) }
+    /// What the privacy lock reads about this recording (v2 part M5a, fed by the people check since M6b): checked
+    /// only once both the face step and the voice step ran, with every face and voice named or counted as unnamed,
+    /// and each named person's cloud switch read from the store. `hasSerenity` is set when a transcript says her
+    /// name (Privacy.mentionsSerenity) and never unset.
+    var lockSubject: LockSubject { LockSubject(kind: kind, mentionsSerenity: hasSerenity, people: peopleFacts) }
+
+    /// What the people check found, as the lock reads it.
+    var peopleFacts: PeopleFacts {
+        PeopleFacts.from(faces: faces, voices: voices, names: resolvedNames, people: namedPeople)
+    }
+
+    /// The people named in Settings, Privacy, as the lock and the People tab read them. None when the recording is
+    /// not in a store (then nobody is named and nobody has agreed: the lock stays closed).
+    var namedPeople: [NamedPerson] {
+        ((try? modelContext?.fetch(FetchDescriptor<Person>())) ?? []).map(\.named)
+    }
+
+    /// Ivan's names for this recording, with the folder's microphones applied (a voice heard on a track the folder
+    /// names, and not named here by hand).
+    var resolvedNames: PeopleNames {
+        var names = self.names
+        if let voices, voices.source == .tracks, let microphones = source?.microphones {
+            for voice in voices.voices where names.voices[voice.id] == nil {
+                if let track = voice.track, let person = microphones[track] { names.voices[voice.id] = person }
+            }
+        }
+        return names
+    }
+
+    /// What the voice step found, or nil.
+    var voices: VoicesFound? { VoicesFound.decode(voicesJSON) }
+
+    /// Ivan's own names in this recording.
+    var names: PeopleNames {
+        get { PeopleNames.decode(namesJSON) }
+        set { namesJSON = newValue.isEmpty ? nil : newValue.json() }
+    }
 
     /// Only models on this Mac may read it (PrivacyLock.decide). Fails closed.
     var isPrivacyLocked: Bool { PrivacyLock.decide(lockSubject).isLocked }

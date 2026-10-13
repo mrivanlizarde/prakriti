@@ -20,3 +20,8 @@ final class Person {
         self.addedAt = addedAt
     }
 }
+
+extension Person {
+    /// What a make and the lock read about this person: no store object crosses into a make.
+    var named: NamedPerson { NamedPerson(id: id, name: name, cloudConsent: mayReadInCloud) }
+}

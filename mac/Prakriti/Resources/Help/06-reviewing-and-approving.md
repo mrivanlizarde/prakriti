@@ -79,12 +79,24 @@ what any control does, choose Help > Show Quick Help: the top of the inspector s
 under the pointer does, with a link to more in Help.
 :::
 
-:::unless people
+:::unless voices
 ## Say what it is
 
 Under What this is, choose **Talk, one teacher speaking**, **Class** or **Conversation**. Prakriti does
 not yet tell one voice from another, so only a talk with one teacher speaking can be approved. Before
 you approve, listen for any other voice, and for any name said aloud.
+:::
+
+:::requires voices
+## Say what it is, and who is teaching
+
+Under What this is, choose **Talk, one teacher speaking**, **Class** or **Conversation**. Only a talk with
+one teacher speaking can be approved. Under **Who is teaching**, choose the teacher, so the People tab can say
+how much of the recording is theirs.
+
+Prakriti lists every voice it hears in the People tab, but nothing it finds is left out of the episode yet.
+Before you approve, listen to every other voice listed there, and for any name said aloud. When the voices were
+told apart on one mixed track, the People tab lists each change of voice: listen to those too.
 :::
 
 :::requires people

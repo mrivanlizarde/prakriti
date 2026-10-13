@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// The inspector's People tab, read only (v2 part M6a, docs/v2/design-spec.md 3.5.2): what the face step found,
-/// in one plain sentence, then one row per face as far as Prakriti can tell without knowing who anyone is, each
-/// with its face cropped live from the original and held in memory only. Nobody is named and nothing is decided
-/// here yet; names and the choices of who appears come with later parts. A recording found before faces were
-/// looked for offers Look for Faces instead of looking by itself (docs/v2/PLAN.md rule 2.1.7).
+/// The inspector's People tab (v2 parts M6a and M6b, docs/v2/design-spec.md 3.5.2): what the face step and the voice
+/// step found, in plain sentences, then one row per face and one per voice with no face, each with Name for This
+/// Recording. A face's picture is cropped live from the original and held in memory only. Nothing is decided here
+/// yet: the choices of who appears in each output come with part M6c. A recording found before the people pass existed
+/// offers Check People instead of checking by itself (docs/v2/PLAN.md rule 2.1.7).
 struct PeopleTab: View {
     let recording: Recording
     @Environment(AppModel.self) private var model
@@ -13,61 +13,115 @@ struct PeopleTab: View {
     static let rowLimit = 12
 
     var body: some View {
+        let people = recording.namedPeople
+        let names = recording.resolvedNames.resolved(faces: recording.faces, voices: recording.voices)
         Form {
             if let faces = recording.faces {
                 Section {
-                    Text(faces.summary)
+                    Text(summary(faces, people: people))
                         .font(AppFont.body)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("Looked at " + Format.dayAndTime(faces.checkedAt) + ", two frames a second. Only when and where each face was seen is kept, never a picture of it.")
+                    Text(keptLine(faces))
                         .font(AppFont.secondary)
                         .foregroundStyle(.appSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                if faces.hasPicture && !faces.people.isEmpty {
+                if (faces.hasPicture && !faces.people.isEmpty) || !(recording.voices?.voices.isEmpty ?? true) {
                     Section {
-                        ForEach(faces.people.prefix(Self.rowLimit)) { person in
-                            FaceRow(person: person, recording: recording)
+                        // Face rows and voice rows share one list, and both number from 1, so each gets its own kind
+                        // of id (two rows with the same id draw the first twice; measured in the M6b snapshots).
+                        ForEach(faces.people.prefix(Self.rowLimit), id: \.rowID) { person in
+                            FaceRow(person: person, recording: recording, voice: voice(linkedTo: person.id),
+                                    name: names.faces[person.id].flatMap { id in people.first { $0.id == id }?.name })
                         }
                         if faces.people.count > Self.rowLimit {
                             RowNote("And \(Format.count(faces.people.count - Self.rowLimit, "more row")).")
                         }
+                        ForEach(unlinkedVoices, id: \.rowID) { voice in
+                            VoiceRow(voice: voice, recording: recording,
+                                     name: names.voices[voice.id].flatMap { id in people.first { $0.id == id }?.name })
+                        }
                         if faces.people.count > 1 {
-                            RowNote("Each row is a face seen in one place in the picture. One person who moves around can make two rows, so the number at once, above, is the one to go by.")
+                            RowNote("Each face row is a face seen in one place in the picture. One person who moves around can make two rows, so the number at once is the one to go by.")
                         }
-                        if faces.glimpses > 0 {
-                            RowNote(Format.count(faces.glimpses, "face") + " seen for under a second " + (faces.glimpses == 1 ? "is" : "are") + " not listed.")
-                        }
+                        glimpses(faces, name: names.faces[0].flatMap { id in people.first { $0.id == id }?.name })
                     } header: {
                         SectionHeader("In This Recording")
                     }
                 } else if faces.hasPicture && faces.glimpses > 0 {
+                    Section { glimpses(faces, name: names.faces[0].flatMap { id in people.first { $0.id == id }?.name }) }
+                }
+                if let voices = recording.voices, !voices.listen.isEmpty {
                     Section {
-                        RowNote(Format.count(faces.glimpses, "face") + " seen for under a second " + (faces.glimpses == 1 ? "is" : "are") + " not listed.")
+                        RowNote("The voices were told apart on one mixed track, so who said what is a best guess. "
+                                + "\(Format.count(voices.listen.count, "change")) from one voice to another, the first at \(Format.timecode(voices.listen[0])), "
+                                + (voices.listen.count == 1 ? "is" : "are") + " worth listening to.")
                     }
                 }
-                lookAgain
+                if people.isEmpty {
+                    Section {
+                        RowNote("To name the people in a recording, add their names in Settings, Privacy. A name is kept only as a name: nothing about a face or a voice.")
+                        Button("Open Settings, Privacy") { model.showSettings(.privacy) }
+                            .font(AppFont.body)
+                    }
+                }
+                checkAgain
             } else if model.faceChecking.contains(recording.id) {
-                Section {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                        Text(PipelineStep.faces.doing).font(AppFont.body)
-                    }
-                }
+                Section { working }
             } else {
                 Section {
                     RowNote(recording.status == .found || recording.status == .working
-                            ? "Faces are looked for while the outputs are made, after the transcript."
-                            : "Not looked at. This recording was found before Prakriti looked for faces.")
+                            ? "Faces and voices are checked while the outputs are made, after the transcript."
+                            : "Not checked. This recording was found before Prakriti checked who appears and speaks.")
                     problem
                     if recording.status != .found && recording.status != .working {
-                        Button("Look for Faces") { model.lookForFaces(recording) }
+                        Button("Check People") { model.checkPeople(recording) }
                             .font(AppFont.body)
                     }
                 }
             }
         }
         .formStyle(.grouped)
+    }
+
+    func summary(_ faces: FacesFound, people: [NamedPerson]) -> String {
+        guard let voices = recording.voices else { return faces.summary }
+        let said = PeopleWords.summary(faces: faces, voices: voices, names: recording.resolvedNames, people: people)
+        // Faces at once, when other people appear: the voices' sentence first, then how many are seen together.
+        if faces.mostAtOnce >= 2 {
+            return said + " Up to \(faces.mostAtOnce) people are on screen at once" + (faces.firstWithOthers.map { ", first at " + Format.timecode($0) } ?? "") + "."
+        }
+        return said
+    }
+
+    func keptLine(_ faces: FacesFound) -> String {
+        guard let voices = recording.voices else {
+            return "Faces looked at " + Format.dayAndTime(faces.checkedAt) + ", two frames a second. Voices not listened for yet. Only when and where each face was seen is kept, never a picture of it."
+        }
+        return "Checked " + Format.dayAndTime(voices.checkedAt) + ". " + voices.sourceLine
+            + " Only when and where each face is seen and when each voice speaks are kept, never a picture of a face or a print of a voice."
+    }
+
+    func voice(linkedTo face: Int) -> FoundVoice? { recording.voices?.voices.first { $0.face == face } }
+
+    var unlinkedVoices: [FoundVoice] { (recording.voices?.voices ?? []).filter { $0.face == nil } }
+
+    @ViewBuilder func glimpses(_ faces: FacesFound, name: String?) -> some View {
+        if faces.glimpses > 0 {
+            HStack(alignment: .firstTextBaseline) {
+                RowNote(Format.count(faces.glimpses, "face") + " seen for under a second " + (faces.glimpses == 1 ? "is" : "are") + " not listed"
+                        + (name.map { ", named \($0)." } ?? ", and not named."))
+                Spacer(minLength: 8)
+                NameMenu(recording: recording, current: name) { model.nameFace(0, as: $0, in: recording) }
+            }
+        }
+    }
+
+    var working: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+            Text("Looking for faces and listening for voices").font(AppFont.body)
+        }
     }
 
     @ViewBuilder private var problem: some View {
@@ -79,17 +133,14 @@ struct PeopleTab: View {
         }
     }
 
-    @ViewBuilder private var lookAgain: some View {
+    @ViewBuilder private var checkAgain: some View {
         if recording.status != .working {
             Section {
                 problem
                 if model.faceChecking.contains(recording.id) {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                        Text(PipelineStep.faces.doing).font(AppFont.body)
-                    }
+                    working
                 } else {
-                    Button("Look for Faces Again") { model.lookForFaces(recording) }
+                    Button(recording.voices == nil ? "Check People" : "Check People Again") { model.checkPeople(recording) }
                         .font(AppFont.body)
                 }
             }
@@ -97,11 +148,51 @@ struct PeopleTab: View {
     }
 }
 
-/// One row: the face, its label, and how long it is on screen.
+/// Name for This Recording: the people named in Settings, Privacy, and Not Named.
+struct NameMenu: View {
+    let recording: Recording
+    let current: String?
+    let choose: (Person?) -> Void
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Menu {
+            ForEach(model.namedPeopleList()) { person in
+                Button(person.name) { choose(person) }
+            }
+            if current != nil {
+                Divider()
+                Button("Not Named") { choose(nil) }
+            }
+            Divider()
+            Button("Add a Name in Settings") { model.showSettings(.privacy) }
+        } label: {
+            Text("Name for This Recording").font(AppFont.secondary)
+        }
+        .menuStyle(.button)
+        .fixedSize()
+        .accessibilityLabel("Name for This Recording")
+    }
+}
+
+/// One face: its picture, its name or label, how long it is on screen and, when a voice is linked to it, how long it
+/// speaks.
 struct FaceRow: View {
     let person: FacePerson
     let recording: Recording
+    var voice: FoundVoice? = nil
+    var name: String? = nil
     @Environment(AppModel.self) private var model
+
+    var detail: String {
+        var line = "On screen \(Format.length(person.onScreen)), between \(Format.timecode(person.first)) and \(Format.timecode(person.last))."
+        if let voice {
+            line += " Speaks \(Format.length(voice.speaking))" + (voice.track.map { ", on track \($0)" } ?? "") + (voice.linkedBy.map { ": \($0)." } ?? ".")
+        } else if recording.voices != nil {
+            line += " No voice is linked to this face."
+        }
+        return line
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -120,23 +211,78 @@ struct FaceRow: View {
             .clipShape(Circle())
             .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
-                Text(person.label)
+                Text(name ?? person.label)
                     .font(AppFont.body)
-                Text("On screen \(Format.length(person.onScreen)), between \(Format.timecode(person.first)) and \(Format.timecode(person.last)).")
+                Text(detail)
                     .font(AppFont.secondary)
                     .foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+                if recording.voices != nil {
+                    NameMenu(recording: recording, current: name) { model.nameFace(person.id, as: $0, in: recording) }
+                        .padding(.top, 2)
+                }
             }
         }
         .padding(.vertical, 2)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
         .task(id: "\(recording.id)-\(person.id)") { model.faceCrops.load(person, from: recording) }
     }
 }
 
-/// The people line under a card and in the list's People column (design spec 3.1.1), once faces were looked for.
+/// One voice with no face linked to it: the waveform symbol in a circle (design spec 3.5.2), its name or label, how
+/// long it speaks, and for a microphone track, naming the track for the whole folder.
+struct VoiceRow: View {
+    let voice: FoundVoice
+    let recording: Recording
+    var name: String? = nil
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: "waveform.circle")
+                .font(AppFont.welcomeRowSymbol)
+                .foregroundStyle(.appSecondary)
+                .frame(width: 48, height: 48)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(name ?? voice.label)
+                    .font(AppFont.body)
+                Text("Speaks \(Format.length(voice.speaking)), between \(Format.timecode(voice.first)) and \(Format.timecode(voice.last))"
+                     + (voice.track.map { ", on track \($0)" } ?? "") + ". No face is linked to this voice.")
+                    .font(AppFont.secondary)
+                    .foregroundStyle(.appSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 8) {
+                    NameMenu(recording: recording, current: name) { model.nameVoice(voice.id, as: $0, in: recording) }
+                    if let track = voice.track, recording.source != nil {
+                        Menu {
+                            ForEach(model.namedPeopleList()) { person in
+                                Button(person.name) { model.setMicrophone(track: track, to: person, for: recording) }
+                            }
+                            if recording.source?.microphones[track] != nil {
+                                Divider()
+                                Button("No One") { model.setMicrophone(track: track, to: nil, for: recording) }
+                            }
+                        } label: {
+                            Text("Track \(track) in This Folder").font(AppFont.secondary)
+                        }
+                        .menuStyle(.button)
+                        .fixedSize()
+                    }
+                }
+                .padding(.top, 2)
+            }
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .contain)
+    }
+}
+
+/// The people line under a card and in the list's People column (design spec 3.1.1), once faces were looked for:
+/// the names of the people named in it, then how many others appear and speak.
 struct PeopleLine: View {
     let faces: FacesFound
+    var recording: Recording? = nil
 
     var symbol: String {
         guard faces.hasPicture else { return "video.slash" }
@@ -147,9 +293,14 @@ struct PeopleLine: View {
         }
     }
 
+    var text: String {
+        guard let recording else { return faces.line }
+        return PeopleWords.line(faces: faces, voices: recording.voices, names: recording.resolvedNames, people: recording.namedPeople) ?? faces.line
+    }
+
     var body: some View {
         Label {
-            Text(faces.line)
+            Text(text)
                 .font(AppFont.secondary)
                 .foregroundStyle(.appSecondary)
                 .lineLimit(2)
@@ -161,4 +312,12 @@ struct PeopleLine: View {
         }
         .accessibilityElement(children: .combine)
     }
+}
+
+extension FacePerson {
+    var rowID: String { "face-\(id)" }
+}
+
+extension FoundVoice {
+    var rowID: String { "voice-\(id)" }
 }

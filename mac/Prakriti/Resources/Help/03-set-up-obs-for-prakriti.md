@@ -92,6 +92,11 @@ Track 1 is everything mixed together: it is what plays in QuickTime Player or an
 2 to 5 each hold one source alone, so each voice is kept on its own in the original. The room
 microphone stays out of track 1, so students' voices are never mixed into the teachers' sound.
 
+:::requires voices
+Prakriti reads who speaks from tracks 2 and up, one microphone each, so it does not have to guess between voices
+on a mixed track. Name each teacher's microphone once with Track 2 in This Folder, in the People tab.
+:::
+
 :::requires people
 Prakriti builds the finished sound from tracks 2 to 5, so it can keep each teacher's voice clean and
 leave out a voice you choose to remove.

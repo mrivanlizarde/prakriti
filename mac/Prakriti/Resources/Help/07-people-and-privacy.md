@@ -4,7 +4,7 @@ title: Privacy and students
 summary: What stays on this Mac, which recordings only models on this Mac may read, and how to protect students in a class.
 section: people
 order: 1
-keywords: [privacy, students, class, privacy lock, Serenity, local, cloud, Anthropic, OpenAI, Claude API, transcript, approve, cut, notifications, names, children, consent]
+keywords: [privacy, students, class, privacy lock, Serenity, local, cloud, Anthropic, OpenAI, Claude API, transcript, approve, cut, notifications, names, children, consent, voices, teacher, microphone]
 related: [capture-the-best-video, reviewing-and-approving, models-and-api-keys]
 ---
 
@@ -30,13 +30,15 @@ cloud models, and nobody else appears or speaks. Everything else is only read by
 if a task is set to Anthropic or OpenAI: a class, a conversation, a test, a recording whose kind is still Not
 set, and any recording where other people appear or speak.
 
-:::unless faces
+:::unless voices
 Prakriti does not check who appears and speaks yet, so for now every recording is only read on this Mac.
 :::
 
-:::requires faces
-Prakriti looks for faces now, but not yet for voices, so it cannot tell that nobody else speaks. For now every
-recording is only read on this Mac.
+:::requires voices
+Prakriti checks who appears and who speaks in every recording it makes, and every face and voice you have not
+named counts as someone else. So a recording is only read on this Mac until you name the teacher, and stays that
+way while anyone else appears or speaks in it. A teacher's words go to a cloud model only once you have turned on
+"Cloud models may read their words" for them in Settings, Privacy.
 :::
 
 LM Studio does that task instead, and the inspector's Checks tab says why. Names are replaced before anything
@@ -57,11 +59,38 @@ recognize them in another recording.
   the tab is open, and is never saved.
 - **A notice** says "Other people appear in this recording." the first time two or more faces are seen at once.
   Like every notice, it never names the recording or anyone in it.
-- **A recording found before Prakriti looked for faces** shows Look for Faces in its People tab.
 
-Prakriti does not know who anyone is, and nothing it finds changes what is made: the outputs are the same as
-before. A row is a face seen in one place in the picture, so one person who walks around can show as two rows;
-"up to 2 at once" is the number to go by.
+Nothing Prakriti finds changes what is made: the outputs are the same as before. A row is a face seen in one place
+in the picture, so one person who walks around can show as two rows; "up to 2 at once" is the number to go by.
+:::
+
+:::requires voices
+## Voices, and naming who is who
+
+Right after the faces, Prakriti listens for who speaks when, on this Mac.
+
+- **With each microphone on its own track** (see [Set up OBS for Prakriti](03-set-up-obs-for-prakriti.md)),
+  who speaks is read from tracks 2 and up: a microphone track is someone speaking when it is clearly louder than
+  the sound of the same voice reaching the other microphones.
+- **With one mixed track,** voices are told apart by how they sound. That is a best guess, so the People tab lists
+  each change from one voice to another as a moment worth listening to.
+- **Each voice is linked to a face** when it speaks while that face is the only one on screen, or while that
+  face's mouth moves with it. When Prakriti is not sure, the voice is shown on its own, with no face.
+
+Prakriti does not know who anyone is. You tell it, one recording at a time:
+
+1. In Settings, Privacy, under People You Name, add the names of the teachers who appear in your recordings.
+2. In the inspector's Info tab, choose the teacher under **Who is teaching**. The voice that speaks the most, and
+   its face, take that name, and the People tab says, for example, "Gabriel speaks for 92 percent."
+3. Anyone else: in the People tab, click **Name for This Recording** under their face or voice. A name given to a
+   face also reaches the voice linked to it.
+4. For a microphone that always belongs to the same person, click **Track 2 in This Folder** under that voice, and
+   choose them: every recording from that folder heard on that track takes the name.
+
+Only times are kept: when each face is seen and when each voice speaks. Never a picture of a face, never a print
+of a voice, and nothing that could recognize anyone in another recording. A name is kept as a name.
+
+A recording found before Prakriti checked who appears and speaks shows **Check People** in its People tab.
 :::
 
 :::unless people

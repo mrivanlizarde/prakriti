@@ -37,6 +37,7 @@ struct InfoTab: View {
                         .font(AppFont.secondary).foregroundStyle(.appSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                WhoIsTeaching(recording: recording)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Notes").font(AppFont.secondary).foregroundStyle(.appSecondary)
                     TextEditor(text: $recording.notes)
@@ -220,5 +221,50 @@ struct InspectorTimeField: View {
         }
         problem = apply(seconds)
         if problem != nil { text = value.map(TimeText.string) ?? "" }
+    }
+}
+
+/// Who is teaching (v2 part M6b, docs/v2/PLAN.md M6): one pick per recording, from the people named in Settings, Privacy.
+/// It names the voice that speaks the most and the face that goes with it, so the People tab can say "Gabriel speaks
+/// for 92 percent." Only a name: nothing about the person's face or voice is kept for it.
+struct WhoIsTeaching: View {
+    let recording: Recording
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let people = model.namedPeopleList()
+        let teacher = recording.names.teacher
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Who is teaching").font(AppFont.secondary).foregroundStyle(.appSecondary)
+            if people.isEmpty {
+                Text("No one is named yet. Add names in Settings, Privacy.")
+                    .font(AppFont.body)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Open Settings, Privacy") { model.showSettings(.privacy) }
+                    .font(AppFont.body)
+            } else {
+                Picker("Who is teaching", selection: Binding(get: { teacher }, set: { id in
+                    model.setTeacher(people.first { $0.id == id }, for: recording)
+                })) {
+                    Text("Not chosen").tag(UUID?.none)
+                    ForEach(people) { person in
+                        Text(person.name).tag(Optional(person.id))
+                    }
+                }
+                .labelsHidden()
+                .font(AppFont.body)
+                .disabled(recording.status == .working)
+            }
+            Text(teacherNote)
+                .font(AppFont.secondary).foregroundStyle(.appSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    var teacherNote: String {
+        guard recording.voices != nil else {
+            return "Gives the name to the voice that speaks the most, and its face, once Prakriti has checked who appears and speaks."
+        }
+        return "Gives the name to the voice that speaks the most, and its face. Name anyone else in the People tab."
     }
 }

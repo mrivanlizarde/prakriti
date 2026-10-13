@@ -139,6 +139,17 @@ final class StoreMigrationTests: XCTestCase {
             XCTAssertTrue(recordings.allSatisfy { $0.facesJSON == nil }, "no recording arrives with faces looked for")
         }
         print("v2 part M6a: \(recordings.filter { $0.facesJSON != nil }.count) recordings with faces looked for")
+        // v2 part M6b: no recording arrives listened to or with anyone named, and no folder with a microphone named.
+        if !before.has("ZRECORDING", "ZVOICESJSON") {
+            XCTAssertTrue(recordings.allSatisfy { $0.voicesJSON == nil }, "no recording arrives with voices listened for")
+        }
+        if !before.has("ZRECORDING", "ZNAMESJSON") {
+            XCTAssertTrue(recordings.allSatisfy { $0.namesJSON == nil && $0.names.isEmpty }, "no recording arrives with anyone named")
+        }
+        if !before.has("ZSOURCE", "ZMICROPHONESJSON") {
+            XCTAssertTrue(sources.allSatisfy { $0.microphones.isEmpty }, "no folder arrives with a microphone named")
+        }
+        print("v2 part M6b: \(recordings.filter { $0.voicesJSON != nil }.count) recordings with voices, \(recordings.filter { $0.namesJSON != nil }.count) with names, \(sources.filter { $0.microphonesJSON != nil }.count) folders with microphones")
         print("v2 part M3a fields: \(recordings.filter { !$0.checkedClaims.isEmpty }.count) recordings with ticked claims, \(sources.filter { !$0.forgottenPaths.isEmpty }.count) folders with removed files (\(sources.map(\.forgottenPaths.count).reduce(0, +)) files)")
         print("Rows before and after: recordings \(before.count("ZRECORDING"))/\(recordings.count), folders \(before.count("ZSOURCE"))/\(sources.count), output settings \(before.count("ZOUTPUTSETTING"))/\(settings.count), Activity lines \(before.count("ZLOGENTRY"))/\(lines); approved \(recordings.filter { $0.approvedAt != nil }.count)")
         let ready = recordings.filter { $0.status == .readyForYourYes }

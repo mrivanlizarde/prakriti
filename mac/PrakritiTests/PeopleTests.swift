@@ -270,7 +270,7 @@ final class PeopleTests: XCTestCase {
         XCTAssertFalse(options.plannedSteps.contains(.faces), "the pipeline alone does not look for faces")
         options.people = PeopleSetup(recordingID: UUID(), folders: PeopleFolders(support: work))
         let steps = options.plannedSteps
-        XCTAssertEqual(steps, [.complete, .capture, .sound, .speechAudio, .transcript, .coverage, .faces, .episode, .loudness, .report])
+        XCTAssertEqual(steps, [.complete, .capture, .sound, .speechAudio, .transcript, .coverage, .faces, .voices, .episode, .loudness, .report])
         options.checksOnly = true
         XCTAssertFalse(options.plannedSteps.contains(.faces), "Ask me first checks only that the file is complete and has sound")
         XCTAssertEqual(PipelineStep.faces.title, "Faces")
