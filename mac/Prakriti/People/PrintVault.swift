@@ -11,10 +11,12 @@ import Security
 // - The whole `People/` folder is excluded from Time Machine (`isExcludedFromBackup`), so a forgotten print does not
 //   live on in an old backup.
 // - Forget destroys the key first, then proves that every sealed file of the person fails to open, then deletes the
-//   files and the person's folders, and reports what it found. Apple's face index and its rebuild are part M7b.
+//   files and the person's folders, and reports what it found. The face index is then rebuilt without them
+//   (`AppModel.rebuildAfterForget`, v2 part M7b).
 //
-// Part M7a builds the vault and Forget; nothing in M7a seals anything (recognition, which learns, is M7b), so on
-// Ivan's Mac `People/Faces` and `People/Voices` stay absent (PLAN M6 check 7, M7 check 2). Files under `People/`
+// Part M7b seals face crops (`SealedCrop`, FaceIndex.swift) for a person whose recorded release covers their face, and
+// nothing for anyone else; voice prints are not learned yet. While nobody has such a release, `People/Faces`,
+// `People/Voices` and `People/FaceIndex` stay absent (PLAN M6 check 7, M7 check 2). Files under `People/`
 // never reach the network (`RulesTests.testFaceWorkCannotReachTheNetwork`).
 
 /// Where a person's key is kept. The live copy, a development copy and the tests each use their own Keychain service,

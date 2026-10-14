@@ -693,6 +693,23 @@ destroys the key and proves the files fail to open, but nothing in M7a seals any
 folder is excluded from Time Machine at every launch; anything the vault keeps is deleted 12 months after the person last
 appeared (`People/Retention.swift`), with a Needs You line 30 days before.
 
+**v2 part M7b, recognition, Tue 13 Oct (see BUILD-LOG "v2 part M7b"):** a person whose recorded release covers their face is
+learned and then recognized in each recording made or checked after that. **Learn [Name]** (the release button when it covers
+a face) cuts up to 50 crops of their face from the face rows Ivan named for them (by hand, as the teacher, or a Yes in Review;
+never a row recognition named by itself), at most 8 per recording, each sealed with its origin under their own key
+(`SealedCrop`, `Learning`), and rebuilds Apple's face index (`MediaIntelligence.FaceGroupAnalyzer` in `People/FaceIndex/`,
+`FaceIndex.rebuild`) whole from the sealed crops. After a make or Check People, `AppModel.recognize` picks up to 5 frames
+spread over each track plus one every 10 s (`FrameChoice`), takes them into a job folder, identifies them with
+`identifyFaces` (which stores nothing), and votes per face row (`Votes`): named without asking at 3 or more frames, 60% or
+more the same person, none matched to anyone else, no linked voice named as someone else, and every track of the row with 3
+or more frames agreeing; otherwise "Is this Gabriel?" (Yes, Not Gabriel) or unnamed. The votes are kept on the recording
+(`PeopleNames.recognition`, `notThem`); Ivan's own names and his teacher always come first. **Review Possible Matches** on a
+person's page, **Not [Name]** in the People tab, **Merge 2 People** (Command-click two in People, or More, Merge With; refused
+unless both have a release; crops resealed under one key, names and choices moved, the stricter consent kept), and Forget
+now rebuilds the index without the person and tries one of their old crops against it. `make calibrate-people` counts votes
+against Ivan's answers in a copy of the development store. Voice prints are not learned. With nobody learned nothing runs
+and `People/Faces`, `Voices` and `FaceIndex` stay absent.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -826,6 +843,12 @@ cd ~/Code/prakriti/mac && make accept-podcast MILESTONE=podcast
 ```
 ```bash
 cd ~/Code/prakriti/mac && make accept-episode-text MILESTONE=episode-text
+```
+```bash
+cd ~/Code/prakriti/mac && make accept-gallery MILESTONE=v2-m7b
+```
+```bash
+cd ~/Code/prakriti/mac && make calibrate-people MILESTONE=v2-m7b
 ```
 ```bash
 cd ~/Code/prakriti/mac && make accept-help MILESTONE=v2-m2a
@@ -1831,7 +1854,8 @@ top and its end. Reading the code is not verification, and neither is a passing 
 130. **Forget destroys the key first, then proves every sealed file fails to open, then deletes the files and any empty
     `Faces` or `Voices` folder (`PrintVault.forget`, `ForgetProof.holds`).** Removing a name in Settings, Privacy and
     retention both go through it. Reason: PLAN M7 ("then prove it"), and PLAN M6 check 7 needs those folders absent while
-    nobody has a release, so they never sit empty. Apple's face index and its rebuild are M7b's to add here.
+    nobody has a release, so they never sit empty. Since M7b Forget also rebuilds the face index without the person (`AppModel.rebuildAfterForget`)
+    and tries one of their old crops, held in memory from before the key was destroyed, against it (`ForgetIndexProof`).
 131. **The People folder is excluded from Time Machine at every launch (`PrintVault.prepare`, from `didLaunch`), and before
     anything is sealed.** Reason: Ivan's Mac backs up to a local Time Machine disk; without it a forgotten print would live
     on in an old backup (research-people.md 5.2). Checked with `tmutil isexcluded` by `make accept-gallery` and
@@ -1839,8 +1863,33 @@ top and its end. Reading the code is not verification, and neither is a passing 
 132. **A key photo is a reference, never a picture: `Person.keyPhotoJSON` holds a recording id and a face row, and
     `KeyPhotos` crops the frame in memory while People shows it.** Reason: the card pictures stay the only images under
     Application Support (PLAN M6 check 7), and a stored face picture is kept only where the plan allows it. Name This
-    Person defaults to Name Only, and a recorded release learns nothing until recognition (M7b) is built and says so.
+    Person defaults to Name Only; since M7b a recorded release that covers a face learns it (sealed crops, Mac warning 134).
 
+133. **`FaceGroupAnalyzer.Face.bounds` has its origin at the BOTTOM left, like Vision's, whatever its documentation says;
+    every analyzer box goes through `AnalyzerGeometry.box(fromAnalyzer:)`.** Reason: measured Tue 13 Oct on
+    two-people-mixed.mp4, the analyzer gave the main face y 0.497 where Vision's top-left box says 0.284 (1 - 0.284 - 0.224 =
+    0.492); research-people.md 1.2 and Apple's page say top left. Read as top left, no found face would land on any row and
+    every recording would read as "nobody recognized", silently. `make accept-gallery` measures the landing every run (20 of
+    20 picks on 13 Oct); `RecognitionTests` pins the measured numbers.
+134. **The face index is never the record: it is rebuilt whole from the sealed crops after every change (Learn, a Yes, a
+    Not, Merge, Forget), purged first, and removed when nobody is learned (`FaceIndex.rebuild`), one change at a time
+    (`AppModel.enqueueIndexWork`).** Asset ids are the sealed crop's own UUID file name, and whose crop it is comes from the
+    vault folder it sits in. Reason: research-people.md 5.2, Prakriti cannot encrypt the framework's SQLite files, and the
+    framework prints every asset id to the log (measured), so an id must never be a file name of a recording.
+135. **A person is learned only from rows Ivan named (by hand, as the teacher, a Yes in Review), never from a row
+    recognition named by itself (`AppModel.learningSources`).** Reason: PLAN risk R3; learning from its own answers would
+    let one stranger taken for Gabriel teach the index to take the next one too.
+136. **A vote names a row only with 3 or more identified frames, 60% or more the same person, no frame matched to anyone
+    else or to a group holding two people, no linked voice named as someone else, and every track of the row with 3 or more
+    frames voting the same name (`Votes.row`).** An ask names nobody until Ivan says Yes. Change these only with
+    `make calibrate-people` showing a stranger taken for a named person under 1 in 1,000 rows. Reason: research-people.md
+    1.6 and 2.2, and Mac warning 114 (rows join tracks by place, so two people in one seat can share a row). A recognized
+    name counts for the privacy lock like any name Ivan gives, so this rule is part of the lock (Mac warning 90).
+137. **Identifying stores nothing: frames go to a job folder deleted when the pass ends, and `identifyFaces(in:)` is the
+    only analyzer call made on a recording.** Never `insertOrUpdateAssets` on a recording's frames. Reason: PLAN M6 check 7
+    and M7 check 3; measured 13 Oct, the SHA-256 of every file under a People folder with an index is identical before and
+    after an identify pass (`FaceIndex.listing`, `make accept-gallery`). Voice prints are not learned in this version;
+    the release's voice switch is kept for when they are.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

@@ -723,6 +723,9 @@ final class PipelineRunner {
         }
         // The card picture (v2 part M6d), chosen from what the face step just found and Ivan's choices; never before it.
         if result.faces != nil { model.refreshCardPicture(recording) }
+        // Recognition (v2 part M7b): named people with a release, found in the recording once its people check ran. Does
+        // nothing while nobody is learned.
+        if result.faces != nil && result.voices != nil { model.recognize(recording) }
         // Once a transcript says "Serenity", the recording stays privacy locked (never unset).
         if result.mentionsSerenity && !recording.hasSerenity {
             recording.hasSerenity = true

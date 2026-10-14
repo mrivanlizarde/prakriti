@@ -2,9 +2,9 @@ import Foundation
 import SwiftData
 
 // The People gallery's actions (v2 part M7a, docs/v2/PLAN.md M7): Name This Person with its consent sheet, a release
-// recorded or Name Only, Rename, Favorite, Pin, Hide from People, Change Key Photo, Custom Order, Forget Face and Voice
-// for the vault, and retention. Nothing here learns a face or a voice: recognition is part M7b. Names and the release
-// record are kept in the store; nothing about a face or a voice is.
+// recorded or Name Only, Rename, Favorite, Pin, Hide from People, Change Key Photo, Custom Order, Forget Face and Voice,
+// and retention. Names and the release record are kept in the store. Since part M7b a release that covers a face starts
+// learning it (RecognitionActions.swift), and Forget rebuilds the face index without the person.
 
 /// What Name This Person names in a recording: a face row (0: the faces seen for under a second) or a voice.
 enum NameTarget: Hashable, Sendable {
@@ -81,8 +81,8 @@ extension AppModel {
         return nil
     }
 
-    /// Records a written release on the person (research-people.md 5.3). Recognition is part M7b: nothing is learned
-    /// here, and the person page says "Recognition off" until it is built.
+    /// Records a written release on the person (research-people.md 5.3). When it covers their face, Prakriti learns it
+    /// from the rows already named for them (v2 part M7b). Voice prints are not learned in this version.
     func recordRelease(_ draft: NameThisPersonDraft, for person: Person) {
         guard draft.releaseIsComplete else { return }
         person.releaseSignedOn = draft.releaseSignedOn
@@ -96,7 +96,9 @@ extension AppModel {
         person.mayAppear = draft.mayAppear
         person.pinned = true
         try? context.save()
-        record("Recorded a written release for \(person.name), signed \(Format.fullDay(draft.releaseSignedOn)). Nothing about their face or voice is kept.")
+        record("Recorded a written release for \(person.name), signed \(Format.fullDay(draft.releaseSignedOn))."
+               + (person.learnFace ? " Learning their face from the recordings where they are named." : " It does not cover their face, so nothing is learned."))
+        if person.learnFace { learn(person) }
     }
 
     // MARK: The gallery
@@ -107,7 +109,7 @@ extension AppModel {
         let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return "Type a name." }
         if namedPeopleList().contains(where: { $0.id != person.id && $0.name.caseInsensitiveCompare(name) == .orderedSame }) {
-            return "\(name) is already in People. To put two people together, Merge comes with recognition."
+            return "\(name) is already in People. To put two people together, use Merge 2 People."
         }
         let old = person.name
         guard old != name else { return nil }
@@ -173,6 +175,11 @@ extension AppModel {
     /// switched off. The name stays on recordings already checked (research-people.md 5.4).
     @discardableResult
     func forgetFaceAndVoice(_ person: Person) -> PrintVault.ForgetProof {
+        // One old crop, opened before the key is destroyed and held in memory only, for the index's proof (M7b).
+        let oldCrop = faceIndex.crops(of: [person.id]).first.flatMap { crop in
+            (try? vault.open(crop.file, person: person.id)).flatMap { try? SealedCrop.decode($0).jpeg }
+        }
+        let hadIndex = faceIndex.exists
         let proof = vault.forget(person: person.id)
         person.learnFace = false
         person.learnVoice = false
@@ -180,6 +187,7 @@ extension AppModel {
         person.pinned = false
         try? context.save()
         record("Forgot \(person.name)'s face and voice. " + proof.line, level: proof.holds ? .info : .attention)
+        if hadIndex || oldCrop != nil { rebuildAfterForget(name: person.name, oldCrop: oldCrop) }
         return proof
     }
 

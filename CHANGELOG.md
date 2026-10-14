@@ -5,6 +5,27 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-13, Tue: v2 part M7b, recognition
+
+- **A person whose recorded release covers their face is learned and then recognized in new recordings.** Why: REQUEST
+  item 3a ("let me know when it's Gabriel or Serenity") and item 8, and Ivan's 12 Oct note that releases exist. Nothing runs
+  until a release is recorded in the app, so with nobody learned the build stores exactly what M7a stored.
+- **Recognition names a face only on strong, repeated evidence, else asks, and Ivan's own names always win.** Why: PLAN
+  risk R3, taking a stranger for Gabriel is the dangerous mistake; a recognized name counts for the privacy lock like any
+  name Ivan gives. A row shared by two people in the same seat is asked about, never named.
+- **Learning uses only rows Ivan named, never recognition's own answers.** Why: otherwise one mistake teaches the index to
+  repeat it.
+- **Apple's face index is rebuilt whole from the sealed crops after every change, and removed when nobody is learned.**
+  Why: Prakriti cannot encrypt the framework's files (research-people.md 5.2), so the index must never hold anything the
+  vault cannot rebuild; Forget proves an old crop no longer matches.
+- **The analyzer's boxes are read from the bottom left.** Why: measured on the two-people fixture against Vision, though
+  Apple's page and the research say top left. Read the documented way, every recording would have read "nobody
+  recognized" with no error. The acceptance now measures that found faces land on the people file's boxes (20 of 20).
+- **Review Possible Matches, Not [Name], Merge 2 People, `make calibrate-people`.** Why: PLAN M7b's parts; Merge is
+  refused unless both people have a release, because it joins what was learned of each.
+- **Voice prints are not learned.** Why: not in M7b's parts list, and the voice step keeps no print of anyone; the vote
+  reads the voice's name as Ivan gave it instead. Said in the sheet, the page and Help.
+
 ## 2026-10-13, Tue: v2 part M7a, People, named
 
 - **People in the sidebar lists everyone Ivan names, from the day he names them, Name Only included.** Why: REQUEST item

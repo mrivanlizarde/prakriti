@@ -49,7 +49,8 @@ final class FaceCrops {
     }
 
     /// The face at `time`, padded to a square 1.6 times its box (research-people.md 1.7: revision 4's boxes are tight).
-    nonisolated static func crop(file: URL, time: Double, box: FaceBox) async -> CGImage? {
+    /// Recognition's crops use a wider pad, so Apple's analyzer sees the whole head (v2 part M7b).
+    nonisolated static func crop(file: URL, time: Double, box: FaceBox, pad: Double = 1.6) async -> CGImage? {
         guard FileManager.default.fileExists(atPath: file.path) else { return nil }
         let generator = AVAssetImageGenerator(asset: AVURLAsset(url: file))
         generator.appliesPreferredTrackTransform = true
@@ -57,7 +58,7 @@ final class FaceCrops {
         generator.requestedTimeToleranceAfter = CMTime(seconds: 0.1, preferredTimescale: 600)
         guard let frame = try? await generator.image(at: CMTime(seconds: time, preferredTimescale: 600)).image else { return nil }
         let width = Double(frame.width), height = Double(frame.height)
-        let side = max(box.width * width, box.height * height) * 1.6
+        let side = max(box.width * width, box.height * height) * pad
         let cx = box.centerX * width, cy = box.centerY * height
         let rect = CGRect(x: max(0, cx - side / 2), y: max(0, cy - side / 2), width: side, height: side)
             .intersection(CGRect(x: 0, y: 0, width: width, height: height)).integral

@@ -20,10 +20,37 @@ struct PeopleNames: Codable, Equatable, Sendable {
     var faces: [Int: UUID] = [:]
     /// A voice (`FoundVoice.id`) named by hand.
     var voices: [Int: UUID] = [:]
+    /// Recognition's answer per face row (v2 part M7b): named without asking, asked about, or unnamed. The machine's
+    /// vote, kept as made, so Review can ask and `make calibrate-people` can count it. Optional, so a recording named
+    /// before M7b decodes as it was.
+    var recognition: [Int: RowVote]?
+    /// "Not [name]" per face row (Review's No, the People tab's Not This Person): the people this row is not. A vote for
+    /// one of them never names the row, and it is never asked about again.
+    var notThem: [Int: [UUID]]?
 
     static let none = PeopleNames()
 
-    var isEmpty: Bool { teacher == nil && faces.isEmpty && voices.isEmpty }
+    var isEmpty: Bool { teacher == nil && faces.isEmpty && voices.isEmpty && (recognition ?? [:]).isEmpty && (notThem ?? [:]).isEmpty }
+
+    /// The rows recognition named without asking, less any Ivan said are not that person.
+    var recognized: [Int: UUID] {
+        var out: [Int: UUID] = [:]
+        for (row, vote) in recognition ?? [:] where vote.outcome == .named {
+            if let person = vote.person, !said(row, isNot: person) { out[row] = person }
+        }
+        return out
+    }
+
+    /// The rows recognition asks about ("Is this Gabriel?"), less any Ivan named by hand or already answered.
+    var asks: [Int: UUID] {
+        var out: [Int: UUID] = [:]
+        for (row, vote) in recognition ?? [:] where vote.outcome == .ask && faces[row] == nil {
+            if let person = vote.person, !said(row, isNot: person) { out[row] = person }
+        }
+        return out
+    }
+
+    func said(_ row: Int, isNot person: UUID) -> Bool { notThem?[row]?.contains(person) ?? false }
 
     func json() -> String {
         let encoder = JSONEncoder()
@@ -55,6 +82,8 @@ struct PeopleNames: Codable, Equatable, Sendable {
             let face = main?.face ?? found?.people.first.map(\.id).flatMap { linkedFaces.contains($0) ? nil : $0 }
             if let face, faceNames[face] == nil, main == nil || voiceNames[main!.id] == teacher { faceNames[face] = teacher }
         }
+        // Recognition (v2 part M7b) names a row only where Ivan has not: his own names and his teacher come first.
+        for (row, person) in recognized where rows.contains(row) && faceNames[row] == nil { faceNames[row] = person }
         for voice in heard?.voices ?? [] {
             guard let face = voice.face else { continue }
             if let name = voiceNames[voice.id], faceNames[face] == nil { faceNames[face] = name }

@@ -176,7 +176,7 @@ struct PrivacyPane: View {
                 PrivacyRule(symbol: "bell",
                             text: "Notices never show a file name, a title or a person's name, because they appear on the lock screen.")
                 PrivacyRule(symbol: "person.crop.square",
-                            text: "People keeps the names you give and the releases you record. Nothing about a face or a voice is kept, and the People folder is left out of Time Machine.")
+                            text: "People keeps the names you give and the releases you record. A face is learned only for someone whose recorded release covers it, locked on this Mac; nothing about anyone else's face or voice is kept, and the People folder is left out of Time Machine.")
                 PrivacyRule(symbol: "checkmark.seal",
                             text: "Approve copies the finished files to the Approved folder with a receipt. Nothing is uploaded or posted; you do that by hand.")
             } header: {
@@ -230,7 +230,7 @@ struct NamedPeopleSection: View {
         } header: {
             SectionHeader("People You Name")
         } footer: {
-            RowNote("Give these names to the people in a recording: in the inspector, Info, Who is teaching, or People, Name for This Recording. Each name is also in People, in the sidebar. Prakriti keeps only the name, nothing about a face or a voice. A recording can be read by a cloud model only when everyone heard in it is named and has this switch on.")
+            RowNote("Give these names to the people in a recording: in the inspector, Info, Who is teaching, or People, Name for This Recording. Each name is also in People, in the sidebar. A name alone keeps nothing about a face or a voice; a recorded release that covers a face, on the person's page in People, lets Prakriti learn it. A recording can be read by a cloud model only when everyone heard in it is named and has this switch on.")
         }
     }
 

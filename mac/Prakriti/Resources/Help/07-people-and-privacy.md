@@ -4,7 +4,7 @@ title: Privacy and students
 summary: What stays on this Mac, which recordings only models on this Mac may read, and how to protect students in a class.
 section: people
 order: 1
-keywords: [privacy, students, class, privacy lock, Serenity, local, cloud, Anthropic, OpenAI, Claude API, transcript, approve, cut, notifications, names, children, consent, voices, teacher, microphone, include, leave out, hide face, mute, names said aloud, people, gallery, release, forget, key photo, name only]
+keywords: [recognition, recognize, review possible matches, merge, privacy, students, class, privacy lock, Serenity, local, cloud, Anthropic, OpenAI, Claude API, transcript, approve, cut, notifications, names, children, consent, voices, teacher, microphone, include, leave out, hide face, mute, names said aloud, people, gallery, release, forget, key photo, name only]
 related: [capture-the-best-video, reviewing-and-approving, models-and-api-keys]
 ---
 
@@ -48,8 +48,8 @@ is sent. See [Models and API keys](09-models-and-api-keys.md).
 ## Faces in a recording
 
 While it makes a recording's outputs, Prakriti looks for faces in the picture, two frames a second, on this
-Mac. It keeps only when and where each face was seen: never a picture of anyone's face, and nothing that could
-recognize them in another recording.
+Mac. It keeps only when and where each face was seen: never a picture of anyone's face. Only a person whose recorded
+release covers their face is recognized in another recording (see Recognition, below).
 
 - **In the browser,** each recording shows a line such as "One person at a time." or "Other people appear, up
   to 2 at once." To see only the recordings with other people, click Sort in the toolbar and choose Other
@@ -88,8 +88,9 @@ Prakriti does not know who anyone is. You tell it, one recording at a time:
 4. For a microphone that always belongs to the same person, click **Track 2 in This Folder** under that voice, and
    choose them: every recording from that folder heard on that track takes the name.
 
-Only times are kept: when each face is seen and when each voice speaks. Never a picture of a face, never a print
-of a voice, and nothing that could recognize anyone in another recording. A name is kept as a name.
+Only times are kept: when each face is seen and when each voice speaks. Never a picture of a face and never a print
+of a voice, except what Prakriti learns of a person whose recorded release covers their face (see Recognition). A name
+is kept as a name.
 
 A recording found before Prakriti checked who appears and speaks shows **Check People** in its People tab.
 :::
@@ -219,8 +220,9 @@ Everyone starts as **Include**, because the participants have signed releases.
 ## People: everyone you name
 
 Click **People** in the sidebar to see everyone you have named, each as a round picture with their name and how many
-recordings they are in. It is built like People in Photos, with one difference: Prakriti does not recognize anyone by
-itself. Each person is there because you named them, in a recording or in Settings, Privacy.
+recordings they are in. It is built like People in Photos. Each person is there because you named them, in a recording
+or in Settings, Privacy, and Prakriti finds a person in new recordings by itself only once you have recorded a written
+release that covers their face (see Recognition, below).
 
 - **The picture** is a frame of their face from one of their recordings, taken from the recording each time People
   shows it and never saved. For someone who should not be shown, turn off Can Appear in What Is Published: People
@@ -239,30 +241,31 @@ itself. Each person is there because you named them, in a recording or in Settin
 
 ### Record a written release
 
-If the person has signed a written release, keep a note of it with their name: in Name This Person, or with
-**Record Release** on their page, turn on A written release is signed, then fill in the date it was signed, where the
-signed release is kept, and whether it covers their face, their voice or both. Click **Record Release**.
-
-Prakriti keeps the release with the name and learns nothing from it: the person page still says "Recognition off.
-Named by you in each recording.", and you still name them in each recording.
+If the person has signed a written release, record it with their name: in Name This Person, or with **Record Release**
+on their page, turn on A written release is signed, then fill in the date it was signed, where the signed release is
+kept, and whether it covers their face, their voice or both. When it covers their face, the button says **Learn** and
+their name: click it, and Prakriti learns their face from the recordings where they are named (see Recognition). A
+release that covers only their voice is kept with the name: voices are not learned yet.
 
 ### A person's page
 
-Click a person to see their page: their picture, whether a release is on file, whether they can appear in what is
-published, and three figures, how many recordings they are in, their minutes on screen and their minutes speaking,
-counted from where you named them. Their recordings are listed under it, as in the browser.
+Click a person to see their page: their picture, whether a release is on file and whether Prakriti recognizes them,
+whether they can appear in what is published, and three figures, how many recordings they are in, their minutes on
+screen and their minutes speaking, counted from where they are named. Their recordings are listed under it, as in the
+browser.
 
 - **Rename** changes only the name, everywhere it is shown.
-- **Change Key Photo** shows each face you named for them; click the one to use, or Automatic for the face on screen the
+- **Change Key Photo** shows each face named for them; click the one to use, or Automatic for the face on screen the
   longest.
 - **More** has Favorite, Pin to Sidebar (a pinned person is listed under People in the sidebar), Can Appear in What Is
-  Published, and **Hide from People**, which only takes them off the grid and the sidebar.
+  Published, **Hide from People**, which only takes them off the grid and the sidebar, and Merge With.
 
 ### Forget Face and Voice
 
-For a person with a release on file, More has **Forget Face and Voice**. It deletes anything Prakriti keeps of their face
-and voice and destroys the key that locks it, then checks that nothing of theirs can be opened. Their name stays on
-recordings already checked. Removing a name in Settings, Privacy does the same first.
+For a person with a release on file, More has **Forget Face and Voice**. It destroys the key that locks what Prakriti
+learned of their face, checks that nothing of theirs can be opened, deletes it, and builds Prakriti's face index again
+from everyone else. Then it checks that one of their old pictures no longer matches anyone. Their name stays on
+recordings already checked, and Prakriti stops recognizing them. Removing a name in Settings, Privacy does the same first.
 
 Anything Prakriti keeps of a person's face or voice is deleted 12 months after they last appeared in a recording. Needs
 You says so 30 days before.
@@ -270,8 +273,11 @@ You says so 30 days before.
 ## What Prakriti stores
 
 - **People you name:** the name, their role, whether they can appear, and the release you recorded, on this Mac only.
-- **Faces and voices:** nothing. A face on a person's picture or on the People tab is taken from the recording while
-  it is shown and never saved.
+- **Faces of people with a release that covers their face:** up to 50 small pictures of their face, cut from the
+  recordings where they are named, each locked with a key of their own that only this Mac's keychain holds, and the face
+  index Prakriti builds from them. Nothing else of anyone's face, and no print of anyone's voice.
+- **Everyone else:** nothing. A face on a person's picture or on the People tab is taken from the recording while it is
+  shown and never saved. Pictures Prakriti looks at to recognize people are deleted as soon as it is done.
 - **The People folder** in Prakriti's Application Support folder is left out of Time Machine backups, so nothing in it
   outlives a Forget in an old backup.
 :::
@@ -279,9 +285,31 @@ You says so 30 days before.
 :::requires recognition
 ## Recognition
 
-Prakriti recognizes the people you named who signed a release, in every new recording. When Prakriti is not sure who
-someone is, it treats them as Unnamed. If it names the wrong person, click the name in the inspector's People tab and
-choose Not This Person. Review Possible Matches on a person's page shows the faces it was unsure about, one at a time.
+Prakriti recognizes the people whose recorded release covers their face, in each recording it makes or checks after
+that. It learns each of them from up to 50 pictures of their face, cut from the recordings where you named them.
+
+After the faces and voices of a recording are found, Prakriti looks at a few frames of every face row and compares them
+with the people it has learned, on this Mac. A face is named by Prakriti only when at least 3 frames are looked at,
+most of them match the same person, none matches anyone else, and any voice linked to the face is not named as someone
+else. Otherwise:
+
+- **Not sure:** the row says "Is this Gabriel?" with **Yes** and **Not Gabriel**, and until you answer, the face counts
+  as not named.
+- **No match:** the face stays Unnamed.
+
+Your own names always come first: a face you named, or the teacher you chose, is never renamed by Prakriti.
+
+- **If Prakriti names the wrong person,** click **Not** and the name under the face in the inspector's People tab. The
+  face goes back to not named, and any picture Prakriti learned from it is deleted.
+- **Review Possible Matches** on a person's page shows every face Prakriti was unsure about, one at a time, recordings
+  waiting for your yes first. **Yes** names the face and teaches Prakriti a little more of that person's face; **Not**
+  and the name says it is someone else.
+- **Merge 2 People:** when one person was named twice, Command-click both in People, then Control-click one and choose
+  Merge 2 People, or choose More, Merge With on a person's page. Choose which name to keep. Both need a recorded
+  release. Every recording that names either takes the kept name, and where the two had different choices the stricter
+  one is kept.
+
+Voices are not learned in this version: a voice is named by you, by Who is teaching, or by a folder's microphone track.
 :::
 
 ## Good practice with students

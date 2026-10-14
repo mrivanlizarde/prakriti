@@ -48,6 +48,10 @@ voice in the People tab is Include, Hide Face or Leave Out, everyone starting as
 cuts that voice from both podcast episodes, a second listen checks it is gone, and names said aloud are kept or muted
 before Approve. After the verifier, a cut that ended inside Gabriel's next word now settles on the sound ("v2 part M6c,
 fixes after the verifier"). Not installed, for M5a's reason.
+**Then parts M7a, People, named, and M7b, recognition** (the last section, "v2 part M7b"): People in the sidebar lists everyone
+Ivan names; a person whose recorded release covers their face is learned from the faces he named and recognized in new
+recordings, with Review Possible Matches, Not [Name], Merge 2 People and Forget rebuilding Apple's face index. Nothing is
+learned until a release is recorded in the app. Not installed, for M5a's reason.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -4394,3 +4398,111 @@ app is unchanged (the M4b build, pid 36940). Names said aloud at Approve (sectio
 - [ ] **Releases:** in People, open each person and use Record Release with the date and where the paper is kept. Nothing is
   learned until M7b.
 - [ ] Optional for M7b: a 2-minute clip of yourself (`~/Prakriti/Dev/Fixtures/ivan-clip.mov`) to exercise recognition.
+
+
+## v2 part M7b: recognition. Tue 13 Oct 2026
+
+The sixteenth part of v2 (`docs/v2/PLAN.md`, M7, part M7b; REQUEST items 3a and 8). Built on `main`, as this run's
+instructions said. No Swift package added, nothing downloaded (MediaIntelligence is part of macOS 27). **No SwiftData field
+added**: the votes and "Not" answers live in the recording's existing `namesJSON` as optional keys, so a recording named
+before M7b reads as it was. `make migrate-check` run anyway. Built and checked 17:40 to 19:15.
+
+### What was built
+
+- **Learning** (`People/FaceIndex.swift`, `Learning`, `SealedCrop`): when a recorded release covers a face, the release
+  button reads **Learn [Name]**; Prakriti cuts up to 50 crops (at most 8 per recording, the larger and surer half of each
+  row's sightings, spread across it, square 2.2 times the face box, at most 512 px) from the face rows Ivan named for that
+  person (by hand, as the teacher, a Yes in Review; never a row recognition named itself, `AppModel.learningSources`), and
+  seals each with its origin (recording, row, time) under the person's own key. Naming a learning person in a recording
+  later learns from that row too.
+- **The face index** (`FaceIndex`): `MediaIntelligence.FaceGroupAnalyzer` in `People/FaceIndex/`, purged and rebuilt whole
+  from the sealed crops after every change, removed when nobody is learned; asset id = the sealed crop's UUID; a group made
+  of one person's crops is that person, a group of two people's is a conflict. One change at a time (`enqueueIndexWork`).
+- **Recognition** (`People/Recognition.swift`, `RecognitionStep`, `AppModel.recognize`): after a make whose face and voice
+  steps ran, and after Check People, only while someone is learned. Up to 5 frames spread over each track plus one every
+  10 s, faces under 5% of the picture's height left out, at most 500 frames; frames to a job folder, `identifyFaces`, each
+  found face given to the row whose box it overlaps (0.3 or more), then a vote per row (`Votes`): named without asking at 3
+  or more frames, 60% or more the same person, no frame matched to anyone else or to a conflict, no linked voice named as
+  someone else, and every track of the row with 3 or more frames voting the same; else ask; nothing matched, unnamed. Kept
+  as `PeopleNames.recognition` (machine's vote) and `notThem` (Ivan's "Not"). A recognized name fills only a row Ivan and
+  his teacher left unnamed.
+- **Where it shows:** the People tab's face rows say "Recognized by Prakriti" with **Not [Name]**, or "Is this [Name]?" with
+  **Yes** and **Not [Name]**; a person's page has **Review Possible Matches** (one face at a time, live crop, recordings
+  waiting for a yes first, no number shown; `Views/People/ReviewSheet.swift`) and **More, Merge With**; the gallery takes a
+  Command-click selection and offers **Merge 2 People** on two (`MergeSheet`: choose the name kept; refused unless both have a
+  release). The status line says "Recognized in new recordings, from N pictures of their face kept locked on this Mac."
+- **Not [Name]:** the row turns unnamed, any crop learned from it is deleted and the index rebuilt.
+- **Merge:** the other person's crops opened under their key and sealed again under the kept person's, their key destroyed;
+  every recording's names, votes, "Not" answers, choices (the stricter kept) and folder microphones moved; the stricter of the
+  two consents kept (learn face, learn voice, can appear, cloud); the index rebuilt.
+- **Forget** now also rebuilds the index without the person and identifies one of their old crops (held in memory from before
+  the key was destroyed) against it (`ForgetIndexProof`), with a second Activity line.
+- **`make calibrate-people`**: copies the development store (sqlite3 .backup) and counts votes against Ivan's answers:
+  right, wrong person, stranger taken for a named person (must stay under 1 in 1,000), asked, missed.
+- Capability **`recognition`** on; Help 07 (the gallery, what is stored, a Recognition section), the welcome's Privacy row,
+  Settings, Privacy notes. START_HERE Mac warnings 133 to 137 and 130, 132 updated. Tests: `RecognitionTests` (15),
+  `RecognitionAcceptanceTests` (in `make accept-gallery`), `CalibrationAcceptanceTests`, snapshots `11-people-tab-recognition`,
+  `11-review-sheet`, `11-merge-sheet`, `11-merge-sheet-refused`.
+
+### Found by measuring
+
+**Apple's analyzer gives face boxes with the origin at the bottom left**, though its documentation and research-people.md 1.2
+say top left. Measured on two-people-mixed.mp4 at 25 s against Vision on the same frame: main face Vision top-left y 0.284
+(height 0.224), analyzer y 0.497; corner face 0.719 against 0.2065. Read the documented way, no face would ever land on a row
+and every recording would read "nobody recognized" with no error. Fixed in one place (`AnalyzerGeometry`), pinned by
+`RecognitionTests`, measured on every `make accept-gallery`. Also measured: an identify pass leaves every file under the
+People folder identical by SHA-256 (the SQLite `-shm` files' dates change, their contents do not).
+
+### Checks run, with results (PLAN M7, the checks part M7b runs: 1 votes and Merge refuses; 3; 4 Review and Ivan's key photo; 5)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `make test` with the votes on made-up identify answers, and Merge refusing without a release for both | **PASS.** `RecognitionTests`, 15 of 15: named at 4 of 5 and exactly 3 of 5 (60%); ask at 2 frames, at 50%, with one frame matched to Serenity, with a conflict, with the voice named Serenity; unnamed when nothing matched; a row whose second track (3 frames) matches no one is asked about, not named; Merge refused "...and Gabe has none..." and "...neither Gabriel nor Gabe..."; with both releases, names, votes, "Not" answers and the stricter choice (Hide Face over Include) moved, cloud consent the stricter (off), 3 crops under one key, the other key gone, the index rebuilt from 3 crops. Also: frames chosen per track, the bottom-left reading (overlap over 0.8 with Vision's box; under 0.05 read top left), learning only from rows Ivan named, 50 crops at most and 8 a recording, the index built from sealed test-pattern crops and removed with the last person, Forget's index proof, nothing queued while nobody is learned, the calibration report |
+| 3 | Enroll Ivan from `ivan-clip.mov` with his release; recognize him in `ivan-plus-13sep.mov`; hash list unchanged by the identify pass; Forget proofs | **SKIPPED, blocked on Ivan** (PLAN section 11, D2): `~/Prakriti/Dev/Fixtures/ivan-clip.mov` does not exist and no release is recorded. **What runs without it, PASS** (`make accept-gallery`, `acceptance-recognition.txt`): two-people-mixed made, with nobody learned no vote, no face index, 0 files changed under the development People/ other than people files. Identify pass in a scratch folder against an index of one sealed test-pattern crop: 16 frames from 20 picks, 25 faces found by the analyzer, **20 of 20 picks (100.0%) had a found face on their box**, 1.2 s; row 1 unnamed (13 frames), row 2 unnamed (7 frames); **SHA-256 list of every file under that People/ (8 files) identical before and after**; scratch Jobs/ empty. Forget of the made-up person: 1 of 1 sealed file failed to open after the key, 0 left, index removed, old crop matches no one. Development Faces, Voices, FaceIndex absent; Jobs/ empty; fixture unchanged |
+| 4 | Snapshots: Review sheet, Ivan's key photo; light and dark, looked at | **PASS, looked at** (Ivan's key photo **SKIPPED**: needs check 3). `11-review-sheet-light/dark` ("Is this Serenity?", test-pattern face, From Sun 13 Sep, on screen from 0:20, Done, Not Serenity, Yes), `11-merge-sheet-*`, `11-merge-sheet-refused-*` (red line, Merge 2 People dimmed), `11-people-tab-recognition-*` (Gabriel "Recognized by Prakriti" with Not Gabriel; Unnamed 2 "Is this Serenity?" with Yes and Not Serenity). **Found by looking:** the recognition lines wrapped mid-phrase in the inspector's width; now stacked. Sheet sizes set to their measured fitting heights (321, 298, 350 pt). Real window (`make look`): `real/11-people-*`, `real/11-person-*`, `real/11-name-sheet-*`, the gallery's new footer line read; every look check PASS, playback 13.352 s to 16.352 s. Every face drawn is a test pattern (D1) |
+| 5 | Regression set; `make migrate-check` | **PASS.** `make build`: no warnings. **`make test`: 337 tests, 0 failures, 19 skipped by design** (1,000 s). `make accept`: 13 Sep -16.8 LUFS, -1.7 dBFS, 2,948 words; silent-60s stopped at -91 dB; 30 s clip filed as a test. `make accept-edits`: 38.82 s shorter (expected 38.82), 0 of 73 runs from the cut heard, 189 of 201 after it. `make accept-people` (People/ changed): 4 tests, 0 failures; 13 Sep decoded md5 `69658a8cb8a954b92798c5e9f3ea5833`, identical to engine v0's; two-people fixtures 0 of 59 runs heard, 98.9% and 98.4%; 460 files under Application Support, 127 images, all card pictures; crash check deleted the job folder at launch line 1, first look line 9. `make accept-gallery` (M7a's half): PASS. `make calibrate-people`: SKIPPED (0 people with a release, 0 rows with a vote). `make migrate-check`: 13 recordings, 2 folders, 40 output settings, 939 Activity lines before and after, 2 approved, 0 named people. No test Keychain item left |
+
+**Em dashes:** 0 in every file this part changed (grep); `RulesTests` passed (no network type under `People/`).
+
+### Decisions, each with its reason
+
+1. **Recognition runs after the make, not as a pipeline step.** It changes no file the make writes, adds no step to any
+   existing make while nobody is learned, and fails closed: the writing step of that same make sees the row as unnamed.
+2. **Learn only from rows Ivan named.** Otherwise one mistake teaches the next (risk R3).
+3. **The index is rebuilt whole after every change** rather than updated in place: at 50 crops a person it is cheap, and it
+   can never hold a crop the vault no longer has.
+4. **Frames spread across each track, not "the best 5 by quality":** the people file keeps no capture quality (M6a), and a
+   frame too poor to read finds no face and does not count.
+5. **A group holding two people's crops names nobody;** a frame matched to one makes the row an ask.
+6. **Voice prints are not learned.** Not in M7b's parts list; the voice vote reads the voice's name as Ivan gave it. The
+   release's voice switch is kept, and the sheet, page and Help say voices are not learned yet.
+7. **"Learn [Name]" replaces "Record Release" only when the release covers a face** (research-people.md 5.6's words; M7a
+   decision 1 said M7b may rename it once it learns).
+8. **Frames of Gabriel were measured, never looked at** (this run's instructions, D1), though PLAN section 11 records
+   releases. The frames recognition reads live only in a job folder deleted when the pass ends, so no picture is listed.
+
+### What does not work yet
+
+- Recognition has never named a real face on this Mac: no one has a release recorded in either store, and check 3 waits
+  for Ivan's clip. Its accuracy and `FaceGroupAnalyzer.update`'s grouping are unmeasured (risk R11).
+- Voice prints and voice matching; "best new-looking" crops (research 2.3) are approximated by spread across time.
+- Recordings made before a person was learned are not recognized again by themselves; Check People Again does it.
+- Merge has no keyboard path other than More, Merge With.
+
+### Installed
+
+**Not installed**, though every M7b check that can run passes. `make install` ships everything on `main`, including M5a's
+lock, which turns the live app's Claude API writing back to LM Studio. PLAN section 11 (Tue 13 Oct) asks the next part to
+loosen the lock and install, but this run's instructions say the lock must fail closed for classes and other people's words,
+so the lock was not changed and the install waits for Ivan's word in the conversation. The live app is unchanged (the M4b
+build, pid 36940).
+
+### For Ivan
+
+- [ ] **The lock change and the install need your word in the conversation** (unchanged since M5a): say "loosen the lock as
+  written on 13 Oct" and the next run changes it, then `cd ~/Code/prakriti/mac && make install` ships M5a to M7b together.
+- [ ] **To see recognition work on yourself (PLAN M7 check 3):** record a 2-minute clip of yourself on this Mac, save it as
+  `~/Prakriti/Dev/Fixtures/ivan-clip.mov`, and say so; the next run enrolls you in the development copy only.
+- [ ] **Releases in the live app**, once installed: open each person in People, Record Release, turn on that it covers their
+  face, and click Learn [Name]. Then `cd ~/Code/prakriti/mac && make calibrate-people` after a few recordings and Reviews.
+

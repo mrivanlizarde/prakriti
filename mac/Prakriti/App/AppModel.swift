@@ -186,6 +186,18 @@ final class AppModel {
     var nameSheet: NameSheetRequest?
     let keyPhotos = KeyPhotos()
     var retentionLines: [String] = []
+    /// Recognition (v2 part M7b): the Review Possible Matches and Merge sheets asked for, the people selected together
+    /// in the gallery (Command-click), and whether the face index is being changed now. Every change to the index runs
+    /// one at a time, after the one before (`indexWork`).
+    var reviewSheet: ReviewRequest?
+    var mergeSheet: MergeRequest?
+    var gallerySelection: Set<UUID> = []
+    var indexBusy = false
+    @ObservationIgnored var indexWork: Task<Void, Never>?
+    /// What the last index rebuild and the last recognition of each recording measured, for the log and the acceptance.
+    @ObservationIgnored var lastIndexSummary: FaceIndex.Summary?
+    @ObservationIgnored var recognitionOutcomes: [UUID: RecognitionStep.Outcome] = [:]
+    @ObservationIgnored var lastForgetIndexProof: ForgetIndexProof?
     /// The Keychain service the vault's keys live under: the live copy's, a development copy's, or the tests' own.
     @ObservationIgnored var vaultKeys: VaultKeys = .forMode(AppMode.current, testing: AppModel.isRunningTests)
     var providerChecks: [ModelProvider: ProviderCheck] = [:]

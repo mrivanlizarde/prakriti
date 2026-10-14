@@ -116,7 +116,7 @@ ONLY      ?=
 YES       ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -183,9 +183,28 @@ accept-people:
 #                 People/Faces, Voices and FaceIndex hold no files (development and live) and the vault keeps nothing;
 #                 tmutil isexcluded on the development People folder reports Excluded (the live one is written down).
 #                 Writes acceptance-gallery.txt and the gallery's pictures to ../screens/mac/$(MILESTONE)/ (about 2 minutes)
+#                 Then v2 part M7b's half (RecognitionAcceptanceTests): PLAN M7 check 3 written as SKIPPED, blocked on Ivan, until
+#                 ~/Prakriti/Dev/Fixtures/ivan-clip.mov and his release exist; with nobody learned, recognition does nothing (no
+#                 face index, no vote); then the identify pass measured in a scratch folder against an index of one sealed
+#                 test-pattern crop (no face of anyone): frames, faces found, how many chosen boxes the analyzer's boxes land on,
+#                 every row unnamed, the SHA-256 list of every file under that People/ identical before and after, no job folder
+#                 left, and Forget removing the index with the last person. Writes acceptance-recognition.txt (about 2 minutes)
 accept-gallery:
 	./scripts/make-fixtures.sh --if-missing
-	TEST_RUNNER_PRAKRITI_ACCEPTANCE=gallery TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/GalleryAcceptanceTests
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=gallery TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/GalleryAcceptanceTests -only-testing:PrakritiTests/RecognitionAcceptanceTests
+
+# calibrate-people  v2 part M7b (PLAN M7, research-people.md 6.1): copies the DEVELOPMENT store (sqlite3 .backup; the store is
+#                 only read) and counts every face row recognition voted on against Ivan's answers (a name he gave, a Yes or a
+#                 Not in Review): named and right, the wrong person, a stranger taken for a named person (must stay under 1 in
+#                 1,000), asked, missed. SKIPPED until releases are recorded and Review is answered. STORE=<a store> reads
+#                 that store instead. Writes calibrate-people.txt to ../screens/mac/$(MILESTONE)/
+CALIBRATE_COPY = $(CURDIR)/$(DERIVED)/calibrate-copy/Prakriti.store
+STORE ?= $(HOME)/Library/Application Support/Prakriti/Development/Prakriti.store
+
+calibrate-people:
+	rm -rf $(DERIVED)/calibrate-copy && mkdir -p $(DERIVED)/calibrate-copy
+	/usr/bin/sqlite3 "file:$(STORE)?mode=ro" ".backup '$(CALIBRATE_COPY)'"
+	TEST_RUNNER_PRAKRITI_CALIBRATE_STORE=$(CALIBRATE_COPY) TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/CalibrationAcceptanceTests
 
 accept-outputs:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=outputs TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/OutputsAcceptanceTests

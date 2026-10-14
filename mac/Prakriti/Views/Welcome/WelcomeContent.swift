@@ -260,7 +260,7 @@ enum WelcomeContent {
                            "People lists everyone you name, with their recordings. Prakriti keeps their name and their release, never their face or voice.",
                            requires: [.gallery], unless: [.recognition]),
                 WelcomeRow("remembered", symbol: "person.badge.shield.checkmark",
-                           "Prakriti remembers a face or a voice only for someone you name who has agreed. Everyone else is forgotten when the work is done.",
+                           "Prakriti learns a face only for someone you name whose signed release covers it, and keeps it locked on this Mac. Nobody else is remembered from one recording to the next.",
                            requires: [.recognition]),
                 WelcomeRow("approve-talks", symbol: "person.2",
                            "Only a talk with one teacher speaking can be approved, and a class is never made ready to upload.",

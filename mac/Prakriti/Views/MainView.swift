@@ -75,6 +75,13 @@ struct MainView: View {
         .sheet(item: $model.nameSheet) { request in
             NameThisPersonSheet(request: request)
         }
+        // Review Possible Matches and Merge 2 People (v2 part M7b).
+        .sheet(item: $model.reviewSheet) { request in
+            ReviewSheet(request: request)
+        }
+        .sheet(item: $model.mergeSheet) { request in
+            MergeSheet(request: request)
+        }
         .confirmationDialog(confirmationTitle, isPresented: Binding(get: { model.confirmation != nil },
                                                                     set: { if !$0 { model.confirmation = nil } }),
                             presenting: model.confirmation) { confirmation in

@@ -5,7 +5,7 @@ import SwiftUI
 /// status line ("Recognition off. Named by you in each recording."), whether they can appear in what is published (a
 /// separate consent), three figures (recordings, minutes on screen, minutes speaking), Rename, Change Key Photo, the
 /// release, Favorite, Hide from People and Forget Face and Voice; then the recordings they appear in, as the browser
-/// shows them. Review Possible Matches and Merge come with recognition (part M7b).
+/// shows them. Since part M7b: Review Possible Matches and Merge With, for people with a release.
 struct PersonPage: View {
     let personID: UUID
     @Environment(AppModel.self) private var model
@@ -66,7 +66,7 @@ struct PersonHeader: View {
                 }
                 // At least 300 pt wide before they wrap: asked for their smallest size, wrapping lines otherwise reflow to a
                 // word a line (measured in the M7a snapshots: a page asking for 2,415 pt).
-                Text(Gallery.statusLine(person))
+                Text(Gallery.statusLine(person, learned: model.learnedCrops(person)))
                     .font(AppFont.body)
                     .frame(minWidth: 300, maxWidth: 640, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
@@ -90,12 +90,24 @@ struct PersonHeader: View {
                     Button("Change Key Photo…") { choosingPhoto = true }
                         .disabled(!person.mayAppear || entry.appearances.allSatisfy(\.faces.isEmpty))
                     Button(person.releaseSignedOn == nil || person.forgottenAt != nil ? "Record Release…" : "Release…") { model.askForRelease(person) }
+                    if person.hasRelease && person.learnFace {
+                        let waiting = model.possibleMatches(for: person.id).count
+                        Button(waiting == 0 ? "Review Possible Matches…" : "Review Possible Matches (\(waiting))…") { model.askToReview(person) }
+                    }
                     Menu {
                         Button(person.favorite ? "Unfavorite" : "Favorite") { model.setFavorite(!person.favorite, for: person) }
                         Button(person.pinned ? "Unpin from Sidebar" : "Pin to Sidebar") { model.setPinned(!person.pinned, for: person) }
                         Toggle("Can Appear in What Is Published", isOn: Binding(get: { person.mayAppear }, set: { model.setMayAppear($0, for: person) }))
                         Divider()
                         Button(person.hiddenFromPeople ? "Show in People" : "Hide from People") { model.setHidden(!person.hiddenFromPeople, for: person) }
+                        let others = model.namedPeopleList().filter { $0.id != person.id }
+                        if !others.isEmpty {
+                            Menu("Merge With") {
+                                ForEach(others) { other in
+                                    Button(other.name) { model.askToMerge(person, other) }
+                                }
+                            }
+                        }
                         if person.hasRelease || model.vault.holdsAnything(person: person.id) {
                             Divider()
                             Button("Forget Face and Voice…", role: .destructive) { forgetting = true }

@@ -3,9 +3,10 @@ import SwiftUI
 /// Name This Person (v2 part M7a, docs/v2/design-spec.md 3.9.4, research-people.md 5.3 and 5.6): a name, with
 /// suggestions of the people already named (choosing one means "this is them"), their role, whether they can appear in
 /// what is published, and the written release for recognition: when it was signed, where it is kept, and which uses it
-/// covers. **Name Only** is the default button: a name kept as a name, nothing about a face or a voice. **Record
-/// Release** keeps the release with the name. Prakriti learns nothing either way in this version: recognition is part
-/// M7b, so the sheet says so instead of offering to learn.
+/// covers. **Name Only** is the default button: a name kept as a name, nothing about a face or a voice. With a complete
+/// release that covers their face, the button is **Learn [Name]** (research-people.md 5.6): Prakriti learns their face
+/// from the recordings where they are named and recognizes them in new ones (v2 part M7b). A release for the voice only
+/// is **Record Release**: voice prints are not learned in this version.
 struct NameThisPersonSheet: View {
     @State var request: NameSheetRequest
     @Environment(AppModel.self) private var model
@@ -58,7 +59,9 @@ struct NameThisPersonSheet: View {
                         Toggle("It covers their voice", isOn: $request.draft.learnVoice).font(AppFont.body)
                     }
                     RowNote(request.draft.recordRelease
-                            ? "Prakriti keeps the release with \(name)'s name. It learns nothing about a face or a voice: you name \(name) in each recording."
+                            ? (request.draft.learnFace
+                               ? "Prakriti learns \(name)'s face from the recordings where \(name) is named, so it finds \(name) in new recordings by itself. It keeps what it learns only on this Mac, locked, and deletes it if you choose Forget Face and Voice or \(name) has not appeared for 12 months. Voices are not learned yet."
+                               : "Prakriti keeps the release with \(name)'s name. Voices are not learned yet, so you name \(name) in each recording.")
                             : "Name Only keeps the name on this recording. Prakriti will not look for \(name) in other recordings, and keeps nothing about a face or a voice.")
                 } header: {
                     SectionHeader("Recognition")
@@ -80,10 +83,10 @@ struct NameThisPersonSheet: View {
                     nameOnly
                 }
                 if request.draft.defaultAction == .recordRelease {
-                    Button("Record Release") { finish(.recordRelease) }
+                    Button(releaseButton(name)) { finish(.recordRelease) }
                         .keyboardShortcut(.defaultAction)
                 } else if request.draft.recordRelease {
-                    Button("Record Release") { finish(.recordRelease) }
+                    Button(releaseButton(name)) { finish(.recordRelease) }
                         .disabled(true)
                 }
             }
@@ -101,6 +104,11 @@ struct NameThisPersonSheet: View {
         } else {
             Button("Name Only") { finish(.nameOnly) }
         }
+    }
+
+    /// "Learn Gabriel" when the release covers a face (it learns it), else "Record Release".
+    func releaseButton(_ name: String) -> String {
+        request.draft.learnFace && !request.draft.trimmedName.isEmpty ? "Learn \(request.draft.trimmedName)" : "Record Release"
     }
 
     func finish(_ action: NameThisPersonDraft.Action) {

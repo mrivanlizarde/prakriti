@@ -1,3 +1,4 @@
+import AppKit
 import SwiftData
 import SwiftUI
 
@@ -49,7 +50,7 @@ struct GalleryView: View {
                         UnnamedTile(count: unnamed.count)
                     }
                 }
-                Text("Prakriti does not recognize anyone by itself: each person here is someone you named in a recording or in Settings, Privacy. Their name is kept, and their release once you record it. Nothing about a face or a voice is kept.")
+                Text("Each person here is someone you named in a recording or in Settings, Privacy. Prakriti recognizes only people whose recorded release covers their face, and keeps what it learns locked on this Mac. To merge two people, Command-click both, then Control-click one.")
                     .font(AppFont.secondary)
                     .foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -67,6 +68,8 @@ struct PersonTile: View {
     let entry: GalleryEntry
     @Environment(AppModel.self) private var model
     @State private var renaming = false
+
+    var selected: Bool { model.gallerySelection.contains(person.id) }
 
     var body: some View {
         VStack(spacing: 8) {
@@ -91,10 +94,21 @@ struct PersonTile: View {
                 .foregroundStyle(.appSecondary)
         }
         .frame(maxWidth: .infinity)
+        .padding(6)
+        .background(RoundedRectangle(cornerRadius: 12).fill(selected ? Color.accentColor.opacity(0.16) : Color.clear))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(selected ? Color.accentColor : Color.clear, lineWidth: 2))
         .contentShape(Rectangle())
-        .onTapGesture { model.selection = .person(person.id) }
+        .onTapGesture {
+            // Command-click selects, as in Photos, for Merge 2 People (v2 part M7b); a plain click opens the page.
+            if NSEvent.modifierFlags.contains(.command) {
+                if selected { model.gallerySelection.remove(person.id) } else { model.gallerySelection.insert(person.id) }
+            } else {
+                model.gallerySelection = []
+                model.selection = .person(person.id)
+            }
+        }
         .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
         .accessibilityLabel("\(person.name), \(entry.tileLine)")
         .draggable(person.id.uuidString)
         .dropDestination(for: String.self) { items, _ in
@@ -121,6 +135,13 @@ struct PersonMenu: View {
         Button("Rename…") { renaming = true }
         Divider()
         Button(person.hiddenFromPeople ? "Show in People" : "Hide from People") { model.setHidden(!person.hiddenFromPeople, for: person) }
+        // Merge 2 People (v2 part M7b): two people Command-clicked in the gallery, this one among them.
+        let chosen = model.gallerySelection
+        if chosen.count == 2, chosen.contains(person.id), let other = chosen.first(where: { $0 != person.id }),
+           let otherPerson = model.namedPeopleList().first(where: { $0.id == other }) {
+            Divider()
+            Button("Merge 2 People…") { model.askToMerge(person, otherPerson) }
+        }
     }
 }
 

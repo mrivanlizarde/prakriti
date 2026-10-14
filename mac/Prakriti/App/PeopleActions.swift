@@ -59,6 +59,7 @@ extension AppModel {
                 applyVoices(voices.found, to: current)
                 try? context.save()
                 refreshCardPicture(current)
+                recognize(current)
             } catch {
                 let detail = (error as? FaceScan.Failure)?.reason ?? (error as? VoiceStep.Failure)?.reason ?? (error as? Diarizer.Failure)?.reason
                     ?? (error as? ToolError)?.logLine ?? error.localizedDescription
@@ -127,6 +128,8 @@ extension AppModel {
         record("\(Format.dayLabel(recording.sessionDate)) (\(recording.fileName)): " + (person.map { "\($0.name) is teaching." } ?? "who is teaching is cleared."))
         try? context.save()
         refreshCardPicture(recording)
+        // A person being learned learns from a recording they are named in (v2 part M7b).
+        if let person, person.hasRelease, person.learnFace { learn(person) }
     }
 
     /// Name for This Recording, for a face row (0: the faces seen for under a second). Nil takes the name off.
@@ -137,6 +140,7 @@ extension AppModel {
         record("\(Format.dayLabel(recording.sessionDate)) (\(recording.fileName)): a face is " + (person.map { "named \($0.name)" } ?? "not named any more") + " for this recording.")
         try? context.save()
         refreshCardPicture(recording)
+        if let person, person.hasRelease, person.learnFace { learn(person, only: (recording.id, row)) }
     }
 
     /// Name for This Recording, for a voice. Nil takes the name off.

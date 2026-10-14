@@ -31,9 +31,12 @@ struct PeopleTab: View {
                     Section {
                         // Face rows and voice rows share one list, and both number from 1, so each gets its own kind
                         // of id (two rows with the same id draw the first twice; measured in the M6b snapshots).
+                        let plain = recording.resolvedNames
                         ForEach(faces.people.prefix(Self.rowLimit), id: \.rowID) { person in
                             FaceRow(person: person, recording: recording, voice: voice(linkedTo: person.id),
-                                    name: names.faces[person.id].flatMap { id in people.first { $0.id == id }?.name })
+                                    name: names.faces[person.id].flatMap { id in people.first { $0.id == id }?.name },
+                                    recognizedAs: recognized(person.id, plain: plain, names: names, people: people),
+                                    askAbout: names.faces[person.id] == nil ? plain.asks[person.id].flatMap { id in people.first { $0.id == id } } : nil)
                         }
                         if faces.people.count > Self.rowLimit {
                             RowNote("And \(Format.count(faces.people.count - Self.rowLimit, "more row")).")
@@ -109,6 +112,12 @@ struct PeopleTab: View {
     }
 
     func voice(linkedTo face: Int) -> FoundVoice? { recording.voices?.voices.first { $0.face == face } }
+
+    /// The person recognition named a row as, when that is the name the row carries (Ivan's own names come first).
+    func recognized(_ row: Int, plain: PeopleNames, names: (faces: [Int: UUID], voices: [Int: UUID]), people: [NamedPerson]) -> NamedPerson? {
+        guard plain.faces[row] == nil, let id = plain.recognized[row], names.faces[row] == id else { return nil }
+        return people.first { $0.id == id }
+    }
 
     var unlinkedVoices: [FoundVoice] { (recording.voices?.voices ?? []).filter { $0.face == nil } }
 
@@ -193,6 +202,9 @@ struct FaceRow: View {
     let recording: Recording
     var voice: FoundVoice? = nil
     var name: String? = nil
+    /// Recognition named this row (v2 part M7b), or asks whether it is this person.
+    var recognizedAs: NamedPerson? = nil
+    var askAbout: NamedPerson? = nil
     @Environment(AppModel.self) private var model
 
     var detail: String {
@@ -228,6 +240,31 @@ struct FaceRow: View {
                     .font(AppFont.secondary)
                     .foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+                if let recognizedAs {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label("Recognized by Prakriti", systemImage: "person.crop.circle.badge.checkmark")
+                            .font(AppFont.secondary)
+                            .foregroundStyle(.appSecondary)
+                        Button("Not \(recognizedAs.name)") { model.rejectMatch(row: person.id, person: recognizedAs.id, in: recording) }
+                            .font(AppFont.secondary)
+                    }
+                    .padding(.top, 2)
+                } else if let askAbout {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Is this \(askAbout.name)?")
+                            .font(AppFont.secondaryEmphasis)
+                        HStack(spacing: 8) {
+                        Button("Yes") {
+                            if let match = model.possibleMatches(for: askAbout.id).first(where: { $0.recordingID == recording.id && $0.row.id == person.id }) {
+                                model.confirmMatch(match)
+                            }
+                        }
+                        Button("Not \(askAbout.name)") { model.rejectMatch(row: person.id, person: askAbout.id, in: recording) }
+                        }
+                    }
+                    .font(AppFont.secondary)
+                    .padding(.top, 2)
+                }
                 if recording.voices != nil {
                     NameMenu(recording: recording, current: name, target: .face(person.id)) { model.nameFace(person.id, as: $0, in: recording) }
                         .padding(.top, 2)

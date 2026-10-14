@@ -171,7 +171,7 @@ final class GalleryTests: XCTestCase {
         XCTAssertEqual(model.finishNaming(NameSheetRequest(recordingID: recording.id, target: .face(1)), as: .nameOnly), "Type a name.")
     }
 
-    func testARecordedReleaseIsKeptWithTheNameAndNothingIsLearned() throws {
+    func testARecordedReleaseIsKeptWithTheNameAndNothingIsLearnedWithoutAPicture() throws {
         let model = model()
         let recording = twoPeopleRecording(model)
         var request = NameSheetRequest(recordingID: recording.id, target: .face(1))
@@ -199,7 +199,7 @@ final class GalleryTests: XCTestCase {
         XCTAssertFalse(gabriel.learnVoice)
         XCTAssertTrue(gabriel.pinned, "a person with a release is pinned to the sidebar")
         XCTAssertEqual(Gallery.statusLine(gabriel),
-                       "Written release signed on Mon 12 Oct 2026, kept in Releases folder, studio drive. Recognition off. Named by you in each recording.")
+                       "Written release signed on Mon 12 Oct 2026, kept in Releases folder, studio drive. Recognition is on: name them in a recording and Prakriti learns their face from it.")
         for folder in folders.forbidden { XCTAssertTrue(files(under: folder).isEmpty, "a release learns nothing: \(folder.lastPathComponent) is empty") }
         XCTAssertFalse(model.vault.holdsAnything(person: gabriel.id), "no key is made until something is sealed")
         // Forget withdraws it: recognition off, the record of the release kept, nothing in the vault.

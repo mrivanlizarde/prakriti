@@ -59,9 +59,10 @@ enum Capability: String, CaseIterable, Sendable {
 enum Capabilities {
     /// What this build does: Help (M2a), the welcome window (M2b), the Viewer (M3b), progress with the
     /// Activity window (M4a), the capture check (M4b), Anthropic and OpenAI (M5b), faces (M6a), voices and names
-    /// (M6b), choices applied to audio (M6c), hiding in pictures (M6d), and the People gallery (M7a). Each later part
-    /// switches its own on.
-    static let built: Set<Capability> = [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery]
+    /// (M6b), choices applied to audio (M6c), hiding in pictures (M6d), the People gallery (M7a), and recognition (M7b).
+    /// Each later part switches its own on.
+    static let built: Set<Capability> = [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery,
+                                         .recognition]
 
     /// Every capability, for the test that every article and every block is visible once all are built.
     static let all = Set(Capability.allCases)

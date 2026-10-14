@@ -453,6 +453,31 @@ enum Fixtures {
         try? model.context.save()
     }
 
+    /// Recognition for the snapshots and the window captures (v2 part M7b): the gallery's people, both with a recorded
+    /// release that covers their face, and the 13 Sep sample talk with nobody chosen as teacher, its main face recognized
+    /// as Gabriel and its corner face asked about ("Is this Serenity?"). Votes only: nothing is learned or sealed.
+    static func showRecognition(_ model: AppModel) {
+        showGallery(model)
+        let people = model.namedPeopleList()
+        guard let gabriel = people.first(where: { $0.name == "Gabriel" }), let serenity = people.first(where: { $0.name == "Serenity" }) else { return }
+        for person in [gabriel, serenity] {
+            person.releaseSignedOn = date(2026, 10, 12, 10, 0)
+            person.releaseKeptAt = "Releases, Yoga Marga drive"
+            person.noticeVersion = NameThisPersonDraft.noticeVersion
+            person.learnFace = true
+            person.releaseRecordedAt = date(2026, 10, 12, 10, 5)
+        }
+        let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
+        if let talk13 = all.first(where: { $0.title == "Talk with Gabriel" && $0.status == .readyForYourYes }) {
+            var names = talk13.names
+            names.teacher = nil
+            names.recognition = [1: RowVote(outcome: .named, person: gabriel.id, frames: 9, matched: 9),
+                                 2: RowVote(outcome: .ask, person: serenity.id, frames: 4, matched: 2)]
+            talk13.names = names
+        }
+        try? model.context.save()
+    }
+
     /// A make in progress for the snapshots and the window captures (v2 part M4a): the 6 Sep talk (55:39) on
     /// its episode audio, 40% through that stage, with the 90 s clip waiting in line. Nothing runs: the
     /// progress is drawn from a tracker on the fixed clock, its stages weighted by this Mac's first measured

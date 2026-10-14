@@ -433,7 +433,33 @@ final class SnapshotTests: XCTestCase {
                 written.append("11-name-sheet-\(variant)-\(scheme)")
             }
         }
-        galleryCount = 6 * 2 + 2 * 2
+        // Recognition (v2 part M7b, PLAN M7 check 4): the People tab with a face recognized as Gabriel and one asked about,
+        // Review Possible Matches for Serenity (the face a test pattern), and Merge 2 People, allowed and refused.
+        try draw("11-people-tab-recognition") { model in
+            Fixtures.showRecognition(model)
+            model.selection = .group(.needsYou)
+            model.selectedRecordings = [try talk13(model).id]
+            model.inspectorTab = .people
+        }
+        for (scheme, appearance) in appearances {
+            let model = Fixtures.model()
+            Fixtures.showRecognition(model)
+            model.keyPhotos.useTestPattern = true
+            let serenity = try XCTUnwrap(model.namedPeopleList().first { $0.name == "Serenity" })
+            XCTAssertEqual(model.possibleMatches(for: serenity.id).count, 1, "the corner face is asked about")
+            try renderer.renderSheet(AnyView(ReviewSheet(request: ReviewRequest(personID: serenity.id))), model: model,
+                                     size: CGSize(width: 540, height: 321), appearance: appearance, name: "11-review-sheet-\(scheme)")
+            written.append("11-review-sheet-\(scheme)")
+            let gabriel = try XCTUnwrap(model.namedPeopleList().first { $0.name == "Gabriel" })
+            try renderer.renderSheet(AnyView(MergeSheet(request: MergeRequest(first: gabriel.id, second: serenity.id))), model: model,
+                                     size: CGSize(width: 510, height: 298), appearance: appearance, name: "11-merge-sheet-\(scheme)")
+            written.append("11-merge-sheet-\(scheme)")
+            serenity.releaseKeptAt = ""
+            try renderer.renderSheet(AnyView(MergeSheet(request: MergeRequest(first: gabriel.id, second: serenity.id))), model: model,
+                                     size: CGSize(width: 510, height: 350), appearance: appearance, name: "11-merge-sheet-refused-\(scheme)")
+            written.append("11-merge-sheet-refused-\(scheme)")
+        }
+        galleryCount = 6 * 2 + 2 * 2 + 2 + 3 * 2
         }
         if only == "people" {
             print("Snapshots written to \(outputFolder.path): \(written.count) People pictures")

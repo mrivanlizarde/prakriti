@@ -142,11 +142,16 @@ enum Gallery {
         return letters.isEmpty ? "?" : letters
     }
 
-    /// The person page's status line (design spec 3.9.2, PLAN section 5). Recognition is part M7b: until it is built,
-    /// a recorded release is on file and nobody is recognized by Prakriti on its own.
-    static func statusLine(_ person: Person) -> String {
+    /// The person page's status line (design spec 3.9.2, PLAN section 5). Since part M7b a release that covers a face
+    /// turns recognition on: `learned` is how many face crops the vault keeps for them.
+    static func statusLine(_ person: Person, learned: Int = 0) -> String {
         if person.hasRelease, let signed = person.releaseSignedOn {
-            return "Written release signed on \(Format.fullDay(signed)), kept in \(person.releaseKeptAt.trimmingCharacters(in: .whitespacesAndNewlines)). Recognition off. Named by you in each recording."
+            let release = "Written release signed on \(Format.fullDay(signed)), kept in \(person.releaseKeptAt.trimmingCharacters(in: .whitespacesAndNewlines))."
+            guard person.learnFace else { return release + " It does not cover their face, so recognition is off. Named by you in each recording." }
+            if learned > 0 {
+                return release + " Recognized in new recordings, from \(Format.count(learned, "picture")) of their face kept locked on this Mac."
+            }
+            return release + " Recognition is on: name them in a recording and Prakriti learns their face from it."
         }
         if let forgotten = person.forgottenAt {
             return "Face and voice forgotten on \(Format.fullDay(forgotten)). Recognition off. Named by you in each recording."
