@@ -29,6 +29,13 @@
 #                 channels), the two-people-tracks.mov fixture (three tracks, each its own loudness), silent-60s.mp4
 #                 (its track silent) and the 30 s clip (a test, no output folder, its check in the store). Draws the
 #                 Checks tab of each and writes acceptance-capture.txt to ../screens/mac/$(MILESTONE)/ (about 2 minutes)
+# make accept-video  v2 part M8a's acceptance (PLAN M8 check 2, the half measured on the plan): the REAL 13 Sep talk
+#                 made in development, then Plan the Edit, then Make Again (which must plan again, the same plan); the
+#                 plan read back from edit-plan.json and measured against the original's own samples: every cut point
+#                 20 dB or more under speech, no silence over the trigger but protected ones, the shortened pauses'
+#                 median, every span and cut on a video frame, PlanValidation, nothing made but the plan. Then the REAL
+#                 6 Sep talk planned from its development transcript, measured the same way. Writes acceptance-video.txt
+#                 to ../screens/mac/$(MILESTONE)/ (about 3 minutes). M8b extends it to the made MP4
 # make accept-outputs  milestone 4's acceptance on the REAL 13 Sep talk: the standard choices, the
 #                 Outputs screen's loudness changed to -19 and made again, the transcript turned off
 #                 on the recording's page and made again, then everything off (must equal engine v0
@@ -116,7 +123,7 @@ ONLY      ?=
 YES       ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -148,6 +155,9 @@ regress:
 
 accept-progress:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=progress TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/ProgressAcceptanceTests
+
+accept-video:
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=video TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/EditPlanAcceptanceTests
 
 accept-capture:
 	./scripts/make-fixtures.sh --if-missing

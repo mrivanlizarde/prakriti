@@ -306,6 +306,9 @@ final class PipelineRunner {
         if make.contains(.titlesNotesChapters) && options.makeTranscript {
             options.writing = writingSetup()
         }
+        // The edit plan (v2 part M8a) is made again with every make once Ivan has asked for one (Plan the Edit), so it
+        // follows his newest trim, cuts and choices; never before he asks (PLAN rule 2.1.7: no new work on its own).
+        options.planEdit = recording.madeFiles.contains(EditPlan.fileName)
         if make.contains(.podcastReady) {
             options.podcastReady = PodcastReadySetup(settings: OutputResolver.podcastReady(recording: recording, defaults: defaults), facts: recording.podcastFacts)
         }
@@ -770,6 +773,13 @@ final class PipelineRunner {
                 model.record("\(label) (\(recording.fileName)): who is heard. " + check.line { "Voice \($0)" }, level: check.passed ? .info : .attention, run: run)
             }
             if result.output == nil, let ready = result.podcastReady { recording.episodeDuration = ready.duration }
+            // The edit plan this make wrote (v2 part M8a), read into the window, or why it could not be made.
+            if let plan = result.editPlan {
+                model.record("\(label) (\(recording.fileName)): the edit plan. " + plan.summary, run: run)
+                model.forgetEditPlan(recording)
+            } else if let problem = result.planProblem {
+                model.record("\(label) (\(recording.fileName)): the edit plan was not made. \(problem)", level: .attention, run: run)
+            }
         }
         recording.statusReason = result.reason
 

@@ -27,6 +27,11 @@ struct OutputsTab: View {
                 }
             }
             if recording.status != .needsADecision && recording.status != .skipped {
+                // The edit plan (v2 part M8a), once a transcript is made: it is made from transcript.json. Short, so it
+                // comes before the long writing and podcast-ready sections.
+                if recording.madeFiles.contains(TranscriptFiles.asHeard) {
+                    EditPlanSection(recording: recording)
+                }
                 if recording.outputFolder != nil || recording.written != nil {
                     WritingSection(recording: recording, showsChecklist: false)
                 }

@@ -93,10 +93,12 @@ struct StageTimings: Sendable, Equatable {
     /// about 2 s a minute. Voices (v2 part M6b): a first guess of half a second a minute (the diarizer runs at
     /// about 300 times real time, research-people.md 2.5), replaced by this Mac's own measure after one run. Names said
     /// aloud and People left out (v2 part M6c) are arithmetic on the transcript; who is heard in the episode runs the
-    /// diarizer twice, on the original and on what was made, so it starts from the voice step's guess.
+    /// diarizer twice, on the original and on what was made, so it starts from the voice step's guess. Planning the edit
+    /// (v2 part M8a) took 1.1 s for the 15:48 talk on Tue 13 Oct (decoding the sound and the rough cut), about 0.07 s a
+    /// minute.
     static let firstGuess: [PipelineStep: Double] = [
         .capture: 0.21, .sound: 0.04, .speechAudio: 0.035, .transcript: 0.68, .coverage: 0.0, .wordList: 0.0, .namesSaid: 0.0, .faces: 2.0, .voices: 0.5,
-        .trim: 0.04, .edits: 0.0, .leaveOut: 0.0, .episode: 1.4, .loudness: 0.11, .podcastAudio: 2.3, .audioCheck: 0.5,
+        .trim: 0.04, .edits: 0.0, .leaveOut: 0.0, .planEdit: 0.07, .episode: 1.4, .loudness: 0.11, .podcastAudio: 2.3, .audioCheck: 0.5,
         .episodeTranscript: 0.0, .podcastPackage: 0.25, .report: 0.0,
     ]
 

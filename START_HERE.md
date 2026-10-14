@@ -710,6 +710,21 @@ now rebuilds the index without the person and tries one of their old crops again
 against Ivan's answers in a copy of the development store. Voice prints are not learned. With nobody learned nothing runs
 and `People/Faces`, `Voices` and `FaceIndex` stay absent.
 
+**v2 part M8a, the edit plan, Tue 13 Oct (see BUILD-LOG "v2 part M8a"; built, not installed):** the rough cut as a plan,
+`edit-plan.json` in the recording's output folder (schema `prakriti.editplan/1`, research-edit-engine.md 3.4), all code and
+no model. In the inspector's Outputs, under **Edit plan**, **Plan the Edit** reads transcript.json and the original's first
+audio track (decoded to a job folder beside the outputs and deleted) and writes the plan in about a second for 15 minutes:
+pauses shortened, never removed (inside a sentence over 0.40 s to 0.18 s; after a comma or full stop over 0.60 s to 0.35 s;
+after a breath or practice cue or a question kept up to 4 s), fillers (um, uh, er, erm, ah), the first of a word said twice,
+and restarts with a spoken marker or an abandoned sentence (the parallel-phrasing guard keeps deliberate repeats), with
+Ivan's trim and cuts and the people he left out of the video applied on top and never overridable. Every cut is on a video
+frame and in quiet sound (20 dB under speech), or it is not made. The plan is checked by `PlanValidation` (research 3.4
+rules 1 to 6) before it is saved. On the **Original**, the Viewer's strip shows the plan: what it keeps, and what it takes
+out with its reason symbol; click one for its sentence above the inspector. Once a recording has a plan, every make plans it
+again (step "Planning the edit"); nothing plans a recording before Ivan asks once. No video and no file a person could post
+is made from it (M8b). Measured on 13 Sep: keeps 14:50 of 15:48, 85 pauses shortened, 10 fillers, 1 stutter, 193 cut points
+all 20 dB or more under speech.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -1890,6 +1905,27 @@ top and its end. Reading the code is not verification, and neither is a passing 
     and M7 check 3; measured 13 Oct, the SHA-256 of every file under a People folder with an index is identical before and
     after an identify pass (`FaceIndex.listing`, `make accept-gallery`). Voice prints are not learned in this version;
     the release's voice switch is kept for when they are.
+
+138. **One plan drives every video output: `edit-plan.json` (`Edit/EditPlan.swift`), written only by code and checked by
+    `PlanValidation` before it is saved and before anything is made from it.** Never cut the video, the captions or a
+    timeline from anything else. Reason: research-edit-engine.md 3.4 and PLAN M8; three outputs cut three ways drift apart,
+    and the plan is where people decisions are proved applied (rule 5: no kept span overlaps a stretch cut for someone left
+    out, or Ivan's trim and cuts).
+139. **A cut point must be on a video frame and in quiet sound (every 10 ms frame in the 20 ms around it 20 dB or more
+    under the speech level, inside a quiet stretch two frames long, 60 ms after the word before falls to floor + 6 dB and
+    80 ms before the next word's first sound), or the filler, stutter or restart is kept.** The one exception is a stutter
+    said with no gap, cut at the dip before the second copy (6 dB or more under) and marked not clean. Reason: research 1.7
+    and 1.8; measured 13 Oct, 193 of 193 cut points on 13 Sep and 728 of 729 on 6 Sep pass the 20 dB bar. The price is
+    filler recall: 10 of 76 "um" and "uh" on 13 Sep (most run straight into the words around them); `RoughCutPreset.fillerDip`
+    would take 29 and is off until Ivan listens (BUILD-LOG, v2 part M8a).
+140. **The noise floor is the 10th percentile of the 10 ms frames' levels, digital silence left out, not of one-second
+    windows, and a burst of "speech" under 30 ms is a click.** Reason: measured 13 Oct, a one-second window in a talk almost
+    always holds a word, so the windows' 10th percentile sat on speech (13 Sep -33.7 dB against the room's -69.5) and every
+    pause read as speech; a single -47 dB click in 1.6 s of room tone made a word look said there.
+141. **A word with under 50 ms of speech inside Parakeet's span is moved to the nearer edge of the sound around it (a
+    filler stays in its silence).** Reason: Parakeet places words inside long silences (13 Sep at 4:45: "back" and "to" sit
+    in 1.2 s of room tone said after it); left in place, the silence hid between two "words" and no pause could be
+    shortened (10 silences over 0.6 s stayed in the 13 Sep edit before this rule, 1 after, and that one is after a question).
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

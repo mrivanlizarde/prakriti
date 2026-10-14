@@ -4506,3 +4506,136 @@ build, pid 36940).
 - [ ] **Releases in the live app**, once installed: open each person in People, Record Release, turn on that it covers their
   face, and click Learn [Name]. Then `cd ~/Code/prakriti/mac && make calibrate-people` after a few recordings and Reviews.
 
+
+## v2 part M8a: the edit plan. Tue 13 Oct 2026
+
+The seventeenth part of v2 (`docs/v2/PLAN.md`, M8, part M8a; REQUEST item 4, "remove pauses, umms, bad takes"). Built on
+`main`, as this run's instructions said. No Swift package added, nothing downloaded, no model called, **no SwiftData field
+added** (the plan is a file; `Recording.madeFiles` already lists it). Built and checked 20:10 to 22:00.
+
+### What was built
+
+- **`Edit/Words.swift`:** transcript.json through v1's `EpisodeTranscript.sentences(json:)` (Mac warning 45), grouped into
+  words with stable ids `w0`, `w1`... in spoken order, each with its punctuation and what it closes (none, clause,
+  sentence, question); the file's SHA-256.
+- **`Edit/Envelope.swift`:** the first audio track as mono 48 kHz floats, decoded to a job folder and read a few seconds at a
+  time; RMS in 10 ms frames; the floor (10th percentile of frames, digital silence left out); speech on at floor + 12 dB,
+  off under floor + 8 dB, bursts under 30 ms dropped; the speech level (median of speech frames); quiet = 20 dB under it.
+- **`Edit/RoughCut.swift`:** word times refined to the sound (start at the first speech, end where speech stays off 150 ms
+  or at the last speech; a word with under 50 ms of speech in its span moved to the nearer edge of the sound, fillers
+  excepted); then, join by join between kept words: pauses shortened to their target and never removed (inside a sentence
+  > 0.40 s to 0.18 s; after a comma or full stop > 0.60 s to 0.35 s; after a breath or practice cue or a question kept up to
+  4 s), fillers, stutters and restarts taken out only where both cut points are on a video frame, in quiet sound, inside a
+  quiet stretch two frames long, 60 ms after the word before falls to floor + 6 dB and 80 ms before the next word's first
+  sound; otherwise kept (a restart becomes a Check moment). Ivan's trim and cuts and the people left out of the video are
+  forced: every word they touch goes, and if no quiet point is near their edge the cut is made there and marked not clean.
+  The leading silence keeps 0.5 s, the trailing 1.0 s. `FrameDuration` (1001/30000 from the video's `r_frame_rate`).
+- **`Edit/Restarts.swift`:** fillers (um, uh, er, erm, ah), stutters (a word again within 0.3 s, no comma; or a cut-off
+  start), strong spoken markers ("let me start over", "take two", "scratch that"...), weak ones only as a Check ("one more
+  time", "from the top", "sorry, let me"), sentence restarts with the parallel-phrasing guard, and a Check for two complete
+  sentences that say nearly the same.
+- **`Edit/EditPlan.swift`:** `prakriti.editplan/1` as research 3.4 (spans with exact text, removed items with kind,
+  confidence, kept seconds and one sentence each, checks, empty visual and chapters, people applied), plus `words` (every
+  word's refined times), `sourceDuration`, `envelope` (two numbers) and `basis` (the edits and people signature it was made
+  with). **`Edit/PlanValidation.swift`:** rules 1 to 6, plus every word kept by one span or taken out by one item, and every
+  cut on a frame. **`Edit/PlanStep.swift`:** decode, cut, build, validate, write; a failing plan is never saved.
+- **Pipeline:** step **Planning the edit** (`PipelineStep.planEdit`, after the trim, cuts and people left out, before the
+  episode), only when `PipelineOptions.planEdit`; the runner sets it once a recording has a plan (`edit-plan.json` in
+  `madeFiles`), so Make Again keeps it current and nothing plans a recording before Ivan asks (rule 2.1.7). A failure costs
+  only the step. `leftOutVoices` and `leaveOut` take an output, so the plan reads the video's choices. `StageTiming` seed
+  0.07 s a minute.
+- **App:** **Plan the Edit** / **Plan Again** (`App/EditPlanActions.swift`): the plan alone for a recording already made,
+  through a job folder `.planning <name>` beside its outputs, moved in when it passes. The inspector's Outputs has an **Edit
+  plan** section (summary, when planned, "not in the plan yet" when Ivan's trim, cuts or video choices changed, each moment
+  to check with Play, Show in the Viewer). On the **Original**, the Viewer's strip draws the plan: kept filled, taken out
+  outlined with its reason symbol (`pause`, `ellipsis.bubble`, `arrow.uturn.backward`, `person.fill.questionmark`,
+  `scissors`); a click shows the plan's sentence above the inspector (no Restore: that is M8c); "The plan keeps 14:50 of
+  15:48" under it.
+- Capability **`editPlan`**; Help 05 (Edit plan), 06 (the strip on the Original), 10 (If the edit plan is not made).
+  START_HERE Mac warnings 138 to 141. `make accept-video`. Tests: `RoughCutTests` (9), `PlanMeasure`, `EditPlanAcceptanceTests`,
+  snapshots `21-viewer-plan`, `21-viewer-plan-span`, `21-viewer-plan-behind`. Fixture
+  `mac/PrakritiTests/Fixtures/ums-and-retake.transcript.json`: Parakeet's own transcript of `ums-and-retake.wav`
+  (SHA-256 b00b5199...25d2), made 13 Oct, so `make test` runs no model.
+
+### Found by measuring
+
+1. **Research 1.2's floor does not work on a talk.** "The 10th percentile of the quietest second-long windows": a one-second
+   window almost always holds a word, so it read -33.7 dB on 13 Sep against the room's -69.5 (frames), and -21.2 dB on the
+   ums fixture; every pause read as speech and nothing could be cut. The frames' own 10th percentile is the room.
+2. **Parakeet hides silences inside words.** 13 Sep at 4:45, "back" and "to" sit inside 1.2 s of room tone said after it;
+   one click (-47 dB, 10 ms) in 1.6 s of room tone made "there." look said there. With words moved to the nearer sound and
+   clicks dropped, silences over 0.6 s left in the 13 Sep edit went from 10 to 1 (after a question, protected).
+3. **Gabriel runs most fillers into the words around them.** 13 Sep: 76 "um" and "uh" in the transcript; 10 have quiet
+   around them and come out. Measured, not shipped: cutting in the dips 12 dB under speech would take 29 (4 of those cuts
+   under 20 dB, 62.8 s out in all); 6 dB, 33 (8 under). 6 Sep: 6 of 113, 37 at 12 dB, 48 at 6 dB. `RoughCutPreset.fillerDip`
+   holds the option, off.
+4. **The fixture's stutter "so so" has no quiet between the copies** (say(1) runs them together; the lowest 20 ms at a frame
+   boundary is 6.4 dB under speech). PLAN check 1 wants its first copy out, so a stutter with no gap is cut at the dip
+   before the second copy and marked not clean (decision 4). On 13 Sep the one stutter's dip is quiet anyway; on 6 Sep one
+   (55:38) is 17.4 dB under speech.
+5. **Gabriel's natural sentence pauses are short:** the median pause after a full stop or question in the 13 Sep edit is
+   0.110 s (6 Sep 0.000: the next word starts where the last ends), so "median sentence pause within 50 ms of 0.35 s" can
+   only describe the pauses the plan shortens (it never lengthens one). Those: 33, median 0.350 s.
+
+### Checks run, with results (PLAN M8, the checks part M8a runs: 1 RoughCutTests; 2 on the plan; 8)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `RoughCutTests` on `ums-and-retake.wav`: every planted "um" and "uh" out, the stutter's first copy out, everything before "let me start over" out, the parallel pair kept | **PASS.** 9 of 9. On the fixture: restart 0.0 to 5.04 s (w0 "The" to w15 "over.", kept take from "The first thing to know"), filler "um," 9.14 to 9.58 s, filler "uh" 13.01 to 13.61 s, stutter first "so" 16.12 to 16.55 s; both "when the breath is slow/steady" clauses kept, no Check; nothing else out but the trailing silence; `PlanValidation` clean; the decoded sound deleted. Also: ids and punctuation, the floor and clicks, pause targets (0.35 and 0.18 within a frame, 0.3 s untouched, 0.5 s before and 1.0 s after), protected pauses (3 s after "inhale", 2 s after a question kept, 7 s after "close your eyes" to 4 s), a filler with no quiet kept, Ivan's cut and a left-out stretch taking their words whole, restart, parallel, retake Check and weak marker, and validation refusing a changed text (rule 2), a wrong hash and an unknown id (1), an off-frame span (3), kept time over someone left out (5), one chapter (6) |
+| 2 | `make accept-video MILESTONE=v2-m8a` on the **13 Sep talk**, Clear: measured on the plan against the original's audio (cut points, pauses, kept length) | **PASS** (`screens/mac/v2-m8a/acceptance-video.txt`). Made in development, then Plan the Edit (1.1 s; only `edit-plan.json` added to the folder), then Make Again (step "Planning the edit" done, 1.1 s, the same 97 spans and 97 removed). Plan: keeps 14:50 of 15:48; 85 pauses shortened (47.4 s), 10 fillers (8.2 s), 1 stutter, opening silence 1.2 s; 0 checks. **Cut points:** 193 of 193 at 20 dB or more under speech (-31.0 dBFS) for the 20 ms around them, the least 20.3 dB. **Pauses:** 0 silences in the edit over the trigger (0.60 s after punctuation, 0.40 s inside a sentence) but 1 protected (after a question); opening silence 0.51 s; shortened sentence pauses 33, median 0.350 s; inside a sentence 62, median 0.219 s (target 0.18; the lead-in and tail keep at least 0.14 s). **Kept length:** 97 spans, exactly 26,685 frames of 1001/30000 = 890.389 s, 0 off a frame. **Sync:** 97 stretches, every cut on a frame boundary. `PlanValidation` on the file: no problem. Originals unchanged. The Parakeet halves (98% of kept words, 90% of removed fillers absent) and the sample-jump bar need the made file: M8b. Measured anyway, joined as M8b will (20 ms equal-power crossfade): 8 of 96 joins have a largest jump over the largest in the original's 50 ms around the cuts, at most 1.08 times, the loudest -63.6 dBFS (room tone). **Also on the 6 Sep talk** (planned from its development transcript, nothing written there, 3.8 s): keeps 50:02 of 55:39, 357 pauses, 6 fillers, 1 stutter; 728 of 729 cut points 20 dB under, 1 a stutter join at 17.4 dB (listed); 0 silences over the trigger but 10 protected; 365 spans, 89,983 whole frames |
+| 8 | Regression set; `make migrate-check` | **PASS.** `make build`: 0 warnings. `make regress MILESTONE=v2-m8a`: **`make test` 347 tests, 0 failures, 20 skipped by design** (1,087 s; the first run found a Help block nested in another and a small spinner under 12 pt, both fixed and the whole set run again); `make accept`: 13 Sep -16.8 LUFS, true peak -1.7 dBFS, 2,948 words reaching 15:47 of 15:48; silent-60s Needs a decision at -91 dB, nothing made; 30 s clip filed as a test; 6 Sep 9,952 words. `make accept-edits`: 38.82 s shorter (expected 38.82), 0 of 73 runs from the cut heard, 189 of 201 after it, the class refused. `make migrate-check`: recordings 13/13, folders 2/2, output settings 40/40, Activity lines 970/970, approved 2. People/ changed only by a parameter (`leftOutVoices` and `leaveOut` take an output, the podcast by default), covered by `ChoicesTests`; `make accept-people` was not run |
+
+**Snapshots, looked at** (`screens/mac/v2-m8a/`, sample data; the Original is a test pattern, so no frame of Gabriel was
+drawn): `21-viewer-plan-light/dark` (the strip with the plan's kept and outlined spans, "The plan keeps 15:24 of 15:48",
+the Edit plan section on inspector page 2 with Plan Again and Show in the Viewer), `21-viewer-plan-span-*` ("Removed by the
+plan, 0:15.9 to 0:16: A filler word, "uh", 0.10 s with the quiet around it." with the filler symbol and Done, no Restore),
+`21-viewer-plan-behind-*` (orange "Your newest trim and cuts are not in the plan yet. Plan Again to include them." and
+"Possible retake at 2:41: kept both." with Play). **Found by looking:** the span strip asked the window for 1,620 pt with a
+plan's longer sentence (now at most four lines), and the Edit plan section sat below the long podcast-ready section, past
+the twelve pages drawn (now right after Files). Help 05, 06 and 10 drawn (`help-*`), the Edit plan text looked at.
+
+**Em dashes:** 0 in every file this part changed (grep). `RulesTests`: no network type under `Edit/`; no control under 12 pt.
+
+### Decisions, each with its reason
+
+1. **Plan the Edit by hand, then every make.** PLAN rule 2.1.7: nothing new starts by itself on existing recordings; the
+   `editedVideo` output that will run the step on its own is M8b's.
+2. **Commas count as the end of a sentence for pauses.** Parakeet joins whole sentences with commas ("the breath, um, every
+   morning"); the research's two classes are "no punctuation" and "between sentences".
+3. **No passage retakes by embeddings, no model for "like" and "you know".** Both need a model call (the research's
+   detector 4 and 1.5); M8a is all code. Discourse markers stay, as the Clear style says; uncertain restarts are kept and
+   listed, the research's own fallback.
+4. **A stutter with no gap is cut at the dip before the second copy, 6 dB or more under speech, marked not clean.** PLAN
+   check 1 requires it on the fixture and there is no quieter place; the acceptance lists each such join apart and fails any
+   other cut under 20 dB.
+5. **Fillers run into words are kept.** The research's "never cut what cannot be cut cleanly"; the measured alternative is
+   in "Found by measuring" for Ivan's ears.
+6. **The video's people choices, not the podcast's.** `ChoiceOutput.video` falls back to each person's choice for every
+   output until per-output video choices are offered.
+7. **Frames of Gabriel were never looked at** (this run's instructions, D1): the acceptance draws nothing; every snapshot
+   plays a test pattern.
+
+### What does not work yet
+
+- No video, captions or timeline is made from the plan (M8b to M10). Restore and Remove on the plan's spans, struck-through
+  words, the Video rendition: M8c. Hiding faces in the plan's video: M8d.
+- Filler recall is low on Gabriel's talks (13% on 13 Sep); see decision 5.
+- Pauses inside a sentence land at 0.22 to 0.24 s, not 0.18: the lead-in (80 ms) and tail (60 ms after the sound falls)
+  win over the target.
+- Passage retakes and model-confirmed fillers are not looked for.
+
+### Installed
+
+**Not installed**, for the reason M7a and M7b gave: `make install` ships everything on `main`, including M5a's lock, which
+turns the live app's Claude API writing back to LM Studio. PLAN section 11 (Tue 13 Oct) asks for the lock to be loosened
+first; this run's instructions say the lock must fail closed for classes and other people's words, so it was not changed
+and the install waits for Ivan's word in the conversation. The live app is unchanged (the M4b build, pid 36940).
+
+### For Ivan
+
+- [ ] **The lock change and the install need your word in the conversation** (unchanged since M5a): say "loosen the lock as
+  written on 13 Oct" and the next run changes it, then `cd ~/Code/prakriti/mac && make install` ships M5a to M8a together.
+- [ ] **Listen to the plan (PLAN M8 check 9, when M8b makes the video):** three random 30 s windows of the 13 Sep video,
+  "did anything sound cut?".
+- [ ] **Fillers:** if you want more "um" and "uh" out, say so after that listen; the measured option takes 29 of 76 on
+  13 Sep instead of 10, with 4 cuts under the quiet bar.

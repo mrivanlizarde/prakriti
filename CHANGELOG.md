@@ -5,6 +5,25 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-13, Tue: v2 part M8a, the edit plan
+
+- **The rough cut is a plan, `edit-plan.json`, before it is ever a video.** Why: PLAN M8a and research-edit-engine.md 3.4;
+  every later output (the MP4, captions, timelines) is cut from one checked plan, so they cannot drift apart, and the plan
+  is where the people left out are proved gone (validation rule 5).
+- **Cuts only where the sound is quiet, or not at all.** Why: research 1.7 and 1.8 ("no cut inside a word") and Descript's
+  rule. Measured: every one of 193 cut points on 13 Sep is 20 dB or more under speech. The cost is honest: only 10 of 76
+  "um" and "uh" come out, because Gabriel runs most of them into the words around them; a measured option (cutting in the
+  dips) would take 29 and waits for Ivan's ears.
+- **Plan the Edit, by hand, then every make keeps the plan current.** Why: PLAN rule 2.1.7, an upgrade never starts work on
+  existing recordings; once Ivan asks, the plan follows his newest trim, cuts and choices.
+- **The noise floor is read from 10 ms frames, not one-second windows; clicks are not speech; words Parakeet placed in a
+  silence move to the sound.** Why: measured on 13 Sep, the research's one-second windows put the floor on speech and no
+  pause could be found; Parakeet hid 1.2 s silences inside word spans.
+- **A stutter said with no gap is cut in the dip before the second copy.** Why: PLAN check 1 asks for the fixture's "so so"
+  to lose its first copy and there is no quiet between them; the cut is marked not clean and listed.
+- **Passage retakes by embeddings and model-confirmed "like" are not built.** Why: both need a model call and M8a is all
+  code; uncertain restarts are kept and listed as moments to check, which is the research's own fallback.
+
 ## 2026-10-13, Tue: v2 part M7b, recognition
 
 - **A person whose recorded release covers their face is learned and then recognized in new recordings.** Why: REQUEST

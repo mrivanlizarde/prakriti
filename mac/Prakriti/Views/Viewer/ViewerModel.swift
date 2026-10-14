@@ -374,25 +374,50 @@ final class ViewerModel {
     }
 }
 
-/// A span of the Timeline-lite: kept time, or time the trim or a cut takes out, on the original's clock.
+/// A span of the Timeline-lite: kept time, or time the trim or a cut takes out, on the original's clock. On the Original,
+/// once a recording has an edit plan (v2 part M8a), the spans are the plan's: `planned` time taken out, with its reason.
 struct TimelineSpan: Identifiable, Equatable, Hashable, Sendable {
-    enum Kind: String, Sendable { case kept, trimmedStart, trimmedEnd, cut }
+    enum Kind: String, Sendable { case kept, trimmedStart, trimmedEnd, cut, planned }
     let kind: Kind
     let start: Double
     let end: Double
-    var id: String { "\(kind.rawValue)-\(Int(start * 100))-\(Int(end * 100))" }
+    /// For a planned span: why the plan takes it out, and the plan's own sentence for it.
+    var reason: RemovedKind?
+    var detail: String?
+    var id: String { "\(kind.rawValue)-\(Int(start * 1000))-\(Int(end * 1000))" }
     var length: Double { end - start }
     var isRemoved: Bool { kind != .kept }
+    /// From the edit plan, so Restore (which changes Ivan's trim and cuts) does not apply to it.
+    var isPlanned: Bool { kind == .planned || detail != nil }
+
+    /// The reason symbol (design spec 3.4.3): pause, filler word, retake, another person, trimmed.
+    var symbol: String {
+        switch reason {
+        case .pause: "pause"
+        case .filler, .stutter: "ellipsis.bubble"
+        case .restart: "arrow.uturn.backward"
+        case .person: "person.fill.questionmark"
+        case .cut, .trimmed, nil: isRemoved ? "scissors" : "checkmark.circle"
+        }
+    }
 
     /// "Removed: cut, 30 s, 5:00 to 5:30." for the selection strip and VoiceOver.
     var line: String {
         let times = "\(TimeText.string(start)) to \(TimeText.string(end))"
         switch kind {
-        case .kept: return "Kept, \(Format.length(length)), \(times)."
+        case .kept: return (detail == nil ? "Kept" : "Kept by the plan") + ", \(Format.length(length)), \(times)."
         case .cut: return "Removed: a cut, \(Format.length(length)), \(times)."
         case .trimmedStart: return "Removed: trimmed from the start, \(Format.length(length)), \(times)."
         case .trimmedEnd: return "Removed: trimmed from the end, \(Format.length(length)), \(times)."
+        case .planned: return "Removed by the plan, \(times): " + (detail ?? "")
         }
+    }
+
+    /// The plan's spans over the whole original: what it keeps, and what it takes out with each reason.
+    static func spans(plan: EditPlan) -> [TimelineSpan] {
+        var spans = plan.spans.map { TimelineSpan(kind: .kept, start: $0.in, end: $0.out, detail: $0.text) }
+        spans += plan.removed.map { TimelineSpan(kind: .planned, start: $0.from, end: $0.to, reason: $0.kind, detail: $0.say) }
+        return spans.sorted { $0.start < $1.start }
     }
 
     /// The spans of a recording as its edits stand now (the newest trim and cuts, made or not): what

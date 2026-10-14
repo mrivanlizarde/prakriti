@@ -28,7 +28,7 @@ import Foundation
 /// The steps, in order. `title` is what the recording page lists; `doing` is what the status line
 /// says while it runs ("Working on Sun 13 Sep: making the episode audio"). Never "Processing".
 enum PipelineStep: String, CaseIterable, Sendable {
-    case complete, capture, sound, speechAudio, transcript, coverage, wordList, namesSaid, faces, voices, trim, edits, leaveOut, episode, loudness, podcastAudio, audioCheck, episodeTranscript, writing, podcastPackage, report
+    case complete, capture, sound, speechAudio, transcript, coverage, wordList, namesSaid, faces, voices, trim, edits, leaveOut, planEdit, episode, loudness, podcastAudio, audioCheck, episodeTranscript, writing, podcastPackage, report
 
     var title: String {
         switch self {
@@ -45,6 +45,7 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .trim: "Silence at the start and end"
         case .edits: "Your trim and cuts"
         case .leaveOut: "People left out"
+        case .planEdit: "Planning the edit"
         case .episode: "Episode audio"
         case .loudness: "Loudness check"
         case .podcastAudio: "Podcast-ready audio"
@@ -79,6 +80,7 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .trim: "Finding the silence at the start and end"
         case .edits: "Applying your trim and cuts"
         case .leaveOut: "Leaving out the people you chose"
+        case .planEdit: "Planning the edit"
         case .episode: "Making the episode audio"
         case .loudness: "Measuring the episode audio"
         case .podcastAudio: "Mastering the podcast-ready audio"
@@ -154,6 +156,11 @@ struct PipelineOptions: Sendable {
     /// everyone in and mutes nothing, so the episode is made exactly as before.
     var choices = PeopleChoices.none
 
+    /// The edit plan (v2 part M8a): `edit-plan.json`, the rough cut every video output will be made from. Planned only
+    /// when asked for (the app asks once a recording has a plan, so Make Again keeps it current; M8b ties it to the
+    /// edited video), and only with the transcript, which it is made from. No file a person could post comes of it.
+    var planEdit = false
+
     /// Anyone left out or any name muted: the podcast changes, so the step that applies it is planned.
     var appliesChoices: Bool { people != nil && choices.changesPodcast && (makeEpisode || makePodcastReady) }
 
@@ -183,6 +190,7 @@ struct PipelineOptions: Sendable {
             if !edits.isEmpty { steps.append(.edits) }
             if appliesChoices { steps.append(.leaveOut) }
         }
+        if planEdit && makeTranscript { steps.append(.planEdit) }
         if makeEpisode { steps += [.episode, .loudness] }
         if makePodcastReady { steps.append(.podcastAudio) }
         // The audio output check, whenever someone is left out (v2 part M6c).
@@ -279,6 +287,9 @@ struct PipelineResult: Sendable {
     /// What this make left out of the podcast and muted, and the audio output check of what it made (v2 part M6c).
     /// Nil when nobody was left out and nothing was muted.
     var applied: PeopleApplied?
+    /// The edit plan this make wrote (v2 part M8a), or why it could not, or neither when it was not asked for.
+    var editPlan: EditPlan?
+    var planProblem: String?
 }
 
 /// Where the face and voice steps write, for one recording, and Ivan's names the writing step's privacy lock reads.
@@ -546,7 +557,7 @@ struct Pipeline: Sendable {
     /// right), and each later pass takes half of what is left.
     func passes(_ step: PipelineStep) -> Int? {
         switch step {
-        case .sound, .speechAudio, .trim, .loudness, .faces, .voices: return 1
+        case .sound, .speechAudio, .trim, .loudness, .faces, .voices, .planEdit: return 1
         case .episode:
             let intro = !(options.introPath ?? "").isEmpty, outro = !(options.outroPath ?? "").isEmpty
             return 2 + (intro ? 1 : 0) + (outro ? 1 : 0) + (intro || outro ? 1 : 0)
@@ -846,6 +857,26 @@ struct Pipeline: Sendable {
                     await finish(.leaveOut, applied.leaveOut.stepLine + " The episode keeps \(Format.timecode(kept)) of \(Format.timecode(ready.duration)).")
                 }
             }
+            // 5d. The edit plan (v2 part M8a): the rough cut as `edit-plan.json`, from the transcript and the original's
+            //     sound, with Ivan's trim and cuts and the people left out of the video applied on top. A plan that cannot
+            //     be made or does not pass its own check costs only this step; nothing else reads it in M8a.
+            if options.planEdit && options.makeTranscript {
+                await begin(.planEdit)
+                do {
+                    let plan = try await planTheEdit(file: file, staging: staging, duration: ready.duration, capture: result.capture,
+                                                     namesSaid: result.namesSaid, faces: result.faces, voices: result.voices)
+                    result.editPlan = plan.plan
+                    await finish(.planEdit, plan.stepLine)
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    let reason = (error as? PlanStep.Failure)?.reason ?? (error as? PipelineFailure)?.reason ?? error.localizedDescription
+                    result.planProblem = reason
+                    log?.write("\(name): planning the edit failed. \(reason)")
+                    await finish(.planEdit, reason + " The rest is made as usual.", state: .failed)
+                }
+            }
+
             // The names said aloud that this make muted, for every file that carries words (v2 part M6c).
             let mutes = result.applied?.leaveOut.mutes ?? []
             if options.makeEpisode {
@@ -1237,18 +1268,18 @@ struct Pipeline: Sendable {
     /// own voice step and Ivan's names; their stretches from the people file; the words they touch from transcript.json;
     /// the names said aloud he muted. Someone left out while the voices are unknown stops the make (fail closed).
     func leaveOut(people: PeopleSetup, staging: URL, original: URL, duration: Double, namesSaid: NamesSaid?, faces: FacesFound?,
-                  voices: VoicesFound?) async throws -> PeopleApplied {
+                  voices: VoicesFound?, output: ChoiceOutput = .podcast) async throws -> PeopleApplied {
         let choices = options.choices
         let moments = namesSaid?.moments ?? []
         var leftOut: [Int] = []
         var segments: [VoiceSegment] = []
-        if choices.leavesSomeoneOut {
+        if choices.leavesSomeoneOut(of: output) {
             guard let voices, let file = people.folders.read(people.recordingID), let heard = file.voices else {
                 throw PipelineFailure(step: .leaveOut, reason: "Voices could not be listened for, so the people you chose to leave out could not be found. "
                                       + "Nothing was made, so nothing could still hold them. Make it again.")
             }
             let names = people.names(for: voices).resolved(faces: faces, voices: voices)
-            leftOut = choices.leftOutVoices(voices, names: names)
+            leftOut = choices.leftOutVoices(voices, names: names, output: output)
             segments = heard.voiceSegments
         }
         var words: [TimeRange]?
@@ -1264,6 +1295,36 @@ struct Pipeline: Sendable {
                                  audio: audio)
         }
         return PeopleApplied(madeAt: Date(), signature: Self.signature(left: leftOut, muted: choices.muted(moments)), leaveOut: plan, check: nil)
+    }
+
+    /// The edit plan for this make (v2 part M8a): the people left out of the video worked out as the podcast's are
+    /// (`leaveOut`, whole words, edges on the sound; someone left out while the voices are unknown stops the plan, fail
+    /// closed), then `PlanStep` on transcript.json and the original, written into the staging folder.
+    func planTheEdit(file: URL, staging: URL, duration: Double, capture: CaptureReport?, namesSaid: NamesSaid?, faces: FacesFound?,
+                     voices: VoicesFound?) async throws -> PlanStep.Outcome {
+        var people = EditPlan.People()
+        if let setup = options.people, options.choices.leavesSomeoneOut(of: .video) || !options.choices.names.isEmpty {
+            let applied = try await leaveOut(people: setup, staging: staging, original: file, duration: duration, namesSaid: namesSaid,
+                                             faces: faces, voices: voices, output: .video)
+            people = EditPlan.People(applied: applied.signature, leftOut: applied.leaveOut.voices,
+                                     cuts: EpisodeEdits.merged(applied.leaveOut.cuts + applied.leaveOut.overlaps), mutes: applied.leaveOut.mutes)
+        }
+        var frameRate = capture?.video?.frameRate
+        if capture == nil { frameRate = await PlanStep.frameRate(of: file, ffprobe: tools.ffprobe) }
+        let setup = PlanStep.Setup(original: file, transcript: staging.appending(path: TranscriptFiles.asHeard),
+                                   jobFolder: staging.appending(path: ".planning", directoryHint: .isDirectory), duration: duration,
+                                   frameRate: frameRate, edits: options.edits, people: people, signature: people.applied)
+        defer { try? FileManager.default.removeItem(at: setup.jobFolder) }
+        let ffmpeg = tools.ffmpeg
+        let outcome = try await PlanStep.run(setup, now: Date()) { arguments in
+            _ = try await tool(.planEdit, ffmpeg, arguments, captureStdout: false, duration: duration)
+        }
+        do {
+            try PlanStep.write(outcome.plan, into: staging)
+        } catch {
+            throw PlanStep.Failure(reason: "The plan was made but could not be saved.")
+        }
+        return outcome
     }
 
     /// The levels of the original's first audio track for `EdgeLevels.reach` seconds either side of each cut's edges.
@@ -1389,7 +1450,7 @@ struct Pipeline: Sendable {
 
     /// Every file a make can leave. Only these are ever replaced or removed from a recording's
     /// folder; anything else Ivan keeps there is left alone.
-    static let madeNames: Set<String> = Set(["episode.mp3", "REPORT.md", "speech.wav", TranscriptFiles.asHeard, PodcastPackage.folderName]
+    static let madeNames: Set<String> = Set(["episode.mp3", "REPORT.md", "speech.wav", TranscriptFiles.asHeard, PodcastPackage.folderName, EditPlan.fileName]
                                             + TranscriptFormat.allCases.map(TranscriptFiles.fileName))
         .union(WrittenPackage.fileNames)
 

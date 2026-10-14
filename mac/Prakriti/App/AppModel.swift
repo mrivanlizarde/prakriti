@@ -165,6 +165,13 @@ final class AppModel {
     /// Recordings being looked at from Look for Faces now, and why one could not be (v2 part M6a).
     var faceChecking: Set<UUID> = []
     var faceProblems: [UUID: String] = [:]
+    /// Recordings being planned now by Plan the Edit, why one could not be, and the plans read from their folders
+    /// (v2 part M8a), by recording.
+    var planning: Set<UUID> = []
+    var planProblems: [UUID: String] = [:]
+    /// Bumped when a plan is written, so the window reads it again.
+    var planRevision = 0
+    @ObservationIgnored var planCache: [String: (modified: Date, plan: EditPlan?)] = [:]
     /// The Filter menu's Other People Appear: only recordings where two or more faces were seen at once.
     var otherPeopleFilter = false
     /// The People tab's faces, cropped live and held in memory only (v2 part M6a).

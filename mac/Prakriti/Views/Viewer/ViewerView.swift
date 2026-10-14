@@ -277,8 +277,12 @@ struct ViewerLower: View {
         }
     }
 
-    /// "Keeps 15:08 of 15:48": what the trim and cuts leave, as they stand now.
+    /// "Keeps 15:08 of 15:48": what the trim and cuts leave, as they stand now; on the Original with an edit plan, what
+    /// the plan keeps (v2 part M8a).
     private var keptLine: String? {
+        if model.viewer.rendition == .original, let plan = model.editPlan(for: recording) {
+            return "The plan keeps \(Format.timecode(plan.keptSeconds)) of \(Format.timecode(plan.sourceDuration))"
+        }
         guard let duration = recording.duration, !recording.edits.isEmpty else { return nil }
         let kept = recording.edits.segments(duration: duration).reduce(0) { $0 + $1.length }
         return "Keeps \(Format.timecode(kept)) of \(Format.timecode(duration))"
@@ -293,11 +297,20 @@ struct ViewerTimeline: View {
 
     var body: some View {
         let viewer = model.viewer
-        TimelineLite(spans: TimelineSpan.spans(edits: recording.edits, duration: duration), duration: duration,
+        TimelineLite(spans: ViewerTimeline.spans(recording, duration: duration, model: model), duration: duration,
                      position: viewer.hasPosition ? viewer.currentOriginal : nil, selected: viewer.selectedSpan) { span in
             viewer.select(span)
             model.inspectorShown = true
         }
+    }
+}
+
+extension ViewerTimeline {
+    /// On the Original with an edit plan (v2 part M8a), the plan's spans; otherwise the trim and cuts as they stand now.
+    @MainActor
+    static func spans(_ recording: Recording, duration: Double, model: AppModel) -> [TimelineSpan] {
+        if model.viewer.rendition == .original, let plan = model.editPlan(for: recording) { return TimelineSpan.spans(plan: plan) }
+        return TimelineSpan.spans(edits: recording.edits, duration: duration)
     }
 }
 
@@ -387,12 +400,14 @@ struct SelectedSpanStrip: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label {
-                Text(span.line).font(AppFont.body).fixedSize(horizontal: false, vertical: true)
+                // At most four lines: a plan's sentence is longer than a cut's, and a strip that grows without a limit asked
+                // the window for 1,620 pt in the snapshots (v2 part M8a).
+                Text(span.line).font(AppFont.body).lineLimit(4).frame(maxWidth: .infinity, alignment: .leading)
             } icon: {
-                Image(systemName: span.isRemoved ? "scissors" : "checkmark.circle").font(AppFont.body)
+                Image(systemName: span.symbol).font(AppFont.body)
             }
             HStack(spacing: 10) {
-                if span.isRemoved {
+                if span.isRemoved && !span.isPlanned {
                     Button("Restore") { model.restore(span, in: recording) }
                         .disabled(!model.canEditEpisode(recording))
                 }

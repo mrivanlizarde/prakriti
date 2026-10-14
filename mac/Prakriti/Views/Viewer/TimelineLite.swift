@@ -2,7 +2,9 @@ import SwiftUI
 
 /// Timeline-lite (v2 part M3b, design spec 3.4.3): a map of what stays and what goes, over the whole
 /// original, not an editor. Kept time is a filled bar in the accent; time the trim or a cut takes out is the
-/// same shape outlined only, with the `scissors` symbol when it is 24 pt wide or more, so kept and removed
+/// same shape outlined only, with its reason symbol when it is 24 pt wide or more (the trim and cuts `scissors`;
+/// on the Original with an edit plan, v2 part M8a, also `pause`, `ellipsis.bubble`, `arrow.uturn.backward` and
+/// `person.fill.questionmark`), so kept and removed
 /// differ by fill, never by color alone. A 2 pt accent line follows the player; it is not a handle. Click a
 /// span to play from its start and see it above the inspector's tabs, with Restore or Remove.
 ///
@@ -34,7 +36,7 @@ struct TimelineLite: View {
                         .accessibilityLabel(span.line)
                         .accessibilityAddTraits(.isButton)
                         .accessibilityAction { choose(span) }
-                        .quickHelp(span.isRemoved ? span.line + " Click to play from it and see it in the inspector, with Restore."
+                        .quickHelp(span.isRemoved && !span.isPlanned ? span.line + " Click to play from it and see it in the inspector, with Restore."
                                                    : span.line + " Click to play from it.", article: "reviewing-and-approving")
                 }
                 if let position, duration > 0 {
@@ -70,7 +72,7 @@ private struct SpanShape: View {
             if span.isRemoved {
                 shape.strokeBorder(AppColor.secondaryText, lineWidth: 1.5)
                 if width >= 24 {
-                    Image(systemName: "scissors")
+                    Image(systemName: span.symbol)
                         .font(AppFont.label)
                         .foregroundStyle(.appSecondary)
                         .accessibilityHidden(true)

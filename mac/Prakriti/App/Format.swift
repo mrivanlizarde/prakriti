@@ -66,6 +66,15 @@ enum Format {
         return "\(x) s"
     }
 
+    /// A short length to the hundredth or tenth of a second (v2 part M8a, the edit plan's pauses): "0.35 s", "1.8 s",
+    /// and `length` from 10 s up.
+    static func seconds(_ seconds: Double) -> String {
+        let s = max(0, seconds)
+        if s < 1 { return String(format: "%.2f s", s) }
+        if s < 10 { return String(format: "%.1f s", s) }
+        return length(s)
+    }
+
     /// A length as VoiceOver reads it: "15 minutes 48 seconds", "1 hour 2 minutes".
     static func spokenLength(_ seconds: Double) -> String {
         func unit(_ n: Int, _ word: String) -> String { "\(n) \(word)\(n == 1 ? "" : "s")" }

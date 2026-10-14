@@ -4,7 +4,7 @@ title: If something isn't working
 summary: What to check when a recording is not found, has no sound, sends no notice, or a model does not answer, and where the log is.
 section: troubleshooting
 order: 1
-keywords: [troubleshooting, problem, not found, silent, no sound, capture check, audio tracks, both channels, Check Capture, notifications, stopped, quit, flicker, bands, sync, LM Studio, API key, Claude API, Anthropic, OpenAI, model list, cut, disk space, encoding overloaded, log, show log]
+keywords: [troubleshooting, problem, edit plan, Plan the Edit, not found, silent, no sound, capture check, audio tracks, both channels, Check Capture, notifications, stopped, quit, flicker, bands, sync, LM Studio, API key, Claude API, Anthropic, OpenAI, model list, cut, disk space, encoding overloaded, log, show log]
 related: [capture-the-best-video, set-up-obs-for-prakriti, sources-and-watching, models-and-api-keys]
 ---
 
@@ -48,6 +48,21 @@ check that a Focus is not hiding them. Settings, General says whether macOS allo
 :::requires welcome
 The last panel of the welcome window does the same: choose Help > Welcome to Prakriti, click Continue to
 the last panel, then click Turn On Notifications, or Open Notification Settings if they are off.
+:::
+
+:::requires editPlan
+### If the edit plan is not made
+
+Under Edit plan in the inspector's Outputs, Prakriti says why in one sentence.
+
+- **Plan the Edit is dimmed:** the recording has no transcript yet, or it is being made. Wait for it to
+  finish, or turn on Transcript for it and click Make Again.
+- **The original is not on this Mac:** the plan reads the original's sound. Download it in the Finder,
+  then click Plan the Edit again.
+- **The plan did not pass its own check:** Prakriti checks every plan before saving it, and saves none
+  that fails. Click Make Again so the transcript is made again, then Plan Again. If it keeps happening,
+  send the day's log (see "Find the log" below).
+- **It says your newest trim, cuts or choices are not in the plan yet:** click Plan Again.
 :::
 
 ### If a recording says it is silent or has no sound

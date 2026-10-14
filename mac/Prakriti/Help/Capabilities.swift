@@ -42,6 +42,8 @@ enum Capability: String, CaseIterable, Sendable {
     case gallery
     /// Named people with a release recognized in new recordings, Review Possible Matches, Merge 2 People (M7b).
     case recognition
+    /// The edit plan: Plan the Edit, `edit-plan.json`, the plan on the Original's Timeline-lite (M8a). No video.
+    case editPlan
     /// The rendered, edited video and its Ready checklist (M8).
     case video
     /// The house style, presets and the direction field (M9).
@@ -59,10 +61,10 @@ enum Capability: String, CaseIterable, Sendable {
 enum Capabilities {
     /// What this build does: Help (M2a), the welcome window (M2b), the Viewer (M3b), progress with the
     /// Activity window (M4a), the capture check (M4b), Anthropic and OpenAI (M5b), faces (M6a), voices and names
-    /// (M6b), choices applied to audio (M6c), hiding in pictures (M6d), the People gallery (M7a), and recognition (M7b).
-    /// Each later part switches its own on.
+    /// (M6b), choices applied to audio (M6c), hiding in pictures (M6d), the People gallery (M7a), recognition (M7b), and
+    /// the edit plan (M8a). Each later part switches its own on.
     static let built: Set<Capability> = [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery,
-                                         .recognition]
+                                         .recognition, .editPlan]
 
     /// Every capability, for the test that every article and every block is visible once all are built.
     static let all = Set(Capability.allCases)

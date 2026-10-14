@@ -200,9 +200,15 @@ struct PeopleChoices: Codable, Equatable, Sendable {
         people.values.contains { ($0.outputs[.podcast] ?? $0.choice) == .leaveOut }
     }
 
-    /// The voices left out of the podcast, by the voice step's ids.
-    func leftOutVoices(_ voices: VoicesFound, names: (faces: [Int: UUID], voices: [Int: UUID])) -> [Int] {
-        voices.voices.filter { choice(PersonKey.voice($0, names: names), for: .podcast) == .leaveOut }.map(\.id).sorted()
+    /// The voices left out of the podcast (or another output: the edit plan of v2 part M8a reads the video's), by the
+    /// voice step's ids.
+    func leftOutVoices(_ voices: VoicesFound, names: (faces: [Int: UUID], voices: [Int: UUID]), output: ChoiceOutput = .podcast) -> [Int] {
+        voices.voices.filter { choice(PersonKey.voice($0, names: names), for: output) == .leaveOut }.map(\.id).sorted()
+    }
+
+    /// Someone is left out of `output`.
+    func leavesSomeoneOut(of output: ChoiceOutput) -> Bool {
+        people.values.contains { ($0.outputs[output] ?? $0.choice) == .leaveOut }
     }
 
     /// The names said aloud that are muted, of those found.

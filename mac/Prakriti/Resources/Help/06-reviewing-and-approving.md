@@ -79,6 +79,14 @@ what any control does, choose Help > Show Quick Help: the top of the inspector s
 under the pointer does, with a link to more in Help.
 :::
 
+:::requires editPlan
+On the Original, once the recording has an edit plan, the strip shows the plan instead: what it keeps,
+filled in, and what it takes out, outlined with its reason: a pause shortened, a filler word or a word
+said twice, a false start, someone you chose to Leave Out, or your trim or a cut. Click a piece to play
+from it; the top of the inspector says what it is and why. Under the strip, Prakriti says how much the
+plan keeps. See "Edit plan" in [Outputs](05-outputs.md).
+:::
+
 :::unless voices
 ## Say what it is
 

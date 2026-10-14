@@ -558,7 +558,40 @@ final class SnapshotTests: XCTestCase {
             XCTAssertEqual(plain.transparent, 0, "20-viewer-original-\(scheme): the picture is not drawn")
             XCTAssertGreaterThanOrEqual(people.white, plain.white + 50, "20-viewer-people-\(scheme): no boxes or labels over the picture")
         }
-        let viewerCount = 13 * 2
+        // The edit plan on the Original (v2 part M8a): a plan made by the real rough cut from the sample talk's own words over
+        // a made-up envelope (sound where each word is, room tone between; the sample's sound is a test tone), written
+        // into the sample's folder for these three pictures and taken away after them. The Edit plan section in the
+        // inspector's Outputs; a filler chosen on the strip, its reason above the tabs; the plan behind Ivan's newest cut,
+        // with a moment to check.
+        let planURL = media.outputs.appending(path: EditPlan.fileName)
+        let plan = try SnapshotTests.samplePlan(outputs: media.outputs)
+        try plan.encoded().write(to: planURL)
+        defer { try? FileManager.default.removeItem(at: planURL) }
+        func openPlan(_ model: AppModel, _ change: (Recording) -> Void = { _ in }) throws -> Recording {
+            try openTalk(model, rendition: .original, at: 120) { r in
+                if !r.madeFiles.contains(EditPlan.fileName) { r.madeFiles += [TranscriptFiles.asHeard, EditPlan.fileName] }
+                change(r)
+            }
+        }
+        try draw("21-viewer-plan") { model in
+            _ = try openPlan(model)
+            model.inspectorTab = .outputs
+        }
+        try draw("21-viewer-plan-span") { model in
+            _ = try openPlan(model)
+            let filler = try XCTUnwrap(plan.removed.first { $0.kind == .filler } ?? plan.removed.first { $0.kind == .pause })
+            model.viewer.selectedSpan = TimelineSpan.spans(plan: plan).first { $0.start == filler.from && $0.kind == .planned }
+            model.inspectorTab = .outputs
+        }
+        var behind = plan
+        behind.checks = [CheckMoment(at: plan.spans[min(3, plan.spans.count - 1)].from, kind: .possibleRetake, kept: "both", say: "Possible retake at 2:41: kept both.")]
+        try draw("21-viewer-plan-behind") { model in
+            try behind.encoded().write(to: planURL)
+            _ = try openPlan(model) { r in model.addCut(TimeRange(start: 300, end: 330), to: r) }
+            model.inspectorTab = .outputs
+        }
+        try? FileManager.default.removeItem(at: planURL)
+        let viewerCount = 16 * 2
 
         if only == "recording" {
             print("Snapshots written to \(outputFolder.path): \(written.count) Viewer pictures")
@@ -665,6 +698,23 @@ final class SnapshotTests: XCTestCase {
             }
         }
         return (samples, transparent, white)
+    }
+}
+
+extension SnapshotTests {
+    /// A plan of the sample talk for the pictures (v2 part M8a): its own words, a made-up envelope (-20 dBFS where Parakeet
+    /// says a word is, -70 between), 29.97 fps, made at the fixtures' moment.
+    @MainActor
+    static func samplePlan(outputs: URL) throws -> EditPlan {
+        let words = try XCTUnwrap(PlanWords.from(json: Data(contentsOf: outputs.appending(path: TranscriptFiles.asHeard))))
+        let duration = 947.78
+        var levels = [Double](repeating: -70, count: Int(duration * 100))
+        for word in words.words {
+            for i in Int(word.start * 100)..<min(levels.count, Int(word.end * 100)) { levels[i] = -20 }
+        }
+        let input = RoughCut.Input(words: words, envelope: Envelope(levels: levels), duration: duration, frame: .ntsc30)
+        return EditPlan.from(RoughCut.make(input), words: words, input: input, recording: "2026-09-13 18-25-44", people: .init(), signature: "",
+                             madeAt: Fixtures.now)
     }
 }
 

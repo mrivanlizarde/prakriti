@@ -4,7 +4,7 @@ title: Outputs
 summary: What Prakriti makes from each recording, what is in each file, and where the files go.
 section: outputs
 order: 1
-keywords: [outputs, podcast episode, podcast-ready, MP3, loudness, LUFS, transcript, captions, SRT, VTT, report, show notes, chapters, titles, episode text, upload checklist, artwork, show name, word list, intro, outro, mono, stereo]
+keywords: [outputs, edit plan, rough cut, pauses, filler words, podcast episode, podcast-ready, MP3, loudness, LUFS, transcript, captions, SRT, VTT, report, show notes, chapters, titles, episode text, upload checklist, artwork, show name, word list, intro, outro, mono, stereo]
 related: [sources-and-watching, reviewing-and-approving, models-and-api-keys]
 ---
 
@@ -94,6 +94,28 @@ Three title options, show notes, chapters at real moments in the recording, tags
 an accuracy checklist, in `show-notes.md`. Every quote in the checklist is found word for word in the
 transcript, and every chapter starts at one of the transcript's own lines. The claims still need a
 person to check them. See [Models and API keys](09-models-and-api-keys.md).
+
+:::requires editPlan
+### Edit plan
+
+The rough cut of a recording, worked out on this Mac from its transcript and its sound in a few seconds.
+Select a recording, then in the inspector's Outputs, under Edit plan, click **Plan the Edit**. The plan:
+
+- Shortens long pauses, and never takes a pause out entirely. Inside a sentence, a pause longer than
+  0.4 s becomes 0.18 s. After a comma or a full stop, a pause longer than 0.6 s becomes 0.35 s. After a
+  breathing or practice cue, such as "inhale", "notice" or "close your eyes", or after a question, a
+  pause is kept up to 4 s.
+- Takes out filler words (um, uh, er, erm, ah), the first of a word said twice ("so so"), and a false
+  start ended with "let me start over", "take two" or "scratch that".
+- Cuts only where the sound is quiet, never inside a word, and keeps what it cannot cut cleanly. Where it
+  is not sure, such as two sentences in a row that start alike, it keeps both and lists the moment under
+  Edit plan, with Play.
+- Takes out your trim, your cuts and anyone you chose to Leave Out.
+
+The plan is saved as `edit-plan.json` in the recording's folder, and the strip under the Original in the
+viewer shows it. Nothing else is made from it yet. Once a recording has a plan, Make Again plans it
+again with your newest changes; Plan Again does that alone, without making anything else.
+:::
 
 :::requires video
 ### Edited video
