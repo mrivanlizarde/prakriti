@@ -4,7 +4,7 @@ title: Privacy and students
 summary: What stays on this Mac, which recordings only models on this Mac may read, and how to protect students in a class.
 section: people
 order: 1
-keywords: [privacy, students, class, privacy lock, Serenity, local, cloud, Anthropic, OpenAI, Claude API, transcript, approve, cut, notifications, names, children, consent, voices, teacher, microphone, include, leave out, hide face, mute, names said aloud]
+keywords: [privacy, students, class, privacy lock, Serenity, local, cloud, Anthropic, OpenAI, Claude API, transcript, approve, cut, notifications, names, children, consent, voices, teacher, microphone, include, leave out, hide face, mute, names said aloud, people, gallery, release, forget, key photo, name only]
 related: [capture-the-best-video, reviewing-and-approving, models-and-api-keys]
 ---
 
@@ -216,42 +216,72 @@ Everyone starts as **Include**, because the participants have signed releases.
 :::
 
 :::requires gallery
-## People: your gallery of recurring faces
+## People: everyone you name
 
-Click People in the sidebar to see everyone you have named, with their face, their voice, and every
-recording they appear in. As with People in Photos, Prakriti uses what it learns from one recording to
-recognize the same person in the next.
+Click **People** in the sidebar to see everyone you have named, each as a round picture with their name and how many
+recordings they are in. It is built like People in Photos, with one difference: Prakriti does not recognize anyone by
+itself. Each person is there because you named them, in a recording or in Settings, Privacy.
+
+- **The picture** is a frame of their face from one of their recordings, taken from the recording each time People
+  shows it and never saved. For someone who should not be shown, turn off Can Appear in What Is Published: People
+  shows their initials instead.
+- **Favorites** come first. Sort **By Name** or in **Custom Order**: in Custom Order, drag a person onto another to put
+  them in that place.
+- **Unnamed people** is one tile with no face. It lists the recordings with someone you have not named. Prakriti does
+  not remember people who are not named; each recording shows its own, in the inspector's People tab.
 
 ### Name a person
 
-Only name someone who has agreed to have their face and voice recognized by Prakriti.
+1. In the inspector's People tab, open the menu under a face or a voice and choose **Name This Person**.
+2. Type their name. If they are already in People, click their name under it: the face or voice joins that person.
+3. Choose their role, and whether they can appear in what is published.
+4. Click **Name Only**. Prakriti keeps the name, and nothing about their face or voice.
 
-1. In the inspector's People tab, under People in This Recording, click an Unnamed person.
-2. Click Name This Person and type their name.
-3. Select "This person has agreed to be recognized", then click Save.
+### Record a written release
 
-From then on Prakriti keeps a reference of their face and voice and recognizes them in every recording.
-Their face appears in People.
+If the person has signed a written release, keep a note of it with their name: in Name This Person, or with
+**Record Release** on their page, turn on A written release is signed, then fill in the date it was signed, where the
+signed release is kept, and whether it covers their face, their voice or both. Click **Record Release**.
 
-### Correct a mistake
+Prakriti keeps the release with the name and learns nothing from it: the person page still says "Recognition off.
+Named by you in each recording.", and you still name them in each recording.
 
-If Prakriti names the wrong person, click the name in the inspector's People tab and choose Not This Person.
-If it misses someone you have named, click the Unnamed person and choose their name. When Prakriti is
-not sure who someone is, it treats them as Unnamed, so a doubtful face is blurred, never shown.
+### A person's page
 
-### Forget a person
+Click a person to see their page: their picture, whether a release is on file, whether they can appear in what is
+published, and three figures, how many recordings they are in, their minutes on screen and their minutes speaking,
+counted from where you named them. Their recordings are listed under it, as in the browser.
 
-Select the person in People, then choose Forget This Person. Prakriti deletes the reference of their face
-and voice. Outputs already made are not changed. In recordings made after that, the person is Unnamed.
+- **Rename** changes only the name, everywhere it is shown.
+- **Change Key Photo** shows each face you named for them; click the one to use, or Automatic for the face on screen the
+  longest.
+- **More** has Favorite, Pin to Sidebar (a pinned person is listed under People in the sidebar), Can Appear in What Is
+  Published, and **Hide from People**, which only takes them off the grid and the sidebar.
+
+### Forget Face and Voice
+
+For a person with a release on file, More has **Forget Face and Voice**. It deletes anything Prakriti keeps of their face
+and voice and destroys the key that locks it, then checks that nothing of theirs can be opened. Their name stays on
+recordings already checked. Removing a name in Settings, Privacy does the same first.
+
+Anything Prakriti keeps of a person's face or voice is deleted 12 months after they last appeared in a recording. Needs
+You says so 30 days before.
 
 ## What Prakriti stores
 
-- **People you named who agreed:** a reference of their face and of their voice, used to recognize them,
-  on this Mac only, until you choose Forget This Person.
-- **Everyone else:** nothing is kept. What Prakriti learns about their face and voice is used only while
-  it makes that one recording, then deleted, and never compared across recordings.
+- **People you name:** the name, their role, whether they can appear, and the release you recorded, on this Mac only.
+- **Faces and voices:** nothing. A face on a person's picture or on the People tab is taken from the recording while
+  it is shown and never saved.
+- **The People folder** in Prakriti's Application Support folder is left out of Time Machine backups, so nothing in it
+  outlives a Forget in an old backup.
+:::
 
-Face and voice references are never sent to any model or service outside your Mac.
+:::requires recognition
+## Recognition
+
+Prakriti recognizes the people you named who signed a release, in every new recording. When Prakriti is not sure who
+someone is, it treats them as Unnamed. If it names the wrong person, click the name in the inspector's People tab and
+choose Not This Person. Review Possible Matches on a person's page shows the faces it was unsure about, one at a time.
 :::
 
 ## Good practice with students

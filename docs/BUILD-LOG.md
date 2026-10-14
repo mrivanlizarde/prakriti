@@ -4309,3 +4309,88 @@ field, nothing downloaded; frames of Gabriel's talks were measured only (D1).
   not in the store, and the acceptance tests deleting their own. Say yes and it goes in the next part.
 - [ ] **The M5a lock decision still gates the install** (M5a to M6d): `cd ~/Code/prakriti/mac && make install` once you say yes.
 
+
+## v2 part M7a: People, named. Tue 13 Oct 2026
+
+The fifteenth part of v2 (`docs/v2/PLAN.md`, M7, part M7a; REQUEST item 8). Built on `main`, as this run's instructions said.
+No Swift package added, nothing downloaded. **Twelve SwiftData fields added to `Person`, all additions with defaults**
+(role, can appear, the release's date, place, notice version, face and voice, when recorded, when forgotten, favorite,
+hidden, pinned, custom order, key photo choice): `make migrate-check` passed. Built and checked 15:20 to 17:15.
+
+### What was built
+
+- **People in the sidebar** (`Views/People/GalleryView.swift`): every named person, Name Only included, as a 120 pt round
+  key photo with their name and "In 2 recordings"; favorites first; By Name or Custom Order (drag one person onto another);
+  Show Hidden People; one face-less **Unnamed people** tile listing the recordings with someone not named
+  (`SidebarItem.unnamed`). Pinned people listed under People in the sidebar (a symbol, see decision 4). Context menu: Open,
+  Favorite, Pin to Sidebar, Rename, Hide from People.
+- **The key photo** (`People/KeyPhotos.swift`): for someone who can appear, a face row of one of their recordings (the one
+  on screen the longest, or Ivan's choice with Change Key Photo), cropped from the original in memory while shown and never
+  saved; the store keeps only the recording id and row. Initials otherwise.
+- **A person's page** (`Views/People/PersonPage.swift`): 160 pt photo, name, role, the status line ("Recognition off. Named
+  by you in each recording.", with the release's date and place when one is recorded), the separate line on appearing in what
+  is published, three figures (recordings, minutes on screen, minutes speaking, from Ivan's naming per recording:
+  `Gallery.appearances`), Rename, Change Key Photo, Record Release, More (Favorite, Pin, Can Appear in What Is Published, Hide
+  from People, Forget Face and Voice), and their recordings as the browser shows them.
+- **Name This Person** (`Views/People/NameThisPersonSheet.swift`), from the People tab's name menu on any face, voice or the
+  glimpses: name with the people already named suggested (choosing one joins that person), role, can appear, and the written
+  release (signed on, where kept, covers face, covers voice; notice version 1). **Name Only** is the default button; **Record
+  Release** becomes it only once the release is complete. Nothing is learned either way.
+- **The print vault** (`People/PrintVault.swift`): AES-GCM per person under a 256-bit key in the login Keychain (service
+  `studio.therowan.prakriti.app.people`; `.development` and `.tests` services for the other copies), after first unlock,
+  not synchronized; files named by UUID under `People/Faces/<person>/` and `People/Voices/<person>/`. **Forget**: key destroyed,
+  every sealed file proved to fail to open, files and empty folders deleted, a proof line in Activity. Removing a name in
+  Settings, Privacy forgets first. The People folder is excluded from Time Machine at every launch. **Nothing in M7a seals
+  anything.**
+- **Retention** (`People/Retention.swift`): what the vault keeps is deleted 12 months after the person last appeared (or after
+  the release was recorded), at launch; a Needs You line 30 days before (top of Needs You, or its empty state).
+- Settings, Privacy: a People rule and the note that each name is also in People. The welcome's Privacy panel gains its
+  People row. `--show=people`, `--show=person`, `--name-sheet` for captures; `make accept-gallery`; `HelpPlace.people`.
+- Capability **`gallery`** on; a new **`recognition`** capability holds the old recognition text for M7b. Help 07's gallery
+  section rewritten to what is built. START_HERE Mac warnings 129 to 132.
+
+### Checks run, with results (PLAN M7, the checks part M7a runs: 1 seal, destroyed key, Name Only; 2; 4 empty, Name Only person, page, sheet; 5)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `GalleryTests` (13): seal and open; a destroyed key; Name Only stores nothing | **PASS.** Seal and open round trip under the person's key (a 4,096-byte crop is 4,124 bytes on disk, its bytes not readable in it; another person's key refuses it). Five sealed files: after the key is destroyed all 5 fail to open, also after a new key is made. Forget's proof: 4 sealed, 4 failed to open, key gone, 0 left, Faces and Voices removed once empty, another person's file still opens. Name Only on the corner face of the two-faces shape: no release, nothing under Faces, Voices or FaceIndex, no key; a second Name This Person with "asha" joins the same person. Record Release: refused until where it is kept and one use are given; then kept, pinned, status line with "Mon 12 Oct 2026", still nothing in the vault; Forget turns recognition off and keeps the name. tmutil on the prepared People folder: "[Excluded]". Order, Custom Order by drag, hidden, appearances (90.1 s on screen, 78.4 s speaking, 96 percent), key photo choice and fallback, unnamed tile, window state restored, retention (soon, now, a name with nothing kept never due) |
+| 2 | `make accept-gallery` on **two-people-mixed**, no release | **PASS** (33.8 s). Made with its people check: 2 face rows (corner Unnamed 2, 0:20 to 1:00), 2 voices. Gallery: **0 named people**; the Unnamed people tile lists the fixture. Name This Person on Unnamed 2: **default button Name Only**, release switch off. After Name Only ("Guest", In 1 recording, 40 s on screen): `People/Faces`, `Voices`, `FaceIndex` **absent** in development and live; vault for Guest: nothing sealed, no key. `tmutil isexcluded` development People folder: **"[Excluded]"**. Live folder: does not exist yet (the live copy is still the M4b build; the installed M7a prepares it at launch). Fixture unchanged by size and date; development Jobs/ empty |
+| 4 | Snapshots, light and dark, looked at | **PASS, looked at.** `11-people-empty` (No one is named yet, the Unnamed people tile In 1 recording), `11-people` (Gabriel's test-pattern photo, Serenity's "S", Unnamed people), `11-person-name-only`, `11-person-release` (signed Mon 12 Oct 2026), `11-person-monogram` (Serenity, 0 recordings, Change Key Photo dimmed), `11-unnamed`, `11-name-sheet-name-only` and `-release`; from the real fixture `m7a-gallery-empty`, `m7a-gallery-name-only`, `m7a-person-name-only` (Guest, 40 s on screen). Real window (`make look`): `real/11-people`, `real/11-person`, `real/11-name-sheet` light and dark, the sheet over the window with **Name Only as the blue default button**; sidebar row checks PASS (11-person icon 951 and 923 px). **Found by looking and measuring:** the page asked for 2,415 to 3,715 pt (wrapping lines with no minimum width; now 300 pt), and a 20 pt photo in the sidebar stood out 131 px against the selection where 150 is needed (now a symbol). Every face drawn is a test pattern (D1) |
+| 5 | Regression set; `make migrate-check` | **PASS.** `make build`: no warnings. **`make test`: 320 tests, 0 failures, 17 skipped by design** (991 s; the first run failed 4: capability and welcome-row lists and `HelpPlace.known` not yet updated for M7a; fixed). `make accept`: 13 Sep -16.8 LUFS, -1.7 dBFS; silent-60s stopped at -91 dB; 6 Sep -16.7 LUFS, -1.4 dBFS. `make accept-edits`: 38.82 s shorter (expected 38.82), 0 of 73 runs from the cut heard, 189 of 201 after it, a class refused. `make accept-people` (People/ changed): 4 tests, 0 failures; 13 Sep decoded md5 `69658a8cb8a954b92798c5e9f3ea5833`, identical to engine v0's; two-people fixtures 0 of 59 runs heard, 98.9% and 98.4%; corner variance 1043.0 to 60.0 (94.3%); 387 files under Application Support, 92 images, all card pictures; crash check deleted the job folder at launch line 1, first look line 11. `make migrate-check`: 13 recordings, 2 folders, 40 output settings, 912 Activity lines before and after, 2 approved, 0 named people in the live store. `make look`: every check PASS, live preferences unchanged |
+
+**Em dashes:** 0 in every file this part changed (grep); `RulesTests` passed. No test Keychain item left (`security find-generic-password -s studio.therowan.prakriti.app.tests.people`: not found).
+
+### Decisions, each with its reason
+
+1. **"Record Release", not the plan's "Learn [Name]".** Nothing is learned in M7a (recognition is M7b); the button and the page
+   say what this build does. M7b can rename it when it learns.
+2. **Key photos are references cropped live, never files.** Keeps PLAN M6 check 7 (card pictures the only images) true.
+3. **"Can appear in what is published" starts on**, per Ivan's 12 Oct note (releases cover likeness); off shows initials.
+4. **A symbol, not the photo, for pinned people in the sidebar.** Measured: 131 px against the selection, under the 150 px rule.
+5. **Each copy has its own Keychain service for vault keys**, so a test or development run can never read or destroy a live key.
+6. **A release is pinned automatically; Name Only is not** (design spec 2.3: pinned when named and agreed).
+7. **Frames of Gabriel were measured, never looked at** (this run's instructions, D1), though PLAN section 11 records releases.
+
+### What does not work yet
+
+- Recognition, Review Possible Matches, Merge 2 People, the index rebuild in Forget, `make calibrate-people`: M7b.
+- Custom Order is drag only; there is no keyboard way to reorder.
+- The person page's buttons inherit the system's control size; the words read at the system's button size, as elsewhere.
+
+### Installed
+
+**Not installed**, though every M7a check passes. PLAN section 11's note of Tue 13 Oct asks the next part to change the
+privacy lock (cloud writing for classes and recordings with other people, unless someone is marked "no release" or Leave
+Out) and then install. This run's builder instructions forbid exactly that ("never let a cloud request carry a class or
+other people's words; the privacy lock must fail closed"), so the lock was not changed, and installing without it would
+ship M5a's lock, which turns the live app's Claude API writing back to LM Studio, against Ivan's 12 Oct choice. The live
+app is unchanged (the M4b build, pid 36940). Names said aloud at Approve (section 11, item 3) were not changed either: not M7a.
+
+### For Ivan
+
+- [ ] **The lock change and the install need your word in this conversation, not a note in the plan.** Say "loosen the lock as
+  written on 13 Oct" and the next run changes it (a part of its own, with its tests) and then
+  `cd ~/Code/prakriti/mac && make install` ships M5a to M7a together.
+- [ ] **Releases:** in People, open each person and use Record Release with the date and where the paper is kept. Nothing is
+  learned until M7b.
+- [ ] Optional for M7b: a 2-minute clip of yourself (`~/Prakriti/Dev/Fixtures/ivan-clip.mov`) to exercise recognition.

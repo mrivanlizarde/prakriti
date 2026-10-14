@@ -5,6 +5,26 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-13, Tue: v2 part M7a, People, named
+
+- **People in the sidebar lists everyone Ivan names, from the day he names them, Name Only included.** Why: REQUEST item
+  8 ("a gallery of faces ... the way Apple Photos does this") for a returning subject, without waiting for recognition.
+  Their recordings, minutes on screen and minutes speaking come from Ivan's own naming in each recording, never from a
+  print, so the page exists before any face is learned (plan review item 34).
+- **Name This Person defaults to Name Only, and a written release is kept with the name but learns nothing.** Why: PLAN
+  M7 check 2, and recognition is part M7b; a button saying "Learn Gabriel" would have promised what this build does not
+  do, so it is "Record Release", and the page says "Recognition off. Named by you in each recording."
+- **The sealed vault and Forget exist before anything goes in them.** Why: so M7b's first crop is sealed under a
+  per-person key from the start (research-people.md 5.2), and Forget's proof (key gone, every sealed file fails to open,
+  nothing left) is tested now on made-up bytes. Each copy has its own Keychain service, so a test can never touch a live
+  key.
+- **The People folder is out of Time Machine from every launch.** Why: a forgotten print must not survive in an old
+  backup on Ivan's Time Machine disk.
+- **Key photos are cropped live and never saved; the store keeps only which face.** Why: the card pictures stay the only
+  images Prakriti keeps (PLAN M6 check 7).
+- **The sidebar shows a symbol for a pinned person, not their photo.** Why: measured in the snapshots, a 20 pt photo
+  stood out from the selected row by 131 pixels where the sidebar's readability check needs 150.
+
 ## 2026-10-13, Tue: v2 part M6d fix, the overlay in the snapshots, and no job folder left behind
 
 - **The Viewer's snapshots now draw the picture and what sits over it.** Why: the verifier looked at

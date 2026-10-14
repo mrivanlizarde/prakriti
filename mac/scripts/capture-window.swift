@@ -50,6 +50,10 @@ let looks: [Look] = [
     Look(name: "07-inspector-checks", flags: ["--show=needs-you", "--select=readyForYourYes", "--inspector-tab=checks"]),
     Look(name: "07-inspector-info", flags: ["--show=needs-you", "--select=readyForYourYes", "--inspector-tab=info"]),
     Look(name: "08-search-said", flags: ["--show=all-recordings", "--search=Krishnamacharya"]),
+    // The People gallery and a person's page (v2 part M7a), sample people, key photos as test patterns.
+    Look(name: "11-people", flags: ["--show=people"]),
+    Look(name: "11-person", flags: ["--show=person"]),
+    Look(name: "11-name-sheet", flags: ["--show=needs-you", "--name-sheet"], checksSidebar: false),
 ] + ["general", "outputs", "models", "privacy", "advanced"].enumerated().map { index, pane in
     Look(name: String(format: "09-settings-%02d-%@", index + 1, pane), flags: ["--show=settings-" + pane], window: .settings)
 } + [Look(name: "10-activity", flags: ["--show=activity"], window: .activity),

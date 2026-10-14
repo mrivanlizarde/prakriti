@@ -66,7 +66,7 @@ struct PeopleTab: View {
                 }
                 if people.isEmpty {
                     Section {
-                        RowNote("To name the people in a recording, add their names in Settings, Privacy. A name is kept only as a name: nothing about a face or a voice.")
+                        RowNote("To name the people in a recording, use Name This Person under a face or a voice, or add their names in Settings, Privacy. A name is kept only as a name: nothing about a face or a voice.")
                         Button("Open Settings, Privacy") { model.showSettings(.privacy) }
                             .font(AppFont.body)
                     }
@@ -118,7 +118,7 @@ struct PeopleTab: View {
                 RowNote(Format.count(faces.glimpses, "face") + " seen for under a second " + (faces.glimpses == 1 ? "is" : "are") + " not listed"
                         + (name.map { ", named \($0)." } ?? ", and not named."))
                 Spacer(minLength: 8)
-                NameMenu(recording: recording, current: name) { model.nameFace(0, as: $0, in: recording) }
+                NameMenu(recording: recording, current: name, target: .face(0)) { model.nameFace(0, as: $0, in: recording) }
             }
         }
     }
@@ -158,6 +158,8 @@ struct PeopleTab: View {
 struct NameMenu: View {
     let recording: Recording
     let current: String?
+    /// The row this menu names, for Name This Person (v2 part M7a).
+    var target: NameTarget? = nil
     let choose: (Person?) -> Void
     @Environment(AppModel.self) private var model
 
@@ -171,6 +173,9 @@ struct NameMenu: View {
                 Button("Not Named") { choose(nil) }
             }
             Divider()
+            if let target {
+                Button("Name This Person…") { model.askToName(target, in: recording) }
+            }
             Button("Add a Name in Settings") { model.showSettings(.privacy) }
         } label: {
             Text("Name for This Recording").font(AppFont.secondary)
@@ -224,7 +229,7 @@ struct FaceRow: View {
                     .foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 if recording.voices != nil {
-                    NameMenu(recording: recording, current: name) { model.nameFace(person.id, as: $0, in: recording) }
+                    NameMenu(recording: recording, current: name, target: .face(person.id)) { model.nameFace(person.id, as: $0, in: recording) }
                         .padding(.top, 2)
                     ChoiceControls(recording: recording, key: PersonKey.face(person.id, names: recording.resolvedNameTable), hasFace: true)
                         .padding(.top, 2)
@@ -261,7 +266,7 @@ struct VoiceRow: View {
                     .foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 VStack(alignment: .leading, spacing: 4) {
-                    NameMenu(recording: recording, current: name) { model.nameVoice(voice.id, as: $0, in: recording) }
+                    NameMenu(recording: recording, current: name, target: .voice(voice.id)) { model.nameVoice(voice.id, as: $0, in: recording) }
                     if let track = voice.track, recording.source != nil {
                         Menu {
                             ForEach(model.namedPeopleList()) { person in

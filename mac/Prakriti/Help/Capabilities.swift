@@ -37,8 +37,11 @@ enum Capability: String, CaseIterable, Sendable {
     /// Faces hidden and voices removed in every output Prakriti makes, the video included (M8d), and what later parts
     /// build on it. Its Help text describes the whole of that, so it waits for the video.
     case people
-    /// The People gallery of named people (M7).
+    /// The People gallery of every named person, Name Only included: the person page, the consent sheet (Name This
+    /// Person), the sealed vault, Forget Face and Voice, retention (M7a).
     case gallery
+    /// Named people with a release recognized in new recordings, Review Possible Matches, Merge 2 People (M7b).
+    case recognition
     /// The rendered, edited video and its Ready checklist (M8).
     case video
     /// The house style, presets and the direction field (M9).
@@ -56,8 +59,9 @@ enum Capability: String, CaseIterable, Sendable {
 enum Capabilities {
     /// What this build does: Help (M2a), the welcome window (M2b), the Viewer (M3b), progress with the
     /// Activity window (M4a), the capture check (M4b), Anthropic and OpenAI (M5b), faces (M6a), voices and names
-    /// (M6b), choices applied to audio (M6c), and hiding in pictures (M6d). Each later part switches its own on.
-    static let built: Set<Capability> = [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding]
+    /// (M6b), choices applied to audio (M6c), hiding in pictures (M6d), and the People gallery (M7a). Each later part
+    /// switches its own on.
+    static let built: Set<Capability> = [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery]
 
     /// Every capability, for the test that every article and every block is visible once all are built.
     static let all = Set(Capability.allCases)

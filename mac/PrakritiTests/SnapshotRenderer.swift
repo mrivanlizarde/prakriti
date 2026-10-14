@@ -71,6 +71,13 @@ final class SnapshotRenderer {
                    sidebar: nil, size: WelcomeWindow.windowSize, title: "Welcome to Prakriti", appearance: appearance, name: name)
     }
 
+    /// A sheet's content on its own, at its own size (v2 part M7a: Name This Person). The sheet's frame and its place over
+    /// the main window are the system's and are judged in the real window (`make look`).
+    func renderSheet(_ view: AnyView, model: AppModel, size: CGSize, appearance: NSAppearance.Name, name: String) throws {
+        try render(root: AnyView(view.environment(model).modelContainer(model.container)),
+                   sidebar: nil, size: size, title: "", appearance: appearance, name: name)
+    }
+
     /// The window's sidebar, drawn again on its own over the glass column (see `composite`). Help's
     /// rows are titles without icons, so only their labels are checked for contrast.
     struct SidebarDrawing {

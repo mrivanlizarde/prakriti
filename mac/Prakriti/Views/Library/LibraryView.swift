@@ -20,6 +20,9 @@ struct LibraryView: View {
                 switch item {
                 case .group(let group): GroupBrowser(group: group)
                 case .source(let id): SourceBrowser(sourceID: id)
+                case .people: GalleryView()
+                case .person(let id): PersonPage(personID: id)
+                case .unnamed: UnnamedBrowser()
                 }
             }
         }
@@ -46,6 +49,9 @@ struct LibraryView: View {
         switch item {
         case .group(let group): return group.title
         case .source(let id): return sources.first { $0.id == id }?.name ?? "Sources"
+        case .people: return "People"
+        case .person(let id): return model.namedPeopleList().first { $0.id == id }?.name ?? "People"
+        case .unnamed: return "Unnamed People"
         }
     }
 }
@@ -155,6 +161,7 @@ struct StatusStrip: View {
 
     var body: some View {
         let summary = model.statusSummary(recordings: recordings, sources: sources)
+        VStack(alignment: .leading, spacing: 8) {
         HStack(spacing: 10) {
             Image(systemName: summary.icon.rawValue)
                 .font(AppFont.body)
@@ -169,10 +176,22 @@ struct StatusStrip: View {
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
+        .accessibilityElement(children: .combine)
+        // Prints due for deletion within 30 days (v2 part M7a, retention): one line each, in words.
+        ForEach(model.retentionLines, id: \.self) { line in
+            Label {
+                Text(line)
+                    .font(AppFont.body)
+                    .frame(minWidth: 300, maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: "calendar.badge.clock").font(AppFont.body).foregroundStyle(AppColor.accentText)
+            }
+        }
+        }
         .padding(.horizontal, 24)
         .padding(.top, 16)
         .padding(.bottom, 4)
-        .accessibilityElement(children: .combine)
     }
 }
 
@@ -187,7 +206,13 @@ struct EmptyLibrary: View {
     var body: some View {
         switch item {
         case .group(.needsYou):
-            LibraryEmptyState(symbol: "checkmark.circle", title: "Nothing needs you", message: checkedLine, buttons: [])
+            if model.retentionLines.isEmpty {
+                LibraryEmptyState(symbol: "checkmark.circle", title: "Nothing needs you", message: checkedLine, buttons: [])
+            } else {
+                // A deletion of prints coming within 30 days still needs to be seen when no recording waits (v2 part M7a).
+                LibraryEmptyState(symbol: "calendar.badge.clock", title: "Nothing to approve",
+                                  message: model.retentionLines.joined(separator: " "), buttons: [])
+            }
         case .group(.inProgress):
             LibraryEmptyState(symbol: "progress.indicator", title: "Nothing is being made",
                               message: "Recordings in a folder set to Make outputs automatically start on their own. Add a file to make one now.",
@@ -204,6 +229,11 @@ struct EmptyLibrary: View {
             let name = sources.first { $0.id == id }?.name ?? "this folder"
             LibraryEmptyState(symbol: "folder", title: "Nothing found in \(name) yet",
                               message: "A new recording saved in this folder appears here on its own.", buttons: [])
+        case .people, .person:
+            LibraryEmptyState(symbol: "person.2", title: "No recordings", message: "A person's recordings appear here once you name them in a recording.", buttons: [])
+        case .unnamed:
+            LibraryEmptyState(symbol: "person.crop.circle.badge.questionmark", title: "Everyone is named",
+                              message: "Every face and voice found in your recordings has a name.", buttons: [])
         }
     }
 

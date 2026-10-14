@@ -91,7 +91,7 @@ final class HelpModel {
 enum HelpActions {
     static func show(_ place: HelpPlace, model: AppModel, openMainWindow: () -> Void) {
         switch place {
-        case .group, .sources:
+        case .group, .sources, .people, .person:
             openMainWindow()
             model.path = []
         case .settings, .activity:
@@ -110,6 +110,8 @@ extension HelpPlace {
         case .sources: "Sources"
         case .settings(let pane): "Settings, \(pane.title)"
         case .activity: "Activity"
+        case .people: "People"
+        case .person: "a person in People"
         }
     }
 }

@@ -116,7 +116,7 @@ ONLY      ?=
 YES       ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -176,6 +176,16 @@ accept-people:
 	./scripts/make-fixtures.sh --if-missing
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=people TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/PeopleAcceptanceTests -only-testing:PrakritiTests/VoicesAcceptanceTests -only-testing:PrakritiTests/ChoicesAcceptanceTests -only-testing:PrakritiTests/HidingAcceptanceTests
 	./scripts/people-crash-check.sh $(APP) ../screens/mac/$(MILESTONE)
+
+# accept-gallery  v2 part M7a's acceptance (PLAN M7 check 2, no release recorded): the two-people-mixed fixture made with
+#                 its people check in development; the gallery has no named person and its Unnamed people tile lists the
+#                 fixture; Name This Person on the corner face opens at Name Only, and Name Only names it; afterwards
+#                 People/Faces, Voices and FaceIndex hold no files (development and live) and the vault keeps nothing;
+#                 tmutil isexcluded on the development People folder reports Excluded (the live one is written down).
+#                 Writes acceptance-gallery.txt and the gallery's pictures to ../screens/mac/$(MILESTONE)/ (about 2 minutes)
+accept-gallery:
+	./scripts/make-fixtures.sh --if-missing
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=gallery TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/GalleryAcceptanceTests
 
 accept-outputs:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=outputs TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/OutputsAcceptanceTests

@@ -179,6 +179,15 @@ final class AppModel {
     @ObservationIgnored var cardPictureOutcomes: [UUID: CardPicture.Outcome] = [:]
     /// The Viewer's People overlay: the people file's boxes, read once per recording (v2 part M6d).
     @ObservationIgnored let peopleBoxes = PeopleBoxes()
+    /// The People gallery (v2 part M7a): its sort, whether hidden people show, the Name This Person sheet asked for, the
+    /// key photos cropped live (memory only), and the Needs You lines about prints due for deletion.
+    var gallerySort: GallerySort = .name
+    var galleryShowsHidden = false
+    var nameSheet: NameSheetRequest?
+    let keyPhotos = KeyPhotos()
+    var retentionLines: [String] = []
+    /// The Keychain service the vault's keys live under: the live copy's, a development copy's, or the tests' own.
+    @ObservationIgnored var vaultKeys: VaultKeys = .forMode(AppMode.current, testing: AppModel.isRunningTests)
     var providerChecks: [ModelProvider: ProviderCheck] = [:]
     /// Which cloud providers have a key in the Keychain. Read when Settings, Models opens; the keys never are.
     var keysAdded: Set<ModelProvider> = []
@@ -260,7 +269,14 @@ final class AppModel {
             current = model
             // The sample talk's make in progress, as the snapshots draw it (v2 part M4a). Nothing runs.
             Fixtures.showProgress(model)
+            // The People gallery (v2 part M7a): sample people named in the sample recordings, faces as test patterns.
+            if launch.place == .people || launch.place == .person || launch.nameSheet { Fixtures.showGallery(model) }
             model.go(to: launch.place)
+            if launch.nameSheet, let talk = ((try? model.context.fetch(FetchDescriptor<Recording>())) ?? []).first(where: { $0.title == "Talk with Gabriel" }) {
+                var request = NameSheetRequest(recordingID: talk.id, target: .face(2))
+                request.draft.name = "Asha"
+                model.nameSheet = request
+            }
             // The browser and the inspector as the capture asks (v2 part M3a).
             model.browserMode = launch.browserMode
             if let status = launch.selectStatus {
@@ -420,6 +436,9 @@ final class AppModel {
         let sources = (try? context.fetch(FetchDescriptor<Source>())) ?? []
         log.write("Sources: \(sources.map { "\($0.name) (\($0.mode.rawValue))" }.joined(separator: " | ")).")
         recoverInterruptedWork()
+        // The People folder stays out of Time Machine, and prints past their 12 months are deleted (v2 part M7a).
+        if !vault.prepare() { log.write("People: the folder could not be excluded from Time Machine.") }
+        reviewRetention()
         restoreWindowState()
         LaunchOptions.current.apply(to: self)
         startDebugSwitches()
@@ -869,6 +888,8 @@ struct CaptureLaunch {
     var peopleOverlay = false
     /// `--activity-tab=<now|finished|log>`: the Activity window's tab (v2 part M4a).
     var activityTab: ActivityTab?
+    /// `--name-sheet`: Name This Person open over the main window, for a face of the sample talk (v2 part M7a).
+    var nameSheet = false
 
     static var current: CaptureLaunch? {
         let args = CommandLine.arguments
@@ -897,7 +918,8 @@ struct CaptureLaunch {
                              sampleOutput: value("--sample-output"),
                              quickHelp: args.contains("--quick-help"),
                              peopleOverlay: args.contains("--people-overlay"),
-                             activityTab: value("--activity-tab").flatMap(ActivityTab.init(rawValue:)))
+                             activityTab: value("--activity-tab").flatMap(ActivityTab.init(rawValue:)),
+                             nameSheet: args.contains("--name-sheet"))
     }
 
     /// The window this capture shows, for the log line.

@@ -162,6 +162,14 @@ final class StoreMigrationTests: XCTestCase {
             XCTAssertTrue(recordings.allSatisfy { $0.peopleAppliedJSON == nil }, "no recording arrives with choices applied")
         }
         print("v2 part M6c: \(recordings.filter { $0.choicesJSON != nil }.count) recordings with choices, \(recordings.filter { $0.namesSaidJSON != nil }.count) with names said aloud, \(recordings.filter { $0.peopleAppliedJSON != nil }.count) with choices applied")
+        // v2 part M7a: every named person arrives with no release, nothing to forget, not hidden, pinned or a favorite, and
+        // able to appear (Ivan's 12 Oct note); an upgrade records no release by itself.
+        let people = try context.fetch(FetchDescriptor<Person>())
+        if !before.has("ZPERSON", "ZRELEASESIGNEDON") {
+            XCTAssertTrue(people.allSatisfy { $0.releaseSignedOn == nil && !$0.hasRelease && $0.forgottenAt == nil && !$0.pinned && !$0.favorite
+                && !$0.hiddenFromPeople && $0.mayAppear && $0.keyPhotoJSON == nil && $0.roleRaw.isEmpty }, "a person arrives with a release or a gallery choice")
+        }
+        print("v2 part M7a: \(people.count) named people, \(people.filter(\.hasRelease).count) with a release, \(people.filter(\.mayAppear).count) able to appear")
         print("v2 part M3a fields:\(recordings.filter { !$0.checkedClaims.isEmpty }.count) recordings with ticked claims, \(sources.filter { !$0.forgottenPaths.isEmpty }.count) folders with removed files (\(sources.map(\.forgottenPaths.count).reduce(0, +)) files)")
         print("Rows before and after: recordings \(before.count("ZRECORDING"))/\(recordings.count), folders \(before.count("ZSOURCE"))/\(sources.count), output settings \(before.count("ZOUTPUTSETTING"))/\(settings.count), Activity lines \(before.count("ZLOGENTRY"))/\(lines); approved \(recordings.filter { $0.approvedAt != nil }.count)")
         let ready = recordings.filter { $0.status == .readyForYourYes }

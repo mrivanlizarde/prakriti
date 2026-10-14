@@ -44,6 +44,11 @@ extension AppModel {
             if openSettingsWindow != nil { showSettings(pane) } else { pendingWindow = .settings }
         case .activity:
             if openActivityWindow != nil { showActivity() } else { pendingWindow = .activity }
+        case .people:
+            selection = .people
+        case .person:
+            let first = Gallery.ordered(galleryEntries(), sort: gallerySort).first
+            selection = first.map { .person($0.id) } ?? .people
         }
     }
 

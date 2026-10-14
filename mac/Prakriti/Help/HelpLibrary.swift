@@ -14,6 +14,10 @@ enum HelpPlace: Equatable, Hashable, Sendable {
     case settings(SettingsPane)
     /// Window, Activity: `prakriti://show/activity`.
     case activity
+    /// The People gallery in the sidebar (v2 part M7a): `prakriti://show/people`.
+    case people
+    /// The page of the first person in People, by name (window captures only): `person`.
+    case person
 
     init?(destination: String) {
         guard let url = URL(string: destination), url.scheme == "prakriti", url.host() == "show" else { return nil }
@@ -41,6 +45,12 @@ enum HelpPlace: Equatable, Hashable, Sendable {
         case "activity":
             guard parts.count == 1 else { return nil }
             self = .activity
+        case "people":
+            guard parts.count == 1 else { return nil }
+            self = .people
+        case "person":
+            guard parts.count == 1 else { return nil }
+            self = .person
         case "today": self = .group(.needsYou)
         case "recordings": self = .group(.all)
         case "outputs": self = .settings(.outputs)
@@ -53,7 +63,7 @@ enum HelpPlace: Equatable, Hashable, Sendable {
 
     /// Every place an article may name today, for the test that every Show Me link resolves.
     static var known: [HelpPlace] {
-        SmartGroup.allCases.map { .group($0) } + [.sources] + SettingsPane.allCases.map { .settings($0) } + [.activity]
+        SmartGroup.allCases.map { .group($0) } + [.sources] + SettingsPane.allCases.map { .settings($0) } + [.activity, .people]
     }
 
     /// The link an article writes for this place.
@@ -63,6 +73,8 @@ enum HelpPlace: Equatable, Hashable, Sendable {
         case .sources: "prakriti://show/sources"
         case .settings(let pane): "prakriti://show/settings/\(pane.rawValue)"
         case .activity: "prakriti://show/activity"
+        case .people: "prakriti://show/people"
+        case .person: "prakriti://show/person"
         }
     }
 }

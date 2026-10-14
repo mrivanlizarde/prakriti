@@ -98,6 +98,9 @@ extension AppModel {
     func removePerson(_ person: Person) {
         let name = person.name
         let id = person.id
+        // Nothing the vault keeps may outlive the name it belongs to (v2 part M7a): Forget first, then the name.
+        if vault.holdsAnything(person: id) { forgetFaceAndVoice(person) }
+        if selection == .person(id) { selection = .people }
         context.delete(person)
         try? context.save()
         refreshCardPictures(naming: id)

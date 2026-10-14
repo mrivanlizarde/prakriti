@@ -71,6 +71,10 @@ struct MainView: View {
         } message: { notice in
             Text(notice.message)
         }
+        // Name This Person (v2 part M7a), asked for from the People tab or a person's page.
+        .sheet(item: $model.nameSheet) { request in
+            NameThisPersonSheet(request: request)
+        }
         .confirmationDialog(confirmationTitle, isPresented: Binding(get: { model.confirmation != nil },
                                                                     set: { if !$0 { model.confirmation = nil } }),
                             presenting: model.confirmation) { confirmation in
@@ -140,7 +144,7 @@ struct MainToolbar: ToolbarContent {
                     }
                 }
             }
-        } else {
+        } else if model.selection != .people {
             ToolbarItem(placement: .principal) {
                 Picker("View", selection: $model.browserMode) {
                     ForEach(BrowserMode.allCases) { mode in
@@ -214,6 +218,14 @@ struct Sidebar: View {
     @Binding var selection: SidebarItem?
     @Environment(AppModel.self) private var model
     @Query(sort: \Source.addedAt) private var sources: [Source]
+    @Query private var people: [Person]
+
+    /// Pinned people, not hidden, favorites first then by name.
+    var pinnedPeople: [Person] {
+        people.filter { $0.pinned && !$0.hiddenFromPeople }.sorted { a, b in
+            a.favorite != b.favorite ? a.favorite : a.name.localizedStandardCompare(b.name) == .orderedAscending
+        }
+    }
 
     var body: some View {
         List(selection: $selection) {
@@ -224,6 +236,22 @@ struct Sidebar: View {
                 }
             } header: {
                 SidebarHeader(title: "Library")
+            }
+            // People (v2 part M7a, design spec 2.3): the gallery, then each pinned person.
+            Section {
+                Label {
+                    Text("People").font(AppFont.body)
+                } icon: {
+                    Image(systemName: "person.2").font(AppFont.body)
+                }
+                .padding(.vertical, 3)
+                .tag(SidebarItem.people)
+                ForEach(pinnedPeople) { person in
+                    PinnedPersonRow(person: person)
+                        .tag(SidebarItem.person(person.id))
+                }
+            } header: {
+                SidebarHeader(title: "People")
             }
             Section {
                 ForEach(sources) { source in
@@ -244,6 +272,25 @@ struct Sidebar: View {
             }
         }
         .listStyle(.sidebar)
+    }
+}
+
+/// A pinned person under People: a person symbol and their name. Unpin from its menu. Not their key photo: a 20 pt photo
+/// stood out from the selected row by 131 pixels where the sidebar's check needs 150 (measured in the M7a snapshots), and
+/// the sidebar colors a symbol itself, white on the selected row (Mac warning 8).
+struct PinnedPersonRow: View {
+    let person: Person
+    @State private var renaming = false
+
+    var body: some View {
+        Label {
+            Text(person.name).font(AppFont.body).lineLimit(1)
+        } icon: {
+            Image(systemName: "person.crop.circle").font(AppFont.body)
+        }
+        .padding(.vertical, 3)
+        .contextMenu { PersonMenu(person: person, renaming: $renaming) }
+        .sheet(isPresented: $renaming) { RenameSheet(person: person) }
     }
 }
 

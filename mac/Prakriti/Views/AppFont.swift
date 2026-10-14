@@ -25,6 +25,11 @@ enum AppFont {
     /// because there are no tooltips (Mac warning 5).
     static let toggleLabel = Font.system(size: 12, weight: .semibold)
 
+    /// A person's initials in their circle in People (v2 part M7a), for someone not shown by a frame: 44 pt on a 120 pt
+    /// tile, 56 pt on the 160 pt page header. Never drawn smaller: the sidebar shows a symbol instead.
+    static let monogram = Font.system(size: 44, weight: .semibold)
+    static let monogramLarge = Font.system(size: 56, weight: .semibold)
+
     /// The Viewer's transcript (v2 part M3b) is AppKit text (an `NSTextView`, for word clicks, selection
     /// and Find), so it takes the same sizes as AppKit fonts: words at 17 pt, the time over each paragraph
     /// at 15 pt with monospaced digits.
@@ -32,7 +37,7 @@ enum AppFont {
     static var nsNumbers: NSFont { NSFont.monospacedDigitSystemFont(ofSize: 15, weight: .regular) }
 
     /// Every size used above, for the test that enforces the 12 pt floor.
-    static let sizes: [CGFloat] = [28, 21, 17, 17, 15, 15, 13, 15, 15, 48, 28, 12, 17, 15]
+    static let sizes: [CGFloat] = [28, 21, 17, 17, 15, 15, 13, 15, 15, 48, 28, 12, 44, 56, 17, 15]
 }
 
 enum Metrics {

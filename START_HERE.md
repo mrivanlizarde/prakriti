@@ -680,6 +680,19 @@ and chooses again. In the Viewer, on the Original, **People** (top right of the 
 a name on each face, dashed with the choice for anyone hidden. Hide Face now changes the recording's picture; the video
 that hides faces is M8d.
 
+**v2 part M7a, People, named, Tue 13 Oct (see BUILD-LOG "v2 part M7a"):** **People** in the sidebar is a gallery of
+everyone Ivan named, Name Only included: a round key photo (a face row of one of their recordings, cropped live and never
+saved, for someone who can appear; initials otherwise), favorites first, By Name or Custom Order (drag), pinned people
+under it in the sidebar, and one face-less **Unnamed people** tile that lists the recordings with someone not named. A
+person's page shows "Recognition off. Named by you in each recording.", whether they can appear (a separate consent), their
+recordings, minutes on screen and minutes speaking (from Ivan's naming), Rename, Change Key Photo, Record Release, More
+(Favorite, Pin, Can Appear, Hide from People, Forget Face and Voice). **Name This Person** (the People tab's name menu)
+defaults to **Name Only**; a written release (date, where kept, face and voice) is kept with the name and learns nothing.
+`People/PrintVault.swift` seals crops and voice prints under a per-person AES-GCM key in the login Keychain and Forget
+destroys the key and proves the files fail to open, but nothing in M7a seals anything: recognition is M7b. The People
+folder is excluded from Time Machine at every launch; anything the vault keeps is deleted 12 months after the person last
+appeared (`People/Retention.swift`), with a Needs You line 30 days before.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -1810,6 +1823,23 @@ top and its end. Reading the code is not verification, and neither is a passing 
     failed on it until a launch's crash check removed it. The face step is different on purpose: it holds its job folder
     for the whole scan, because PLAN M6 check 7 (`people-crash-check.sh`) kills it mid-scan to prove the next launch
     deletes what a crash leaves. Moving the face step's folder too broke that check (tried 13 Oct, reverted).
+129. **Every key of the print vault lives only in the Keychain, one per person, and each copy has its own service:
+    `studio.therowan.prakriti.app.people` (live), `...people.development`, `...tests.people` (`VaultKeys`).** Never in a
+    file, a preference or the store, and never synchronized. Reason: research-people.md 5.2, destroying the key is what
+    makes every sealed copy unreadable, a backup's included; separate services mean a test or a development run can never
+    read or destroy a live key (`GalleryTests` asserts the tests use `.testing`).
+130. **Forget destroys the key first, then proves every sealed file fails to open, then deletes the files and any empty
+    `Faces` or `Voices` folder (`PrintVault.forget`, `ForgetProof.holds`).** Removing a name in Settings, Privacy and
+    retention both go through it. Reason: PLAN M7 ("then prove it"), and PLAN M6 check 7 needs those folders absent while
+    nobody has a release, so they never sit empty. Apple's face index and its rebuild are M7b's to add here.
+131. **The People folder is excluded from Time Machine at every launch (`PrintVault.prepare`, from `didLaunch`), and before
+    anything is sealed.** Reason: Ivan's Mac backs up to a local Time Machine disk; without it a forgotten print would live
+    on in an old backup (research-people.md 5.2). Checked with `tmutil isexcluded` by `make accept-gallery` and
+    `GalleryTests`.
+132. **A key photo is a reference, never a picture: `Person.keyPhotoJSON` holds a recording id and a face row, and
+    `KeyPhotos` crops the frame in memory while People shows it.** Reason: the card pictures stay the only images under
+    Application Support (PLAN M6 check 7), and a stored face picture is kept only where the plan allows it. Name This
+    Person defaults to Name Only, and a recorded release learns nothing until recognition (M7b) is built and says so.
 
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)

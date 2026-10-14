@@ -400,6 +400,8 @@ enum Fixtures {
         // Nor in a card picture (v2 part M6d): a calm test pattern stands in for each recording whose people were checked,
         // and the Viewer's People overlay draws the sample talk's made-up boxes (`samplePeopleFile`), over a test pattern.
         model.cardPictures.useTestPattern = true
+        // Nor in the gallery's key photos (v2 part M7a).
+        model.keyPhotos.useTestPattern = true
         for recording in (try? model.context.fetch(FetchDescriptor<Recording>())) ?? [] where recording.title == "Talk with Gabriel" {
             if let faces = recording.faces { model.peopleBoxes.seed(recording, file: samplePeopleFile(recording.id, faces: faces)) }
         }
@@ -424,6 +426,31 @@ enum Fixtures {
         // Settings, Models draws the key states set here, never this Mac's Keychain (v2 part M5b).
         model.readsKeysOnAppear = false
         return model
+    }
+
+    /// The People gallery as sample data (v2 part M7a): Gabriel named Who Is Teaching on the sample 13 Sep talk (its two-faces
+    /// shape: his face and voice, and a corner face nobody named) and on the 6 Sep talk, Name Only and able to appear, so his
+    /// key photo is a test pattern; Serenity named in Settings only, not shown in what is published, so she has a monogram
+    /// and no recording yet. Nobody has a release, and nothing about a face or a voice is kept.
+    static func showGallery(_ model: AppModel) {
+        let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
+        guard let gabriel = model.addPerson(named: "Gabriel"), let serenity = model.addPerson(named: "Serenity") else { return }
+        gabriel.role = .teacher
+        serenity.role = .teacher
+        serenity.mayAppear = false
+        gabriel.pinned = true
+        let checked = date(2026, 10, 13, 1, 10)
+        if let talk13 = all.first(where: { $0.title == "Talk with Gabriel" && $0.status == .readyForYourYes }) {
+            talk13.facesJSON = facesTwoPeople(at: checked, duration: 947.78).json()
+            model.applyVoices(voicesTwoTracks(at: checked, duration: 947.78), to: talk13)
+            model.setTeacher(gabriel, for: talk13)
+        }
+        if let talk6 = all.first(where: { $0.title == "Talk with Gabriel" && $0.status != .readyForYourYes }) {
+            talk6.facesJSON = facesOnePerson(at: checked, duration: 3339.1).json()
+            model.applyVoices(voicesOneTeacher(at: checked, duration: 3339.1), to: talk6)
+            model.setTeacher(gabriel, for: talk6)
+        }
+        try? model.context.save()
     }
 
     /// A make in progress for the snapshots and the window captures (v2 part M4a): the 6 Sep talk (55:39) on

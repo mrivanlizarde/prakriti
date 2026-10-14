@@ -381,6 +381,66 @@ final class SnapshotTests: XCTestCase {
             return
         }
 
+        // The People gallery (v2 part M7a, PLAN M7 check 4): empty (nobody named; the sample talk's unnamed face makes
+        // the Unnamed people tile), with the sample people (Gabriel Name Only with his key photo as a test pattern,
+        // Serenity not shown by a frame so her initials), Gabriel's page with and without a recorded release, Serenity's
+        // page, the unnamed people's recordings, and the Name This Person sheet at Name Only and with a release.
+        var galleryCount = 0
+        if only == nil || only == "people" {
+        try draw("11-people-empty") { model in model.selection = .people }
+        try draw("11-people") { model in
+            Fixtures.showGallery(model)
+            model.selection = .people
+        }
+        try draw("11-person-name-only") { model in
+            Fixtures.showGallery(model)
+            model.selection = .person(try XCTUnwrap(model.namedPeopleList().first { $0.name == "Gabriel" }).id)
+        }
+        try draw("11-person-release") { model in
+            Fixtures.showGallery(model)
+            let gabriel = try XCTUnwrap(model.namedPeopleList().first { $0.name == "Gabriel" })
+            var draft = NameThisPersonDraft()
+            draft.recordRelease = true
+            draft.releaseSignedOn = Fixtures.date(2026, 10, 12, 10, 0)
+            draft.releaseKeptAt = "Releases, Yoga Marga drive"
+            draft.role = .teacher
+            model.recordRelease(draft, for: gabriel)
+            model.selection = .person(gabriel.id)
+        }
+        try draw("11-person-monogram") { model in
+            Fixtures.showGallery(model)
+            model.selection = .person(try XCTUnwrap(model.namedPeopleList().first { $0.name == "Serenity" }).id)
+        }
+        try draw("11-unnamed") { model in
+            Fixtures.showGallery(model)
+            model.selection = .unnamed
+        }
+        for (variant, release) in [("name-only", false), ("release", true)] {
+            for (scheme, appearance) in appearances {
+                let model = Fixtures.model()
+                Fixtures.showGallery(model)
+                let talk = try talk13(model)
+                var request = NameSheetRequest(recordingID: talk.id, target: .face(2))
+                request.draft.name = "Asha"
+                request.draft.role = .guest
+                if release {
+                    request.draft.recordRelease = true
+                    request.draft.releaseSignedOn = Fixtures.date(2026, 10, 12, 10, 0)
+                    request.draft.releaseKeptAt = "Releases, Yoga Marga drive"
+                }
+                try renderer.renderSheet(AnyView(NameThisPersonSheet(request: request)), model: model, size: CGSize(width: 520, height: release ? 720 : 560),
+                                         appearance: appearance, name: "11-name-sheet-\(variant)-\(scheme)")
+                written.append("11-name-sheet-\(variant)-\(scheme)")
+            }
+        }
+        galleryCount = 6 * 2 + 2 * 2
+        }
+        if only == "people" {
+            print("Snapshots written to \(outputFolder.path): \(written.count) People pictures")
+            XCTAssertEqual(written.count, galleryCount)
+            return
+        }
+
         // The Viewer (v2 part M3b), opened from the browser: the 13 Sep sample talk on each rendition, with
         // edits, a span chosen, Quick Help on, marked as a class, approved, and the silent sample class. The
         // Original plays a test pattern made here, never the talk's own picture (docs/v2/PLAN.md section 11,
@@ -482,7 +542,7 @@ final class SnapshotTests: XCTestCase {
 
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + 2 + 3 * 2 + viewerCount + 2 + 6 * 2 + 4 * 2 + 2 + 2 * 2)
+        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + 2 + 3 * 2 + viewerCount + 2 + 6 * 2 + 4 * 2 + 2 + 2 * 2 + galleryCount)
     }
 
     /// v2 part M2a: the Help window, open at every article this build shows, in light and dark, with a

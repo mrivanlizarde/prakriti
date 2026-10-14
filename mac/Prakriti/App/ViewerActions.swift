@@ -10,6 +10,9 @@ import SwiftData
 struct WindowState: Codable, Equatable {
     var group: String?
     var source: UUID?
+    /// The People gallery ("people"), the unnamed people's recordings ("unnamed"), or one person's page (v2 part M7a).
+    var people: String?
+    var person: UUID?
     var selected: [UUID] = []
     var open: UUID?
     var rendition: String?
@@ -198,6 +201,9 @@ extension AppModel {
         switch selection {
         case .group(let group): state.group = group.rawValue
         case .source(let id): state.source = id
+        case .people: state.people = "people"
+        case .unnamed: state.people = "unnamed"
+        case .person(let id): state.person = id
         case nil: break
         }
         state.selected = Array(selectedRecordings).sorted { $0.uuidString < $1.uuidString }
@@ -227,6 +233,12 @@ extension AppModel {
             selection = .group(group)
         } else if let id = state.source, sources.contains(where: { $0.id == id }) {
             selection = .source(id)
+        } else if let id = state.person, namedPeopleList().contains(where: { $0.id == id }) {
+            selection = .person(id)
+        } else if state.people == "people" {
+            selection = .people
+        } else if state.people == "unnamed" {
+            selection = .unnamed
         }
         selectedRecordings = Set(state.selected.filter { id in recordings.contains { $0.id == id } })
         if let mode = state.browserMode.flatMap(BrowserMode.init(rawValue:)) { browserMode = mode }

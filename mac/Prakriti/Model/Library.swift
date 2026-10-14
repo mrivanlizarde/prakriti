@@ -61,10 +61,14 @@ enum SmartGroup: String, CaseIterable, Identifiable, Hashable, Sendable {
     }
 }
 
-/// What the sidebar has selected: a smart group, or one watched folder.
+/// What the sidebar has selected: a smart group, one watched folder, or (v2 part M7a) the People gallery, one named
+/// person's page, or the recordings with people nobody named in them (the gallery's "Unnamed people" tile).
 enum SidebarItem: Hashable, Sendable {
     case group(SmartGroup)
     case source(UUID)
+    case people
+    case person(UUID)
+    case unnamed
 
     static let `default`: SidebarItem = .group(.needsYou)
 }
@@ -200,6 +204,9 @@ enum Library {
         switch item {
         case .group(let group): recordings.filter { group.contains($0.status) }
         case .source(let id): recordings.filter { $0.source?.id == id }
+        case .people: []
+        case .person(let id): recordings.filter { Gallery.appearance(of: id, in: $0) != nil }
+        case .unnamed: recordings.filter(Gallery.hasUnnamed)
         }
     }
 
@@ -243,7 +250,7 @@ enum Library {
             return parts.compactMap { id, title, these in these.isEmpty ? nil : LibrarySection(id: id, title: title, recordings: these) }
         case .group(.ready):
             return byMonth(recordings, date: { $0.approvedAt ?? $0.sessionDate }, sort: sort, calendar: calendar)
-        case .group(.all), .source:
+        case .group(.all), .source, .people, .person, .unnamed:
             return byMonth(recordings, date: \.sessionDate, sort: sort, calendar: calendar)
         }
     }

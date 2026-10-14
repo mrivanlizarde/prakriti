@@ -175,6 +175,8 @@ struct PrivacyPane: View {
                             text: "Only a talk with one teacher speaking can be approved, and a class is never made ready to upload.")
                 PrivacyRule(symbol: "bell",
                             text: "Notices never show a file name, a title or a person's name, because they appear on the lock screen.")
+                PrivacyRule(symbol: "person.crop.square",
+                            text: "People keeps the names you give and the releases you record. Nothing about a face or a voice is kept, and the People folder is left out of Time Machine.")
                 PrivacyRule(symbol: "checkmark.seal",
                             text: "Approve copies the finished files to the Approved folder with a receipt. Nothing is uploaded or posted; you do that by hand.")
             } header: {
@@ -228,7 +230,7 @@ struct NamedPeopleSection: View {
         } header: {
             SectionHeader("People You Name")
         } footer: {
-            RowNote("Give these names to the people in a recording: in the inspector, Info, Who is teaching, or People, Name for This Recording. Prakriti keeps only the name, nothing about a face or a voice. A recording can be read by a cloud model only when everyone heard in it is named and has this switch on.")
+            RowNote("Give these names to the people in a recording: in the inspector, Info, Who is teaching, or People, Name for This Recording. Each name is also in People, in the sidebar. Prakriti keeps only the name, nothing about a face or a voice. A recording can be read by a cloud model only when everyone heard in it is named and has this switch on.")
         }
     }
 

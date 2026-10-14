@@ -3,6 +3,16 @@
 The team's notes for the in-app Help article `mac/Prakriti/Resources/Help/07-people-and-privacy.md` ("Privacy and students").
 Moved out of the article in v2 part M2a so the app bundle holds user text only. Never shown in the app.
 
+## Status after v2 part M7a (Tue 13 Oct 2026)
+
+- The `gallery` block was rewritten to what M7a builds: People in the sidebar, Name This Person (Name Only by default),
+  Record Release (kept with the name, nothing learned), the person page, Forget Face and Voice, retention, and what is
+  stored. The old text (recognizing named people, Not This Person, "From then on Prakriti keeps a reference") moved to a
+  new `recognition` block, hidden until part M7b builds it.
+- Button names match the build: **Name This Person…**, **Name Only**, **Record Release**, **Rename…**, **Change Key
+  Photo…**, **More**, **Hide from People**, **Forget Face and Voice…**. The plan's "Learn [Name]" button is not used,
+  because nothing is learned in M7a; M7b renames it if it wants.
+
 ## Status after v2 part M3a (Sun 11 Oct 2026)
 
 - Only a hidden `people` block changed: "In Recordings" became "In the browser" (v1's Recordings screen is gone).
