@@ -1663,3 +1663,14 @@ Acceptance: unit tests show a class and a recording with an unnamed person both 
 marked Leave Out blocks it; the full suite passes; the live app is installed (a new pid), its Settings show Anthropic as
 the writer, and a fresh Activity sweep is logged; one real write on the 13 Sep talk goes through Anthropic and its
 cost is recorded (a few cents).
+- **Wed 14 Oct, Sonny: video audio at 320 kbps AAC is accepted** (the Mac's AAC encoder tops out at 320; YouTube's
+  384 is a recommendation, and 320 AAC is transparent for speech). Read M8b's 384 as 320 everywhere.
+
+## Part TXGAP (inserted Wed 14 Oct, after LOCK)
+
+The M8b run found two 17-second stretches of Gabriel speaking on the 6 Sep talk with no transcript (Parakeet dropped
+them). Fix at the cause: transcribe in overlapping chunks (or re-run any gap of speech longer than 3 s with no words,
+found by comparing the sound envelope to word times), merge without duplicates, and make the coverage check fail on
+any such gap, not only at the tail. Acceptance: both 17 s stretches on the 6 Sep talk now have words; a coverage test
+plants a silent-text gap and catches it; the 13 Sep transcript is unchanged except for any newly found words; full
+suite passes; make install.
