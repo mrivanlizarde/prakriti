@@ -1650,3 +1650,16 @@ M13 Finish line.
   next part, then **make install** (M5a to the latest passing part ship together) and confirm the live app writes
   with Anthropic. (2) Everyone starts as Include: confirmed. (3) Names said aloud (lineage teachers etc.) are not
   people decisions: never ask about them at Approve. (4) The hiding pictures go to Ivan for a look; not a gate.
+
+## Part LOCK (inserted Wed 14 Oct, between M8b and M8c)
+
+Goal: the privacy lock follows Ivan's decision of Mon 12 Oct (all participants signed releases). Change the lock so
+the Claude API (Anthropic, claude-sonnet-5-5) writes every recording, including classes, recordings with other people,
+and recordings that name anyone aloud; the lock blocks the cloud only for a person Ivan marked "no release" or Leave
+Out. Names said aloud are never asked about at Approve. Update the lock's tests to assert the new behavior, the
+notice text, Help 07 and 09, START_HERE and BUILD-LOG. Then `make install`, so everything built from M5a to M8b
+reaches the live app at last.
+Acceptance: unit tests show a class and a recording with an unnamed person both route to Anthropic, and a person
+marked Leave Out blocks it; the full suite passes; the live app is installed (a new pid), its Settings show Anthropic as
+the writer, and a fresh Activity sweep is logged; one real write on the 13 Sep talk goes through Anthropic and its
+cost is recorded (a few cents).
