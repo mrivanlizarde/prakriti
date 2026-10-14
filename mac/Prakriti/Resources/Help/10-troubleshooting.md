@@ -126,6 +126,14 @@ The notice and the inspector say how much is missing. Listen to the end of the r
 continues there, click Make Again. If it stops again, the sound at that point may be very quiet or
 damaged.
 
+### If the transcript is missing words in the middle
+
+When there is still speech with no words after Prakriti has listened to it a second time, the notice
+says so, and Missing words in the inspector's Checks lists where each stretch starts and how long it
+is. The same list is in `REPORT.md`. Listen at those times. If you hear speech, click Make Again. If
+the words are still missing, the speech there may be very quiet, far from the microphone or under
+other sound.
+
 ### If a cut took out something you need
 
 Open the recording and click the cut in the strip under the player, then click Restore at the top of the inspector. Or, in the inspector's Info, click Restore beside the cut. Then click Make Again.

@@ -11,7 +11,9 @@ import Foundation
 //   point at or below -60 dB, or no audio track: Needs a decision, nothing made.
 // - Coverage check after transcription: the transcript must reach within 120 s of the end. A
 //   filter once dropped 80% of a tape and returned fluent text; Parakeet dropped the last 85 s of
-//   a clip in our own test.
+//   a clip in our own test. Since v2 part TXGAP it also fails on any stretch of 3 s or more of
+//   speech with no words, wherever it is, after each such stretch has been transcribed again on its
+//   own (TranscriptGaps): Parakeet wrote nothing for 17 s at 24:22 and 39:24 of the 6 Sep talk.
 // - Mastering keeps v0's two bug fixes (see Mastering below), then the MP3 is measured, and its
 //   tail decoded, rather than trusted.
 // - Outputs never go into the shared iCloud folder (the runner checks the folder it passes in).
@@ -74,7 +76,7 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .sound: "Checking the sound"
         case .speechAudio: "Preparing the audio for the transcript"
         case .transcript: "Writing the transcript"
-        case .coverage: "Checking the transcript reaches the end"
+        case .coverage: "Checking the transcript has every stretch of speech"
         case .wordList: "Applying the Yoga Marga word list"
         case .namesSaid: "Finding names said aloud"
         case .faces: "Looking for faces"
@@ -255,6 +257,12 @@ struct PipelineResult: Sendable {
     var transcriptReaches: Double?
     var wordCount: Int?
     var coverageOK: Bool?
+    /// Stretches of speech the whole-file run wrote no words for, transcribed again on their own (v2 part TXGAP), and
+    /// the words that found.
+    var relistened: [TimeRange] = []
+    var wordsFoundAgain = 0
+    /// Stretches of 3 s or more of speech still with no words after that: the coverage check fails on any.
+    var transcriptGaps: [TimeRange] = []
     /// The part of the recording the episode keeps, once the silence at its start and end is
     /// trimmed. Nil when nothing was trimmed.
     var kept: Mastering.Span?
@@ -717,7 +725,10 @@ struct Pipeline: Sendable {
             // 5. Mono 16 kHz audio, then the transcript (Parakeet), the coverage check, the word list.
             if options.makeTranscript {
                 await begin(.speechAudio)
-                _ = try await tool(.speechAudio, tools.ffmpeg, ["-y", "-v", "error", "-i", file.path, "-vn", "-ac", "1", "-ar", "16000", speech.path],
+                // The same decode also writes the sound as raw floats, for the envelope the gap check reads (TXGAP).
+                let speechFloats = staging.appending(path: "speech.f32")
+                _ = try await tool(.speechAudio, tools.ffmpeg, ["-y", "-v", "error", "-i", file.path, "-vn", "-ac", "1", "-ar", "16000", speech.path,
+                                                                "-vn", "-ac", "1", "-ar", "16000", "-f", "f32le", speechFloats.path],
                                    captureStdout: false, duration: ready.duration)
                 await finish(.speechAudio, "Mono, 16 kHz.")
 
@@ -725,6 +736,19 @@ struct Pipeline: Sendable {
                 _ = try await tool(.transcript, tools.parakeet, [speech.path, "--output-dir", staging.path, "--output-format", "all",
                                                                  "--output-template", "transcript"],
                                    captureStdout: false, duration: ready.duration)
+                // Speech the whole-file run wrote no words for, transcribed again stretch by stretch (TranscriptGaps).
+                let envelope = try? Envelope.read(rawFloats: speechFloats, samplesPerFrame: 160)
+                try? FileManager.default.removeItem(at: speechFloats)
+                var heardAgain = ""
+                if let envelope {
+                    let again = try await listenAgain(speech: speech, envelope: envelope, duration: ready.duration, staging: staging, name: name)
+                    result.relistened = again.gaps.map(\.range)
+                    result.wordsFoundAgain = again.words
+                    if !again.gaps.isEmpty {
+                        heardAgain = " \(Format.count(again.gaps.count, "stretch", "stretches")) with no words were transcribed again on their own"
+                            + (again.words > 0 ? " and gave \(Format.count(again.words, "word")) more." : ", and still gave none.")
+                    }
+                }
                 try? FileManager.default.removeItem(at: speech)
                 let srtFile = staging.appending(path: TranscriptFiles.fileName(.srt))
                 guard var srt = try? String(contentsOf: srtFile, encoding: .utf8),
@@ -734,16 +758,27 @@ struct Pipeline: Sendable {
                 let words = Measure.wordCount(text)
                 result.wordCount = words
                 result.mentionsSerenity = Privacy.mentionsSerenity(text)
-                await finish(.transcript, "\(Format.number(words)) words.")
+                await finish(.transcript, "\(Format.number(words)) words." + heardAgain)
 
                 await begin(.coverage)
                 let reaches = Measure.lastCueEnd(srt: srt)
                 let gap = ready.duration - reaches
                 result.transcriptReaches = reaches
-                result.coverageOK = gap <= options.coverageGap
-                await finish(.coverage, result.coverageOK == true
-                             ? "Reaches \(Format.timecode(reaches)) of \(Format.timecode(ready.duration))."
-                             : "Stops at \(Format.timecode(reaches)) of \(Format.timecode(ready.duration)). The last \(Format.length(gap)) has no words.")
+                // Any stretch of speech still with no words, wherever it is (the tail's own check stays as it was). A
+                // transcript.json that cannot be read, or sound that could not be measured, leaves only the tail check.
+                if let envelope, let heard = ParakeetTranscript.read(staging.appending(path: TranscriptFiles.asHeard)) {
+                    result.transcriptGaps = TranscriptGaps.missing(heard, envelope: envelope, duration: ready.duration)
+                        .filter { gap <= options.coverageGap || $0.end < ready.duration - 0.01 }.map(\.range)
+                }
+                result.coverageOK = gap <= options.coverageGap && result.transcriptGaps.isEmpty
+                if !result.transcriptGaps.isEmpty {
+                    log?.write("\(name): the transcript has no words for \(Format.count(result.transcriptGaps.count, "stretch", "stretches")) of speech: \(TranscriptGaps.list(result.transcriptGaps)).")
+                }
+                let missing = result.transcriptGaps.isEmpty ? ""
+                    : " No words for \(Format.count(result.transcriptGaps.count, "stretch", "stretches")) of speech: \(TranscriptGaps.list(result.transcriptGaps))."
+                await finish(.coverage, gap <= options.coverageGap
+                             ? "Reaches \(Format.timecode(reaches)) of \(Format.timecode(ready.duration))." + missing
+                             : "Stops at \(Format.timecode(reaches)) of \(Format.timecode(ready.duration)). The last \(Format.length(gap)) has no words." + missing)
 
                 if options.applyLexicon {
                     await begin(.wordList)
@@ -1258,6 +1293,59 @@ struct Pipeline: Sendable {
         }
     }
 
+    /// Transcribes again, each on its own, the stretches of speech the whole-file run wrote no words for, and adds the
+    /// words found to the transcript's files in `staging` (v2 part TXGAP, `TranscriptGaps`). Returns the stretches
+    /// listened to again and the words found. A failure here is logged and costs only the second listen: the coverage
+    /// check then reports the stretches as missing words, so nothing passes unseen.
+    private func listenAgain(speech: URL, envelope: Envelope, duration: Double, staging: URL, name: String) async throws
+        -> (gaps: [TranscriptGaps.Gap], words: Int) {
+        let asHeard = staging.appending(path: TranscriptFiles.asHeard)
+        guard let first = ParakeetTranscript.read(asHeard) else { return ([], 0) }
+        let gaps = TranscriptGaps.toListenAgain(first, envelope: envelope, duration: duration)
+        guard !gaps.isEmpty else { return ([], 0) }
+        let folder = staging.appending(path: "again", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            var pieces: [(wav: URL, gap: TranscriptGaps.Gap, offset: Double)] = []
+            for (k, gap) in gaps.enumerated() {
+                let span = TranscriptGaps.piece(for: gap, duration: duration)
+                let wav = folder.appending(path: String(format: "again-%03d.wav", k))
+                _ = try await Subprocess.run(tools.ffmpeg, ["-y", "-v", "error", "-ss", String(format: "%.3f", span.start),
+                                                            "-t", String(format: "%.3f", span.end - span.start), "-i", speech.path, wav.path],
+                                             captureStdout: false, timeout: limit(span.end - span.start), control: meter?.control)
+                pieces.append((wav, gap, span.start))
+            }
+            let length = pieces.reduce(0.0) { $0 + TranscriptGaps.piece(for: $1.gap, duration: duration).end - $1.offset }
+            _ = try await Subprocess.run(tools.parakeet, pieces.map(\.wav.path) + ["--output-dir", folder.path, "--output-format", "json",
+                                                                                   "--output-template", "{filename}"],
+                                         captureStdout: false, timeout: limit(length), control: meter?.control)
+            let existing = first.sentences.flatMap(\.tokens)
+            var added: [ParakeetTranscript.Sentence] = []
+            for piece in pieces {
+                let json = folder.appending(path: piece.wav.deletingPathExtension().lastPathComponent + ".json")
+                guard let heard = ParakeetTranscript.read(json) else {
+                    log?.write("\(name): Parakeet wrote nothing for the stretch at \(Format.timecode(piece.gap.start)) heard again.")
+                    continue
+                }
+                added += TranscriptGaps.found(in: heard, offset: piece.offset, gap: piece.gap, existing: existing)
+            }
+            let words = added.flatMap(\.tokens).filter { EpisodeTranscript.isWord($0.text) }.count
+            log?.write("\(name): \(Format.count(gaps.count, "stretch", "stretches")) of speech with no words transcribed again ("
+                       + TranscriptGaps.list(gaps.map(\.range)) + "): \(Format.count(words, "word")) found.")
+            if !added.isEmpty {
+                let (merged, isNew) = TranscriptGaps.merged(first, adding: added)
+                try TranscriptGaps.write(merged, isNew: isNew, in: staging)
+            }
+            return (gaps, words)
+        } catch {
+            if error is CancellationError || Task.isCancelled { throw CancellationError() }
+            log?.write("\(name): the stretches with no words could not be transcribed again. "
+                       + ((error as? ToolError)?.logLine ?? error.localizedDescription))
+            return (gaps, 0)
+        }
+    }
+
     private func readyReason(_ result: PipelineResult) -> String {
         var made: [String] = []
         if options.makeEpisode { made.append("Episode audio") }
@@ -1266,8 +1354,11 @@ struct Pipeline: Sendable {
         if result.podcastReady != nil { made.append("the podcast-ready files") }
         let listed = made.count > 1 ? made.dropLast().joined(separator: ", ") + " and " + (made.last ?? "") : (made.first ?? "")
         var reason = made.isEmpty ? "The checks passed." : listed + (made.count > 1 ? " are ready." : " is ready.")
-        if result.coverageOK == false, let reaches = result.transcriptReaches, let duration = result.duration {
+        if result.coverageOK == false, let reaches = result.transcriptReaches, let duration = result.duration, duration - reaches > options.coverageGap {
             reason += " The transcript stops at \(Format.timecode(reaches)) of \(Format.timecode(duration)): listen to the end before trusting it."
+        } else if !result.transcriptGaps.isEmpty {
+            reason += " The transcript has no words for \(Format.count(result.transcriptGaps.count, "stretch", "stretches")) of speech, at "
+                + TranscriptGaps.list(result.transcriptGaps) + ": listen there before trusting it."
         } else if result.faces != nil && result.voices != nil {
             // Since v2 part M6b the people check names who appears and speaks; since M6c the People tab holds the choices.
             reason += " Who appears and speaks is in its People tab."

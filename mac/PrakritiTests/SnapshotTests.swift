@@ -104,6 +104,16 @@ final class SnapshotTests: XCTestCase {
                     model.inspectorTab = .checks
                 }
             }
+            // v2 part TXGAP: a stretch of speech the transcript still has no words for, after the second listen. Sample
+            // times only.
+            try draw("07-inspector-checks-missing-words") { model in
+                let talk = try talk13(model)
+                talk.coverageOK = false
+                talk.transcriptGaps = [TimeRange(start: 370.4, end: 382.6), TimeRange(start: 611, end: 615.2)]
+                model.selection = .group(.needsYou)
+                model.selectedRecordings = [talk.id]
+                model.inspectorTab = .checks
+            }
             try draw("07-inspector-checks-capture-none") { model in
                 let talk = try talk13(model)
                 talk.captureJSON = nil
@@ -376,8 +386,8 @@ final class SnapshotTests: XCTestCase {
             print("Snapshots written to \(outputFolder.path): \(written.count) library and Settings pictures")
             // v2 part M6a: the People tab joins the inspector's tabs (2), and six People and filter pictures (12).
             // v2 part M6b: four voices and names pictures (8) and Settings, Privacy with named people (2).
-            // v2 part M6c: two choices pictures (4).
-            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2 + 2 + 2 + 3 * 2 + 2 + 6 * 2 + 4 * 2 + 2 + 2 * 2)
+            // v2 part M6c: two choices pictures (4). v2 part TXGAP: the Checks tab with missing words (2).
+            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2 + 2 + 2 + 3 * 2 + 2 + 6 * 2 + 4 * 2 + 2 + 2 * 2 + 2)
             return
         }
 
@@ -621,7 +631,7 @@ final class SnapshotTests: XCTestCase {
 
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + 2 + 3 * 2 + viewerCount + 2 + 6 * 2 + 4 * 2 + 2 + 2 * 2 + galleryCount)
+        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + 2 + 3 * 2 + viewerCount + 2 + 6 * 2 + 4 * 2 + 2 + 2 * 2 + galleryCount + 2) // v2 part TXGAP: the Checks tab with missing words (2)
     }
 
     /// v2 part M2a: the Help window, open at every article this build shows, in light and dark, with a

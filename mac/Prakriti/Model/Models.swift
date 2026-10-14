@@ -112,8 +112,11 @@ final class Recording {
     var truePeakDBFS: Double?
     var transcriptReaches: Double?
     var wordCount: Int?
-    /// The transcript reaches within two minutes of the end (the coverage check).
+    /// The transcript reaches within two minutes of the end and has words for every stretch of speech (the coverage
+    /// check; the second half since v2 part TXGAP).
     var coverageOK: Bool?
+    /// Stretches of 3 s or more of speech the transcript still has no words for (v2 part TXGAP), on the original's clock.
+    var transcriptGaps: [TimeRange] = []
     /// The episode's own length, and the silence trimmed from the recording's start and end.
     var episodeDuration: Double?
     var silenceTrimmedStart: Double?

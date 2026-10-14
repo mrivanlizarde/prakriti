@@ -755,6 +755,7 @@ final class PipelineRunner {
             recording.transcriptReaches = result.transcriptReaches
             recording.wordCount = result.wordCount
             recording.coverageOK = result.coverageOK
+            recording.transcriptGaps = result.transcriptGaps
             recording.wordListFixes = activeOptions.makeTranscript && activeOptions.applyLexicon ? result.corrections.count : nil
             recording.outputFolder = result.outputFolder?.path
             recording.madeFiles = result.files
@@ -821,14 +822,22 @@ final class PipelineRunner {
             run.outcome = .ready
             run.summary = "Waiting for your yes."
             var facts = facts(for: recording)
-            if result.coverageOK == false, let reaches = result.transcriptReaches, let duration = result.duration {
+            if result.coverageOK == false, let reaches = result.transcriptReaches, let duration = result.duration, duration - reaches > activeOptions.coverageGap {
                 facts.coverageGap = duration - reaches
             }
+            facts.wordlessStretches = result.transcriptGaps.count
             model.notifier.post(.ready, facts)
             var numbers: [String] = []
             if let out = result.output { numbers.append("\(Format.lufs(out.integratedLUFS)), peak \(Format.dbfs(out.truePeakDBFS))") }
             if let reaches = result.transcriptReaches, let duration = result.duration {
-                numbers.append("transcript \(result.coverageOK == true ? "reaches" : "STOPS at") \(Format.timecode(reaches)) of \(Format.timecode(duration))")
+                let stops = duration - reaches > activeOptions.coverageGap
+                numbers.append("transcript \(stops ? "STOPS at" : "reaches") \(Format.timecode(reaches)) of \(Format.timecode(duration))")
+            }
+            if !result.relistened.isEmpty {
+                numbers.append("\(Format.count(result.relistened.count, "stretch", "stretches")) with no words transcribed again, \(Format.count(result.wordsFoundAgain, "word")) found")
+            }
+            if !result.transcriptGaps.isEmpty {
+                numbers.append("NO WORDS for \(Format.count(result.transcriptGaps.count, "stretch", "stretches")) of speech at \(TranscriptGaps.list(result.transcriptGaps))")
             }
             if activeOptions.makeTranscript && activeOptions.applyLexicon {
                 numbers.append("word list \(Format.count(result.corrections.count, "fix", "fixes"))")

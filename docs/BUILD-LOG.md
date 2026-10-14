@@ -66,7 +66,10 @@ Ivan's checklist and the picture of every new screen. **Then part LOCK** (the la
 follows the signed releases, so the Claude API writes classes, recordings with other people and recordings that name anyone, and
 only a person set to Leave Out or marked "no release" keeps a recording on this Mac; names said aloud are never asked about at
 Approve. Every check passed, one real 13 Sep write went through Anthropic for $0.09, and **M5a to M8b and LOCK are installed**
-(11:38, pid 92711).
+(11:38, pid 92711). **Then part TXGAP** (the last section, "v2 part TXGAP", Wed 14 Oct): after Parakeet's whole-file run, every
+stretch of speech it wrote no words for is transcribed again on its own and its words added once each, and the coverage check
+fails on any stretch of speech still without words, wherever it is. The 6 Sep talk gains 153 words at 24:22, 39:24 and 43:04;
+the 13 Sep transcript.json is byte for byte unchanged.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -5227,3 +5230,93 @@ together; the live app is no longer the M4b build. Help on Ivan's Mac now descri
   recording they appear or speak in then stays on this Mac.
 - [ ] **Titles, show notes and chapters are off for both folders.** Turn them on (Settings, Outputs) when you want the Claude
   API to write each new recording; the 13 Sep test write cost $0.09.
+
+## v2 part TXGAP: speech with no words is heard again and caught. Wed 14 Oct 2026
+
+The part inserted after LOCK (`docs/v2/PLAN.md`, "Part TXGAP"; the M8b fixes entry, "Open" 1). Parakeet, run once over the whole
+6 Sep talk, wrote no words for two 17 s stretches of plain speech, and the coverage check passed because it asked only whether
+the words reach the end; that talk's podcast transcript, captions and chapters lacked those words. Built 12:00 to 13:40 on
+`main`. No package added. **One stored field added (`Recording.transcriptGaps`, default empty), an addition:** `make
+migrate-check` passed on a copy of the live store.
+
+### What was built
+
+- **`Engine/TranscriptGaps.swift`.** `wordless` finds every stretch of 3 s or more between words (a word covers its start to
+  its end, at most 1 s, since Parakeet stretches the last word before a pause across it) and measures the speech in it on the
+  sound's envelope (`Envelope`, 10 ms frames, speech on at floor + 12 dB). `toListenAgain`: 1 s or more of speech. `missing`:
+  3 s or more of speech. `found` takes from a stretch's own transcript only the whole words that start inside the stretch,
+  moved onto the recording's clock, and drops a word the first run already has with the same letters within 0.5 s.
+  `merged` inserts the new sentences without reordering Parakeet's own (they are not always in start order: 6 Sep, 31:44.5
+  follows 31:45.8). `write` rewrites transcript.json in Parakeet's exact layout (`ParakeetTranscript.encoded`, byte for byte
+  Python's `json.dumps(indent=2, ensure_ascii=False)`, checked on both talks' real files), and .txt, .srt and .vtt, copying
+  every old cue's lines as Parakeet wrote them and formatting only the new ones.
+- **`Pipeline`:** the speech-audio decode also writes the 16 kHz sound as raw floats (`speech.f32`, deleted at once), read
+  into an envelope (`Envelope.read(rawFloats:samplesPerFrame: 160)`). After Parakeet, `listenAgain` cuts each stretch with 2 s
+  either side from `speech.wav`, runs one Parakeet call for all of them (`--output-format json`), merges and rewrites, and
+  logs "N stretches of speech with no words transcribed again (...): M words found." A failure there is logged and costs only
+  the second listen. The files are rewritten only when words were found. The Transcript step says "N stretches with no words
+  were transcribed again on their own and gave M words more." The **Coverage check** ("Checking the transcript has every
+  stretch of speech") keeps the 120 s tail rule and now also fails on any `missing` stretch, listing each: "No words for 1
+  stretch of speech: 0:30 (12 s)." `PipelineResult` gains `relistened`, `wordsFoundAgain` and `transcriptGaps`.
+- **Where Ivan sees it:** the ready line ("The transcript has no words for N stretches of speech, at ...: listen there before
+  trusting it."), the notice ("...the transcript has no words for N stretches of speech. Its Checks tab says where; listen
+  there before trusting it."), the Activity line, REPORT.md ("NO WORDS for N stretches of speech at ..."; and any stretches
+  listened to again), and **Missing words** in the inspector's Checks (from `Recording.transcriptGaps`). "Stops at" is now
+  said only when the tail itself is short.
+- **Help** 05 (Transcript; Checks and report) and 10 (new "If the transcript is missing words in the middle"); notes appended
+  to `docs/v2/help-notes/05` and `10`. **Tests:** `TranscriptGapsTests` (6 tests, check 2 below), `PipelineAcceptanceTests` (both
+  talks: coverage passes, no missing words; 6 Sep: 30 or more words in each 17 s stretch), `SnapshotTests`
+  (`07-inspector-checks-missing-words`), `StoreMigrationTests` (the new column arrives empty).
+
+### Checks run, with results (PLAN, Part TXGAP's acceptance)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Both 17 s stretches on the 6 Sep talk now have words | **PASS.** `make accept MILESTONE=v2-txgap` (the full talk, the app's own pipeline and runner, outputs in `~/Prakriti/Dev/Outputs`): log "3 stretches of speech with no words transcribed again (24:22 (17 s), 39:24 (17 s), 43:04 (5 s)): 153 words found." Words in transcript.json now: **72 in 24:21.8 to 24:39.0, 59 in 39:23.6 to 39:40.3, 22 in 43:04.0 to 43:08.8** (0, 0 and 0 before). Measured against the transcript.json of the 11:24 run: all 17,072 old tokens kept, all 555 old sentences kept whole and in their order, 10 sentences added (555 to 565); no other change. 10,060 words; reaches 55:38 of 55:39; coverage passed; the .srt and .vtt that follow the episode: 565 captions for 565 sentences, 0 differ from Parakeet's sentence. -16.7 LUFS, -1.4 dBFS, as before. The whole Transcript step, the second listen included, took 38.3 s |
+| 2 | A coverage test plants a silent-text gap and catches it | **PASS.** `TranscriptGapsTests.testAPlantedGapIsHeardAgainOrCaughtByTheCoverageCheck`: 75 s of `say` over pink room noise; a stand-in in front of the real Parakeet removes every word starting in 30 to 42 s from all four files of the whole-file run. Unplanted: 376 words, 67 in 30 to 42 s, nothing heard again. **Planted:** heard again "0:30 (12 s)", **67 words found, 67 now in 30 to 42 s**, no word twice, every word outside the stretch exactly as the first run wrote it, coverage passed. **Planted with the second listen made deaf:** **coverage failed**, transcriptGaps "0:30 (12 s)", the tail fine; ready line "The transcript has no words for 1 stretch of speech, at 0:30 (12 s): listen there before trusting it."; Coverage step and REPORT.md say it ("NO WORDS for 1 stretch of speech"); no em or en dash. Without Parakeet: a wordless stretch with 13.2 s of speech found, a quiet start and a 2 s cough not failed, a stretched word does not hide a gap, only words inside the stretch taken and a word heard again 0.3 s later not taken twice, Parakeet's sentence order kept, old cues kept as written (a 1 ms difference from the JSON preserved), JSON byte for byte on a sample and on both talks' real transcript.json |
+| 3 | The 13 Sep transcript is unchanged except for any newly found words | **PASS.** No stretch to hear again on 13 Sep (its two wordless stretches of 3 s or more, at 12:36 and 12:45, hold 0.0 s of speech), so nothing was rewritten: **transcript.json byte for byte identical** to the 11:31 run's (SHA-256 `8b545b10...` both), 2,948 words as before, 137 captions for 137 sentences, 0 differ from Parakeet's. (The 11:31 folder's .txt, .srt, .vtt and .md differ from the new ones only because that folder was last made by `make accept-edits`, with its 10 s trim and 5:00 to 5:30 cut; the words as heard are identical.) |
+| 4 | Full suite | **PASS.** `make build`: No warnings. **`make test`: 365 tests, 0 failures, 21 skipped by design** (1,213 s; the first run failed only `SnapshotTests`' picture count, which had not yet counted the new picture; fixed, and the whole suite run again). `make accept`: 13 Sep -16.8 LUFS (-16.82), -1.7 dBFS, reaches 15:47 of 15:48; 6 Sep -16.7 LUFS (-16.72), -1.4 dBFS, reaches 55:38 of 55:39; originals unchanged. `make accept-edits`: **38.82 s shorter (expected 38.82)**, 0 of 73 runs from the cut heard, 189 of 201 after it, a class refused. `make migrate-check` on a copy of the live store: 13 recordings, 2 folders, 40 output settings, 1,141 Activity lines before and after, 2 approved; "part TXGAP: 0 recordings with missing words listed; the store had the column before: false" |
+| 5 | Installed | See "Installed" below |
+| Looked at | The Checks tab with missing words; Help 05 and 10 | `07-inspector-checks-missing-words-light-inspector-p3.png` and `-dark-...-p3.png` in `screens/mac/v2-txgap/`: "Missing words: No words for 2 stretches of speech, at 6:10 (12 s), 10:11 (4 s). Listen there before trusting the transcript", the Transcript row still "reaches 15:47 of 15:48" (sample times). `help-07-outputs-light-p3.png` (the new Transcript paragraph and Checks and report) and `help-09-troubleshooting-dark-p5.png` (the new section). Readable in light and dark, 17 pt body |
+
+**Em dashes:** 0 in every line this part added (`git diff | grep '^+'` for U+2014 and U+2013: 0).
+
+### Decisions, each with its reason
+
+1. **Listen again to the wordless stretches, not transcribe the whole talk in overlapping pieces.** Reason: the plan allows
+   either; this one leaves every word of the first run as it was, which is check 3's bar, and costs a few seconds (one Parakeet
+   call for all stretches) where pieces would change words and times everywhere.
+2. **Two bars: 1 s of speech to listen again, 3 s still wordless to fail.** Reason: measured on 6 Sep, every wordless stretch of 3 s
+   or more held 0.0 to 0.3 s of speech except the three missed ones (10.7, 11.2 and 3.4 s) and one at 14:41 (0.9 s; one word
+   when transcribed alone). Listening is cheap; failing should mean speech, as the plan words it ("a gap of speech longer than
+   3 s"). The 14:41 word stays missing (0.9 s is under the 1 s bar).
+3. **No duplicates by construction, and a guard.** No word of the first run starts inside a stretch (that is what makes it a
+   stretch), so only words starting inside it are taken; a word with the same letters within 0.5 s of a first-run word is
+   dropped too, since a second listen can time an edge word a frame or two later.
+4. **A failure of the second listen does not stop the make.** Reason: the coverage check then reports the stretches as missing
+   words, so nothing passes unseen, and the rest of the outputs are still made.
+5. **The 6 Sep talk in Ivan's live Outputs is not made again by this session.** Reason: never write into `~/Prakriti/Outputs`
+   from a session; Make Again is Ivan's (For Ivan).
+
+### What does not work yet, or was not seen working
+
+- A recording made before this build keeps its old transcript (and so its captions, chapters and edit plan) until Make Again.
+- Speech under 1 s inside a wordless stretch is not heard again (6 Sep, 14:41, one word).
+- If music or applause fills 3 s or more with no words, the check will say "no words" there; that is a prompt to listen, not a
+  failure of the make. Not seen on either talk.
+- The edit plan and video were not remade here (`make accept-video` is M8b's, about 30 minutes); they read transcript.json, so
+  the 6 Sep plan will now keep those stretches as speech with words rather than as sound inside a gap.
+
+### Installed
+
+**Installed** at 13:41 on Wed 14 Oct with `make install`: old pid 92711 quit, new pid **8165** from `~/Applications/Prakriti.app`
+started 13:41:58, signature verified, only the installed copy registered. Live log: "Mode: live", "Login item: on.", "Studio
+Recordings: listed 13 recordings", "Drop folder: listed 0 recordings", **"13:42:00 Checked 2 folders. Nothing new."**, "Caught up
+on changes made while Prakriti was closed: 0 events." Every new recording from now on gets the second listen and the new check;
+nothing already made was changed.
+
+### For Ivan
+
+- [ ] **Make the 6 Sep talk again** (select Sun 6 Sep, click Make Again). Its transcript, captions and chapters in your Outputs were
+  made before this fix and lack 153 words at 24:22, 39:24 and 43:04. If it is approved, Make Again takes the approval back, so
+  approve it again after a listen. The 13 Sep talk needs nothing: nothing was missing.

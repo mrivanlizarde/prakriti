@@ -98,8 +98,9 @@ struct Envelope: Sendable {
     }
 
     /// The envelope of a raw file of mono little-endian 32-bit floats at 48 kHz, read a few seconds at a time, so an
-    /// hour's sound is never held in memory (it would be about 690 MB).
-    static func read(rawFloats url: URL) throws -> Envelope {
+    /// hour's sound is never held in memory (it would be about 690 MB). `samplesPerFrame` 160 reads 16 kHz sound, the
+    /// transcript's own (v2 part TXGAP), in the same 10 ms frames.
+    static func read(rawFloats url: URL, samplesPerFrame: Int = Envelope.samplesPerFrame) throws -> Envelope {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
         var levels: [Double] = []

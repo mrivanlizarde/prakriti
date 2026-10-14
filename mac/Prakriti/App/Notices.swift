@@ -36,6 +36,8 @@ struct NoticeFacts: Sendable, Equatable {
     var estimate: Double?
     /// Ready: how much of the end has no words, when the coverage check failed.
     var coverageGap: Double?
+    /// Stretches of speech the transcript has no words for (v2 part TXGAP).
+    var wordlessStretches = 0
     /// Needs a decision: the file has no audio track at all.
     var noAudioTrack = false
     /// Couldn't finish: tries that stopped, and the step it stopped in ("making the episode audio").
@@ -131,6 +133,10 @@ enum NoticeBuilder {
             let verb = made.count == 1 ? "is" : "are"
             if let gap = facts.coverageGap, facts.makesTranscript {
                 return "\(what) \(verb) ready, but the transcript stops \(Format.length(gap)) before the end. Listen to the end before trusting it."
+            }
+            if facts.wordlessStretches > 0, facts.makesTranscript {
+                return "\(what) \(verb) ready, but the transcript has no words for \(Format.count(facts.wordlessStretches, "stretch", "stretches")) of speech. "
+                    + "Its Checks tab says where; listen there before trusting it."
             }
             return "\(what) \(verb) ready. " + (facts.makesEpisode ? "Listen before anything goes out." : "Read it before anything goes out.")
         case .needsADecision:

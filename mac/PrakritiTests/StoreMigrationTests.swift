@@ -173,6 +173,11 @@ final class StoreMigrationTests: XCTestCase {
         if !before.has("ZPERSON", "ZNORELEASE") {
             XCTAssertTrue(people.allSatisfy { !$0.noRelease }, "an upgrade marks nobody no release")
         }
+        // Part TXGAP: a store from before it has no transcriptGaps column; every recording arrives with none listed.
+        if !before.has("ZRECORDING", "ZTRANSCRIPTGAPS") {
+            XCTAssertTrue(recordings.allSatisfy { $0.transcriptGaps.isEmpty }, "an upgrade lists no missing words")
+        }
+        print("part TXGAP: \(recordings.filter { !$0.transcriptGaps.isEmpty }.count) recordings with missing words listed; the store had the column before: \(before.has("ZRECORDING", "ZTRANSCRIPTGAPS"))")
         print("part LOCK: \(people.filter(\.noRelease).count) of \(people.count) named people marked no release; the store had the column before: \(before.has("ZPERSON", "ZNORELEASE"))")
         print("v2 part M7a: \(people.count) named people, \(people.filter(\.hasRelease).count) with a release, \(people.filter(\.mayAppear).count) able to appear")
         print("v2 part M3a fields:\(recordings.filter { !$0.checkedClaims.isEmpty }.count) recordings with ticked claims, \(sources.filter { !$0.forgottenPaths.isEmpty }.count) folders with removed files (\(sources.map(\.forgottenPaths.count).reduce(0, +)) files)")

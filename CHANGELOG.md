@@ -5,6 +5,21 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-14, Wed: v2 part TXGAP, speech with no words is heard again and caught
+
+- **After Parakeet's whole-file run, every stretch of 3 s or more with no words but with speech is transcribed again on its
+  own, and its words are added once each.** Why: on the 6 Sep talk Parakeet wrote nothing for 17 s at 24:22, 17 s at 39:24
+  and 5 s at 43:04, so the podcast transcript, captions and chapters of episode 1 lacked 153 words and the rough cut took the
+  two long stretches out as pauses (34 s of Gabriel, M8b fixes).
+- **The coverage check fails on any stretch of speech still without words, wherever it is, not only at the end.** Why: the
+  old check passed that talk because its words reached 55:38 of 55:39; checking only the tail is how a filter dropping the
+  middle goes unseen (the transcription skill's first lesson).
+- **The files are rewritten only when words were found, and every cue of the first run is kept as Parakeet wrote it.** Why:
+  the plan's bar is "the 13 Sep transcript is unchanged except for any newly found words"; its transcript.json came out byte
+  for byte the same.
+- **Missing words in the Checks tab, the notice, the Activity line and REPORT.md name each stretch left.** Why: a check that
+  fails must say where to listen.
+
 ## 2026-10-14, Wed: v2 part LOCK, the lock follows the signed releases
 
 - **The privacy lock now blocks the cloud only for Ivan's own marks: someone set to Leave Out, or a person marked "no

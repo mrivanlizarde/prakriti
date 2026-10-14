@@ -89,10 +89,16 @@ subtitles (`.vtt`) and formatted text (`.md`). Prakriti spells Yoga Marga's word
 shown in Settings, Outputs. When something is cut from the episode, the transcript follows: the cut
 words are gone and the times match the episode.
 
+Parakeet, the transcription tool, can miss a stretch of speech now and then. So after it has listened
+to the whole recording, Prakriti compares the sound with the words: wherever there are 3 seconds or more
+with no words but someone is speaking, it listens to that stretch again on its own and adds the words it
+hears, each once, in its place.
+
 ### Checks and report
 
 `REPORT.md`: how long the recording is, how its sound measured, the episode's loudness, how much of the
-recording the transcript covers, and any word the word list fixed. It says plainly that speakers are
+recording the transcript covers (any stretch listened to again, and any stretch of speech still without
+words), and any word the word list fixed. It says plainly that speakers are
 not checked yet.
 
 ### Titles, show notes and chapters

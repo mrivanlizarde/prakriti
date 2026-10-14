@@ -58,3 +58,10 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
   (left minus right -91 dB). Hybrid MOV is accepted (a fragmented MOV passes the watcher, readiness, the capture
   check and AVFoundation in `CaptureCheckTests`). Older recordings show Check Capture. Not built: the speaker's
   place in the frame, light on the face and steadiness (design spec 3.5.4 lists them; they need the face work of M6).
+
+## Built in v2 part TXGAP (Wed 14 Oct 2026)
+
+- New section "If the transcript is missing words in the middle". Measured: a stretch of speech with no words after the second
+  listen fails the coverage check, the notice reads "...the transcript has no words for 1 stretch of speech. Its Checks tab says
+  where; listen there before trusting it.", the Checks tab shows a Missing words row, and REPORT.md says "NO WORDS for 1 stretch
+  of speech at 0:30 (12 s)" (`TranscriptGapsTests`, a stretch planted and the second listen made deaf).

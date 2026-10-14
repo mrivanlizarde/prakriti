@@ -761,6 +761,18 @@ muted names and the names of people marked no release are replaced before sendin
 Ivan chooses Mute, and Approve never asks about them.** This supersedes the lock sentences of M5a, M6b and M6c above.
 The development copy takes `--debug-write-again=<path>` (Write Again from the command line; the live copy ignores it).
 
+**v2 part TXGAP, speech with no words, Wed 14 Oct (see BUILD-LOG "v2 part TXGAP"):** Parakeet, run once over the whole 6 Sep
+talk, wrote no words for 17 s at 24:22, 17 s at 39:24 and 5 s at 43:04, and the coverage check only asked whether the words
+reach the end. Now the transcript step compares the sound's envelope (`Envelope`, from the same 16 kHz decode Parakeet reads)
+with the words' times (`Engine/TranscriptGaps.swift`): every stretch of 3 s or more with no words and 1 s or more of speech is
+cut out with 2 s either side and transcribed again on its own, in one Parakeet call for all of them, and only the words that
+start inside the stretch are added (a word the first run already has at the same moment is not taken twice). The four
+files are rewritten only when words were found, keeping every cue of the first run as Parakeet wrote it and its sentence
+order. The coverage check then fails on any stretch still holding 3 s or more of speech with no words, wherever it is
+(`Recording.transcriptGaps`, a stored addition): Missing words in the Checks tab, the notice, the Activity line and
+REPORT.md say where. Measured: the 6 Sep talk gains 153 words in those three stretches; the 13 Sep transcript.json is byte
+for byte what it was.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -838,7 +850,9 @@ folders, beside the live one.
   "v2 part LOCK", for the install time and pid): People, faces and voices, the People gallery, the edit plan and the edited
   video (parts M5a to M8b, described below under "Prakriti for Mac") arrived with it, and the privacy lock follows your 12
   Oct decision: the Claude API writes every recording unless you set someone in it to Leave Out or mark someone "no
-  release".
+  release". Since part TXGAP (installed Wed 14 Oct) a new transcript also has the speech Parakeet's first listen missed;
+  a recording made before it keeps its old transcript until you click Make Again (the 6 Sep talk lacks 153 words at
+  24:22, 39:24 and 43:04 until then).
 - **What still needs you:** the checklist in `docs/BUILD-LOG.md`, "v2 run: where it stands", For Ivan (notifications
   first, then the listen to the 13 Sep edited video and the 320 kbps answer); the older lists in "Finish line" and, for
   the podcast, "Podcast-ready episode: the handoff", For Ivan (listen to episode 1 old against new; the show name and
@@ -2025,7 +2039,8 @@ top and its end. Reading the code is not verification, and neither is a passing 
     23.5 s at 4:39 and 57.6 s at 27:02 of normal speech (verifier, 14 Oct), so the same file scored 96.5% one run and 98.6%
     the next. `VideoAcceptanceTests` cuts the made sound into about 60 s pieces at the quietest 10 ms before each mark and
     listens for each removed filler in 8 s around its join. The app's own transcript step still runs Parakeet on the whole
-    file (its coverage check sees only the end): the cause of warning 148, open for a later part.
+    file, but since part TXGAP it listens again to every wordless stretch of speech and its coverage check fails on any
+    left (warning 152).
 150. **The copy Ivan listens to for M8 check 9 lives in `~/Prakriti/Dev/Listening check/`, never only in `Outputs`.** Reason:
     the refusal check removes the 13 Sep Video folder on every `make accept-video`, and every later make of the talk replaces
     its output folder, so the file the M8b builder named was gone before Ivan could open it.
@@ -2037,6 +2052,15 @@ top and its end. Reading the code is not verification, and neither is a passing 
     only the few steps over the limit (about 7 samples of 960, the change about -45 dB under the fade: median of a test plan of 163 joins on the 6 Sep sound), and 0.7 rather than 1 leaves room for
     the AAC encoder, which moves single steps by up to about 15%. Measure it on the decoded MP4, made sound alone; never excuse
     a join by the original's sound.
+152. **The transcript is checked for speech with no words everywhere, not only at its end, and a stretch is heard again
+    before anything is reported (`TranscriptGaps`; the coverage step).** Reason: Parakeet's whole-file run of the 6 Sep talk
+    wrote no words for 17 s at 24:22, 17 s at 39:24 and 5 s at 43:04 (72, 59 and 22 words when each is transcribed alone,
+    14 Oct), and the old check passed because the words reached 55:38 of 55:39; the podcast transcript, captions and chapters
+    lost them and the rough cut took the long ones out as pauses. Bars: a stretch of 3 s or more with no words is heard again
+    when it holds 1 s of speech by the envelope, and fails the check when 3 s of speech are still wordless after that. A word
+    covers at most 1 s from its start, because Parakeet stretches the last word before a pause across it. Never rewrite the
+    files when nothing was found, never re-time or reorder the first run's cues (Parakeet's sentences are not always in start
+    order: 6 Sep, 31:44.5 after 31:45.8), and never take a word from the 2 s of context either side.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

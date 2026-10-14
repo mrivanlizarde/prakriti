@@ -109,6 +109,9 @@ final class PipelineAcceptanceTests: XCTestCase {
         XCTAssertEqual(Measure.lastCueEnd(srt: srt), reaches - (talk.silenceTrimmedStart ?? 0), accuracy: 1.0)
         let markdown = try String(contentsOf: talkFolder.appending(path: "REPORT.md"), encoding: .utf8)
         XCTAssertTrue(markdown.contains(String(format: "%.1f LUFS", lufs)), "the report carries the measured loudness")
+        // v2 part TXGAP: no stretch of speech without words, anywhere.
+        XCTAssertEqual(talk.coverageOK, true)
+        XCTAssertTrue(talk.transcriptGaps.isEmpty, TranscriptGaps.list(talk.transcriptGaps))
         report += summary("13 Sep talk", talk, folder: talkFolder, remeasured: again)
         report += try captionsFollowParakeet("13 Sep talk", folder: talkFolder)
 
@@ -137,6 +140,17 @@ final class PipelineAcceptanceTests: XCTestCase {
         XCTAssertLessThanOrEqual(long.loudnessLUFS ?? 0, -15)
         XCTAssertLessThanOrEqual(long.truePeakDBFS ?? 0, -1.0)
         XCTAssertLessThanOrEqual((long.duration ?? 0) - (long.transcriptReaches ?? 0), 120)
+        // v2 part TXGAP: Parakeet's whole-file run wrote no words for 17 s at 24:22 and 39:24 of this talk (14 Oct). Both
+        // stretches must now have words, and no stretch of speech anywhere may be left without them.
+        XCTAssertEqual(long.coverageOK, true)
+        XCTAssertTrue(long.transcriptGaps.isEmpty, TranscriptGaps.list(long.transcriptGaps))
+        let heard06 = try XCTUnwrap(ParakeetTranscript.read(outputFolder(talk06).appending(path: TranscriptFiles.asHeard)))
+        let words06 = heard06.sentences.flatMap(\.tokens).filter { EpisodeTranscript.isWord($0.text) }
+        for (from, to) in [(1_461.8, 1_479.0), (2_363.6, 2_380.3)] {
+            let inside = words06.filter { $0.start >= from && $0.start < to }.count
+            XCTAssertGreaterThanOrEqual(inside, 30, "\(Format.timecode(from)) to \(Format.timecode(to)) has \(inside) words")
+            report.append("6 Sep talk, the stretch Parakeet missed from \(Format.timecode(from)) to \(Format.timecode(to)): \(inside) words now")
+        }
         report += summary("6 Sep talk", long, folder: outputFolder(talk06), remeasured: longAgain)
         report += try captionsFollowParakeet("6 Sep talk", folder: outputFolder(talk06))
 
@@ -220,6 +234,9 @@ final class PipelineAcceptanceTests: XCTestCase {
         if let run = recording.latestRun {
             lines.append("  steps: " + run.steps.map { "\($0.name) \($0.state.rawValue)" + ($0.seconds.map { String(format: " %.1f s", $0) } ?? "") }.joined(separator: "; "))
             if let seconds = run.seconds { lines.append(String(format: "  run: %.1f s", seconds)) }
+            for step in run.steps where step.name == PipelineStep.transcript.title || step.name == PipelineStep.coverage.title {
+                lines.append("  \(step.name): \(step.detail ?? "")")
+            }
         }
         lines.append("  made: " + (folder.map { Pipeline.madeFiles(in: $0).joined(separator: ", ") } ?? "nothing"))
         lines.append("")

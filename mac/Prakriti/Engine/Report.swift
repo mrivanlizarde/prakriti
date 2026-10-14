@@ -43,9 +43,17 @@ enum Report {
                 + "\(result.wordCount.map(String.init) ?? "?") words heard"
             if let reaches = result.transcriptReaches, let length = result.duration {
                 let gap = length - reaches
-                transcript += result.coverageOK == true
+                transcript += gap <= options.coverageGap
                     ? "; reaches \(Format.timecode(reaches)) of \(Format.timecode(length))"
                     : "; STOPS at \(Format.timecode(reaches)) of \(Format.timecode(length)); the last \(Format.timecode(gap)) is missing (it may be silence; listen before trusting it)"
+            }
+            if !result.relistened.isEmpty {
+                transcript += "; \(Format.count(result.relistened.count, "stretch", "stretches")) of speech with no words were transcribed again on their own ("
+                    + TranscriptGaps.list(result.relistened) + "), \(Format.count(result.wordsFoundAgain, "word")) found"
+            }
+            if !result.transcriptGaps.isEmpty {
+                transcript += "; NO WORDS for \(Format.count(result.transcriptGaps.count, "stretch", "stretches")) of speech at "
+                    + TranscriptGaps.list(result.transcriptGaps) + " (listen there before trusting it)"
             }
             transcript += options.applyLexicon
                 ? "; Yoga Marga word list: \(Format.count(result.corrections.count, "fix", "fixes"))"

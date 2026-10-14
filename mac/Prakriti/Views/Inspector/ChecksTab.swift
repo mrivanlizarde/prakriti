@@ -100,9 +100,16 @@ struct ChecksTab: View {
             }
         }
         if let words = recording.wordCount {
-            let verb = recording.coverageOK == false ? ", stops at " : ", reaches "
+            let stops = recording.coverageOK == false && recording.transcriptReaches.map { reaches in
+                recording.duration.map { $0 - reaches > PipelineOptions().coverageGap } ?? true
+            } == true
+            let verb = stops ? ", stops at " : ", reaches "
             let reach = recording.transcriptReaches.map { verb + Format.timecode($0) + (recording.duration.map { " of " + Format.timecode($0) } ?? "") } ?? ""
             rows.append(("Transcript", Format.number(words) + " words" + reach))
+            if !recording.transcriptGaps.isEmpty {
+                rows.append(("Missing words", "No words for " + Format.count(recording.transcriptGaps.count, "stretch", "stretches") + " of speech, at "
+                             + TranscriptGaps.list(recording.transcriptGaps) + ". Listen there before trusting the transcript"))
+            }
             if let fixes = recording.wordListFixes {
                 rows.append(("Word list", fixes == 0 ? "No known mis-hearings found" : Format.count(fixes, "fix", "fixes") + ", listed in the report"))
             }

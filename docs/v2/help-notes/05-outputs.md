@@ -73,3 +73,10 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
   Resolve 21 (beta 4) added "importing and exporting Final Cut Pro 12 FCPXML files":
   https://www.motionmedia.com/mm-blog/davinci-resolve-21-beta-4-fcpxml-ai-updates . Exact menu
   wording in Resolve 21 `[unverified]`; which FCPXML version Resolve 21 accepts `[unverified]`.
+
+## Built in v2 part TXGAP (Wed 14 Oct 2026)
+
+- "Transcript" gains the paragraph on listening again: measured on the 6 Sep talk, the whole-file run wrote no words for 17 s at
+  24:22, 17 s at 39:24 and 5 s at 43:04; each stretch heard again on its own gave 72, 59 and 22 words (153 in all), written once
+  each. The rule is 3 s or more with no words and 1 s or more of speech by the sound's envelope (`TranscriptGaps`).
+- "Checks and report" names the two new report entries (stretches listened to again, and stretches still without words).
