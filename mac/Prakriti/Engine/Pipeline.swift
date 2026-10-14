@@ -322,7 +322,7 @@ struct PeopleSetup: Sendable, Equatable {
     var names: PeopleNames = .none
     /// The folder's microphones: a voice heard on one of these tracks takes the person's name.
     var microphones: [Int: UUID] = [:]
-    /// The people named in Settings, Privacy, with their cloud switch.
+    /// The people named in Settings, Privacy, each with whether a signed release is on file.
     var people: [NamedPerson] = []
 
     /// The names once this make's voices are known: the folder's microphones fill any voice not named by hand.
@@ -1070,10 +1070,13 @@ struct Pipeline: Sendable {
                                                     mutes: mutes) else {
                     throw PipelineFailure(step: .writing, reason: "The transcript could not be read to write the titles, show notes and chapters.")
                 }
-                // The privacy lock reads this make's people check (v2 part M6b): checked only when both steps ran.
+                // The privacy lock reads this make's people check (v2 part M6b) and Ivan's choices: anyone set to Leave Out, or
+                // anyone named and marked "no release", keeps the writing on this Mac (part LOCK).
                 if let people = options.people {
                     input.people = PeopleFacts.from(faces: result.faces, voices: result.voices, names: people.names(for: result.voices),
-                                                    people: people.people)
+                                                    people: people.people, choices: options.choices)
+                } else {
+                    input.people.leftOut = PeopleFacts.from(faces: nil, voices: nil, names: .none, people: [], choices: options.choices).leftOut
                 }
                 let outcome = try await Writer(setup: setup, log: log).write(input)
                 result.mentionsSerenity = result.mentionsSerenity || outcome.mentionsSerenity

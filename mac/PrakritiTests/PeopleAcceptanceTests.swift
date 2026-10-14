@@ -109,8 +109,8 @@ final class PeopleAcceptanceTests: XCTestCase {
         let v0 = FileManager.default.fileExists(atPath: v0Episode.path) ? try decodedMD5(v0Episode) : nil
         XCTAssertEqual(made, v0, "with faces looked for, the episode is still engine v0's, bit for bit")
         report.append("  episode decoded audio md5: \(made); engine v0's episode (read only): \(v0 ?? "not found") (\(made == v0 ? "identical" : "DIFFERENT"))")
-        XCTAssertTrue(talk.isPrivacyLocked, "faces alone never open the privacy lock")
-        report.append("  privacy lock: \(talk.isPrivacyLocked ? "still locked (faces alone are not a people check)" : "OPEN")")
+        XCTAssertFalse(talk.lockSubject.people.checked, "faces alone are not a people check")
+        report.append("  privacy lock: \(talk.isPrivacyLocked ? "locked" : "open (everyone signed a release; part LOCK)"); people checked: \(talk.lockSubject.people.checked)")
         report.append("")
 
         // The two fixtures: two faces at once, and the one fixed notice.

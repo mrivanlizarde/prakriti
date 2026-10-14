@@ -110,15 +110,16 @@ company's site too.
 When a task uses Anthropic or OpenAI, Prakriti sends the transcript's lines, with their times, and the
 instructions for the task. It never sends sound, video or pictures.
 
-**The privacy lock.** A cloud model reads only a talk in which everyone heard is named and has agreed to
-cloud models, and nobody else appears or speaks. Classes, and recordings where other people appear or
-speak, are only read by models on this Mac, whatever Settings, Models says. Prakriti does not check who
-appears and speaks yet, so for now every recording is only read on this Mac. LM Studio does those tasks
+**The privacy lock.** Everyone who takes part has signed a release, so a cloud model reads every recording
+you set it to: talks, classes, recordings where other people appear or speak, and recordings that say anyone's
+name. Only models on this Mac read a recording in which you set someone to Leave Out, or in which someone appears
+or speaks whose **Signed release on file** you turned off in Settings, Privacy. LM Studio does those tasks
 instead, and the inspector's Checks tab says why. Nothing is sent.
 
-**Before anything is sent,** Prakriti replaces the names of people in the text with stand-ins such as
-[[NAME-1]], and puts them back in the answer. Then it reads the text again, and if it still finds a name
-it should have replaced, it sends nothing and says so in the log, without the text.
+**Before anything is sent,** Prakriti replaces the names you muted, and the names of anyone without a signed
+release, with stand-ins such as [[NAME-1]], and puts them back in the answer. Then it reads the text again, and
+if it still finds one of those names, it sends nothing and says so in the log, without the text. Other names are
+sent as they were said.
 
 ### What Anthropic keeps
 

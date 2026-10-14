@@ -44,8 +44,8 @@ struct ApprovalCheck: Equatable, Sendable {
             return ApprovalCheck(canApprove: false, line: "Make Again first: the newest trim and cuts are not in the episode yet.", speakersNotChecked: false)
         }
         // Who is in it (v2 part M6c): the choices on the page must be in the episode, the audio output check must have
-        // passed, every name said aloud must be kept or muted, and with someone left out of a mixed track the changes
-        // of voice must have been listened to.
+        // passed, and with someone left out of a mixed track the changes of voice must have been listened to. Names said
+        // aloud are never asked about here (part LOCK, Ivan 12 Oct): a name is kept unless he chose Mute.
         if recording.choicesPending {
             return ApprovalCheck(canApprove: false, line: "Make Again first: your newest choices of who is in the episode, or of names to mute, are not in it yet.",
                                  speakersNotChecked: false)
@@ -53,12 +53,6 @@ struct ApprovalCheck: Equatable, Sendable {
         if let check = recording.peopleApplied?.check, !check.passed {
             return ApprovalCheck(canApprove: false, line: check.line { recording.label(forVoice: $0) }
                                  + " Listen there in the People tab, then change who is left out and make it again.", speakersNotChecked: false)
-        }
-        let undecided = recording.undecidedNames
-        if let first = undecided.first {
-            let more = undecided.count > 1 ? " and \(Format.count(undecided.count - 1, "more time"))" : ""
-            return ApprovalCheck(canApprove: false, line: "A name is said aloud at \(Format.timecode(first.start))\(more). In the People tab, choose Keep or Mute for each first.",
-                                 speakersNotChecked: false)
         }
         if recording.needsListening {
             return ApprovalCheck(canApprove: false, line: "Someone is left out, and the voices were told apart on one mixed track. Listen to the changes of voice in the People tab, "

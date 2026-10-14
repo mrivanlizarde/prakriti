@@ -59,7 +59,9 @@ Ready to upload section with a Copy button for each.
   not given written consent to any AI version of herself, so nothing speaks as her. She meets Ivan
   twice: in the week of Mon 12 Oct, and for 30 minutes on Tue 27 Oct.
 - **Sonny** (the assistant writing this) **is Claude.** Until Serenity says yes to Q-S13, no Claude
-  session, Sonny included, reads her teaching or any class (warning 29).
+  session, Sonny included, reads her teaching or any class (warning 29). Prakriti's own writer is not a session:
+  since part LOCK (Wed 14 Oct) it sends classes and recordings that name her to the Claude API, by Ivan's decision of
+  Mon 12 Oct that every participant signed a release.
 - **Students** are protected, never users. They were told recordings are for the private
   community; publishing them is a new purpose that needs new consent.
 
@@ -448,7 +450,10 @@ Each one states its reason, because a warning without a reason gets argued away.
     Granted.** No transcript, title or description of hers or of a class is opened in a session;
     Sonny sees only counts and categories printed by a script on the Mac, and the name seed list is
     built the same way. Reason: Sonny is Claude, so a session reading her transcripts is a cloud call
-    on her teaching, which Q-S13 is hers to allow (round 3, finding S2).
+    on her teaching, which Q-S13 is hers to allow (round 3, finding S2). This binds sessions only. Prakriti's
+    writer follows Ivan's decision of Mon 12 Oct ("all the participants have signed an agreement that includes that
+    their likeness can be used for commercial purposes"): since part LOCK it writes classes and recordings that name
+    Serenity with the Claude API (warning 90).
 
 30. **Timeouts count awake time,** and timers restart on wake. Reason: a sleeping laptop would
     otherwise park healthy jobs as Couldn't finish every time the lid closes (round 3, finding E8).
@@ -506,14 +511,16 @@ written by the model chosen for each task on the Models screen (LM Studio by def
 loaded by Prakriti at 65,536 tokens; Apple on-device; Ollama; the Claude API with its key in the
 Keychain), then checked in Swift: every chapter starts at a time that is one of the transcript's own
 lines, and every quote is found word for word in `transcript.txt`, or it is left out and counted.
-Tags and a short summary are their own tasks. **The privacy lock (v2 part M5a, `PrivacyLock`, Mon 12
-Oct):** a cloud model reads only a talk whose people check ran, with nobody unnamed seen or heard and
-everyone heard named and agreed to cloud models (`Person.mayReadInCloud`, off by default), and whose
-transcript does not say "Serenity". The people check is part M6, so **today every real recording is
-locked** ("Who appears and speaks in it has not been checked"); a task set to the Claude API is done by
-LM Studio instead, and the page, the step and `show-notes.md` say so. Every cloud request is a
-`CloudPayload` made only by `PrivacyLock.release`: names replaced by `[[NAME-n]]` tokens and put back in the
-answer, then the text read again and refused if a name is left. Settings, Models shows the hardware
+Tags and a short summary are their own tasks. **The privacy lock (v2 part M5a, `PrivacyLock`, set to Ivan's
+12 Oct decision by part LOCK on Wed 14 Oct):** every participant signed a release, so the provider chosen for
+each task (the Claude API, claude-sonnet-5-5, in Ivan's settings) reads every recording: talks, classes,
+conversations, recordings with other people seen or heard, and recordings that name Serenity or anyone else.
+Only Ivan's own marks keep a recording on this Mac: someone in it set to Leave Out (any output), or a named
+person in it, seen or heard, with "Signed release on file" turned off in Settings, Privacy (`Person.noRelease`,
+off for everyone). Then a task set to the Claude API is done by LM Studio instead, and the page, the step and
+`show-notes.md` say so. Every cloud request is a `CloudPayload` made only by `PrivacyLock.release`: muted names
+and the names of anyone marked no release replaced by `[[NAME-n]]` tokens and put back in the answer, then the
+text read again and refused if one is left; other names go as they are. Settings, Models shows the hardware
 check ("Apple M5 Pro, 64 GB. This Mac can run the writing model."). The output is a draft in
 `show-notes.md` (Approve copies it) and `titles-notes-chapters.json` (Outputs only). It is off for
 every folder until Ivan turns it on, because the model holds about 33 GB and takes minutes.
@@ -743,6 +750,17 @@ part M8d, a video is made only of a recording whose people check ran and found e
 with someone hidden or left out arrives in the next update."). Watching it in the Viewer is M8c. Measured on 13 Sep: 26,685
 frames written in 100 s (8.9 times real time), picture and sound within one frame of the plan's 890.389 s.
 
+**v2 part LOCK, the lock follows the signed releases, Wed 14 Oct (see BUILD-LOG "v2 part LOCK"; installed with M5a to
+M8b):** Ivan's decision of Mon 12 Oct, every participant signed a release covering their likeness for commercial use. The
+privacy lock (`PrivacyLock.decide`) no longer reads the kind of recording, the people check, unnamed people or a name said
+aloud, so the provider chosen for each task (the Claude API, claude-sonnet-5-5, in Ivan's settings) writes talks, classes,
+conversations and recordings with other people or that name Serenity. It keeps a recording on this Mac only when someone
+in it is set to **Leave Out** (any output) or a named person seen or heard in it has **Signed release on file** turned off
+in Settings, Privacy (`Person.noRelease`, off for everyone; it replaces M5a's "Cloud models may read their words"). Only
+muted names and the names of people marked no release are replaced before sending. **Names said aloud are kept unless
+Ivan chooses Mute, and Approve never asks about them.** This supersedes the lock sentences of M5a, M6b and M6c above.
+The development copy takes `--debug-write-again=<path>` (Write Again from the command line; the live copy ignores it).
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -816,11 +834,11 @@ folders, beside the live one.
   (`open ~/Applications/Prakriti.app`, then `pgrep -x Prakriti`).
 - **Engine v0 is retired** (Sat 10 Oct, 14:57). Prakriti for Mac is the only thing watching. Never
   run both: two watchers make and notify everything twice. Going back: "Engine v0: retired" above.
-- **What your copy has today (Wed 14 Oct).** The app in `~/Applications` is the v2 part M4b build: everything above
-  this line works in it. People, faces and voices, the People gallery, the edit plan and the edited video (parts M5a to
-  M8b, described below under "Prakriti for Mac") are built and checked in the repository but **not installed yet**; they
-  arrive together with the next `make install`, after part LOCK sets the privacy lock to your 12 Oct decision. Until
-  then Help on your Mac describes the M4b app.
+- **What your copy has today (Wed 14 Oct).** The app in `~/Applications` is the part LOCK build (see `docs/BUILD-LOG.md`,
+  "v2 part LOCK", for the install time and pid): People, faces and voices, the People gallery, the edit plan and the edited
+  video (parts M5a to M8b, described below under "Prakriti for Mac") arrived with it, and the privacy lock follows your 12
+  Oct decision: the Claude API writes every recording unless you set someone in it to Leave Out or mark someone "no
+  release".
 - **What still needs you:** the checklist in `docs/BUILD-LOG.md`, "v2 run: where it stands", For Ivan (notifications
   first, then the listen to the 13 Sep edited video and the 320 kbps answer); the older lists in "Finish line" and, for
   the podcast, "Podcast-ready episode: the handoff", For Ivan (listen to episode 1 old against new; the show name and
@@ -1089,16 +1107,16 @@ panels light and dark, the last panel's states, and the five panels as they will
 built, and fails if any needs more than 600 pt. `make accept-models` is milestone 6's check on the
 **real 13 Sep talk** with the **real models** (about 11 to 15 minutes, nearly all of it Qwen3.8-27B
 thinking; it needs LM Studio's server running at the Models screen's address with the model
-downloaded): writing is set to the Claude API on purpose, so the privacy lock must hand it to LM Studio
-(since v2 part M5a because its people are not checked; the Claude client in the test only counts and
-refuses, and must be asked 0 times); tags and summary go to Apple on-device; the model is unloaded first so Prakriti's own load at
+downloaded): writing is set to LM Studio (since part LOCK the 13 Sep talk is not locked, so choosing the
+Claude API would send it; the Claude client in the test only counts and refuses, and must be asked 0
+times); tags and summary go to Apple on-device; the model is unloaded first so Prakriti's own load at
 65,536 tokens is exercised, and must be unloaded again after. It checks every chapter start against
 the cue starts of `transcript.srt` and every quote against `transcript.txt`, has Apple on-device tag a
 short input, tests each provider for real, and writes `acceptance-models.txt`, the model's own answer
 (`model-answer.txt`) and pictures of the page and the Models screen. `make accept-episode-text` is the
 episode text's check on the **real 13 Sep talk** with the **real model** (about 30 minutes, nearly all
-of it Qwen3.8-27B; LM Studio's server must be running): made with everything on and writing set to the
-Claude API on purpose (the privacy lock must keep it on this Mac: 0 Claude calls), then `Episode
+of it Qwen3.8-27B; LM Studio's server must be running): made with everything on and writing set to LM
+Studio (0 Claude calls), then `Episode
 text.txt` and `.md` are read back independently: every section, every pull quote found in
 `transcript.txt` and inside one `.srt` cue, every chapter time one ffprobe reads from the finished MP3,
 no dashes, no "$" or "enroll" in the captions, X and Threads under 280 characters, at most five
@@ -1126,7 +1144,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | Tests | `mac/PrakritiTests`: `ModelTests`, `RulesTests`, `NotificationTests` (the five notices and the copy rules), `WatcherTests` (the watcher end to end on generated files, FSEvents replay, the switch-over on v0's state.json), `PipelineTests` (rules on generated files, runs in `make test`), `PipelineAcceptanceTests` (real recordings, `make accept` only), `OutputsTests` (milestone 4: the word list on planted mis-hearings and through Parakeet with the Mac's own voice, the trim, intro, outro and stereo measured, a remake with the transcript off, a stopped remake), `OutputsAcceptanceTests` (the 13 Sep talk, `make accept-outputs` only), `RecordingPageTests` (milestone 5: edits, the episode's clock, typed times, the cut's words gone through Parakeet with the Mac's voice, six sentences of Parakeet's real misplaced tokens, what the report names, the page's player, Approve and its refusals), `EditsAcceptanceTests` (the 13 Sep talk trimmed, cut, made again and approved, `make accept-edits` only; since v2 part M3b through the Viewer's Remove and Keep and the inspector's typed trim and cut), `ProgressTests` (v2 part M4a: the weighted percent, the time left, a stall, twice a second, ffmpeg's progress, Pause and its time limit, Stop, the line, stage times, the status log), `ProgressAcceptanceTests` (the 13 Sep talk made twice, `make accept-progress` only), `ViewerTests` (v2 part M3b: the transcript as words, sentences and paragraphs, a selection's span, Timeline-lite's spans, Remove, Keep and Restore, the window put back, and a clicked word playing within 0.25 s with Follow Playback moving on, in a real player), `StoreMigrationTests` (`make migrate-check` only), `HelpTests` (v2 part M2a: the articles, the capability blocks, links, the copy rules, what only Help may show, search, the Help menu's handler, Show Me), `WelcomeTests` (v2 part M2b: the welcome's words and symbols, what each stage of the build shows, the first-launch rule, the notification button, Choose Folder), `LibraryTests` (v2 part M3a: the smart groups as predicates, sections and sorts, search, open and back, Remove from Library with the watcher passing over it, places, the lock line, every text color's contrast), `SnapshotTests`, and `SnapshotRenderer` (the drawing both snapshot kinds share: the main window with its sidebar and inspector drawn on their own, the Help window, Settings panes, the Activity window) |
 | Real-window capture | `mac/scripts/capture-window.swift` (run by `make look` and `make check`); also `--analyze <png>` to check any capture, `--window <app> <png>` to capture the running app as it is, `--app-icon <app> <folder>` to draw the app's icon as Finder gets it at 512 and 32 px and measure its cut, and `--menu-bar <app> <seconds> <folder>` to read every Prakriti mark in the real menu bar over time (v2 part M1) |
 | Real-app pipeline check | `mac/scripts/process-in-app.sh <file> <folder>` |
-| The writing models (milestone 6) | `mac/Prakriti/Writing/`: `ModelClients.swift` (the request and reply, LM Studio with its load at 65,536 tokens, Ollama), since v2 part M5b `AnthropicClient.swift` (the current Messages request shape, streamed, its model list), `OpenAIClient.swift` (the Responses API, streamed, its filtered model list) and `Providers.swift` (`CloudHTTP` with the 9-minute silence limit and the event reader, `CloudModel`, `CloudModelList`, `CloudPricing`), `AppleOnDevice.swift` (Foundation Models, guided generation for tags and summaries), `Keychain.swift` (the Anthropic and OpenAI keys), `Writer.swift` (prompts, routing through the lock, tries, `WritingCheck`, `WrittenPackage` and `show-notes.md`), and since v2 part M5a `PrivacyLock.swift` (`PeopleFacts`, `LockSubject`, `PrivacyLock.decide` and `release`, `CloudPayload`, `CloudModelClient`, `LockedCloudClient`), `NameTokens.swift` (the tagger, tokens, restore), `HardwareCheck.swift` (`HardwareProfile`, `HardwareVerdict`) and `Model/Person.swift` (`Person.mayReadInCloud`); `App/ModelActions.swift` (test buttons, saving and removing each key, reading each model list, Write Again, Use This Title); `Views/Settings/ModelsPane.swift` (This Mac, Tasks, the lock, each provider with `KeyRow` and `CloudModelRow`), `Views/WritingSection.swift`; the pipeline step `.writing` and `PipelineRunner.write` (Write Again); tests `WritingTests`, `ProviderTests` (in `make test`), `ModelsAcceptanceTests` (`make accept-models`) and `NameRecallAcceptanceTests` (`make accept-names`, the tagger's recall on the 13 Sep talk) and `ProvidersAcceptanceTests` (`make accept-providers YES=1`, a real call per provider, only with keys in the tests' Keychain items and Ivan's yes on cost) |
+| The writing models (milestone 6) | `mac/Prakriti/Writing/`: `ModelClients.swift` (the request and reply, LM Studio with its load at 65,536 tokens, Ollama), since v2 part M5b `AnthropicClient.swift` (the current Messages request shape, streamed, its model list), `OpenAIClient.swift` (the Responses API, streamed, its filtered model list) and `Providers.swift` (`CloudHTTP` with the 9-minute silence limit and the event reader, `CloudModel`, `CloudModelList`, `CloudPricing`), `AppleOnDevice.swift` (Foundation Models, guided generation for tags and summaries), `Keychain.swift` (the Anthropic and OpenAI keys), `Writer.swift` (prompts, routing through the lock, tries, `WritingCheck`, `WrittenPackage` and `show-notes.md`), and since v2 part M5a `PrivacyLock.swift` (`PeopleFacts`, `LockSubject`, `PrivacyLock.decide` and `release`, `CloudPayload`, `CloudModelClient`, `LockedCloudClient`), `NameTokens.swift` (the tagger, tokens, restore; since part LOCK the lock uses `tokenize(_:only:)`), `HardwareCheck.swift` (`HardwareProfile`, `HardwareVerdict`) and `Model/Person.swift` (`Person.noRelease` since part LOCK; `mayReadInCloud` retired); `App/ModelActions.swift` (test buttons, saving and removing each key, reading each model list, Write Again, Use This Title); `Views/Settings/ModelsPane.swift` (This Mac, Tasks, the lock, each provider with `KeyRow` and `CloudModelRow`), `Views/WritingSection.swift`; the pipeline step `.writing` and `PipelineRunner.write` (Write Again); tests `WritingTests`, `ProviderTests` (in `make test`), `ModelsAcceptanceTests` (`make accept-models`) and `NameRecallAcceptanceTests` (`make accept-names`, the tagger's recall on the 13 Sep talk) and `ProvidersAcceptanceTests` (`make accept-providers YES=1`, a real call per provider, only with keys in the tests' Keychain items and Ivan's yes on cost) |
 | Written files | Beside the episode: `show-notes.md` (titles, notes, chapters, tags, summary, the checklist for review, what the checks changed, and placeholders for what is not chosen yet) and `titles-notes-chapters.json` (the checked package plus the model's own answer; never approved). On the recording: `writtenJSON` (the package without the raw answer) and `writingProblem` |
 | The Claude API key | The login Keychain, generic password, service `studio.therowan.prakriti.app.claude-api`, account `api-key`. Tests use `studio.therowan.prakriti.app.tests.claude-api` |
 | The recording page (milestone 5; retired in v2 part M3b, its functions in the Viewer and the inspector) | `App/RecordingActions.swift` (what its buttons do), `App/Approval.swift` (who may be approved, the copy and its receipt), `Engine/EpisodeEdits.swift` (the edits, the episode's clock, typed times, the transcript that follows the episode); tests `RecordingPageTests` (in `make test`) and `EditsAcceptanceTests` (`make accept-edits`) |
@@ -1404,11 +1422,13 @@ top and its end. Reading the code is not verification, and neither is a passing 
     name a student whose question was cut, and the times must match the audio (milestone 5's note).
 50. **The privacy lock's decision is `PrivacyLock.decide`, applied in `Writer.write` (`route`), the only way any
     task reaches a model** (since v2 part M5a; warning 109 for the adapter): a locked recording turns a Claude
-    API choice into LM Studio for every task, and the step line, the page and `show-notes.md` say so. A
-    transcript that says "Serenity" (`Privacy.mentionsSerenity`, whole word, any case; `Recording.hasSerenity`
-    is then set and never unset) still locks, as do a class and anything not marked as a talk. Reason: SCOPE
-    PRV-10, until Serenity's yes no Claude session reads her teaching or any class. Proved: the acceptance set
-    writing to the Claude API on the 13 Sep talk and the Claude client was asked 0 times.
+    API choice into LM Studio for every task, and the step line, the page and `show-notes.md` say so. Since part
+    LOCK (Wed 14 Oct) only Ivan's marks lock: someone set to Leave Out, or someone seen or heard marked no
+    release. A transcript that says "Serenity" (`Recording.hasSerenity`, still recorded), a class and a recording
+    not marked as a talk no longer lock. Reason: Ivan, Mon 12 Oct, "all the participants have signed an agreement
+    that includes that their likeness can be used for commercial purposes", and his answer of Tue 13 Oct (PLAN
+    section 11): the lock must not force LM Studio for any of those. Proved: `ProviderTests.testTheLockCountsCloudRequests`
+    (a class and an unnamed person 1 Anthropic request each, Leave Out and no release 0).
 51. **The prompts keep private matters out:** titles, show notes, chapters, tags and summaries leave out
     illness, deaths, grief, family matters, money troubles and relationships, anyone's, the speaker's
     included; the checklist may hold the speaker's own income, health or result claims, because those
@@ -1634,14 +1654,17 @@ top and its end. Reading the code is not verification, and neither is a passing 
     your yes" (design spec C1) in the app, in notices and in Activity's line "is waiting for your yes"; the
     stored raw value `readyForYourYes` never changed, so nothing migrated. `make drop` and `process-in-app.sh`
     accept both phrasings in the log. Reason: one word must mean one thing, and "Ready" now means approved.
-90. **The privacy lock fails closed** (`PrivacyLock.decide`, `Recording.isPrivacyLocked`, `ModelRouting.provider`,
-    which also returns LM Studio for a nil recording). Until 12 Oct evening: only `kind == .talk` without Serenity;
-    since v2 part M5a also only once the people check has run (M6) and found everyone heard agreed and nobody
-    unnamed, so today no real recording reaches a cloud model. Never let an unset kind read as "not locked". Reason (12 Oct): v1's rule locked only a
-    class or Serenity, while the 16, 20 and 23 Sep classes sat in the live store as kind "unknown", the live
-    settings chose the Claude API for all three tasks, and a key was in the Keychain: turning titles on for one
-    would have sent a class to Anthropic. Part M5a replaces this with `PrivacyLock`; it must stay at least this
-    strict.
+90. **The privacy lock follows Ivan's releases, and nothing stricter** (`PrivacyLock.decide`, `Recording.isPrivacyLocked`,
+    `ModelRouting.provider`, which still returns LM Studio for a nil recording). Since part LOCK (Wed 14 Oct) it locks
+    a recording only when someone in it is set to Leave Out, for any output (`PeopleFacts.leftOut`, counted from
+    `PeopleChoices` even before the people check), or a named person seen or heard in it is marked no release
+    (`Person.noRelease`; before the people check, the teacher Ivan picked counts as heard). Never reintroduce a lock on
+    the kind of recording, on unnamed people, on an unfinished people check or on a name said aloud. Reason: Ivan, Mon
+    12 Oct, every participant signed a release covering their likeness for commercial use, and Tue 13 Oct (PLAN section
+    11): "the lock must NOT force LM Studio for talks, classes, recordings with other people, or recordings that name
+    Serenity or anyone else aloud". History: until 12 Oct v1 locked a class or Serenity; part M5a (12 Oct) locked
+    everything not checked, which would have turned his live Claude API writing back to LM Studio and held seven
+    parts out of the live app until LOCK.
 91. **`make migrate-check` must hold on any real store, never on what Ivan happens not to have done yet.**
     `StoreMigrationTests` reads the copy with SQLite first (`immutable=1`: the copy is in WAL mode, and a plain
     read-only open read every count as 0), then asserts that every row and stored value comes through, that no
@@ -1752,16 +1775,15 @@ top and its end. Reading the code is not verification, and neither is a passing 
     `PrivacyLock.release` (its initializer is `fileprivate` to `PrivacyLock.swift`); the writer reaches a cloud
     client only through `LockedCloudClient`.** Never make a cloud client a `LanguageModelClient`, never add a
     second way to build a payload, and never send from the key test anything but `PrivacyLock.keyCheck()`.
-    `release` runs the decision again, replaces every name Apple's tagger finds that is not a consenting named
-    person's (`NameTokens`, `[[NAME-n]]`, each written form put back exactly in the answer), always replaces muted
-    names, every named person who has not agreed and "Serenity", then reads the text as it would be sent and
-    refuses if a name, an always-replaced name or a withheld span is left. A refusal is a non-retryable failure,
-    logged by its reason only, never the text. Reason: PLAN 2.2 rule 1 and warning 19: the check must be on the
-    data and impossible to skip, not a reviewer remembering. Measured 12 Oct: the tagger missed "Serenity" in the
-    writing prompt's own sentence ("The school's teachers are Gabriel and Serenity.") while finding Gabriel, which
-    is why she is always replaced; on the 13 Sep talk's text it replaced 20 of 21 name mentions (95%, 7 of 8
-    names, reference made by Qwen3.8-27B on this Mac; BUILD-LOG "v2 part M5a"). `ProviderTests` proves each
-    refusal, and `testTheUnsafePathCannotBeWritten` fails if any other file writes `CloudPayload(`.
+    `release` runs the decision again, replaces muted names and the names of anyone marked no release
+    (`NameTokens.tokenize(_:only:)`, `[[NAME-n]]`, each whole name and each word of three letters or more, put back
+    exactly in the answer), then reads the text as it would be sent and refuses if one of those names or a withheld
+    span is left. Since part LOCK (14 Oct) other names, "Serenity" and the tagger's finds included, go as they are
+    (Ivan's 12 Oct decision; the tagger replaced "Yoga Marga" and "Ashtanga Yoga" as names, which cost the writer
+    the school's own name). A refusal is a non-retryable failure, logged by its reason only, never the text. Reason:
+    PLAN 2.2 rule 1 and warning 19: the check must be on the data and impossible to skip, not a reviewer remembering.
+    `ProviderTests` proves each refusal, and `testTheUnsafePathCannotBeWritten` fails if any other file writes
+    `CloudPayload(`.
 
 110. **Anthropic is spoken to only in the current request shape (`AnthropicClient`): always `stream: true`, `max_tokens`
     64,000, no `thinking` field at all, `output_config.effort` set per task (writing `high`; tags, summaries and the
@@ -1800,7 +1822,8 @@ top and its end. Reading the code is not verification, and neither is a passing 
     face at a time, two rows), and two people who take turns in one place could make one. Reason: without a face
     print nobody can be told apart, and counting faces in one frame needs no guess about identity. Faces alone never
     open the privacy lock (`PeopleFacts.from` returns `.notChecked` until the voice step ran too, M6b): a student can be
-    heard unseen.
+    heard unseen. (Since part LOCK an unchecked recording is no longer locked; the people check still decides who can be
+    set to Leave Out.)
 115. **The diarizer never writes or keeps a voice print: `Diarizer.configuration()` is the only configuration built,
     `export.embeddingsPath` stays nil and chunk embeddings off, only times leave `Diarizer.diarize`, and FluidAudio's
     offline mode is on before its models load from `~/Library/Application Support/FluidAudio/Models/speaker-diarization`.
@@ -1812,16 +1835,16 @@ top and its end. Reading the code is not verification, and neither is a passing 
 116. **The diarizer keeps overlapping speech (`exclusiveSegments` and `embedding.excludeOverlap` both off).** Reason:
     measured 13 Oct on two-people-mixed.mp4, a voice that speaks only over the teacher (0:30 to 0:48.5) vanished into the
     teacher with FluidAudio's defaults (one voice) and was found exactly with both off (Voice 2, 29.9 to 48.5 s). That
-    voice is a student heard while the teacher talks; missing it would open the privacy lock. Change these only with that
-    fixture measured again.
+    voice is a student heard while the teacher talks; missing it would leave Ivan unable to set them to Leave Out. Change
+    these only with that fixture measured again.
 117. **The people check counts as run only when both the face step and the voice step ran for the recording, and every
     face row, voice and glimpse Ivan has not named counts as someone unnamed (`PeopleFacts.from`).** A name whose person
     was removed from Settings counts as unnamed, never as agreed. Who Is Teaching names only the voice that speaks most
     and its linked face (or, with no link, the face on screen most, if no other voice is linked to it); a name crosses a
-    link; a hand-given name always wins. Reason: PLAN review item 5 and Mac warning 90: the lock fails closed, and a
-    second row of the teacher (warning 114) costs Ivan one more naming, while a guess would cost a student's words in a
-    cloud request. Measured: the 13 Sep talk, Gabriel teaching and agreed, stays local (10 unnamed face rows after 12:39,
-    and it says "Serenity").
+    link; a hand-given name always wins. Reason: PLAN review item 5: a second row of the teacher (warning 114) costs Ivan
+    one more naming, while a guess would put the wrong person's Leave Out or "no release" on someone's words. Since part
+    LOCK unnamed people no longer lock anything (everyone signed a release, Ivan 12 Oct); a person marked no release, or
+    anyone set to Leave Out, does (warning 90).
 118. **The audio output check is the only code that holds a voice embedding, and only in memory, for the length of one
     `AudioOutputCheck.run`** (`Diarizer.listen` returns `Heard` with each voice's average embedding; the check compares and
     drops them; its decoded sound lives in a job folder deleted when it ends). Never write a `Heard`, a centroid or a
@@ -1941,7 +1964,8 @@ top and its end. Reading the code is not verification, and neither is a passing 
     frames voting the same name (`Votes.row`).** An ask names nobody until Ivan says Yes. Change these only with
     `make calibrate-people` showing a stranger taken for a named person under 1 in 1,000 rows. Reason: research-people.md
     1.6 and 2.2, and Mac warning 114 (rows join tracks by place, so two people in one seat can share a row). A recognized
-    name counts for the privacy lock like any name Ivan gives, so this rule is part of the lock (Mac warning 90).
+    name counts for the privacy lock like any name Ivan gives (a person marked no release locks what they are recognized
+    in), so this rule is part of the lock (Mac warning 90).
 137. **Identifying stores nothing: frames go to a job folder deleted when the pass ends, and `identifyFaces(in:)` is the
     only analyzer call made on a recording.** Never `insertOrUpdateAssets` on a recording's frames. Reason: PLAN M6 check 7
     and M7 check 3; measured 13 Oct, the SHA-256 of every file under a People folder with an index is identical before and

@@ -1,7 +1,7 @@
 ---
 id: people-and-privacy
 title: Privacy and students
-summary: What stays on this Mac, which recordings only models on this Mac may read, and how to protect students in a class.
+summary: What stays on this Mac, which recordings a cloud model reads, and how to protect students in a class.
 section: people
 order: 1
 keywords: [recognition, recognize, review possible matches, merge, privacy, students, class, privacy lock, Serenity, local, cloud, Anthropic, OpenAI, Claude API, transcript, approve, cut, notifications, names, children, consent, voices, teacher, microphone, include, leave out, hide face, mute, names said aloud, people, gallery, release, forget, key photo, name only]
@@ -23,26 +23,20 @@ recording on this Mac, and holds back anything a person has not checked.
   appear on the lock screen and on other devices.
 - **Nothing is uploaded or posted.** You upload approved files yourself.
 
-## Which recordings only models on this Mac read
+## Which recordings a cloud model reads
 
-A cloud model, Anthropic or OpenAI, reads only a talk in which everyone heard is named and has agreed to
-cloud models, and nobody else appears or speaks. Everything else is only read by models on this Mac, even
-if a task is set to Anthropic or OpenAI: a class, a conversation, a test, a recording whose kind is still Not
-set, and any recording where other people appear or speak.
+Everyone who takes part has signed a release, so the model you choose for each task in Settings, Models reads
+every recording: talks, classes, conversations, recordings where other people appear or speak, and recordings that
+say anyone's name. Only two things keep a recording on this Mac, and both are yours to set:
 
-:::unless voices
-Prakriti does not check who appears and speaks yet, so for now every recording is only read on this Mac.
-:::
+- **Leave Out.** If you set anyone in a recording to Leave Out in the People tab, for any output, only models on
+  this Mac read that recording.
+- **No signed release.** Each person you name in Settings, Privacy has **Signed release on file** turned on. Turn it
+  off for someone who has not signed one, and every recording where they appear or speak is only read on this Mac.
+  Their name is also replaced in anything sent about other recordings.
 
-:::requires voices
-Prakriti checks who appears and who speaks in every recording it makes, and every face and voice you have not
-named counts as someone else. So a recording is only read on this Mac until you name the teacher, and stays that
-way while anyone else appears or speaks in it. A teacher's words go to a cloud model only once you have turned on
-"Cloud models may read their words" for them in Settings, Privacy.
-:::
-
-LM Studio does that task instead, and the inspector's Checks tab says why. Names are replaced before anything
-is sent. See [Models and API keys](09-models-and-api-keys.md).
+Then LM Studio does a task set to Anthropic or OpenAI, and the inspector's Checks tab says why. Names you muted
+are replaced before anything is sent. See [Models and API keys](09-models-and-api-keys.md).
 
 :::requires faces
 ## Faces in a recording
@@ -152,13 +146,13 @@ hide nothing.
 ## Names said aloud
 
 Prakriti looks for people's names in the transcript, other than the people you named in Settings, Privacy. Each name
-is listed in the People tab under Names Said Aloud, with the times it is said and Play. For each one, choose:
+is listed in the People tab under Names Said Aloud, with the times it is said and Play. Every name is kept as it was
+said, and Approve never asks about them. If you want one gone, choose:
 
-- **Keep:** left as it is.
 - **Mute:** silenced in the podcast episode and the podcast-ready episode, and written as [name] in the transcript,
   the captions and what the writing model reads.
 
-Approve waits until every name is kept or muted. Prakriti can miss a name, so listen too.
+Prakriti can miss a name, so listen too.
 
 ## Classes
 

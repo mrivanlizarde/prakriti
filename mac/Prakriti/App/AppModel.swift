@@ -964,6 +964,10 @@ struct LaunchOptions {
     /// `--forget=<path>`: removes that recording from the store (not the file). Used by the
     /// milestone 3 check to take its test clip back out after the switch-over.
     let forget: [String]
+    /// `--debug-write-again=<path>`: Write Again on that recording, as the button does (part LOCK's check of a real write
+    /// through the provider chosen in Settings, Models). Development copy only: the live copy ignores it and says so, so a
+    /// check can never rewrite Ivan's outputs (PLAN rule 2.1.10).
+    let writeAgain: [String]
 
     static var current: LaunchOptions {
         let args = CommandLine.arguments
@@ -974,7 +978,8 @@ struct LaunchOptions {
                              show: values("--show").first.flatMap(HelpPlace.init(path:)),
                              openLatest: values("--open").first == "latest",
                              openPath: values("--open").first.flatMap { $0 == "latest" ? nil : $0 },
-                             forget: values("--forget"))
+                             forget: values("--forget"),
+                             writeAgain: values("--debug-write-again"))
     }
 
     @MainActor
@@ -1001,6 +1006,20 @@ struct LaunchOptions {
         if openLatest {
             let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
             if let latest = all.max(by: { $0.foundAt < $1.foundAt }) { model.open(latest) }
+        }
+        for path in writeAgain {
+            guard model.paths.mode == .development else {
+                model.log.write("Write Again from the command line is for the development copy only. Nothing was written.")
+                continue
+            }
+            let standardized = URL(fileURLWithPath: path).standardizedFileURL.path
+            let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
+            guard let recording = all.first(where: { $0.filePath == standardized }), model.canWrite(recording) else {
+                model.log.write("Write Again from the command line: \((path as NSString).lastPathComponent) has no transcript to write from. Nothing was written.")
+                continue
+            }
+            model.log.write("Launched with Write Again for \(recording.fileName).")
+            model.writeAgain(recording)
         }
     }
 }

@@ -273,10 +273,10 @@ final class SnapshotTests: XCTestCase {
                                                  appleIntelligenceUnavailable: "Apple Intelligence is turned off in System Settings, so Apple's on-device model cannot be used.")
                 try renderer.renderSettings(model: small, pane: .models, appearance: appearance, name: "10-settings-models-16gb-\(scheme)")
                 written.append("10-settings-models-16gb-\(scheme)")
-                // v2 part M6b: People You Name, with Gabriel allowed to cloud models and Serenity not.
+                // v2 part M6b, part LOCK: People You Name, Gabriel with a signed release on file and Serenity marked no release.
                 let named = Fixtures.model()
-                named.setCloudConsent(true, for: try XCTUnwrap(named.addPerson(named: "Gabriel")))
-                _ = named.addPerson(named: "Serenity")
+                _ = named.addPerson(named: "Gabriel")
+                named.setRelease(false, for: try XCTUnwrap(named.addPerson(named: "Serenity")))
                 try renderer.renderSettings(model: named, pane: .privacy, appearance: appearance, name: "10-settings-privacy-people-\(scheme)", height: 900)
                 written.append("10-settings-privacy-people-\(scheme)")
                 // v2 part M5b: the whole Models pane with the cloud keys absent, saved (lists read) and refused.

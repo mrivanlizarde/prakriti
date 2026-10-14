@@ -100,3 +100,17 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
 - Tasks lists Planning the edit and Choosing moments, greyed with "Not built yet." The article still lists them only
   under `:::requires style` and `:::requires merge`.
 - Welcome panel 5 has "Choose where models write." with this Mac's verdict and Open Settings, Models.
+
+## Changed in part LOCK (Wed 14 Oct 2026)
+
+- Ivan's decision of Mon 12 Oct: every participant signed a release covering their likeness for commercial use. The
+  lock no longer reads the kind of recording, the people check, unnamed people or "Serenity" in a transcript. The
+  provider chosen for each task (the Claude API by default) reads every recording, unless someone in it is set to
+  Leave Out (any output) or a named person in it, seen or heard, has "Signed release on file" turned off in
+  Settings, Privacy (`Person.noRelease`, off for everyone). The Checks line names no one: "Someone in it is set to
+  Leave Out, so only models on this Mac read it." or "Someone in it has no signed release on file, so ...".
+- `PrivacyLock.release` now replaces only muted names and the names of people marked no release (each whole name and
+  each word of three letters or more), and refuses if one is left. Names said aloud otherwise go as they are.
+- Names said aloud are kept unless Ivan chooses Mute; Approve never asks about them.
+- `Person.mayReadInCloud` and its switch "Cloud models may read their words" are retired (the stored field is kept so
+  older stores open unchanged).

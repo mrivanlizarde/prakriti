@@ -64,9 +64,9 @@ final class ModelsAcceptanceTests: XCTestCase {
         model.runner.stableWait = .seconds(5)
         model.log.write("Acceptance test for milestone 6 started (in-memory store, outputs to \(paths.outputs.path)).")
 
-        // 1. The choices: writing on the Claude API (the lock must refuse it), tags and summary on
-        //    Apple on-device, titles on.
-        model.settings.provider = [.writing: .claudeAPI, .tagging: .appleOnDevice, .summarizing: .appleOnDevice]
+        // 1. The choices: writing on LM Studio (this check is of the local writing model; since part LOCK the 13 Sep talk
+        //    is no longer locked, so choosing the Claude API would send it), tags and summary on Apple on-device, titles on.
+        model.settings.provider = [.writing: .lmStudio, .tagging: .appleOnDevice, .summarizing: .appleOnDevice]
         let claudeCalls = CallCounter()
         model.runner.makeClient = { provider, setup in
             provider == .claudeAPI ? RefusingClient(provider: provider, counter: claudeCalls) : WritingSetup.standardClient(provider, setup)
@@ -101,7 +101,7 @@ final class ModelsAcceptanceTests: XCTestCase {
 
         var report = ["Milestone 6 acceptance, \(Date().formatted(date: .abbreviated, time: .standard))",
                       "The 13 Sep talk: \(talk.lastPathComponent)",
-                      "Choices: writing = Claude API (on purpose, to test the privacy lock), tagging = Apple on-device, summarizing = Apple on-device",
+                      "Choices: writing = LM Studio, tagging = Apple on-device, summarizing = Apple on-device (the Claude API client only counts and refuses)",
                       "LM Studio before the run: \(before.instances.isEmpty ? "not loaded" : before.instances.map { "\($0.id) at \($0.context ?? 0)" }.joined(separator: ", ")); unloaded for the test", ""]
         let logStart = (try? String(contentsOf: model.log.todayFile!, encoding: .utf8))?.count ?? 0
 
@@ -119,15 +119,14 @@ final class ModelsAcceptanceTests: XCTestCase {
         report.append("Run: \(recording.status.title) in \(Format.length(total)). Steps:")
         for step in run.steps { report.append("  \(step.name): \(step.state.title), \(step.seconds.map { String(format: "%.1f s", $0) } ?? "-"). \(step.detail ?? "")") }
 
-        // Privacy lock (v2 part M5a): the people check has not run (it does not exist until M6), and the
-        // transcript names Serenity too, so the Claude API was never asked.
+        // Privacy lock (part LOCK): the transcript names Serenity, which no longer locks; LM Studio wrote it because it was
+        // chosen, and the Claude API, not chosen, was never asked.
         XCTAssertTrue(recording.hasSerenity, "the 13 Sep transcript names Serenity")
-        XCTAssertTrue(recording.isPrivacyLocked)
-        XCTAssertEqual(claudeCalls.count, 0, "the Claude API must never be asked for a recording whose people are not checked")
+        XCTAssertFalse(recording.isPrivacyLocked)
+        XCTAssertEqual(claudeCalls.count, 0, "the Claude API is not chosen")
         XCTAssertEqual(written.writingProvider, ModelProvider.lmStudio.rawValue)
-        XCTAssertEqual(written.lockReason, PrivacyLock.notChecked)
-        XCTAssertEqual(written.lockedTasks, ["writing"])
-        XCTAssertTrue(writingStep.detail?.contains("Privacy lock") == true)
+        XCTAssertNil(written.lockReason)
+        XCTAssertEqual(written.lockedTasks, [])
         report += ["", "Privacy lock:",
                    "  recording.hasSerenity = \(recording.hasSerenity) (the transcript names her; the recording started with false)",
                    "  written by: \(written.writtenBy) (provider \(written.writingProvider)); lock reason: \(written.lockReason ?? "none"); locked tasks: \(written.lockedTasks)",

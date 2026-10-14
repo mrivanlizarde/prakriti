@@ -1,74 +1,80 @@
 import Foundation
 
-// The privacy lock (v2 part M5a, docs/v2/PLAN.md M5 and section 2.2), replacing v1's rule in
-// `Writer.route`. Two halves:
+// The privacy lock (v2 part M5a, rewritten by part LOCK on Wed 14 Oct 2026 to follow Ivan's decision of Mon 12 Oct:
+// "all the participants have signed an agreement that includes that their likeness can be used for commercial
+// purposes"). Two halves:
 //
-// 1. Which recordings a cloud model may read at all (`PrivacyLock.decide`). It fails closed: only a
-//    recording marked as a talk, whose people check has run, in which everyone heard is named and has
-//    agreed to cloud models and nobody unnamed appears or speaks, and whose transcript does not name the
-//    teacher who has not agreed (v1's rule, kept: START_HERE Mac warning 90 says the lock must stay at
-//    least that strict). The people check (faces, part M6a, and voices, M6b) fills `PeopleFacts`; it counts
-//    as run only when both steps ran, and every face and voice Ivan has not named is someone unnamed.
+// 1. Which recordings a cloud model may read (`PrivacyLock.decide`). Every participant counts as released, so a
+//    talk, a class, a conversation, a recording with other people seen or heard, and a recording that names
+//    Serenity or anyone else aloud are all written by the provider Ivan chose (the Claude API by default). Only two
+//    things keep a recording on this Mac, both Ivan's own marks: a named person in it marked "no release" (Settings,
+//    Privacy: "Signed release on file" turned off, `Person.noRelease`), or anyone in it set to Leave Out (the People
+//    tab, any output). No recording at all is still refused. Names said aloud are not people decisions and never lock.
 //
-// 2. What a request may carry (`PrivacyLock.release`), the cloud adapter's own check (warning 19). The
-//    only way to make a `CloudPayload`, and a cloud client takes nothing else (`CloudModelClient`), so no
-//    code path can send text that has not passed here. It runs the decision again, replaces every name
-//    that is not a consenting named person's with a token (`NameTokens`), then reads the result again
-//    and refuses if a name, a muted name or a withheld span is still there. A refusal is logged with its
-//    reason only, never the text.
+// 2. What a request may carry (`PrivacyLock.release`), the cloud adapter's own check (warning 19). The only way to
+//    make a `CloudPayload`, and a cloud client takes nothing else (`CloudModelClient`), so no code path can send text
+//    that has not passed here. It runs the decision again, replaces the names Ivan muted and the names of anyone
+//    marked "no release" with tokens (`NameTokens`), then reads the result again and refuses if one of those names or
+//    a withheld span is still there. A refusal is logged with its reason only, never the text. Other names go as they
+//    are: Ivan's 12 Oct decision makes a name said aloud nobody's privacy question.
 
-/// What the people check found in one recording (`PeopleFacts.from`, part M6b: not checked until both the face
-/// step and the voice step ran). Names are Ivan's own naming per recording; nothing here is a face or voice print.
+/// What the people check found in one recording (`PeopleFacts.from`, part M6b: checked only once both the face step
+/// and the voice step ran), and Ivan's marks the lock reads. Names are Ivan's own naming per recording; nothing here
+/// is a face or voice print.
 struct PeopleFacts: Sendable, Equatable, Codable {
     struct Named: Sendable, Equatable, Codable {
         var personID: UUID
         var name: String
         var heard: Bool
         var seen: Bool
-        /// The person's switch "Cloud models may read their words", from `Person.mayReadInCloud`.
-        var cloudConsent: Bool = false
+        /// A signed release is on file (`!Person.noRelease`). True unless Ivan marked this person "no release":
+        /// every participant signed one (Ivan, Mon 12 Oct).
+        var released: Bool = true
     }
 
-    /// True only when both the face step and the voice step ran (PLAN review item 5): faces alone
-    /// could read as "nobody else" on a recording where a student is heard but not seen.
+    /// True only when both the face step and the voice step ran (PLAN review item 5).
     var checked: Bool
     var named: [Named] = []
     var unnamedSeen: Int = 0
     var unnamedHeard: Int = 0
     /// Names said aloud that Ivan marked Mute (part M6c): always replaced before a cloud request.
     var mutedNames: [String] = []
+    /// How many people Ivan set to Leave Out in this recording, for any output (the People tab, part M6c).
+    var leftOut: Int = 0
 
     static let notChecked = PeopleFacts(checked: false)
 
-    /// The same facts with each named person's cloud switch read from the store, by id. A person not
-    /// in `people` counts as not agreed.
-    func withConsent(from people: [Person]) -> PeopleFacts {
+    /// The same facts with each named person's release read from the store, by id. A person not in `people`
+    /// (their name was removed) keeps what the facts say.
+    func withReleases(from people: [Person]) -> PeopleFacts {
         var facts = self
-        let consent = Dictionary(people.map { ($0.id, $0.mayReadInCloud) }, uniquingKeysWith: { $0 && $1 })
-        for index in facts.named.indices { facts.named[index].cloudConsent = consent[facts.named[index].personID] ?? false }
+        let released = Dictionary(people.map { ($0.id, !$0.noRelease) }, uniquingKeysWith: { $0 && $1 })
+        for index in facts.named.indices {
+            if let value = released[facts.named[index].personID] { facts.named[index].released = value }
+        }
         return facts
     }
+
+    /// Someone in it, seen or heard, is a named person Ivan marked "no release".
+    var hasSomeoneWithoutRelease: Bool { named.contains { !$0.released && ($0.heard || $0.seen) } }
 }
 
 /// Everything the lock reads about one recording.
 struct LockSubject: Sendable, Equatable {
-    var kind: RecordingKind
-    /// The transcript says "Serenity" (`Privacy.mentionsSerenity`), or an earlier one did.
-    var mentionsSerenity: Bool
     var people: PeopleFacts = .notChecked
-    /// Words said by someone who has not agreed (from the voice step, part M6b). None may be sent.
+    /// Words said by someone left out (none is filled today: Leave Out already locks the recording). None may be sent.
     var withheldSpans: [String] = []
 }
 
 /// Why the lock keeps a recording on this Mac, or that it does not.
 struct LockDecision: Sendable, Equatable {
-    /// Written to sit inside a sentence ("this is a class"); nil when a cloud model may read it.
+    /// Written to sit inside a sentence ("someone in it is set to Leave Out"); nil when a cloud model may read it.
     /// Names no one (design spec C4).
     let reason: String?
 
     var isLocked: Bool { reason != nil }
 
-    /// The line for the Checks tab: "This is a class, so only models on this Mac read it."
+    /// The line for the Checks tab: "Someone in it is set to Leave Out, so only models on this Mac read it."
     var line: String? { reason.map { "\($0.capitalizedFirst), so only models on this Mac read it." } }
 }
 
@@ -98,90 +104,52 @@ struct LockRefusal: Error, Sendable, Equatable {
 
 enum PrivacyLock {
     static let noRecording = "it is not one recording"
-    static let isClass = "this is a class"
-    static let namesTeacher = "it names a teacher who has not agreed to cloud models"
-    static let notChecked = "who appears and speaks in it has not been checked"
-    static let unnamed = "someone in it is not named"
-    static let notAgreed = "someone heard in it has not agreed to cloud models"
+    static let leftOut = "someone in it is set to Leave Out"
+    static let noRelease = "someone in it has no signed release on file"
 
-    /// The lock in plain sentences, for Settings, Models and Settings, Privacy. True of what the build does: the
-    /// people check (faces and voices, part M6b) feeds it, and a recording nobody named anyone in stays on this Mac.
-    static let settingsLine = "A cloud model reads only a talk in which everyone heard is named and has agreed to cloud models, and nobody else appears or speaks. Classes, and recordings where other people appear or speak, are only read by models on this Mac. Prakriti checks who appears and speaks while it makes a recording, and every face and voice you have not named counts as someone else, so until you name the teacher a recording is only read on this Mac. If a task is set to Anthropic or OpenAI, LM Studio does it instead, and the recording says so. Before anything is sent, names are replaced and the text is checked again."
+    /// The lock in plain sentences, for Settings, Models and Settings, Privacy. True of what the build does.
+    static let settingsLine = "Everyone who takes part has signed a release, so the model chosen for each task reads every recording: talks, classes, recordings where other people appear or speak, and recordings that say anyone's name. Only models on this Mac read a recording in which you set someone to Leave Out, or in which someone appears or speaks whose signed release you turned off in Settings, Privacy. Then LM Studio does a task set to Anthropic or OpenAI, and the recording says so. Names you muted are replaced before anything is sent, and the text is checked again."
 
-    static func kindReason(_ kind: RecordingKind) -> String? {
-        switch kind {
-        case .talk: nil
-        case .lesson: isClass
-        case .conversation: "this is a conversation"
-        case .test: "this is marked as a test"
-        case .unknown: "it is not marked as a talk yet"
-        }
-    }
-
-    /// Whether a cloud model may read this recording. The first reason that applies, in order: not a
-    /// talk (a class first); the people check has not run; the teacher who has not agreed is named;
-    /// anyone unnamed appears or speaks; anyone heard has not agreed. No recording at all is locked too.
+    /// Whether a cloud model may read this recording. Locked only for Ivan's own marks, in order: someone set to
+    /// Leave Out, then someone named with no signed release. No recording at all is locked too.
     static func decide(_ subject: LockSubject?) -> LockDecision {
         guard let subject else { return LockDecision(reason: noRecording) }
-        if let reason = kindReason(subject.kind) { return LockDecision(reason: reason) }
-        let people = subject.people
-        guard people.checked else { return LockDecision(reason: notChecked) }
-        if subject.mentionsSerenity { return LockDecision(reason: namesTeacher) }
-        if people.unnamedSeen > 0 || people.unnamedHeard > 0 { return LockDecision(reason: unnamed) }
-        if people.named.contains(where: { $0.heard && !$0.cloudConsent }) { return LockDecision(reason: notAgreed) }
+        if subject.people.leftOut > 0 { return LockDecision(reason: leftOut) }
+        if subject.people.hasSomeoneWithoutRelease { return LockDecision(reason: noRelease) }
         return LockDecision(reason: nil)
     }
 
-    /// The names that may go out as they are: named people who agreed to cloud models.
-    static func keptNames(_ subject: LockSubject) -> [String] {
-        subject.people.named.filter(\.cloudConsent).map(\.name)
-    }
-
-    /// The teacher who has not agreed to cloud models (SCOPE PRV-10). Her name is in the writing prompt
-    /// itself, and Apple's tagger missed it there when measured (12 Oct: "The school's teachers are Gabriel
-    /// and Serenity." tagged Gabriel only), so it is never left to the tagger.
-    static let teacherWithoutConsent = "Serenity"
-
-    /// The names replaced whatever the tagger finds: names Ivan marked Mute, every named person who has
-    /// not agreed, and the teacher who has not agreed.
+    /// The names replaced whatever else the text says: names Ivan marked Mute, and every named person marked "no
+    /// release" (who may be named aloud without being in the recording).
     static func alwaysReplaced(_ subject: LockSubject) -> [String] {
-        var names = subject.people.mutedNames + subject.people.named.filter { !$0.cloudConsent }.map(\.name)
-        if !keptNames(subject).contains(where: { NameTokens.isKept(teacherWithoutConsent, keep: [$0]) }) { names.append(teacherWithoutConsent) }
+        let names = subject.people.mutedNames + subject.people.named.filter { !$0.released }.map(\.name)
         return names.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
     }
 
-    typealias Tokenizer = @Sendable ([String], [String], [String]) -> (texts: [String], tokens: NameTokens)
+    typealias Tokenizer = @Sendable ([String], [String]) -> (texts: [String], tokens: NameTokens)
 
-    /// The only way to make a `CloudPayload`. Refuses when the recording is locked, then replaces names,
-    /// then checks the result on the data before it is allowed out.
+    /// The only way to make a `CloudPayload`. Refuses when the recording is locked, then replaces the names that are
+    /// always replaced, then checks the result on the data before it is allowed out.
     static func release(_ request: ModelRequest, for subject: LockSubject?) throws -> CloudPayload {
-        try release(request, for: subject, tokenize: { NameTokens.tokenize($0, keep: $1, always: $2) })
+        try release(request, for: subject, tokenize: { NameTokens.tokenize($0, only: $1) })
     }
 
-    /// `tokenize` is replaceable only so a test can plant a name the tokenizer missed and see the check
-    /// refuse it.
+    /// `tokenize` is replaceable only so a test can plant a name the tokenizer missed and see the check refuse it.
     static func release(_ request: ModelRequest, for subject: LockSubject?, tokenize: Tokenizer) throws -> CloudPayload {
         let decision = decide(subject)
         guard let subject, !decision.isLocked else {
             throw LockRefusal(reason: "The privacy lock refused the request: \(decision.reason ?? noRecording).")
         }
-        let keep = keptNames(subject)
-        let always = alwaysReplaced(subject)
-        let made = tokenize([request.system, request.user], keep, always)
+        let made = tokenize([request.system, request.user], alwaysReplaced(subject))
         guard made.texts.count == 2 else { throw LockRefusal(reason: "The privacy check could not read the request.") }
         try check(made.texts, subject: subject)
         return CloudPayload(system: made.texts[0], user: made.texts[1], shape: request.shape, maxTokens: request.maxTokens, tokens: made.tokens)
     }
 
-    /// The adapter's own check, on the text exactly as it would be sent: no name the tagger finds that is
-    /// not a consenting named person's, no muted name, no withheld span. Throws the first problem found.
+    /// The adapter's own check, on the text exactly as it would be sent: no muted name, no name of someone marked
+    /// "no release", no withheld span. Throws the first problem found.
     static func check(_ texts: [String], subject: LockSubject) throws {
-        let keep = keptNames(subject)
         for text in texts {
-            let left = NameTokens.findNames(in: text).filter { !NameTokens.isKept($0, keep: keep) }
-            if !left.isEmpty {
-                throw LockRefusal(reason: "The privacy check found \(Format.count(left.count, "name")) the tokens did not replace, so nothing was sent.")
-            }
             for name in alwaysReplaced(subject) {
                 let pattern = #"(?<![\p{L}\p{N}])"# + NSRegularExpression.escapedPattern(for: name) + #"(?![\p{L}\p{N}])"#
                 if text.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil {
@@ -191,7 +159,7 @@ enum PrivacyLock {
             for span in subject.withheldSpans {
                 let trimmed = span.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !trimmed.isEmpty, text.range(of: trimmed, options: [.caseInsensitive]) != nil {
-                    throw LockRefusal(reason: "The privacy check found words of someone who has not agreed to cloud models, so nothing was sent.")
+                    throw LockRefusal(reason: "The privacy check found words of someone left out, so nothing was sent.")
                 }
             }
         }

@@ -10,22 +10,22 @@ import Foundation
 // - Every chapter must start at a time that is one of the transcript's own line times; one that
 //   does not is left out and counted. Every quote in the accuracy checklist must be found word for
 //   word in transcript.txt; one that is not is left out and counted (SCOPE 13, the evidence check).
-// - The privacy lock (PrivacyLock.swift, v2 part M5a): a cloud model reads only a talk whose people
-//   check ran and found no one unnamed and no one heard who has not agreed, and whose transcript does not
-//   name the teacher who has not agreed. Until the people check exists (part M6) that is no real
-//   recording. If a cloud provider is chosen for a task on a locked recording, LM Studio does that task
-//   instead, and the files and the page say so. Every cloud request goes through
-//   `PrivacyLock.release` (names replaced by tokens, the text checked again) inside `LockedCloudClient`.
+// - The privacy lock (PrivacyLock.swift, v2 part M5a, set to Ivan's 12 Oct decision by part LOCK): the provider
+//   chosen for each task reads every recording, classes and recordings with other people included, unless Ivan
+//   set someone in it to Leave Out or marked someone in it "no release". Then LM Studio does a task set to a
+//   cloud provider instead, and the files and the page say so. Every cloud request goes through
+//   `PrivacyLock.release` (muted and "no release" names replaced by tokens, the text checked again) inside
+//   `LockedCloudClient`.
 // - A reply cut off at its length, an empty reply, or JSON that fails the checks is tried again, up
 //   to three times, always as one system and one user message (LOCAL-MODEL.md rules 2 and 3).
 // - No em dash or en dash reaches a title, the notes or a chapter (Ivan's standing rule): each is
 //   replaced with a comma and counted. Quotes are never changed; a quote with a dash is simply not
 //   in the transcript.
 
-/// The privacy lock's facts.
+/// A fact about a transcript.
 enum Privacy {
-    /// "Serenity" as a whole word, in any case. A false alarm (the word used for calm) only keeps the
-    /// text on this Mac, which is the safe direction.
+    /// "Serenity" as a whole word, in any case. Recorded on the recording (`hasSerenity`); since part LOCK it no
+    /// longer keeps anything on this Mac (Ivan, 12 Oct: names said aloud are not a privacy question).
     static func mentionsSerenity(_ text: String) -> Bool {
         text.range(of: #"\bserenity\b"#, options: [.regularExpression, .caseInsensitive]) != nil
     }
@@ -393,13 +393,11 @@ struct WritingInput: Sendable {
     var transcriptText: String
     /// The times are the episode's (something was cut or trimmed) rather than the recording's.
     var followsEpisode: Bool
-    /// Who the people check found (part M6); not checked until then, which keeps it on this Mac.
+    /// Who the people check found and Ivan's marks (part M6, part LOCK).
     var people: PeopleFacts = .notChecked
 
     /// What the privacy lock reads.
-    var lockSubject: LockSubject {
-        LockSubject(kind: kind, mentionsSerenity: knownSerenity || Privacy.mentionsSerenity(transcriptText), people: people)
-    }
+    var lockSubject: LockSubject { LockSubject(people: people) }
 }
 
 /// Writes titles, show notes and chapters (the writing task), then tags and a summary (their own

@@ -108,13 +108,14 @@ extension AppModel {
         record("Removed the name \(name). Recordings where it was given count that person as not named.")
     }
 
-    /// The per-person switch "Cloud models may read their words" (PLAN section 5, item 2), off by default.
-    func setCloudConsent(_ allowed: Bool, for person: Person) {
-        guard person.mayReadInCloud != allowed else { return }
-        person.mayReadInCloud = allowed
+    /// The per-person switch "Signed release on file" (part LOCK, Ivan's 12 Oct decision: everyone signed one), on by
+    /// default. Turned off, recordings where the person appears or speaks are read only by models on this Mac.
+    func setRelease(_ onFile: Bool, for person: Person) {
+        guard person.noRelease == onFile else { return }
+        person.noRelease = !onFile
         try? context.save()
-        record(allowed ? "Cloud models may now read the words of \(person.name), in recordings where everyone heard has agreed and nobody else appears or speaks."
-                       : "Cloud models may no longer read the words of \(person.name). Recordings where they speak are only read on this Mac.")
+        record(onFile ? "A signed release is on file for \(person.name) again. Recordings where they appear or speak can be read by the model chosen for each task."
+                      : "No signed release is on file for \(person.name). Recordings where they appear or speak are only read by models on this Mac, and their name is replaced in anything sent.")
     }
 
     // MARK: Naming in one recording

@@ -241,19 +241,18 @@ final class Recording {
 
     var fileName: String { (filePath as NSString).lastPathComponent }
 
-    /// What the privacy lock reads about this recording (v2 part M5a, fed by the people check since M6b): checked
-    /// only once both the face step and the voice step ran, with every face and voice named or counted as unnamed,
-    /// and each named person's cloud switch read from the store. `hasSerenity` is set when a transcript says her
-    /// name (Privacy.mentionsSerenity) and never unset.
-    var lockSubject: LockSubject { LockSubject(kind: kind, mentionsSerenity: hasSerenity, people: peopleFacts) }
+    /// What the privacy lock reads about this recording (part LOCK, Wed 14 Oct): who the people check found, each named
+    /// person's release read from the store, and anyone Ivan set to Leave Out. The kind and a name said aloud
+    /// (`hasSerenity`) no longer lock anything.
+    var lockSubject: LockSubject { LockSubject(people: peopleFacts) }
 
-    /// What the people check found, as the lock reads it.
+    /// What the people check found and Ivan's choices, as the lock reads them.
     var peopleFacts: PeopleFacts {
-        PeopleFacts.from(faces: faces, voices: voices, names: resolvedNames, people: namedPeople)
+        PeopleFacts.from(faces: faces, voices: voices, names: resolvedNames, people: namedPeople, choices: choices)
     }
 
     /// The people named in Settings, Privacy, as the lock and the People tab read them. None when the recording is
-    /// not in a store (then nobody is named and nobody has agreed: the lock stays closed).
+    /// not in a store (then nobody is named).
     var namedPeople: [NamedPerson] {
         ((try? modelContext?.fetch(FetchDescriptor<Person>())) ?? []).map(\.named)
     }

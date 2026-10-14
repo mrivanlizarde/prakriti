@@ -9,7 +9,7 @@ import XCTest
 /// Approve's new refusals and the notice. Nothing here reads a talk: the real files are `ChoicesAcceptanceTests`.
 @MainActor
 final class ChoicesTests: XCTestCase {
-    let gabriel = NamedPerson(id: UUID(), name: "Gabriel", cloudConsent: true)
+    let gabriel = NamedPerson(id: UUID(), name: "Gabriel")
 
     // MARK: Check 1: decisions default correctly
 
@@ -350,10 +350,11 @@ final class ChoicesTests: XCTestCase {
         recording.peopleAppliedJSON = applied.json()
         XCTAssertTrue(model.approvalCheck(recording).canApprove)
 
-        // Names said aloud: Approve waits for each.
+        // Names said aloud are never asked about at Approve (part LOCK, Ivan 12 Oct): kept unless Ivan chooses Mute.
         let maria = [NameMoment(start: 61.2, end: 61.6, text: "Maria"), NameMoment(start: 75, end: 75.4, text: "Maria")]
         recording.namesSaidJSON = NamesSaid(checkedAt: Fixtures.now, moments: maria).json()
-        XCTAssertEqual(model.approvalCheck(recording).line, "A name is said aloud at 1:01 and 1 more time. In the People tab, choose Keep or Mute for each first.")
+        XCTAssertTrue(model.approvalCheck(recording).canApprove, model.approvalCheck(recording).line ?? "")
+        XCTAssertFalse(model.approvalCheck(recording).line?.contains("said aloud") == true)
         model.decideName(.keep, moments: maria, in: recording)
         XCTAssertTrue(model.approvalCheck(recording).canApprove, model.approvalCheck(recording).line ?? "")
         // Muting is a change to the episode: Make Again first.

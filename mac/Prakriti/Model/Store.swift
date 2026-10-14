@@ -134,9 +134,9 @@ extension OutputResolver {
     }
 }
 
-/// The privacy lock's routing (PrivacyLock.decide, v2 part M5a): if the chosen provider sends text out and
-/// the recording is locked, LM Studio is used instead, and the UI says so. It fails closed: no recording
-/// at all stays on this Mac.
+/// The privacy lock's routing (PrivacyLock.decide, v2 part M5a, part LOCK): if the chosen provider sends text out and
+/// the recording is locked (someone set to Leave Out or marked "no release"), LM Studio is used instead, and the UI says
+/// so. No recording at all stays on this Mac.
 enum ModelRouting {
     static func provider(chosen: ModelProvider, for recording: Recording?) -> ModelProvider {
         if chosen.isLocal { return chosen }

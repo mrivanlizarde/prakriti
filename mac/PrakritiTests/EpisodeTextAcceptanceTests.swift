@@ -39,7 +39,9 @@ final class EpisodeTextAcceptanceTests: XCTestCase {
                              log: AppLog(directory: paths.logs), now: Date.init)
         _ = try PrakritiStore.seedIfEmpty(model.context, paths: paths, now: Date())
         model.runner.stableWait = .seconds(5)
-        model.settings.provider = [.writing: .claudeAPI, .tagging: .lmStudio, .summarizing: .lmStudio]
+        // Writing on LM Studio: this check is of the local model's episode text (since part LOCK the talk is not locked,
+        // so choosing the Claude API would send it).
+        model.settings.provider = [.writing: .lmStudio, .tagging: .lmStudio, .summarizing: .lmStudio]
         let claudeCalls = CallCounter()
         model.runner.makeClient = { provider, setup in
             provider == .claudeAPI ? RefusingClient(provider: provider, counter: claudeCalls) : WritingSetup.standardClient(provider, setup)
@@ -54,7 +56,7 @@ final class EpisodeTextAcceptanceTests: XCTestCase {
         let before = fingerprint(talk)
         model.log.write("Acceptance test for the episode text started on \(talk.lastPathComponent) (in-memory store, outputs to \(paths.outputs.path)).")
         report = ["Episode text acceptance, \(Date().formatted(date: .abbreviated, time: .standard))", "Talk: \(talk.lastPathComponent)",
-                  "Choices: writing = Claude API on purpose (the privacy lock must give it to LM Studio), tags and summary = LM Studio", ""]
+                  "Choices: writing, tags and summary = LM Studio (the Claude API client only counts and refuses)", ""]
         defer { save() }
 
         // 1. Everything on.
@@ -79,7 +81,7 @@ final class EpisodeTextAcceptanceTests: XCTestCase {
                    + "lock reason \(written.lockReason ?? "none"); locked tasks \(written.lockedTasks); Claude API client calls \(claudeCalls.count)",
                    "  Tokens: \(written.promptTokens.map(String.init) ?? "?") read, \(written.completionTokens.map(String.init) ?? "?") written of which "
                    + "\(written.reasoningTokens.map(String.init) ?? "?") thinking; the writing request \(String(format: "%.0f s", written.writingSeconds)), \(written.attempts) tries"]
-        XCTAssertEqual(claudeCalls.count, 0, "the privacy lock keeps the 13 Sep talk on this Mac")
+        XCTAssertEqual(claudeCalls.count, 0, "the Claude API is not chosen")
         XCTAssertEqual(written.writingProvider, ModelProvider.lmStudio.rawValue)
 
         // 2. The files, read back.

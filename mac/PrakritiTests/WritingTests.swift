@@ -129,7 +129,7 @@ final class WritingTests: XCTestCase {
     }
 
     /// A made-up teacher, named by Ivan and agreed to cloud models (v2 part M5a).
-    static let consentingTeacher = PeopleFacts(checked: true, named: [.init(personID: UUID(), name: "Asha Verlaine", heard: true, seen: true, cloudConsent: true)])
+    static let releasedTeacher = PeopleFacts(checked: true, named: [.init(personID: UUID(), name: "Asha Verlaine", heard: true, seen: true)])
 
     func setup(_ clients: [ModelProvider: ScriptedClient], providers: [ModelTask: ModelProvider] = [:], attempts: Int = 3) -> WritingSetup {
         var setup = WritingSetup()
@@ -341,7 +341,8 @@ final class WritingTests: XCTestCase {
 
     // MARK: The privacy lock
 
-    func testThePrivacyLockKeepsAClassAndSerenityOnThisMac() async throws {
+    func testThePrivacyLockFollowsIvansMarksOnly() async throws {
+        // Part LOCK (Wed 14 Oct, Ivan's 12 Oct decision: every participant signed a release).
         let allCloud: [ModelTask: ModelProvider] = [.writing: .claudeAPI, .tagging: .claudeAPI, .summarizing: .claudeAPI]
         func run(kind: RecordingKind, text: String, providers: [ModelTask: ModelProvider], people: PeopleFacts = .notChecked) async throws -> (WrittenPackage?, ScriptedClient, ScriptedClient, ScriptedClient) {
             let lm = ScriptedClient(.lmStudio, replies: [.success(Self.goodAnswer), .success(Self.tagsAnswer), .success(Self.summaryAnswer)])
@@ -352,55 +353,60 @@ final class WritingTests: XCTestCase {
             return (outcome.package, lm, claude, apple)
         }
 
-        // A class, every task set to the Claude API: LM Studio does all three; Anthropic is never asked.
+        // A class, people not checked, every task set to the Claude API: Anthropic does all three, LM Studio is not asked.
         let (lesson, lm1, claude1, _) = try await run(kind: .lesson, text: Self.text, providers: allCloud)
-        XCTAssertEqual(claude1.requests.count, 0)
-        XCTAssertEqual(lm1.requests.count, 3)
-        XCTAssertEqual(lesson?.lockReason, "this is a class")
-        XCTAssertEqual(lesson?.lockedTasks, ["writing", "tagging", "summarizing"])
-        XCTAssertEqual(lesson?.writingProvider, "lmStudio")
-        XCTAssertTrue(lesson?.stepLine.contains("Privacy lock: this is a class, so LM Studio did the writing and tagging and summarizing chosen for a cloud model.") == true,
-                      lesson?.stepLine ?? "")
-        XCTAssertTrue(lesson?.markdown(label: "Sun 13 Sep", fileName: "x.mp4").contains("This is a class, so it was written by a model on this Mac only.") == true)
+        XCTAssertEqual(claude1.requests.count, 3)
+        XCTAssertEqual(lm1.requests.count, 0)
+        XCTAssertNil(lesson?.lockReason)
+        XCTAssertEqual(lesson?.lockedTasks, [])
+        XCTAssertEqual(lesson?.writingProvider, "claudeAPI")
+        XCTAssertFalse(lesson?.stepLine.contains("Privacy lock") == true, lesson?.stepLine ?? "")
+        XCTAssertFalse(lesson?.markdown(label: "Sun 13 Sep", fileName: "x.mp4").contains("on this Mac only") == true)
 
-        // A talk whose transcript says "Serenity": the same, with a reason that names no one (design spec C4),
-        // even when everyone heard has agreed.
+        // A talk whose transcript says "Serenity": Anthropic, and her name goes as it is.
         let (serenity, _, claude2, _) = try await run(kind: .talk, text: Self.text + " Serenity taught this last week.", providers: allCloud,
-                                                       people: Self.consentingTeacher)
-        XCTAssertEqual(claude2.requests.count, 0)
-        XCTAssertEqual(serenity?.lockReason, "it names a teacher who has not agreed to cloud models")
-        XCTAssertTrue(serenity?.stepLine.contains("Privacy lock: it names a teacher who has not agreed to cloud models, so LM Studio did") == true,
-                      serenity?.stepLine ?? "")
-        XCTAssertTrue(serenity?.markdown(label: "Sun 13 Sep", fileName: "x.mp4").contains("It names a teacher who has not agreed to cloud models, so it was written by a model on this Mac only.") == true)
+                                                       people: Self.releasedTeacher)
+        XCTAssertEqual(claude2.requests.count, 3)
+        XCTAssertNil(serenity?.lockReason)
+        XCTAssertTrue(claude2.requests.first?.system.contains("teachers are Gabriel and Serenity.") == true, "the prompt's own names go as they are")
 
-        // A talk whose people check has not run (every real recording until part M6): stays on this Mac.
-        let (unchecked, _, claude3, _) = try await run(kind: .talk, text: Self.text, providers: [.writing: .claudeAPI])
-        XCTAssertEqual(claude3.requests.count, 0)
-        XCTAssertEqual(unchecked?.lockReason, "who appears and speaks in it has not been checked")
-
-        // A checked talk, its one speaker named and agreed: the Claude API is used, through the lock.
-        let (open, _, claude6, _) = try await run(kind: .talk, text: Self.text, providers: [.writing: .claudeAPI], people: Self.consentingTeacher)
-        XCTAssertEqual(claude6.requests.count, 1)
-        XCTAssertNil(open?.lockReason)
-        XCTAssertEqual(open?.writingProvider, "claudeAPI")
-
-        // A recording whose kind was never set, every task on the Claude API: fails closed (12 Oct).
-        let (unset, lm4, claude4, _) = try await run(kind: .unknown, text: Self.text, providers: allCloud)
-        XCTAssertEqual(claude4.requests.count, 0, "a recording not marked as a talk never reaches Anthropic")
-        XCTAssertEqual(lm4.requests.count, 3)
-        XCTAssertEqual(unset?.lockReason, "it is not marked as a talk yet")
-        XCTAssertTrue(unset?.markdown(label: "Sun 13 Sep", fileName: "x.mp4").contains("It is not marked as a talk yet, so it was written by a model on this Mac only.") == true)
-        for kind in [RecordingKind.conversation, .test] {
-            let (_, _, claude5, _) = try await run(kind: kind, text: Self.text, providers: allCloud)
-            XCTAssertEqual(claude5.requests.count, 0, "\(kind) never reaches Anthropic")
+        // Not marked as anything, a conversation, a test: the chosen provider.
+        for kind in [RecordingKind.unknown, .conversation, .test, .talk] {
+            let (written, _, claude3, _) = try await run(kind: kind, text: Self.text, providers: [.writing: .claudeAPI])
+            XCTAssertEqual(claude3.requests.count, 1, "\(kind) is written by Anthropic")
+            XCTAssertNil(written?.lockReason)
         }
+        // Others seen and heard, nobody named: the chosen provider.
+        let (others, _, claude4, _) = try await run(kind: .lesson, text: Self.text, providers: [.writing: .claudeAPI],
+                                                     people: PeopleFacts(checked: true, unnamedSeen: 5, unnamedHeard: 3))
+        XCTAssertEqual(claude4.requests.count, 1)
+        XCTAssertNil(others?.lockReason)
+
+        // Someone set to Leave Out: LM Studio does every task set to the cloud, and the files say why, naming no one.
+        var leaving = Self.releasedTeacher
+        leaving.leftOut = 1
+        let (left, lm5, claude5, _) = try await run(kind: .lesson, text: Self.text, providers: allCloud, people: leaving)
+        XCTAssertEqual(claude5.requests.count, 0, "Leave Out never reaches Anthropic")
+        XCTAssertEqual(lm5.requests.count, 3)
+        XCTAssertEqual(left?.lockReason, PrivacyLock.leftOut)
+        XCTAssertEqual(left?.lockedTasks, ["writing", "tagging", "summarizing"])
+        XCTAssertEqual(left?.writingProvider, "lmStudio")
+        XCTAssertTrue(left?.stepLine.contains("Privacy lock: someone in it is set to Leave Out, so LM Studio did the writing and tagging and summarizing chosen for a cloud model.") == true,
+                      left?.stepLine ?? "")
+        XCTAssertTrue(left?.markdown(label: "Sun 13 Sep", fileName: "x.mp4").contains("Someone in it is set to Leave Out, so it was written by a model on this Mac only.") == true)
+
+        // A speaker marked no release: the same.
+        let (unreleased, _, claude6, _) = try await run(kind: .talk, text: Self.text, providers: [.writing: .claudeAPI], people: PeopleFacts(checked: true, named: [
+            .init(personID: UUID(), name: "Asha Verlaine", heard: true, seen: true, released: false)]))
+        XCTAssertEqual(claude6.requests.count, 0)
+        XCTAssertEqual(unreleased?.lockReason, PrivacyLock.noRelease)
 
         // A class with Apple on-device chosen for tags: a local choice is kept.
         let (_, _, _, apple) = try await run(kind: .lesson, text: Self.text, providers: [.tagging: .appleOnDevice])
         XCTAssertEqual(apple.requests.map(\.shape), [.tags])
     }
 
-    func testWriteAgainOnAClassStaysOnThisMacAndSaysSo() async throws {
+    func testWriteAgainOnAClassUsesTheChosenProviderAndLeaveOutStaysOnThisMac() async throws {
         let model = AppModel(container: AppModel.inMemoryContainer(), paths: AppPaths(mode: .development), settings: .ephemeral(), log: AppLog(directory: nil))
         let folder = FileManager.default.temporaryDirectory.appending(path: "prakriti-writing-\(UUID().uuidString)", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -414,23 +420,35 @@ final class WritingTests: XCTestCase {
         recording.outputFolder = folder.path
         recording.madeFiles = ["episode.mp3", TranscriptFiles.asHeard]
         model.settings.provider = [.writing: .claudeAPI, .tagging: .lmStudio, .summarizing: .lmStudio]
-        let lm = ScriptedClient(.lmStudio, replies: [.success(Self.goodAnswer), .success(Self.tagsAnswer), .success(Self.summaryAnswer)])
+        let lm = ScriptedClient(.lmStudio, replies: [.success(Self.tagsAnswer), .success(Self.summaryAnswer)])
         let claude = ScriptedClient(.claudeAPI, replies: [.success(Self.goodAnswer)])
         model.runner.makeClient = { provider, _ in provider == .claudeAPI ? claude : (provider == .lmStudio ? lm : ScriptedClient(provider, replies: [])) }
         model.runner.makeCloudClient = { _, _ in claude }
 
         XCTAssertTrue(model.canWrite(recording))
         await model.runner.write(recording)
-        XCTAssertEqual(claude.requests.count, 0, "nothing reached the Claude API")
+        XCTAssertEqual(claude.requests.count, 1, "a class is written by the Claude API (part LOCK)")
         let written = try XCTUnwrap(recording.written, recording.writingProblem ?? "")
-        XCTAssertEqual(written.lockReason, "this is a class")
+        XCTAssertNil(written.lockReason)
+        XCTAssertEqual(written.writingProvider, "claudeAPI")
         XCTAssertEqual(recording.status, .readyForYourYes)
         XCTAssertEqual(recording.latestRun?.steps.first?.state, .done)
-        XCTAssertTrue(recording.latestRun?.steps.first?.detail?.contains("Privacy lock: this is a class") == true)
         XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appending(path: WrittenPackage.notesFileName).path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appending(path: WrittenPackage.fileName).path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appending(path: "my note.txt").path), "Ivan's own file is left alone")
         XCTAssertEqual(recording.madeFiles, ["episode.mp3", "show-notes.md", "titles-notes-chapters.json", "transcript.json"])
+
+        // Someone set to Leave Out: Write Again reads the page's choices and stays on this Mac, and says so.
+        var choices = PeopleChoices()
+        choices.set(.leaveOut, for: .voice(2))
+        recording.choices = choices
+        let lmLocked = ScriptedClient(.lmStudio, replies: [.success(Self.goodAnswer), .success(Self.tagsAnswer), .success(Self.summaryAnswer)])
+        model.runner.makeClient = { provider, _ in provider == .lmStudio ? lmLocked : ScriptedClient(provider, replies: []) }
+        await model.runner.write(recording)
+        XCTAssertEqual(claude.requests.count, 1, "nothing more reached the Claude API")
+        XCTAssertEqual(recording.written?.lockReason, PrivacyLock.leftOut)
+        XCTAssertTrue(recording.latestRun?.steps.first?.detail?.contains("Privacy lock: someone in it is set to Leave Out") == true,
+                      recording.latestRun?.steps.first?.detail ?? "")
         let lines = try model.context.fetch(FetchDescriptor<LogEntry>()).map(\.message)
         XCTAssertTrue(lines.contains { $0.contains("titles, show notes and chapters written again") && $0.contains("Privacy lock") }, "\(lines)")
 
@@ -454,13 +472,13 @@ final class WritingTests: XCTestCase {
     func testSerenityIsFoundAsAWholeWord() {
         XCTAssertTrue(Privacy.mentionsSerenity("and Serenity said"))
         XCTAssertTrue(Privacy.mentionsSerenity("SERENITY."))
-        XCTAssertTrue(Privacy.mentionsSerenity("a sense of serenity"), "the common word also locks: the safe direction")
+        XCTAssertTrue(Privacy.mentionsSerenity("a sense of serenity"), "the common word too; recorded only, it locks nothing since part LOCK")
         XCTAssertFalse(Privacy.mentionsSerenity("serenitylike"))
         XCTAssertFalse(Privacy.mentionsSerenity("Gabriel teaches."))
         XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, locked: true), .lmStudio)
         XCTAssertEqual(ModelRouting.provider(chosen: .ollama, locked: true), .ollama)
         XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, locked: false), .claudeAPI)
-        XCTAssertEqual(PrivacyLock.decide(LockSubject(kind: .talk, mentionsSerenity: true, people: Self.consentingTeacher)).reason, PrivacyLock.namesTeacher)
+        XCTAssertNil(PrivacyLock.decide(LockSubject(people: Self.releasedTeacher)).reason)
     }
 
     // MARK: Apple on-device

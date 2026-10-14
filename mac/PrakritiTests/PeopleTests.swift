@@ -300,8 +300,8 @@ final class PeopleTests: XCTestCase {
         model.context.insert(other)
         XCTAssertEqual(Library.filtered([recording, other], kinds: [], otherPeople: true).map(\.id), [recording.id])
         XCTAssertEqual(Library.filtered([recording, other], kinds: [], otherPeople: false).count, 2)
-        // The privacy lock does not move: faces alone are not a people check (docs/v2/PLAN.md M6, review item 5).
-        XCTAssertTrue(recording.isPrivacyLocked)
+        // Faces alone are not a people check (docs/v2/PLAN.md M6, review item 5); since part LOCK that no longer locks.
+        XCTAssertFalse(recording.isPrivacyLocked)
         XCTAssertEqual(recording.lockSubject.people, .notChecked)
     }
 

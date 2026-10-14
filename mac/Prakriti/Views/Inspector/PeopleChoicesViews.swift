@@ -114,26 +114,15 @@ struct SetAllUnnamed: View {
 struct NamesSaidSection: View {
     let recording: Recording
     let names: NamesSaid
-    @Environment(AppModel.self) private var model
-    @Environment(\.undoManager) private var undoManager
 
     var body: some View {
         Section {
             RowNote(names.moments.isEmpty
                     ? "No name is said aloud, other than the people you named."
-                    : "Prakriti found these names in the transcript. Keep each one, or Mute it: a muted name is silenced in the podcast and "
-                      + "written as \(EpisodeTranscript.mutedWord) in its captions and transcript. Approve waits until each is decided. "
-                      + "Prakriti can miss a name, so listen too.")
+                    : "Prakriti found these names in the transcript. Each is kept as said. Choose Mute for one you want gone: a muted name is "
+                      + "silenced in the podcast and written as \(EpisodeTranscript.mutedWord) in its captions and transcript.")
             ForEach(names.byName, id: \.name) { group in
                 NameRow(recording: recording, name: group.name, moments: group.moments)
-            }
-            let undecided = recording.undecidedNames
-            if undecided.count > 1 {
-                Button("Keep All Not Decided") {
-                    let before = model.decideName(.keep, moments: undecided, in: recording)
-                    registerChoiceUndo(undoManager, model: model, recording: recording, before: before, name: "Keep All")
-                }
-                .font(AppFont.body)
             }
         } header: {
             SectionHeader("Names Said Aloud")
@@ -148,9 +137,11 @@ struct NameRow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
 
+    /// Keep unless Ivan chose Mute (part LOCK: a name said aloud is kept by default and never asked about). Nil when
+    /// some times are muted and others kept.
     var decision: NameDecision? {
-        let decisions = Set(moments.map { recording.choices.name($0) })
-        return decisions.count == 1 ? decisions.first ?? nil : nil
+        let decisions = Set(moments.map { recording.choices.name($0) ?? .keep })
+        return decisions.count == 1 ? decisions.first : nil
     }
 
     var body: some View {
@@ -161,7 +152,7 @@ struct NameRow: View {
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
                 Picker("Name", selection: Binding(get: { decision }, set: { if let new = $0 { decide(new) } })) {
-                    if decision == nil { Text("Not Decided").tag(NameDecision?.none) }
+                    if decision == nil { Text("Mixed").tag(NameDecision?.none) }
                     Text("Keep").tag(NameDecision?.some(.keep))
                     Text("Mute").tag(NameDecision?.some(.mute))
                 }

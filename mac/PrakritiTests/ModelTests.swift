@@ -125,34 +125,35 @@ final class ModelTests: XCTestCase {
         XCTAssertTrue(lines.contains("Transcript turned on for Sun 13 Sep (2026-09-13 a.mp4). It applies the next time it is made."), "\(lines)")
     }
 
-    func testPrivacyLockForcesALocalModel() {
+    func testPrivacyLockFollowsIvansMarksOnly() {
+        // Part LOCK (Wed 14 Oct, Ivan's 12 Oct decision: every participant signed a release): every kind of recording, a
+        // transcript that names Serenity, and people not checked all go to the provider chosen.
         let talk = Recording(filePath: "/tmp/talk.mp4", kind: .talk)
         let lesson = Recording(filePath: "/tmp/class.mp4", kind: .lesson)
         let withSerenity = Recording(filePath: "/tmp/s.mp4", kind: .talk)
         withSerenity.hasSerenity = true
-
-        // v2 part M5a: until the people check exists (M6), even a talk stays on this Mac.
-        XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: talk), .lmStudio)
-        XCTAssertEqual(talk.lockLine, "Who appears and speaks in it has not been checked, so only models on this Mac read it.")
-        XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: lesson), .lmStudio)
-        XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: withSerenity), .lmStudio)
-        XCTAssertTrue(ModelRouting.isOverridden(chosen: .claudeAPI, for: lesson))
+        for recording in [talk, lesson, withSerenity] {
+            XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: recording), .claudeAPI, recording.fileName)
+            XCTAssertNil(recording.lockLine)
+            XCTAssertFalse(ModelRouting.isOverridden(chosen: .claudeAPI, for: recording))
+        }
+        for kind in RecordingKind.allCases {
+            let recording = Recording(filePath: "/tmp/\(kind.rawValue).mp4", kind: kind)
+            XCTAssertFalse(recording.isPrivacyLocked, "\(kind) is not locked")
+            XCTAssertEqual(ModelRouting.provider(chosen: .openAI, for: recording), .openAI, "\(kind)")
+        }
         for provider in ModelProvider.allCases where provider.isLocal {
             XCTAssertEqual(ModelRouting.provider(chosen: provider, for: lesson), provider, "a local choice is kept")
         }
         XCTAssertFalse(ModelProvider.claudeAPI.isLocal)
-        // Fails closed (12 Oct): no recording, or a kind other than a talk, never reaches the cloud.
-        // Reason: the 16, 20 and 23 Sep classes sat in the live store with their kind not set, while the
-        // live settings chose the Claude API and a key was in the Keychain.
+        // Still closed with no recording at all, and for Ivan's own marks.
         XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: nil), .lmStudio, "no recording: stays on this Mac")
-        for kind in RecordingKind.allCases where kind != .talk {
-            let recording = Recording(filePath: "/tmp/\(kind.rawValue).mp4", kind: kind)
-            XCTAssertTrue(recording.isPrivacyLocked, "\(kind) is locked")
-            XCTAssertNotNil(recording.lockLine, "\(kind) says why")
-            XCTAssertNotNil(PrivacyLock.decide(recording.lockSubject).reason, "\(kind) has a reason for the writer")
-            XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: recording), .lmStudio, "\(kind) stays on this Mac")
-        }
-        XCTAssertTrue(talk.isPrivacyLocked, "people not checked")
+        var choices = PeopleChoices()
+        choices.set(.leaveOut, for: .face(1), output: .video)
+        lesson.choices = choices
+        XCTAssertTrue(lesson.isPrivacyLocked, "Leave Out, even for one output")
+        XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: lesson), .lmStudio)
+        XCTAssertTrue(ModelRouting.isOverridden(chosen: .claudeAPI, for: lesson))
     }
 
     func testStatusVocabulary() {

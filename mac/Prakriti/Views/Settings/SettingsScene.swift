@@ -170,7 +170,7 @@ struct PrivacyPane: View {
                 PrivacyRule(symbol: "lock.fill",
                             text: PrivacyLock.settingsLine)
                 PrivacyRule(symbol: "externaldrive",
-                            text: "Recordings never leave this Mac. With an Anthropic or OpenAI key, only the words of a transcript are sent, names replaced, and never for the recordings above.")
+                            text: "Recordings never leave this Mac. With an Anthropic or OpenAI key, only the words of a transcript are sent, never for a recording the lock keeps on this Mac, and names you muted are replaced first.")
                 PrivacyRule(symbol: "person.2",
                             text: "Only a talk with one teacher speaking can be approved, and a class is never made ready to upload.")
                 PrivacyRule(symbol: "bell",
@@ -189,8 +189,8 @@ struct PrivacyPane: View {
 }
 
 /// The people Ivan names (v2 part M6b, docs/v2/PLAN.md M6): a list of names to give the faces and voices of a
-/// recording (Who Is Teaching, Name for This Recording), each with the switch "Cloud models may read their words",
-/// off until he turns it on (PLAN section 5, item 2). A name only: nothing about anyone's face or voice is kept.
+/// recording (Who Is Teaching, Name for This Recording), each with the switch "Signed release on file", on by default
+/// (part LOCK: every participant signed one, Ivan, 12 Oct). A name only: nothing about anyone's face or voice is kept.
 struct NamedPeopleSection: View {
     @Environment(AppModel.self) private var model
     @State private var newName = ""
@@ -205,8 +205,8 @@ struct NamedPeopleSection: View {
                 HStack(alignment: .center, spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(person.name).font(AppFont.body)
-                        Toggle("Cloud models may read their words", isOn: Binding(get: { person.mayReadInCloud },
-                                                                                  set: { model.setCloudConsent($0, for: person) }))
+                        Toggle("Signed release on file", isOn: Binding(get: { !person.noRelease },
+                                                                       set: { model.setRelease($0, for: person) }))
                             .font(AppFont.secondary)
                             .toggleStyle(.checkbox)
                     }
@@ -230,7 +230,7 @@ struct NamedPeopleSection: View {
         } header: {
             SectionHeader("People You Name")
         } footer: {
-            RowNote("Give these names to the people in a recording: in the inspector, Info, Who is teaching, or People, Name for This Recording. Each name is also in People, in the sidebar. A name alone keeps nothing about a face or a voice; a recorded release that covers a face, on the person's page in People, lets Prakriti learn it. A recording can be read by a cloud model only when everyone heard in it is named and has this switch on.")
+            RowNote("Give these names to the people in a recording: in the inspector, Info, Who is teaching, or People, Name for This Recording. Each name is also in People, in the sidebar. A name alone keeps nothing about a face or a voice; a recorded release that covers a face, on the person's page in People, lets Prakriti learn it. Everyone starts with a signed release on file. Turn it off for someone who has not signed one, and recordings where they appear or speak are only read by models on this Mac.")
         }
     }
 

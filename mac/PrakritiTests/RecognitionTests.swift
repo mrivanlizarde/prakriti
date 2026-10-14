@@ -210,6 +210,7 @@ final class RecognitionTests: XCTestCase {
         }
         a.mayReadInCloud = true
         b.mayReadInCloud = false
+        b.noRelease = true
         // Two test-pattern crops for Gabe, one for Gabriel: no face of anyone.
         let pattern = try XCTUnwrap(JPEG.data(try XCTUnwrap(FaceCrops.testPattern(seed: 1))))
         let recordingID = UUID()
@@ -240,6 +241,7 @@ final class RecognitionTests: XCTestCase {
         XCTAssertEqual(recording.choices.overall(.named(a.id)).choice, .hideFace, "the stricter choice is kept")
         XCTAssertNil(recording.choices.people[PersonKey.named(b.id).string])
         XCTAssertFalse(a.mayReadInCloud, "the stricter consent")
+        XCTAssertTrue(a.noRelease, "no release on either side: no release after the merge (part LOCK)")
         // Gabe's crops opened and sealed again under Gabriel's key; Gabe's key destroyed, nothing of Gabe's left.
         XCTAssertEqual(vault.sealedFiles(person: a.id).count, 3)
         for file in vault.sealedFiles(person: a.id) { XCTAssertNoThrow(try SealedCrop.decode(try vault.open(file, person: a.id))) }

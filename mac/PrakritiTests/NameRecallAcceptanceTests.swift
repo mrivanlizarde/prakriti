@@ -76,8 +76,9 @@ final class NameRecallAcceptanceTests: XCTestCase {
         // 3. Recall by mentions: every occurrence of a reference name, and how many are still there after
         //    the tokens, first with the tagger alone, then as the lock ships (with its always-replaced names).
         let alone = NameTokens.tokenize([text], keep: [], always: []).texts[0]
-        let subject = LockSubject(kind: .talk, mentionsSerenity: true, people: PeopleFacts(checked: true))
-        let shipped = NameTokens.tokenize([text], keep: [], always: PrivacyLock.alwaysReplaced(subject)).texts[0]
+        // "As the lock shipped" is part M5a's lock (the tagger plus "Serenity" always replaced). Part LOCK (14 Oct) retired
+        // both for the lock, so this measures the tagger for the record and for the names said aloud step.
+        let shipped = NameTokens.tokenize([text], keep: [], always: ["Serenity"]).texts[0]
         var total = 0, leftAlone = 0, leftShipped = 0, distinctFound = 0
         var rows: [String] = []
         var masked = 0

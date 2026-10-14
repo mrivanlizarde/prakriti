@@ -54,7 +54,7 @@ struct HardwareVerdict: Sendable, Equatable {
             suggestion = nil
         } else {
             headline = "\(mac) Writing a long recording needs a cloud key, or it waits."
-            suggestion = "The writing model needs \(Self.neededGB) GB of memory. For talks, Anthropic or OpenAI can do the writing with your own key. Classes, and recordings with other people, still wait for a model on this Mac."
+            suggestion = "The writing model needs \(Self.neededGB) GB of memory. Anthropic or OpenAI can do the writing with your own key. Only a recording with someone set to Leave Out, or someone without a signed release, waits for a model on this Mac."
         }
         appleIntelligence = profile.appleIntelligenceUnavailable ?? "Apple Intelligence is on, so Apple on-device can make tags and summaries."
     }

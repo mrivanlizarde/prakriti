@@ -169,6 +169,11 @@ final class StoreMigrationTests: XCTestCase {
             XCTAssertTrue(people.allSatisfy { $0.releaseSignedOn == nil && !$0.hasRelease && $0.forgottenAt == nil && !$0.pinned && !$0.favorite
                 && !$0.hiddenFromPeople && $0.mayAppear && $0.keyPhotoJSON == nil && $0.roleRaw.isEmpty }, "a person arrives with a release or a gallery choice")
         }
+        // Part LOCK: a store from before it has no noRelease column; everyone arrives with a signed release on file.
+        if !before.has("ZPERSON", "ZNORELEASE") {
+            XCTAssertTrue(people.allSatisfy { !$0.noRelease }, "an upgrade marks nobody no release")
+        }
+        print("part LOCK: \(people.filter(\.noRelease).count) of \(people.count) named people marked no release; the store had the column before: \(before.has("ZPERSON", "ZNORELEASE"))")
         print("v2 part M7a: \(people.count) named people, \(people.filter(\.hasRelease).count) with a release, \(people.filter(\.mayAppear).count) able to appear")
         print("v2 part M3a fields:\(recordings.filter { !$0.checkedClaims.isEmpty }.count) recordings with ticked claims, \(sources.filter { !$0.forgottenPaths.isEmpty }.count) folders with removed files (\(sources.map(\.forgottenPaths.count).reduce(0, +)) files)")
         print("Rows before and after: recordings \(before.count("ZRECORDING"))/\(recordings.count), folders \(before.count("ZSOURCE"))/\(sources.count), output settings \(before.count("ZOUTPUTSETTING"))/\(settings.count), Activity lines \(before.count("ZLOGENTRY"))/\(lines); approved \(recordings.filter { $0.approvedAt != nil }.count)")

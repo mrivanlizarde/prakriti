@@ -53,11 +53,6 @@ extension Recording {
         return (voices?.voices ?? []).filter { PersonKey.voice($0, names: table) == key }.map(\.id)
     }
 
-    /// The names said aloud not decided yet: Approve waits for each (PLAN section 5).
-    var undecidedNames: [NameMoment] {
-        let choices = self.choices
-        return (namesSaid?.moments ?? []).filter { choices.name($0) == nil }
-    }
 
     /// The voices were told apart on one mixed track and someone is left out: Ivan listens to the changes of voice
     /// before Approve (Mac warning 14, research-people.md 3.4: a voice wrongly taken for a stranger would silently

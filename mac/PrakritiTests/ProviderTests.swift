@@ -3,9 +3,9 @@ import SwiftData
 import XCTest
 @testable import Prakriti
 
-/// v2 part M5a (docs/v2/PLAN.md M5, checks 1 (Keychain and log), 2 and 4): the privacy lock counted in
-/// cloud requests, the cloud adapter's own check, the name tokens, the per-person switch, the key and the
-/// log, and the hardware check. No request leaves the Mac: cloud clients are scripted or answered by
+/// v2 part M5a (docs/v2/PLAN.md M5, checks 1 (Keychain and log), 2 and 4), with the lock set to Ivan's 12 Oct decision
+/// by part LOCK (Wed 14 Oct): the privacy lock counted in cloud requests, the cloud adapter's own check, the name
+/// tokens, the per-person release switch, the key and the log, and the hardware check. No request leaves the Mac: cloud clients are scripted or answered by
 /// `StubProtocol`. The only recording-shaped text is `synthetic-transcript.json` (a made-up talk naming
 /// no real person) and sentences written here.
 @MainActor
@@ -40,15 +40,16 @@ final class ProviderTests: XCTestCase {
     }
 
     static let teacherID = UUID()
-    static func teacher(consent: Bool) -> PeopleFacts.Named {
-        .init(personID: teacherID, name: "Asha Verlaine", heard: true, seen: true, cloudConsent: consent)
+    static func teacher(released: Bool = true) -> PeopleFacts.Named {
+        .init(personID: teacherID, name: "Asha Verlaine", heard: true, seen: true, released: released)
     }
 
-    // MARK: Check 2: the lock, counted in cloud requests
+    // MARK: Check 2: the lock, counted in cloud requests (part LOCK's acceptance)
 
     func testTheLockCountsCloudRequests() async throws {
-        func cloudRequests(kind: RecordingKind = .talk, people: PeopleFacts) async throws -> (Int, Writer.Outcome) {
-            let input = try syntheticInput(kind: kind, people: people)
+        func cloudRequests(kind: RecordingKind = .talk, people: PeopleFacts, serenity: Bool = false) async throws -> (Int, Writer.Outcome) {
+            var input = try syntheticInput(kind: kind, people: people)
+            input.knownSerenity = serenity
             let cloud = ScriptedClient(.claudeAPI, limit: 200_000, replies: [.success(Self.passingAnswer(input))])
             let local = ScriptedClient(.lmStudio, limit: 200_000, replies: [.success(Self.passingAnswer(input))])
             var setup = WritingSetup()
@@ -59,81 +60,96 @@ final class ProviderTests: XCTestCase {
             let outcome = try await Writer(setup: setup, log: nil).write(input)
             return (cloud.requests.count, outcome)
         }
-        let checkedTeacher = PeopleFacts(checked: true, named: [Self.teacher(consent: true)])
+        let checkedTeacher = PeopleFacts(checked: true, named: [Self.teacher()])
+        var lines: [String] = []
+        func expect(_ label: String, _ measured: (Int, Writer.Outcome), _ expected: Int, reason: String? = nil) {
+            XCTAssertEqual(measured.0, expected, label)
+            XCTAssertEqual(measured.1.lockReason, reason, label)
+            if expected == 1 { XCTAssertEqual(measured.1.package?.writingProvider, ModelProvider.claudeAPI.rawValue, "\(label): \(measured.1.problem ?? "")") }
+            lines.append("\(label): \(measured.0) Anthropic requests (expected \(expected))" + (measured.1.lockReason.map { ", lock: \($0)" } ?? ", written by \(measured.1.package?.writtenBy ?? "nobody")"))
+        }
 
-        let (forClass, _) = try await cloudRequests(kind: .lesson, people: checkedTeacher)
-        XCTAssertEqual(forClass, 0, "a class")
-        let (notChecked, unchecked) = try await cloudRequests(people: .notChecked)
-        XCTAssertEqual(notChecked, 0, "people not checked")
-        XCTAssertEqual(unchecked.lockReason, PrivacyLock.notChecked)
-        let (notAgreed, refused) = try await cloudRequests(people: PeopleFacts(checked: true, named: [Self.teacher(consent: false)]))
-        XCTAssertEqual(notAgreed, 0, "a person without cloud consent speaking")
-        XCTAssertEqual(refused.lockReason, PrivacyLock.notAgreed)
-        let (withUnnamed, unnamed) = try await cloudRequests(people: PeopleFacts(checked: true, named: [Self.teacher(consent: true)], unnamedSeen: 1))
-        XCTAssertEqual(withUnnamed, 0, "an unnamed person present")
-        XCTAssertEqual(unnamed.lockReason, PrivacyLock.unnamed)
-        let (heardUnnamed, _) = try await cloudRequests(people: PeopleFacts(checked: true, named: [Self.teacher(consent: true)], unnamedHeard: 1))
-        XCTAssertEqual(heardUnnamed, 0, "an unnamed voice")
-        let (open, written) = try await cloudRequests(people: checkedTeacher)
-        XCTAssertEqual(open, 1, "the synthetic talk, checked, one consenting speaker")
-        XCTAssertNil(written.lockReason)
-        XCTAssertEqual(written.package?.writingProvider, ModelProvider.claudeAPI.rawValue, written.problem ?? "")
+        // Every participant signed a release (Ivan, 12 Oct): all of these go to Anthropic.
+        expect("a class", try await cloudRequests(kind: .lesson, people: checkedTeacher), 1)
+        expect("a class nobody named anyone in, people not checked", try await cloudRequests(kind: .lesson, people: .notChecked), 1)
+        expect("a talk, people not checked", try await cloudRequests(people: .notChecked), 1)
+        expect("a recording not marked as anything", try await cloudRequests(kind: .unknown, people: checkedTeacher), 1)
+        expect("an unnamed person seen", try await cloudRequests(people: PeopleFacts(checked: true, named: [Self.teacher()], unnamedSeen: 3)), 1)
+        expect("an unnamed person heard", try await cloudRequests(people: PeopleFacts(checked: true, named: [Self.teacher()], unnamedHeard: 1)), 1)
+        expect("a transcript that names Serenity", try await cloudRequests(people: checkedTeacher, serenity: true), 1)
+        expect("a talk, one released speaker", try await cloudRequests(people: checkedTeacher), 1)
+        // Ivan's own marks keep it on this Mac.
+        var leftOut = PeopleFacts(checked: true, named: [Self.teacher()], unnamedHeard: 1)
+        leftOut.leftOut = 1
+        expect("someone set to Leave Out", try await cloudRequests(kind: .lesson, people: leftOut), 0, reason: PrivacyLock.leftOut)
+        expect("a speaker marked no release", try await cloudRequests(people: PeopleFacts(checked: true, named: [Self.teacher(released: false)])), 0,
+               reason: PrivacyLock.noRelease)
+        var unchecked = PeopleFacts.notChecked
+        unchecked.leftOut = 1
+        expect("Leave Out chosen before the people check", try await cloudRequests(people: unchecked), 0, reason: PrivacyLock.leftOut)
+
+        let folder = SnapshotRenderer.milestoneFolder()
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try? (["Part LOCK: the privacy lock counted in Anthropic requests, writing set to Anthropic, synthetic-transcript.json", ""] + lines)
+            .joined(separator: "\n").appending("\n").write(to: folder.appending(path: "lock-writer-counts.txt"), atomically: true, encoding: .utf8)
     }
 
-    func testNoRecordingAndALockedRecordingAreRefusedAtTheAdapterToo() {
+    func testNoRecordingAndALockedRecordingAreRefusedAtTheAdapterToo() throws {
         let request = ModelRequest(system: "S", user: "Words.", shape: .writing)
         XCTAssertThrowsError(try PrivacyLock.release(request, for: nil))
-        XCTAssertThrowsError(try PrivacyLock.release(request, for: LockSubject(kind: .lesson, mentionsSerenity: false,
-                                                                               people: PeopleFacts(checked: true, named: [Self.teacher(consent: true)]))))
-        XCTAssertThrowsError(try PrivacyLock.release(request, for: LockSubject(kind: .talk, mentionsSerenity: false)))
+        var leftOut = PeopleFacts(checked: true, named: [Self.teacher()])
+        leftOut.leftOut = 1
+        XCTAssertThrowsError(try PrivacyLock.release(request, for: LockSubject(people: leftOut)))
+        XCTAssertThrowsError(try PrivacyLock.release(request, for: LockSubject(people: PeopleFacts(checked: true, named: [Self.teacher(released: false)]))))
+        // Not checked, or unnamed people: released like everyone, so the adapter lets the words through.
+        XCTAssertEqual(try PrivacyLock.release(request, for: LockSubject()).user, "Words.")
+        XCTAssertEqual(try PrivacyLock.release(request, for: LockSubject(people: PeopleFacts(checked: true, unnamedSeen: 4, unnamedHeard: 2))).user, "Words.")
+        // A person marked no release who is neither seen nor heard (only named aloud) does not lock it.
+        XCTAssertNil(PrivacyLock.decide(LockSubject(people: PeopleFacts(checked: true, named: [
+            .init(personID: UUID(), name: "Tomas Brill", heard: false, seen: false, released: false)]))).reason)
     }
 
     // MARK: The adapter's own check and the name tokens
 
     var openSubject: LockSubject {
-        LockSubject(kind: .talk, mentionsSerenity: false, people: PeopleFacts(checked: true, named: [Self.teacher(consent: true)]))
+        LockSubject(people: PeopleFacts(checked: true, named: [Self.teacher()]))
     }
 
-    func testNamesAreReplacedAndPutBackAndAPlantedNameIsRefused() throws {
-        // Apple's tagger finds Gabriel here but not Serenity (measured 12 Oct): she is replaced because the
-        // lock always replaces the teacher who has not agreed, not because the tagger found her.
-        XCTAssertEqual(NameTokens.findNames(in: "The school's teachers are Gabriel and Serenity."), ["Gabriel"])
+    func testNamesSaidAloudGoAsTheyAre() throws {
+        // Part LOCK: a name said aloud is nobody's privacy question (Ivan, 12 Oct), so nothing the tagger finds is replaced.
         let request = ModelRequest(system: "The school's teachers are Gabriel and Serenity.",
                                    user: "Asha Verlaine opened the evening. Then Priya Raman asked about the breath, and Priya laughed.", shape: .writing)
         let payload = try PrivacyLock.release(request, for: openSubject)
-        let sent = payload.system + " " + payload.user
-        XCTAssertTrue(sent.contains("Asha Verlaine"), "a consenting named person's name goes as it is")
-        for name in ["Priya", "Raman", "Serenity", "Gabriel"] { XCTAssertFalse(sent.contains(name), "\(name) was replaced: \(sent)") }
-        XCTAssertGreaterThanOrEqual(payload.tokens.count, 3)
-        // The answer comes back with the tokens; each is put back exactly as written.
-        XCTAssertEqual(payload.tokens.restore(payload.user), request.user)
-        XCTAssertEqual(payload.tokens.restore(payload.system), request.system)
+        XCTAssertEqual(payload.system, request.system)
+        XCTAssertEqual(payload.user, request.user)
+        XCTAssertEqual(payload.tokens.count, 0)
         XCTAssertEqual(payload.tokens.restore("[[NAME-99]] stays."), "[[NAME-99]] stays.", "a token the request never had names no one")
-
-        // The tokenizer is planted to miss everything: the check, reading the text as it would be sent, refuses.
-        XCTAssertThrowsError(try PrivacyLock.release(request, for: openSubject, tokenize: { texts, _, _ in (texts, NameTokens()) })) { error in
-            let refusal = error as? LockRefusal
-            XCTAssertNotNil(refusal)
-            XCTAssertFalse(refusal?.reason.contains("Priya") == true, "the refusal never carries the text")
-        }
     }
 
-    func testAMutedNameIsAlwaysReplacedAndAWithheldSpanRefused() throws {
+    func testAMutedOrUnreleasedNameIsAlwaysReplacedAndAWithheldSpanRefused() throws {
         var subject = openSubject
         subject.people.mutedNames = ["Kestrel"]
-        let request = ModelRequest(system: "S.", user: "the word kestrel and Kestrel again, never kestrels.", shape: .writing)
+        let request = ModelRequest(system: "S.", user: "the word kestrel and Kestrel again, never kestrels. Serenity taught.", shape: .writing)
         let payload = try PrivacyLock.release(request, for: subject)
         XCTAssertFalse(payload.user.range(of: #"\bkestrel\b"#, options: [.regularExpression, .caseInsensitive]) != nil, payload.user)
         XCTAssertTrue(payload.user.contains("kestrels"), "only the whole word")
+        XCTAssertTrue(payload.user.contains("Serenity"), "a name said aloud goes as it is")
         XCTAssertEqual(payload.tokens.restore(payload.user), request.user, "each written form is put back as it was")
-        XCTAssertThrowsError(try PrivacyLock.release(request, for: subject, tokenize: { texts, _, _ in (texts, NameTokens()) }),
-                             "a muted name the tokens missed is refused")
-        XCTAssertThrowsError(try PrivacyLock.release(ModelRequest(system: "S.", user: "Serenity taught.", shape: .writing), for: openSubject,
-                                                     tokenize: { texts, _, _ in (texts, NameTokens()) }), "the teacher who has not agreed, missed, is refused")
+        // The tokenizer is planted to miss everything: the check, reading the text as it would be sent, refuses.
+        XCTAssertThrowsError(try PrivacyLock.release(request, for: subject, tokenize: { texts, _ in (texts, NameTokens()) })) { error in
+            let refusal = error as? LockRefusal
+            XCTAssertNotNil(refusal, "a muted name the tokens missed is refused")
+            XCTAssertFalse(refusal?.reason.lowercased().contains("kestrel") == true, "the refusal never carries the text")
+        }
+
         var withPerson = openSubject
-        withPerson.people.named.append(.init(personID: UUID(), name: "Tomas Brill", heard: false, seen: true, cloudConsent: false))
-        let named = try PrivacyLock.release(ModelRequest(system: "S.", user: "tomas brill waved.", shape: .writing), for: withPerson)
-        XCTAssertFalse(named.user.lowercased().contains("tomas"), "a named person who has not agreed is replaced even when the tagger misses them: \(named.user)")
+        withPerson.people.named.append(.init(personID: UUID(), name: "Tomas Brill", heard: false, seen: false, released: false))
+        let named = try PrivacyLock.release(ModelRequest(system: "S.", user: "tomas brill waved, and Brill laughed.", shape: .writing), for: withPerson)
+        XCTAssertFalse(named.user.lowercased().contains("tomas"), "a person marked no release is replaced: \(named.user)")
+        XCTAssertFalse(named.user.lowercased().contains("brill"), "and each word of their name: \(named.user)")
+        XCTAssertEqual(named.tokens.restore(named.user), "tomas brill waved, and Brill laughed.")
+        XCTAssertThrowsError(try PrivacyLock.release(ModelRequest(system: "S.", user: "Tomas Brill waved.", shape: .writing), for: withPerson,
+                                                     tokenize: { texts, _ in (texts, NameTokens()) }), "a no-release name the tokens missed is refused")
 
         var withheld = openSubject
         withheld.withheldSpans = ["my mother was ill that winter"]
@@ -159,21 +175,20 @@ final class ProviderTests: XCTestCase {
 
     // MARK: The per-person switch
 
-    func testThePersonSwitchIsReadFromTheStore() throws {
+    func testThePersonReleaseIsReadFromTheStore() throws {
         let container = try PrakritiStore.makeContainer(at: nil)
         let context = ModelContext(container)
         let person = Person(id: Self.teacherID, name: "Asha Verlaine")
         context.insert(person)
         try context.save()
-        XCTAssertFalse(person.mayReadInCloud, "off by default")
-        let facts = PeopleFacts(checked: true, named: [Self.teacher(consent: true)])
-        let people = try context.fetch(FetchDescriptor<Person>())
-        XCTAssertEqual(PrivacyLock.decide(LockSubject(kind: .talk, mentionsSerenity: false, people: facts.withConsent(from: people))).reason, PrivacyLock.notAgreed)
-        person.mayReadInCloud = true
+        XCTAssertFalse(person.noRelease, "everyone starts with a signed release on file (Ivan, 12 Oct)")
+        XCTAssertTrue(person.named.released)
+        let facts = PeopleFacts(checked: true, named: [Self.teacher()])
+        XCTAssertNil(PrivacyLock.decide(LockSubject(people: facts.withReleases(from: try context.fetch(FetchDescriptor<Person>())))).reason)
+        person.noRelease = true
         try context.save()
-        XCTAssertNil(PrivacyLock.decide(LockSubject(kind: .talk, mentionsSerenity: false, people: facts.withConsent(from: try context.fetch(FetchDescriptor<Person>())))).reason)
-        XCTAssertEqual(PrivacyLock.decide(LockSubject(kind: .talk, mentionsSerenity: false, people: facts.withConsent(from: []))).reason, PrivacyLock.notAgreed,
-                       "someone not in the store counts as not agreed")
+        XCTAssertEqual(PrivacyLock.decide(LockSubject(people: facts.withReleases(from: try context.fetch(FetchDescriptor<Person>())))).reason, PrivacyLock.noRelease)
+        XCTAssertNil(PrivacyLock.decide(LockSubject(people: facts.withReleases(from: []))).reason, "someone not in the store keeps what the facts say")
     }
 
     // MARK: Check 1, the Keychain and log parts
@@ -193,7 +208,7 @@ final class ProviderTests: XCTestCase {
         let logs = FileManager.default.temporaryDirectory.appending(path: "prakriti-provider-log-\(UUID().uuidString)", directoryHint: .isDirectory)
         addTeardownBlock { try? FileManager.default.removeItem(at: logs) }
         let log = AppLog(directory: logs)
-        let input = try syntheticInput(people: PeopleFacts(checked: true, named: [Self.teacher(consent: true)]))
+        let input = try syntheticInput(people: PeopleFacts(checked: true, named: [Self.teacher()]))
         let answer = Self.passingAnswer(input)
         StubProtocol.seen = []
         StubProtocol.handler = { _, path, _ in
@@ -213,10 +228,11 @@ final class ProviderTests: XCTestCase {
         XCTAssertNotNil(outcome.package, outcome.problem ?? "")
         let sent = StubProtocol.seen.filter { $0.path == "/v1/messages" }
         XCTAssertGreaterThanOrEqual(sent.count, 3, "writing, tags and summary, each through the lock")
+        XCTAssertTrue(sent.contains { ($0.body?["system"] as? String ?? "").contains("Gabriel and Serenity") },
+                      "since part LOCK the prompt's names go as they are (Ivan, 12 Oct)")
         XCTAssertEqual(sent.count, StubProtocol.seen.count, "nothing else was asked")
         for request in sent {
             let text = (request.body?["system"] as? String ?? "") + ((request.body?["messages"] as? [[String: Any]])?.first?["content"] as? String ?? "")
-            XCTAssertFalse(text.contains("Serenity"), "the prompt's names are replaced before sending")
             XCTAssertFalse(text.contains(fakeKey), "the key is never in a body")
         }
 
@@ -237,8 +253,7 @@ final class ProviderTests: XCTestCase {
         StubProtocol.seen = []
         StubProtocol.handler = { _, _, _ in (200, Self.anthropicStream("{}")) }
         defer { StubProtocol.handler = nil }
-        let locked = LockedCloudClient(inner: client, subject: LockSubject(kind: .talk, mentionsSerenity: false,
-                                                                           people: PeopleFacts(checked: true, named: [Self.teacher(consent: true)]),
+        let locked = LockedCloudClient(inner: client, subject: LockSubject(people: PeopleFacts(checked: true, named: [Self.teacher()]),
                                                                            withheldSpans: [span]),
                                        onRefusal: { log.write("synthetic.json: \($0)") })
         do {
@@ -255,7 +270,7 @@ final class ProviderTests: XCTestCase {
 
         let logText = try FileManager.default.contentsOfDirectory(at: logs, includingPropertiesForKeys: nil)
             .map { try String(contentsOf: $0, encoding: .utf8) }.joined()
-        XCTAssertTrue(logText.contains("privacy check found words of someone who has not agreed"), logText)
+        XCTAssertTrue(logText.contains("privacy check found words of someone left out"), logText)
         XCTAssertFalse(logText.contains(span), "the log never holds the text")
         XCTAssertFalse(logText.contains(fakeKey), "the log never holds the key")
         XCTAssertFalse(logText.contains("sk-"), "nor anything shaped like one")
@@ -341,7 +356,7 @@ extension ProviderTests {
     }
 
     static func payload(_ shape: ModelRequest.Shape = .writing) throws -> CloudPayload {
-        let subject = LockSubject(kind: .talk, mentionsSerenity: false, people: PeopleFacts(checked: true, named: [teacher(consent: true)]))
+        let subject = LockSubject(people: PeopleFacts(checked: true, named: [teacher()]))
         return try PrivacyLock.release(ModelRequest(system: "You write JSON.", user: "Asha Verlaine spoke about the breath.", shape: shape), for: subject)
     }
 
@@ -527,7 +542,7 @@ extension ProviderTests {
         let logs = FileManager.default.temporaryDirectory.appending(path: "prakriti-provider-log-\(UUID().uuidString)", directoryHint: .isDirectory)
         addTeardownBlock { try? FileManager.default.removeItem(at: logs) }
         let log = AppLog(directory: logs)
-        let input = try syntheticInput(people: PeopleFacts(checked: true, named: [Self.teacher(consent: true)]))
+        let input = try syntheticInput(people: PeopleFacts(checked: true, named: [Self.teacher()]))
         let answer = Self.passingAnswer(input)
         StubProtocol.seen = []
         StubProtocol.headers = []
@@ -559,7 +574,6 @@ extension ProviderTests {
         XCTAssertEqual(StubProtocol.seen.filter { $0.path == "/v1/messages" }.count, 1)
         for request in StubProtocol.seen {
             let text = String(decoding: try JSONSerialization.data(withJSONObject: request.body ?? [:]), as: UTF8.self)
-            XCTAssertFalse(text.contains("Serenity"), "the prompt's names are replaced before sending")
             XCTAssertFalse(text.contains(openAIKey) || text.contains(anthropicKey), "no key in any body")
         }
         let logText = try FileManager.default.contentsOfDirectory(at: logs, includingPropertiesForKeys: nil)
@@ -607,14 +621,17 @@ extension ProviderTests {
                 _ = try await Writer(setup: setup, log: nil).write(input)
                 return StubProtocol.seen.count
             }
-            let checked = PeopleFacts(checked: true, named: [Self.teacher(consent: true)])
+            let checked = PeopleFacts(checked: true, named: [Self.teacher()])
+            var leftOut = checked
+            leftOut.leftOut = 1
             let counts = [
-                ("a class", try await requests(kind: .lesson, people: checked), 0),
-                ("people not checked", try await requests(people: .notChecked), 0),
-                ("a person without cloud consent", try await requests(people: PeopleFacts(checked: true, named: [Self.teacher(consent: false)])), 0),
-                ("an unnamed person present", try await requests(people: PeopleFacts(checked: true, named: [Self.teacher(consent: true)], unnamedSeen: 1)), 0),
-                ("an unnamed voice", try await requests(people: PeopleFacts(checked: true, named: [Self.teacher(consent: true)], unnamedHeard: 1)), 0),
-                ("checked, one consenting speaker", try await requests(people: checked), 1),
+                ("a class", try await requests(kind: .lesson, people: checked), 1),
+                ("people not checked", try await requests(people: .notChecked), 1),
+                ("an unnamed person present", try await requests(people: PeopleFacts(checked: true, named: [Self.teacher()], unnamedSeen: 1)), 1),
+                ("an unnamed voice", try await requests(people: PeopleFacts(checked: true, named: [Self.teacher()], unnamedHeard: 1)), 1),
+                ("checked, one released speaker", try await requests(people: checked), 1),
+                ("someone set to Leave Out", try await requests(kind: .lesson, people: leftOut), 0),
+                ("a speaker marked no release", try await requests(people: PeopleFacts(checked: true, named: [Self.teacher(released: false)])), 0),
             ]
             var lines: [String] = []
             for (label, measured, expected) in counts {

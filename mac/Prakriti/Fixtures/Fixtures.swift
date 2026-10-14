@@ -210,8 +210,8 @@ enum Fixtures {
         // quote was found word for word, nothing named money, enrollment or an offer. Two of its seven
         // claims are left out here: the speaker's own sales figure and his own early income, so the
         // repository holds no money detail about anyone. Instagram's hashtags are the ones today's check
-        // keeps: the model's "Yogalinage" is not a word the teacher says. The transcript names Serenity,
-        // so the recording is privacy locked, and the writing that was set to the Claude API stayed here.
+        // keeps: the model's "Yogalinage" is not a word the teacher says. The transcript names Serenity, which
+        // since part LOCK locks nothing (Ivan, 12 Oct): the sample shows no lock line.
         talk13.hasSerenity = true
         var written = WrittenPackage(
             titles: ["A Life Update from Yoga Marga School", "Yoga's Lineage and the School's Next Chapter",
@@ -248,7 +248,7 @@ enum Fixtures {
                 + "and another focused on the business and marketing side of running a yoga practice. Weekly yin yoga classes have been added to the schedule, and "
                 + "the online platform holds extensive recorded material covering asana, pranayama, anatomy, the sutras, and Samkhya philosophy.",
             writtenBy: "Qwen3.8-27B in LM Studio", writingProvider: ModelProvider.lmStudio.rawValue,
-            taggedBy: "Qwen3.8-27B in LM Studio", summarizedBy: "Qwen3.8-27B in LM Studio", lockReason: PrivacyLock.namesTeacher, lockedTasks: ["writing"],
+            taggedBy: "Qwen3.8-27B in LM Studio", summarizedBy: "Qwen3.8-27B in LM Studio", lockReason: nil, lockedTasks: [],
             writtenAt: date(2026, 10, 11, 2, 20, 8), seconds: 1798.4, attempts: 1, writingSeconds: 1457.4,
             promptTokens: 5800, completionTokens: 12445, reasoningTokens: 11218, clock: "episode")
         written.oneLine = "The teacher shares the school's journey through India, the lineage of modern yoga, and how Yoga Marga is reshaping its curriculum and schedule."

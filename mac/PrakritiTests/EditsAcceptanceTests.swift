@@ -86,14 +86,9 @@ final class EditsAcceptanceTests: XCTestCase {
         // call these same model paths), after a Remove from the Edit and Keep in the Edit on words in the
         // Viewer's transcript, which must leave no edit behind.
         model.setKind(.talk, for: recording)
-        // Since v2 part M6c Approve waits for every name said aloud to be kept or muted: Ivan keeps them all here, so
-        // the episode is unchanged and this check stays milestone 5's.
-        let names = recording.namesSaid?.moments ?? []
-        if !names.isEmpty {
-            XCTAssertFalse(model.approvalCheck(recording).canApprove, "names said aloud wait for a decision")
-            model.decideName(.keep, moments: names, in: recording)
-        }
-        report.append("  names said aloud kept before approving (v2 part M6c): \(names.count)")
+        // Since part LOCK a name said aloud is kept unless muted and Approve never asks about it, so the episode is
+        // unchanged and this check stays milestone 5's.
+        report.append("  names said aloud, kept without being asked (part LOCK): \(recording.namesSaid?.moments.count ?? 0)")
         XCTAssertTrue(model.approvalCheck(recording).canApprove, model.approvalCheck(recording).line ?? "")
         model.open(recording)
         model.openViewer(recording)
@@ -233,7 +228,7 @@ final class EditsAcceptanceTests: XCTestCase {
         XCTAssertEqual(model.notice?.title, ApprovalCheck.speakersTitle)
         model.notice = nil
         XCTAssertEqual(try Data(contentsOf: approved.appending(path: "APPROVAL.md")), receiptBefore, "the earlier approved copy is left as it was")
-        XCTAssertTrue(recording.isPrivacyLocked)
+        XCTAssertFalse(recording.isPrivacyLocked, "a class is not privacy locked since part LOCK")
         report += ["", "Marked as a class: approval taken back; Approve refused: \(ApprovalCheck.speakersTitle). \(classCheck.line ?? "")"]
         try draw("talk-5-class")
 

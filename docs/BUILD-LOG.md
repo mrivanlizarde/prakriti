@@ -62,7 +62,11 @@ check/`. **Second fix** ("v2 part M8b, second fix"): every join is held calmer t
 sample-jump bar is met as written (0 of 95 joins on 13 Sep, 0 of 361 on 6 Sep). Still not installed: 384 kbps and the lock wait for Ivan.
 **The v2 run stopped there; its handoff is the last section, "v2 run: where it stands" (Wed 14 Oct):** what works with its
 evidence, what was not reached, what the next session does first (part LOCK, then `make install`, which ships M5a to M8b),
-Ivan's checklist and the picture of every new screen. The live app is still the M4b build.
+Ivan's checklist and the picture of every new screen. **Then part LOCK** (the last section, "v2 part LOCK", Wed 14 Oct): the lock
+follows the signed releases, so the Claude API writes classes, recordings with other people and recordings that name anyone, and
+only a person set to Leave Out or marked "no release" keeps a recording on this Mac; names said aloud are never asked about at
+Approve. Every check passed, one real 13 Sep write went through Anthropic for $0.09, and **M5a to M8b and LOCK are installed**
+(11:38, pid 92711).
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -5132,3 +5136,94 @@ Real window, after the install: `cd ~/Code/prakriti/mac && make look` draws the 
 
 **Not installed by this handoff.** Installing now would ship M5a's lock without LOCK and stop the live app writing with the
 Claude API. The live app is the M4b build, reopened at 10:44 (pid 84910), sweeping every 5 minutes.
+
+## v2 part LOCK: the lock follows the signed releases. Wed 14 Oct 2026
+
+The part inserted between M8b and M8c (`docs/v2/PLAN.md`, "Part LOCK"). It carries out Ivan's decision of Mon 12 Oct, in his
+words: "We can move on from the privacy concerns: all the participants have signed an agreement that includes that their
+likeness can be used for commercial purposes." Built on `main`. No package added. **One stored field added (`Person.noRelease`,
+default off), an addition:** `make migrate-check` passed on a copy of the live store. **Installed**, with M5a to M8b.
+
+### What was built
+
+- **`PrivacyLock.decide`** reads only Ivan's own marks. Locked when someone in the recording is set to **Leave Out** for any
+  output (`PeopleFacts.leftOut`, counted from `PeopleChoices`, before or after the people check), or when a named person seen
+  or heard in it has **Signed release on file** turned off (`PeopleFacts.Named.released`, from `Person.noRelease`; before the
+  people check, the teacher Ivan picked counts as heard). No recording at all is still refused. The kind of recording, an
+  unfinished people check, unnamed people and "Serenity" in a transcript no longer lock anything. Reasons, naming no one:
+  "someone in it is set to Leave Out", "someone in it has no signed release on file".
+- **`PrivacyLock.release`** replaces only muted names and the names of people marked no release (`NameTokens.tokenize(_:only:)`:
+  the whole name and each word of three letters or more), then re-reads the text and refuses if one is left or a withheld span
+  is there. Every other name goes as it is (the tagger used to replace "Yoga Marga" and "Ashtanga Yoga" too).
+- **Settings, Privacy:** each person's switch is **Signed release on file**, on by default (`AppModel.setRelease`), replacing
+  M5a's "Cloud models may read their words" (`mayReadInCloud` kept as a stored field so older stores open unchanged; nothing
+  reads it). The lock paragraph (`PrivacyLock.settingsLine`, in Settings, Models and Privacy), the "Recordings never leave
+  this Mac" rule, the footer and the hardware suggestion for smaller Macs say what is built now. Merge 2 People keeps the
+  stricter mark (no release on either side, no release after).
+- **Names said aloud are never asked about at Approve.** `ApprovalCheck` no longer waits for them; `undecidedNames` and Keep All
+  Not Decided are gone; each name reads Keep unless Ivan chose Mute (the picker shows Mixed when times differ). The log line
+  "Serenity is named in the transcript, so from now on only models on this Mac may read it." is gone (`hasSerenity` is still
+  recorded).
+- **Write Again** reads the recording's people and choices (`Recording.peopleFacts`), so a Leave Out made on the page keeps a
+  rewrite on this Mac. The writing step of a make reads the make's choices too.
+- **`--debug-write-again=<path>`** (development copy only; the live copy logs that it ignores it): Write Again from the command
+  line, used for check 4 below (PLAN rule 2.1.10).
+- **Help** 06, 07 and 09 rewritten to the built lock; notes appended to `docs/v2/help-notes/07` and `09`. **Tests:**
+  `ProviderTests`, `WritingTests`, `VoicesTests`, `ModelTests`, `LibraryTests`, `ChoicesTests`, `RecognitionTests`,
+  `PeopleTests`, `RecordingPageTests`, `SnapshotTests`, `StoreMigrationTests` and the acceptance files that asserted M5a's lock
+  (`ModelsAcceptanceTests` and `EpisodeTextAcceptanceTests` now choose LM Studio directly, since their subject is the local
+  model; `VoicesAcceptanceTests`, `ChoicesAcceptanceTests`, `EditsAcceptanceTests`, `PeopleAcceptanceTests`,
+  `NameRecallAcceptanceTests`, `ProvidersAcceptanceTests`) updated to the new rule.
+
+### Checks run, with results (PLAN, Part LOCK's acceptance)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Unit tests: a class and a recording with an unnamed person route to Anthropic; Leave Out blocks it | **PASS.** `ProviderTests.testTheLockCountsCloudRequests`, writing set to Anthropic, `synthetic-transcript.json`, Anthropic requests counted (`screens/mac/v2-lock/lock-writer-counts.txt`): **a class 1; a class with people not checked 1; a talk not checked 1; not marked as anything 1; an unnamed person seen 1; an unnamed person heard 1; a transcript that names Serenity 1; one released speaker 1; someone set to Leave Out 0; a speaker marked no release 0; Leave Out chosen before the people check 0.** The same through the real Anthropic and OpenAI clients on `StubProtocol` (`testTheLockCountsRequestsToBothProviders`, `lock-counts.txt`): a class 1, not checked 1, unnamed seen 1, unnamed voice 1, released speaker 1, Leave Out 0, no release 0, for each provider. On a recording in a store (`VoicesTests.testTheRecordingsLockReadsTheStoresPeopleAndTheFoldersMicrophones`): a **class** naming Serenity with the corner face and track 3 unnamed routes Claude API to **Claude API**; Leave Out on the unnamed voice routes it to **LM Studio**, Checks line "Someone in it is set to Leave Out, so only models on this Mac read it."; back to Include, open; Serenity's release turned off, LM Studio. `WritingTests`: a class with every task on Anthropic, 3 Anthropic requests and 0 LM Studio; Leave Out, 0 and 3, `show-notes.md` says "Someone in it is set to Leave Out, so it was written by a model on this Mac only."; Write Again on a class goes to Anthropic, and after a Leave Out stays local. The prompt's own "Gabriel and Serenity" now goes as written; a muted name and a no-release name are replaced, and a planted miss of either is refused (refusal carries no text) |
+| 2 | Full suite | **PASS.** `make build`: No warnings. **`make test`: 359 tests, 0 failures, 21 skipped by design** (1,184 s). `make accept`: 13 Sep -16.8 LUFS (-16.82), true peak -1.7 dBFS, transcript to 15:47 of 15:48; 6 Sep -16.7 LUFS (-16.72), -1.4 dBFS, to 55:38 of 55:39. `make accept-edits`: approved episode **38.82 s shorter (expected 38.82)**, 0 of 73 runs from the cut heard, 189 of 201 after it. `make migrate-check` on a copy of the live store: 13 recordings, 2 folders, 40 output settings, 1,112 Activity lines before and after; the new `noRelease` column absent before, 0 people marked no release after |
+| 3 | Installed: a new pid, Settings show Anthropic, a fresh Activity sweep | **PASS.** `make install` at 11:38: old pid 84910 quit ("11:38:02 Quit."), new pid **92711** from `~/Applications/Prakriti.app` started 11:38:08, signature verified. Live log: "Mode: live", "Login item: on.", "Caught up on changes made while Prakriti was closed: 0 events.", "Studio Recordings: listed 13 recordings", "Drop folder: listed 0 recordings", **"11:38:09 Checked 2 folders. Nothing new."** Live Settings, Models captured from the running app (`screens/mac/v2-lock/real/live-settings-models.png`, looked at): **Writing, Tagging and Summarizing: Anthropic**, the new lock paragraph under Privacy lock. Ivan's Anthropic key item is present in the Keychain (service `...claude-api`, saved 12 Oct; its value was not read) |
+| 4 | One real write on the 13 Sep talk through Anthropic, cost recorded | **PASS.** In the development copy only (outputs to `~/Prakriti/Dev`, never Ivan's Outputs or his approved 13 Sep): an APFS clone of the talk at `~/Prakriti/Dev/Clips/2026-09-13 lock write.mp4` (original's size and date unchanged, 730,464,600 bytes), made by Process File (faces 1,896 frames, up to 6 at once from 12:39; one voice 14 min 49 s; 19 names said aloud found; -16.8 LUFS), then `--debug-write-again`, development settings Writing, Tagging and Summarizing set to Anthropic, claude-sonnet-5-5, using the key the live and development copies share. Log: "writing titles, show notes and chapters with claude-sonnet-5-5 (Anthropic): 137 lines, about 7,238 tokens", **"try 1 passed in 50 s (finish end_turn, 7258 tokens read, 7762 written ..., cost $0.09)"**, valid JSON, 4 titles, 3 chapters (0 left out), 7 quotes found word for word (0 left out); tags and summary by claude-sonnet-5-5 (Anthropic) in 1.4 s and 2.1 s (their cost is not logged; small requests). `titles-notes-chapters.json`: writingProvider `claudeAPI`, lockReason null, lockedTasks []. `show-notes.md` has no lock line. The recording names Serenity and shows six faces at once, and still went to Anthropic, as decided. The talk's text was not opened in this session (counts and fields only) |
+| Looked at | Settings, Privacy and the People tab | `10-settings-privacy-people-light.png` and `-dark.png`: the lock paragraph, "Signed release on file" ticked for Gabriel and unticked for Serenity (the snapshot marks her no release on purpose), the footer. `07-inspector-people-choices-light-inspector-p2.png`: Names Said Aloud reads "Each is kept as said. Choose Mute for one you want gone". Readable in light and dark |
+
+**Em dashes:** 0 in every line this part added (`git diff | grep '^+'` for U+2014 and U+2013: 0).
+
+### Decisions, each with its reason
+
+1. **"No release" is a new field, `Person.noRelease`, off by default, not M5a's `mayReadInCloud` turned around.** Reason: M5a's
+   field defaulted to off, so every person already in a store would have read as "no release" and locked every recording they
+   are in; a new field with a default of off makes everyone released, which is what Ivan said.
+2. **Leave Out for any output locks, counted from the choices even before the people check, stale keys included.** Reason:
+   the plan says "a person Ivan marked Leave Out"; it is his mark, and failing that way costs only a local write.
+3. **A no-release person locks only when seen or heard; named aloud alone, their name is replaced instead.** Reason: the lock
+   is about people in the recording; a name said aloud is not a people decision (Ivan, 13 Oct), but replacing the name of
+   someone Ivan marked costs nothing.
+4. **The tagger no longer replaces names in cloud requests.** Reason: names said aloud are not a privacy question under the
+   decision, and the tagger also took "Yoga Marga" and "Ashtanga Yoga", the school's own words, from the writer.
+5. **Approve's rule that only a talk can be approved is left as it is.** Reason: it is Approve's (part M11b), not the lock's,
+   and LOCK builds nothing from later parts. It is still a student-era block; see For Ivan.
+6. **The real write ran in the development copy, not as a Write Again in the live app.** Reason: the live 13 Sep talk is
+   approved; any Write Again there takes the approval back and rewrites Ivan's Outputs.
+
+### What does not work yet, or was not seen working
+
+- The live app writes nothing by itself yet: titles, show notes and chapters are off for both live folders (migrate-check:
+  "titles switched on in 0 folders"). Anthropic writes as soon as Ivan turns them on or clicks Write Again.
+- The cost of tags and summary is not logged, and no cost is kept in `titles-notes-chapters.json` (only in the log line).
+- `make accept-people`, `accept-models`, `accept-episode-text` and `accept-providers` were updated to the new rule but not run
+  (long, real-model or paid runs; not part of LOCK's acceptance).
+- A stale LaunchServices record remains for `~/Code/prakriti-verify-m8b/mac/build-verify/` (a verifier's clone; install.sh
+  warned "still registered"); not running.
+
+### Installed
+
+**Installed** at 11:38 on Wed 14 Oct: pid 92711, live mode, login item on, both folders swept. This ships M5a to M8b and LOCK
+together; the live app is no longer the M4b build. Help on Ivan's Mac now describes this build.
+
+### For Ivan
+
+- [ ] **Approve still takes only a talk.** Classes and conversations show "Speakers not checked" at Approve, a rule from before
+  the releases. Say if classes should be approvable now (a small change, but it belongs to Approve, part M11b).
+- [ ] **If anyone has not signed a release,** open Settings, Privacy and untick Signed release on file for them; every
+  recording they appear or speak in then stays on this Mac.
+- [ ] **Titles, show notes and chapters are off for both folders.** Turn them on (Settings, Outputs) when you want the Claude
+  API to write each new recording; the 13 Sep test write cost $0.09.

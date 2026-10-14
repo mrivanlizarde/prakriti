@@ -523,7 +523,7 @@ final class RecordingPageTests: XCTestCase {
         model.removeCut(TimeRange(start: 300, end: 330), from: recording)
         XCTAssertEqual(recording.cuts, [])
         model.setKind(.lesson, for: recording)
-        XCTAssertTrue(recording.isPrivacyLocked, "a class is privacy locked")
+        XCTAssertFalse(recording.isPrivacyLocked, "a class is not privacy locked since part LOCK")
         let activity = try model.context.fetch(FetchDescriptor<LogEntry>(sortBy: [SortDescriptor(\.at)])).map(\.message)
         XCTAssertTrue(activity.contains("Sun 13 Sep (2026-09-13 18-25-44.mp4): the episode now starts at 0:10. Make Again to hear it."), "\(activity)")
         XCTAssertTrue(activity.contains { $0.contains("cut 5:00 to 5:20 (20 s) marked") }, "\(activity)")

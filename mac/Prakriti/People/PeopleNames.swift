@@ -9,8 +9,9 @@ import Foundation
 //
 // A name given to a face reaches the voice linked to it, and the other way round. What the privacy lock reads comes
 // from here (`PeopleFacts.from`): the people check counts as run only when both the face step and the voice step
-// ran (plan review item 5), and every face row or voice without a name is someone unnamed, which keeps the
-// recording on this Mac. Names are not biometric; they are kept on the recording in the store (`Recording.namesJSON`).
+// ran (plan review item 5), and every face row or voice without a name is someone unnamed. Since part LOCK (Wed 14
+// Oct) an unnamed person no longer keeps a recording on this Mac: everyone signed a release (Ivan, 12 Oct); only a
+// person marked "no release" or set to Leave Out does. Names are not biometric; they are kept on the recording in the store (`Recording.namesJSON`).
 
 /// Who Ivan named in one recording: the teacher he picked, and any face row or voice he named by hand.
 struct PeopleNames: Codable, Equatable, Sendable {
@@ -97,18 +98,31 @@ struct PeopleNames: Codable, Equatable, Sendable {
 struct NamedPerson: Codable, Equatable, Hashable, Sendable, Identifiable {
     var id: UUID
     var name: String
-    var cloudConsent: Bool
+    /// A signed release is on file: true unless Ivan marked the person "no release" (`Person.noRelease`, part LOCK).
+    var released: Bool = true
 }
 
 extension PeopleFacts {
-    /// What the lock reads, from both steps and Ivan's names. Not checked unless both the face step and the voice step
-    /// ran. Every face row and voice without a name counts as someone unnamed; so do faces seen for under a second,
-    /// unless Ivan named them.
-    static func from(faces: FacesFound?, voices: VoicesFound?, names: PeopleNames, people: [NamedPerson]) -> PeopleFacts {
-        guard let faces, let voices else { return .notChecked }
-        let resolved = names.resolved(faces: faces, voices: voices)
+    /// What the lock reads, from both steps, Ivan's names and his choices. Checked only once both the face step and the
+    /// voice step ran; every face row and voice without a name counts as someone unnamed (who, like everyone, signed a
+    /// release: Ivan, 12 Oct). Before the check, the teacher Ivan picked still counts as heard, so a teacher marked "no
+    /// release" keeps the recording on this Mac either way. Anyone set to Leave Out, for any output, is counted
+    /// (`leftOut`), whether or not the check has run (part LOCK).
+    static func from(faces: FacesFound?, voices: VoicesFound?, names: PeopleNames, people: [NamedPerson],
+                     choices: PeopleChoices = .none) -> PeopleFacts {
         let byID = Dictionary(people.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let leftOut = choices.people.values.filter { $0.choice == .leaveOut || $0.outputs.values.contains(.leaveOut) }.count
+        guard let faces, let voices else {
+            var facts = PeopleFacts.notChecked
+            facts.leftOut = leftOut
+            if let teacher = names.teacher, let person = byID[teacher] {
+                facts.named = [.init(personID: teacher, name: person.name, heard: true, seen: false, released: person.released)]
+            }
+            return facts
+        }
+        let resolved = names.resolved(faces: faces, voices: voices)
         var facts = PeopleFacts(checked: true)
+        facts.leftOut = leftOut
         var order: [UUID] = []
         var seen: Set<UUID> = [], heard: Set<UUID> = []
         for row in faces.people.map(\.id) + (faces.glimpses > 0 ? [0] : []) {
@@ -128,14 +142,14 @@ extension PeopleFacts {
             }
         }
         for id in order {
-            // A name whose person was deleted from Settings is nobody named: counted as unnamed, and never consenting.
+            // A name whose person was deleted from Settings is nobody named: counted as unnamed.
             guard let person = byID[id] else {
                 if seen.contains(id) { facts.unnamedSeen += 1 }
                 if heard.contains(id) { facts.unnamedHeard += 1 }
                 continue
             }
             facts.named.append(.init(personID: id, name: person.name, heard: heard.contains(id), seen: seen.contains(id),
-                                     cloudConsent: person.cloudConsent))
+                                     released: person.released))
         }
         return facts
     }

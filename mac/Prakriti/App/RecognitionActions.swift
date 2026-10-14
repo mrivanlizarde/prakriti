@@ -266,6 +266,7 @@ extension AppModel {
         keep.learnVoice = keep.learnVoice && other.learnVoice
         keep.mayAppear = keep.mayAppear && other.mayAppear
         keep.mayReadInCloud = keep.mayReadInCloud && other.mayReadInCloud
+        keep.noRelease = keep.noRelease || other.noRelease
         keep.favorite = keep.favorite || other.favorite
         keep.pinned = keep.pinned || other.pinned
         // What the vault keeps of the other person, sealed again under the kept person's key, when the merged release

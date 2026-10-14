@@ -133,34 +133,38 @@ final class VoicesTests: XCTestCase {
 
     // MARK: Names and the lock
 
-    let gabriel = NamedPerson(id: UUID(), name: "Gabriel", cloudConsent: true)
-    let serenity = NamedPerson(id: UUID(), name: "Serenity", cloudConsent: false)
+    let gabriel = NamedPerson(id: UUID(), name: "Gabriel")
+    let serenity = NamedPerson(id: UUID(), name: "Serenity")
 
     func testThePeopleCheckIsCompleteOnlyWithBothSteps() {
         let faces = Fixtures.facesOnePerson(at: Fixtures.now)
         let voices = Fixtures.voicesOneTeacher(at: Fixtures.now)
         let teacher = PeopleNames(teacher: gabriel.id)
-        XCTAssertEqual(PeopleFacts.from(faces: faces, voices: nil, names: teacher, people: [gabriel]), .notChecked, "faces alone")
-        XCTAssertEqual(PeopleFacts.from(faces: nil, voices: voices, names: teacher, people: [gabriel]), .notChecked, "voices alone")
+        XCTAssertFalse(PeopleFacts.from(faces: faces, voices: nil, names: teacher, people: [gabriel]).checked, "faces alone")
+        XCTAssertFalse(PeopleFacts.from(faces: nil, voices: voices, names: teacher, people: [gabriel]).checked, "voices alone")
+        XCTAssertEqual(PeopleFacts.from(faces: nil, voices: nil, names: .none, people: [gabriel]), .notChecked)
+        // Before the check, the teacher Ivan picked counts as heard (part LOCK: a teacher marked no release still locks).
+        XCTAssertEqual(PeopleFacts.from(faces: nil, voices: nil, names: teacher, people: [gabriel]).named.map(\.name), ["Gabriel"])
         // Both steps, nobody named: one face and one voice, both unnamed.
         let unnamed = PeopleFacts.from(faces: faces, voices: voices, names: .none, people: [gabriel])
         XCTAssertTrue(unnamed.checked)
         XCTAssertEqual(unnamed.unnamedSeen, 1)
         XCTAssertEqual(unnamed.unnamedHeard, 1)
-        XCTAssertEqual(PrivacyLock.decide(LockSubject(kind: .talk, mentionsSerenity: false, people: unnamed)).reason, PrivacyLock.unnamed)
+        XCTAssertNil(PrivacyLock.decide(LockSubject(people: unnamed)).reason, "unnamed people signed releases too (part LOCK)")
         // Who is teaching: Gabriel takes the voice that speaks most and its linked face.
         let named = PeopleFacts.from(faces: faces, voices: voices, names: teacher, people: [gabriel])
         XCTAssertEqual(named.named.map(\.name), ["Gabriel"])
         XCTAssertEqual(named.named.first?.heard, true)
         XCTAssertEqual(named.named.first?.seen, true)
         XCTAssertEqual(named.unnamedSeen + named.unnamedHeard, 0)
-        XCTAssertNil(PrivacyLock.decide(LockSubject(kind: .talk, mentionsSerenity: false, people: named)).reason, "named and agreed: open")
-        // His switch off: locked.
+        XCTAssertNil(PrivacyLock.decide(LockSubject(people: named)).reason, "named and released: open")
+        // His release turned off: locked.
         var off = gabriel
-        off.cloudConsent = false
-        XCTAssertEqual(PrivacyLock.decide(LockSubject(kind: .talk, mentionsSerenity: false,
-                                                      people: PeopleFacts.from(faces: faces, voices: voices, names: teacher, people: [off]))).reason,
-                       PrivacyLock.notAgreed)
+        off.released = false
+        XCTAssertEqual(PrivacyLock.decide(LockSubject(people: PeopleFacts.from(faces: faces, voices: voices, names: teacher, people: [off]))).reason,
+                       PrivacyLock.noRelease)
+        XCTAssertEqual(PrivacyLock.decide(LockSubject(people: PeopleFacts.from(faces: nil, voices: nil, names: teacher, people: [off]))).reason,
+                       PrivacyLock.noRelease, "even before the people check")
         // A name whose person was removed from Settings is nobody named.
         let gone = PeopleFacts.from(faces: faces, voices: voices, names: teacher, people: [])
         XCTAssertEqual(gone.unnamedHeard, 1)
@@ -168,20 +172,30 @@ final class VoicesTests: XCTestCase {
         XCTAssertTrue(gone.named.isEmpty)
     }
 
-    func testOtherPeopleKeepTheLockClosedUntilEachIsNamed() {
+    func testOtherPeopleNoLongerLockOnlyIvansMarksDo() {
         let faces = Fixtures.facesTwoPeople(at: Fixtures.now)
         let voices = Fixtures.voicesTwoTracks(at: Fixtures.now)
         var names = PeopleNames(teacher: gabriel.id)
         let facts = PeopleFacts.from(faces: faces, voices: voices, names: names, people: [gabriel, serenity])
         XCTAssertEqual(facts.unnamedSeen, 1, "the corner face")
         XCTAssertEqual(facts.unnamedHeard, 1, "the voice on track 3")
-        XCTAssertEqual(PrivacyLock.decide(LockSubject(kind: .talk, mentionsSerenity: false, people: facts)).reason, PrivacyLock.unnamed)
-        // Naming the corner face and the second voice as Serenity, who has not agreed: still local.
+        XCTAssertNil(PrivacyLock.decide(LockSubject(people: facts)).reason, "other people seen and heard: everyone signed a release")
+        // Leave Out on the unnamed voice, for the podcast only: locked (part LOCK).
+        var choices = PeopleChoices()
+        choices.set(.leaveOut, for: .voice(2), output: .podcast)
+        let leaving = PeopleFacts.from(faces: faces, voices: voices, names: names, people: [gabriel, serenity], choices: choices)
+        XCTAssertEqual(leaving.leftOut, 1)
+        XCTAssertEqual(PrivacyLock.decide(LockSubject(people: leaving)).reason, PrivacyLock.leftOut)
+        // Naming the corner face and the second voice as Serenity, released: open; with her release turned off: local.
         names.faces[2] = serenity.id
         names.voices[2] = serenity.id
         let both = PeopleFacts.from(faces: faces, voices: voices, names: names, people: [gabriel, serenity])
         XCTAssertEqual(both.unnamedSeen + both.unnamedHeard, 0)
-        XCTAssertEqual(PrivacyLock.decide(LockSubject(kind: .talk, mentionsSerenity: false, people: both)).reason, PrivacyLock.notAgreed)
+        XCTAssertNil(PrivacyLock.decide(LockSubject(people: both)).reason)
+        var unreleased = serenity
+        unreleased.released = false
+        XCTAssertEqual(PrivacyLock.decide(LockSubject(people: PeopleFacts.from(faces: faces, voices: voices, names: names, people: [gabriel, unreleased]))).reason,
+                       PrivacyLock.noRelease)
         // Faces seen for under a second count as someone unnamed until named.
         var glimpsed = Fixtures.facesOnePerson(at: Fixtures.now)
         glimpsed.glimpses = 2
@@ -229,20 +243,35 @@ final class VoicesTests: XCTestCase {
     // MARK: The store, the people file and the pipeline
 
     func testTheRecordingsLockReadsTheStoresPeopleAndTheFoldersMicrophones() throws {
+        // Part LOCK's acceptance on a recording in a store: a class, with a face and a voice nobody named, is written by
+        // Anthropic; a person set to Leave Out, or marked no release, keeps it on this Mac.
         let model = AppModel(container: AppModel.inMemoryContainer(), paths: AppPaths(mode: .development, home: FileManager.default.temporaryDirectory),
                              settings: .ephemeral(), log: AppLog(directory: nil), now: { Fixtures.now })
-        let recording = Recording(filePath: "/tmp/2026-09-13 talk.mp4", foundAt: Fixtures.now, kind: .talk)
+        let recording = Recording(filePath: "/tmp/2026-09-13 class.mp4", foundAt: Fixtures.now, kind: .lesson)
         model.context.insert(recording)
+        recording.hasSerenity = true
+        XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: recording), .claudeAPI, "a class, people not checked, that names Serenity")
         recording.facesJSON = Fixtures.facesTwoPeople(at: Fixtures.now).json()
-        XCTAssertEqual(recording.lockSubject.people, .notChecked, "faces alone")
+        XCTAssertFalse(recording.lockSubject.people.checked, "faces alone")
         model.applyVoices(Fixtures.voicesTwoTracks(at: Fixtures.now), to: recording)
         XCTAssertTrue(recording.lockSubject.people.checked)
         let gabriel = try XCTUnwrap(model.addPerson(named: "Gabriel"))
         XCTAssertEqual(model.addPerson(named: " gabriel ")?.id, gabriel.id, "the same name twice is one person")
-        XCTAssertFalse(gabriel.mayReadInCloud)
+        XCTAssertFalse(gabriel.noRelease, "everyone starts with a signed release on file")
         model.setTeacher(gabriel, for: recording)
         XCTAssertEqual(recording.names.teacher, gabriel.id)
-        XCTAssertEqual(PrivacyLock.decide(recording.lockSubject).reason, PrivacyLock.unnamed, "the corner face and track 3")
+        XCTAssertGreaterThan(recording.lockSubject.people.unnamedSeen + recording.lockSubject.people.unnamedHeard, 0, "the corner face and track 3")
+        XCTAssertNil(PrivacyLock.decide(recording.lockSubject).reason, "a class with someone unnamed")
+        XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: recording), .claudeAPI)
+        XCTAssertNil(recording.lockLine)
+        // Leave Out on the unnamed voice: locked, and the Checks line says why without a name.
+        let key = try XCTUnwrap(recording.unnamedKeys.first)
+        _ = model.setChoice(.leaveOut, for: key, output: nil, in: recording)
+        XCTAssertEqual(PrivacyLock.decide(recording.lockSubject).reason, PrivacyLock.leftOut)
+        XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: recording), .lmStudio)
+        XCTAssertEqual(recording.lockLine, "Someone in it is set to Leave Out, so only models on this Mac read it.")
+        _ = model.setChoice(.include, for: key, output: nil, in: recording)
+        XCTAssertNil(PrivacyLock.decide(recording.lockSubject).reason, "back to Include: open again")
         let serenity = try XCTUnwrap(model.addPerson(named: "Serenity"))
         model.nameFace(2, as: gabriel, in: recording)
         // "Track 3 is Serenity's microphone" for the folder.
@@ -251,14 +280,16 @@ final class VoicesTests: XCTestCase {
         recording.source = source
         model.setMicrophone(track: 3, to: serenity, for: recording)
         XCTAssertEqual(recording.resolvedNames.voices[2], serenity.id)
-        XCTAssertEqual(PrivacyLock.decide(recording.lockSubject).reason, PrivacyLock.notAgreed, "Gabriel has not agreed yet")
-        model.setCloudConsent(true, for: gabriel)
-        XCTAssertEqual(PrivacyLock.decide(recording.lockSubject).reason, PrivacyLock.notAgreed, "Serenity has not")
-        model.setCloudConsent(true, for: serenity)
-        XCTAssertNil(PrivacyLock.decide(recording.lockSubject).reason, "everyone named and agreed")
-        // Removing a person closes the lock again.
+        XCTAssertNil(PrivacyLock.decide(recording.lockSubject).reason, "everyone named and released")
+        model.setRelease(false, for: serenity)
+        XCTAssertTrue(serenity.noRelease)
+        XCTAssertEqual(PrivacyLock.decide(recording.lockSubject).reason, PrivacyLock.noRelease, "Serenity marked no release")
+        XCTAssertEqual(ModelRouting.provider(chosen: .claudeAPI, for: recording), .lmStudio)
+        model.setRelease(true, for: serenity)
+        XCTAssertNil(PrivacyLock.decide(recording.lockSubject).reason)
+        // Removing a person makes their rows unnamed, which no longer locks.
         model.removePerson(serenity)
-        XCTAssertEqual(PrivacyLock.decide(recording.lockSubject).reason, PrivacyLock.unnamed)
+        XCTAssertNil(PrivacyLock.decide(recording.lockSubject).reason)
         // What the runner hands a make: the names, the folder's microphones and the people.
         let setup = try XCTUnwrap(model.runner.options(for: recording).people)
         XCTAssertEqual(setup.names.teacher, gabriel.id)

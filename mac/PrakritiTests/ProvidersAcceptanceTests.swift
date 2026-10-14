@@ -41,7 +41,7 @@ final class ProvidersAcceptanceTests: XCTestCase {
             try FileManager.default.copyItem(at: source, to: folder.appending(path: TranscriptFiles.asHeard))
             var input = try XCTUnwrap(WritingInput.from(folder: folder, clock: nil, duration: 0, applyLexicon: false, label: "Synthetic",
                                                         fileName: "synthetic.json", kind: .talk, knownSerenity: false))
-            input.people = PeopleFacts(checked: true, named: [ProviderTests.teacher(consent: true)])
+            input.people = PeopleFacts(checked: true, named: [ProviderTests.teacher()])
             var setup = WritingSetup()
             setup.providers = [.writing: provider, .tagging: .appleOnDevice, .summarizing: .appleOnDevice]
             setup.maxAttempts = 1

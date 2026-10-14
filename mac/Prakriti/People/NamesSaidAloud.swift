@@ -6,7 +6,8 @@ import NaturalLanguage
 // transcript (NLTagger, `.nameType`, `personalName`, the same tagger as the cloud lock's NameTokens) that is not the
 // name of someone Ivan named in Settings, Privacy becomes a moment to check: Keep, or Mute. Mute silences the word in
 // every audio output (`Mastering.muteFilter`) and writes "[name]" in its place in the captions and transcript files
-// (`EpisodeTranscript.cues`, `mutes`). Approve waits until every one is decided (`ApprovalCheck`).
+// (`EpisodeTranscript.cues`, `mutes`). A name is kept unless Ivan chooses Mute, and Approve never asks about one (part
+// LOCK, Ivan's 12 Oct decision: every participant signed a release, so a name said aloud is not a people decision).
 //
 // The tagger misses some names (its recall on the 13 Sep talk is in BUILD-LOG, "v2 part M5a"), so this is a help to
 // Ivan's listening, not a guarantee; the help article says so.

@@ -14,7 +14,7 @@ import XCTest
 ///   run on the first episode as if the second voice were left out: it must catch it (research-people.md 6.3).
 /// - **two-people-tracks.mov** (check 4): who speaks comes from tracks 2 and 3, and the same choices give the same
 ///   result.
-/// - the **13 Sep talk** (check 10): the names said aloud, counted (a number only, for BUILD-LOG); Approve waits for
+/// - the **13 Sep talk** (check 10): the names said aloud, counted (a number only, for BUILD-LOG); Approve no longer waits for
 ///   them; the first one muted and made again: its stretch of the episode measured silent, "[name]" in the captions.
 ///
 ///   cd ~/Code/prakriti/mac && make accept-people MILESTONE=v2-m6c
@@ -180,9 +180,9 @@ final class ChoicesAcceptanceTests: XCTestCase {
         model.setTeacher(gabriel, for: talk)
         let said = try XCTUnwrap(talk.namesSaid, "the names step ran")
         report.append("Check 10, the 13 Sep talk: \(said.moments.count) names said aloud to check (other than Gabriel, who is named in Settings), \(said.byName.count) different names. \(step(talk, .namesSaid))")
-        report.append("  Approve while they are not decided: \(model.approvalCheck(talk).line ?? "allowed")")
+        report.append("  Approve with no name decided: \(model.approvalCheck(talk).canApprove ? "allowed (part LOCK: names said aloud are never asked about)" : model.approvalCheck(talk).line ?? "refused")")
         if let first = said.moments.first {
-            XCTAssertFalse(model.approvalCheck(talk).canApprove, "Approve waits for each name")
+            XCTAssertTrue(model.approvalCheck(talk).canApprove, "part LOCK: Approve never asks about a name said aloud")
             model.decideName(.keep, moments: Array(said.moments.dropFirst()), in: talk)
             model.decideName(.mute, moments: [first], in: talk)
             XCTAssertTrue(talk.choicesPending)

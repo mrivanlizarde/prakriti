@@ -93,3 +93,17 @@ still owed; the "has agreed" checkbox records consent, it does not create it.
 - `HelpTests.unbuiltNames`: "People" and "Unnamed" (case sensitive), "Other People Appear" and "Look for Faces" now
   belong to `faces`; "Blur Face" and the print words stay with `people`.
 - Not built: voices, names, Who Is Teaching (M6b); choices and removing speech (M6c); hiding faces (M6d).
+
+## Changed in part LOCK (Wed 14 Oct 2026)
+
+- Ivan's decision of Mon 12 Oct: every participant signed a release covering their likeness for commercial use. The
+  lock no longer reads the kind of recording, the people check, unnamed people or "Serenity" in a transcript. The
+  provider chosen for each task (the Claude API by default) reads every recording, unless someone in it is set to
+  Leave Out (any output) or a named person in it, seen or heard, has "Signed release on file" turned off in
+  Settings, Privacy (`Person.noRelease`, off for everyone). The Checks line names no one: "Someone in it is set to
+  Leave Out, so only models on this Mac read it." or "Someone in it has no signed release on file, so ...".
+- `PrivacyLock.release` now replaces only muted names and the names of people marked no release (each whole name and
+  each word of three letters or more), and refuses if one is left. Names said aloud otherwise go as they are.
+- Names said aloud are kept unless Ivan chooses Mute; Approve never asks about them.
+- `Person.mayReadInCloud` and its switch "Cloud models may read their words" are retired (the stored field is kept so
+  older stores open unchanged).

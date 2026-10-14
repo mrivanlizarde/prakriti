@@ -5,6 +5,20 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-14, Wed: v2 part LOCK, the lock follows the signed releases
+
+- **The privacy lock now blocks the cloud only for Ivan's own marks: someone set to Leave Out, or a person marked "no
+  release".** Why: Ivan, Mon 12 Oct, "all the participants have signed an agreement that includes that their likeness can be
+  used for commercial purposes". M5a's lock kept classes, recordings with other people, unchecked recordings and any transcript
+  saying "Serenity" on this Mac, which would have turned his live Claude API writing back to a 58-minute local model.
+- **A new per-person switch, "Signed release on file", on for everyone** (`Person.noRelease`), replacing "Cloud models may read
+  their words". Why: the old switch was off by default, so every existing person would have read as unreleased.
+- **Only muted names and the names of people without a release are replaced before sending.** Why: names said aloud are not a
+  privacy question under the decision, and the tagger was also removing "Yoga Marga" from what the writer read.
+- **Approve never asks about names said aloud.** Why: Ivan, Tue 13 Oct: they are not people decisions.
+- **Installed, with M5a to M8b.** Why: LOCK was the only thing the install waited on; one real 13 Sep write in development went
+  through Anthropic for $0.09.
+
 ## 2026-10-14, Wed: the v2 run's handoff
 
 - **BUILD-LOG gains "v2 run: where it stands".** Why: the run stopped after M8b (18 of the plan's 31 parts), with every part from

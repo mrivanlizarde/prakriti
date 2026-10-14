@@ -38,7 +38,7 @@ final class VoicesAcceptanceTests: XCTestCase {
         model.log.write("Acceptance test for v2 part M6b (voices and names) started.")
         let renderer = try SnapshotRenderer(outputFolder: SnapshotRenderer.milestoneFolder())
         let gabriel = try XCTUnwrap(model.addPerson(named: "Gabriel"))
-        XCTAssertFalse(gabriel.mayReadInCloud, "off until Ivan turns it on")
+        XCTAssertFalse(gabriel.noRelease, "a signed release on file until Ivan turns it off (part LOCK)")
 
         let talk13 = paths.studioRecordings.appending(path: "2026-09-13/2026-09-13 18-25-44.mp4")
         let talk6 = paths.studioRecordings.appending(path: "2026-09-06/2026-09-06 18-06-33.mp4")
@@ -165,40 +165,39 @@ final class VoicesAcceptanceTests: XCTestCase {
             let outcome = try await Writer(setup: setup, log: nil).write(input)
             return (cloud.requests.count, outcome.lockReason)
         }
+        // Since part LOCK (Wed 14 Oct, Ivan's 12 Oct decision: everyone signed a release) other people and names said aloud
+        // no longer lock; only Leave Out or a person marked no release does.
         let (mixedCount, mixedReason) = try await cloudRequests(mixedRec)
-        XCTAssertEqual(mixedCount, 0, "two-people-mixed writes locally")
+        XCTAssertEqual(mixedCount, 1, "two-people-mixed, nobody named: written by Anthropic")
         report.append("Check 9, writing set to Anthropic, cloud requests counted (the cloud client is scripted; nothing leaves the Mac):")
         report.append("  two-people-mixed, nobody named: \(mixedCount) (\(mixedReason ?? "open"))")
         model.setTeacher(gabriel, for: mixedRec)
-        model.setCloudConsent(true, for: gabriel)
-        let (mixedNamed, mixedNamedReason) = try await cloudRequests(mixedRec)
-        XCTAssertEqual(mixedNamed, 0, "two-people-mixed with Gabriel named and agreed still writes locally: someone else appears")
-        report.append("  two-people-mixed, Gabriel teaching and agreed: \(mixedNamed) (\(mixedNamedReason ?? "open"))")
-        model.setCloudConsent(false, for: gabriel)
+        if let key = mixedRec.unnamedKeys.first { _ = model.setChoice(.leaveOut, for: key, output: nil, in: mixedRec) }
+        let (mixedLeft, mixedLeftReason) = try await cloudRequests(mixedRec)
+        XCTAssertEqual(mixedLeft, 0, "two-people-mixed with the other voice set to Leave Out writes locally")
+        report.append("  two-people-mixed, Gabriel teaching, the other person set to Leave Out: \(mixedLeft) (\(mixedLeftReason ?? "open"))")
+        model.setRelease(false, for: gabriel)
         let (talkOff, talkOffReason) = try await cloudRequests(talk)
-        XCTAssertEqual(talkOff, 0, "13 Sep, Gabriel's switch off")
-        report.append("  13 Sep talk, Gabriel teaching, his switch off: \(talkOff) (\(talkOffReason ?? "open"))")
-        model.setCloudConsent(true, for: gabriel)
+        XCTAssertEqual(talkOff, 0, "13 Sep, Gabriel marked no release")
+        report.append("  13 Sep talk, Gabriel teaching, marked no release: \(talkOff) (\(talkOffReason ?? "open"))")
+        model.setRelease(true, for: gabriel)
         let (talkOn, talkOnReason) = try await cloudRequests(talk)
-        report.append("  13 Sep talk, Gabriel teaching, his switch on: \(talkOn) (\(talkOnReason ?? "open"))")
-        // The 90 s clip of the same talk (5:00 to 6:30), one face and one voice if the pass says so.
-        model.setCloudConsent(false, for: gabriel)
+        XCTAssertEqual(talkOn, 1, "13 Sep, Gabriel's release on file: Anthropic, though other faces appear and it says Serenity")
+        report.append("  13 Sep talk, Gabriel teaching, release on file: \(talkOn) (\(talkOnReason ?? "open"))")
+        // The 90 s clip of the same talk (5:00 to 6:30).
         let clipRec = try await make(clip)
         report += describe("13sep-90s (the same talk, 5:00 to 6:30)", clipRec)
         model.setTeacher(gabriel, for: clipRec)
+        model.setRelease(false, for: gabriel)
         let (clipOff, clipOffReason) = try await cloudRequests(clipRec)
-        XCTAssertEqual(clipOff, 0, "the clip with Gabriel's switch off")
-        model.setCloudConsent(true, for: gabriel)
+        XCTAssertEqual(clipOff, 0, "the clip with Gabriel marked no release")
+        model.setRelease(true, for: gabriel)
         let (clipOn, clipOnReason) = try await cloudRequests(clipRec)
-        report.append("  13sep-90s, Gabriel teaching, his switch off: \(clipOff) (\(clipOffReason ?? "open")); on: \(clipOn) (\(clipOnReason ?? "open"))")
+        XCTAssertEqual(clipOn, 1, "the clip with Gabriel's release on file")
+        report.append("  13sep-90s, Gabriel teaching, no release: \(clipOff) (\(clipOffReason ?? "open")); release on file: \(clipOn) (\(clipOnReason ?? "open"))")
         let clipFacts = clipRec.peopleFacts
-        report.append("  13sep-90s people facts: checked \(clipFacts.checked), named \(clipFacts.named.map { "\($0.name) heard \($0.heard) seen \($0.seen) agreed \($0.cloudConsent)" }), unnamed seen \(clipFacts.unnamedSeen), unnamed heard \(clipFacts.unnamedHeard), says Serenity \(clipRec.hasSerenity)")
-        if clipFacts.unnamedSeen == 0 && clipFacts.unnamedHeard == 0 && !clipRec.hasSerenity {
-            XCTAssertEqual(clipOn, 1, "one face, one voice, Gabriel named and agreed: allowed")
-        }
-        model.setCloudConsent(false, for: gabriel)
-        // Every real talk names Serenity, which keeps it local (Mac warning 90), so the open case is shown on a made-up
-        // recording through the same runner: a test pattern (no face) and one `say` voice, 70 s, naming no one.
+        report.append("  13sep-90s people facts: checked \(clipFacts.checked), named \(clipFacts.named.map { "\($0.name) heard \($0.heard) seen \($0.seen) released \($0.released)" }), unnamed seen \(clipFacts.unnamedSeen), unnamed heard \(clipFacts.unnamedHeard), says Serenity \(clipRec.hasSerenity)")
+        // A made-up recording through the same runner: a test pattern (no face) and one `say` voice, 70 s, naming no one.
         let synthetic = FileManager.default.temporaryDirectory.appending(path: "prakriti-m6b-one-voice.mov")
         try? FileManager.default.removeItem(at: synthetic)
         let speech = FileManager.default.temporaryDirectory.appending(path: "prakriti-m6b-one-voice.aiff")
@@ -210,13 +209,13 @@ final class VoicesAcceptanceTests: XCTestCase {
         let oneVoice = try await make(synthetic)
         report += describe("synthetic one-voice recording (test pattern, say)", oneVoice)
         if let voice = oneVoice.voices?.voices.first { model.nameVoice(voice.id, as: gabriel, in: oneVoice) }
+        model.setRelease(false, for: gabriel)
         let (synthOff, synthOffReason) = try await cloudRequests(oneVoice)
-        model.setCloudConsent(true, for: gabriel)
+        model.setRelease(true, for: gabriel)
         let (synthOn, synthOnReason) = try await cloudRequests(oneVoice)
-        model.setCloudConsent(false, for: gabriel)
-        XCTAssertEqual(synthOff, 0, "the voice named Gabriel, his switch off")
-        XCTAssertEqual(synthOn, 1, "the voice named Gabriel, his switch on, nobody else: allowed")
-        report.append("  synthetic one voice, named Gabriel: switch off \(synthOff) (\(synthOffReason ?? "open")); on \(synthOn) (\(synthOnReason ?? "open"))")
+        XCTAssertEqual(synthOff, 0, "the voice named Gabriel, marked no release")
+        XCTAssertEqual(synthOn, 1, "the voice named Gabriel, release on file")
+        report.append("  synthetic one voice, named Gabriel: no release \(synthOff) (\(synthOffReason ?? "open")); release on file \(synthOn) (\(synthOnReason ?? "open"))")
         try? FileManager.default.removeItem(at: speech)
         report.append("")
 

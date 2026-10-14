@@ -8,10 +8,16 @@ import SwiftData
 final class Person {
     @Attribute(.unique) var id: UUID = UUID()
     var name: String = ""
-    /// "Cloud models may read their words." Off for everyone until Ivan turns it on for that person
-    /// (docs/v2/PLAN.md section 5, item 2: Serenity's teaching stays local until her yes). The privacy
-    /// lock keeps any recording where someone heard has this off on this Mac.
+    /// v2 part M5a's switch "Cloud models may read their words". Retired by part LOCK (Wed 14 Oct 2026): every
+    /// participant signed a release (Ivan, Mon 12 Oct), so the lock reads `noRelease` instead. Kept as a stored field so
+    /// a store written since M5a opens unchanged; nothing reads it for the lock.
     var mayReadInCloud: Bool = false
+    /// Ivan marked this person as having no signed release on file (Settings, Privacy: "Signed release on file"
+    /// turned off). Off for everyone, so every person counts as released (Ivan, Mon 12 Oct: "all the participants have
+    /// signed an agreement"). The privacy lock keeps any recording where this person appears or speaks on this Mac,
+    /// and their name is replaced in every cloud request. Part LOCK; an addition with a default, so older stores open
+    /// with everyone released.
+    var noRelease: Bool = false
     var addedAt: Date = Date.distantPast
 
     // v2 part M7a, the People gallery (docs/v2/PLAN.md M7, research-people.md 5.3, design spec 3.9).
@@ -71,7 +77,7 @@ final class Person {
 
 extension Person {
     /// What a make and the lock read about this person: no store object crosses into a make.
-    var named: NamedPerson { NamedPerson(id: id, name: name, cloudConsent: mayReadInCloud) }
+    var named: NamedPerson { NamedPerson(id: id, name: name, released: !noRelease) }
 }
 
 /// What a named person does in the recordings (research-people.md 5.3).

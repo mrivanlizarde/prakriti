@@ -281,19 +281,23 @@ final class LibraryTests: XCTestCase {
 
     // MARK: Words
 
-    /// The privacy lock's line names the real reason and never a person (design spec C4).
+    /// The privacy lock's line names the real reason and never a person (design spec C4). Since part LOCK only Ivan's own
+    /// marks lock a recording: a talk, a class, and a transcript that names Serenity have no lock line.
     func testTheLockLineNamesNoOne() {
         let model = emptyModel()
         let talk = recording(.readyForYourYes, "talk", day: 13, in: model)
-        XCTAssertEqual(talk.lockLine, "Who appears and speaks in it has not been checked, so only models on this Mac read it.")
+        XCTAssertNil(talk.lockLine)
         talk.hasSerenity = true
-        XCTAssertEqual(talk.lockLine, "Who appears and speaks in it has not been checked, so only models on this Mac read it.")
-        let named = PrivacyLock.decide(LockSubject(kind: .talk, mentionsSerenity: true, people: PeopleFacts(checked: true))).line ?? ""
-        XCTAssertEqual(named, "It names a teacher who has not agreed to cloud models, so only models on this Mac read it.")
+        XCTAssertNil(talk.lockLine, "a name said aloud locks nothing")
         talk.kind = .lesson
-        XCTAssertEqual(talk.lockLine, "This is a class, so only models on this Mac read it.")
-        for line in [named, talk.lockLine ?? ""] + RecordingKind.allCases.compactMap({ PrivacyLock.decide(LockSubject(kind: $0, mentionsSerenity: false)).line })
-            + [PrivacyLock.unnamed, PrivacyLock.notAgreed, PrivacyLock.noRecording] {
+        XCTAssertNil(talk.lockLine, "a class locks nothing")
+        var choices = PeopleChoices()
+        choices.set(.leaveOut, for: .voice(2))
+        talk.choices = choices
+        XCTAssertEqual(talk.lockLine, "Someone in it is set to Leave Out, so only models on this Mac read it.")
+        let unreleased = PrivacyLock.decide(LockSubject(people: PeopleFacts(checked: true, named: [.init(personID: UUID(), name: "Serenity", heard: true, seen: false, released: false)]))).line ?? ""
+        XCTAssertEqual(unreleased, "Someone in it has no signed release on file, so only models on this Mac read it.")
+        for line in [unreleased, talk.lockLine ?? "", PrivacyLock.leftOut, PrivacyLock.noRelease, PrivacyLock.noRecording, PrivacyLock.settingsLine] {
             XCTAssertFalse(line.contains("Serenity"))
             XCTAssertFalse(line.contains("\u{2014}") || line.contains("\u{2013}"))
         }

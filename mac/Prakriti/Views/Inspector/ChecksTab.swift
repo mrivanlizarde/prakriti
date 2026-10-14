@@ -144,8 +144,7 @@ struct StackedValue: View {
 
 extension Recording {
     /// The privacy lock's line for this recording (design spec C4): the real reason, in words that name no
-    /// one (PrivacyLock.decide, v2 part M5a). Until the people check exists (part M6), every recording is
-    /// locked, at the latest because who appears and speaks in it has not been checked.
+    /// one (PrivacyLock.decide; since part LOCK only someone set to Leave Out or marked "no release" locks it).
     var lockLine: String? { PrivacyLock.decide(lockSubject).line }
 }
 

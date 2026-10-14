@@ -489,9 +489,11 @@ final class PipelineRunner {
         let defaults = model.defaultSettings()
         let lexicon = OutputResolver.details(for: .transcript, recording: recording, defaults: defaults)?.applyLexicon ?? true
         if let path = recording.outputFolder,
-           let input = WritingInput.from(folder: URL(fileURLWithPath: path, isDirectory: true), clock: recording.episodeClock, duration: recording.duration ?? 0,
+           var input = WritingInput.from(folder: URL(fileURLWithPath: path, isDirectory: true), clock: recording.episodeClock, duration: recording.duration ?? 0,
                                          applyLexicon: lexicon, label: label, fileName: name, kind: recording.kind, knownSerenity: recording.hasSerenity,
                                          mutes: recording.madeMutes) {
+            // The lock reads the same people and choices the page shows (part LOCK).
+            input.people = recording.peopleFacts
             do {
                 let writer = Writer(setup: writingSetup(), log: model.log)
                 let writing = Task { try await writer.write(input) }
@@ -541,7 +543,7 @@ final class PipelineRunner {
         recording.updatedAt = model.now()
         if result.mentionsSerenity && !recording.hasSerenity {
             recording.hasSerenity = true
-            model.record("\(label) (\(name)): Serenity is named in the transcript, so from now on only models on this Mac may read it.", run: run)
+            // Recorded only: since part LOCK a name said aloud keeps nothing on this Mac (Ivan, 12 Oct), so nothing is said.
         }
         if let written = result.written {
             recording.writtenJSON = written.stored.json()
@@ -738,7 +740,7 @@ final class PipelineRunner {
         // Once a transcript says "Serenity", the recording stays privacy locked (never unset).
         if result.mentionsSerenity && !recording.hasSerenity {
             recording.hasSerenity = true
-            model.record("\(label) (\(recording.fileName)): Serenity is named in the transcript, so from now on only models on this Mac may read it.", run: run)
+            // Recorded only: since part LOCK a name said aloud keeps nothing on this Mac (Ivan, 12 Oct), so nothing is said.
         }
         // What was made is written only when a make finishes: until then the files of the last
         // finished make are still in the folder, so their numbers stay. Something not made this

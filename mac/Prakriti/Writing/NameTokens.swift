@@ -1,17 +1,16 @@
 import Foundation
 import NaturalLanguage
 
-// Names in text that goes to a cloud model (v2 part M5a, docs/v2/PLAN.md M5, warning 19).
+// Names in text that goes to a cloud model (v2 part M5a; narrowed by part LOCK, Wed 14 Oct 2026).
 //
-// Before any text leaves the Mac, every person's name Apple's tagger finds (NLTagger, `.nameType`,
-// `personalName`) is replaced by a token such as [[NAME-1]], except the names of named people who agreed
-// to cloud models; a name Ivan marked Mute is always replaced, even when the tagger misses it that time.
-// The answer comes back with the tokens and each is put back exactly as it was written, so a quote still
-// matches the transcript word for word.
+// Since part LOCK the lock replaces only the names that must never go: names Ivan marked Mute and the names of
+// anyone he marked "no release" (`tokenize(_:only:)`, each whole name and each of its words of three letters or more).
+// Every other name goes as it is, because Ivan's decision of Mon 12 Oct (every participant signed a release) makes a
+// name said aloud nobody's privacy question. Each replaced form gets its own [[NAME-n]] and is put back exactly in
+// the answer, so a quote still matches the transcript word for word.
 //
-// The tagger is not perfect (its recall on the 13 Sep talk is measured in BUILD-LOG, "v2 part M5a"), so
-// this is one of three locks, never the only one: the privacy lock keeps every recording with other people
-// on this Mac whatever the tagger finds, and PrivacyLock re-reads the text after the tokens are in.
+// Apple's tagger (`findNames`, and the older `tokenize(_:keep:always:)` that replaced every name it found) stays for
+// the names said aloud step and its measured recall (BUILD-LOG, "v2 part M5a"); the lock no longer calls it.
 
 /// The names replaced in one request, and how to put them back.
 struct NameTokens: Sendable, Equatable {
@@ -117,6 +116,26 @@ struct NameTokens: Sendable, Equatable {
             guard grew else { break }
             out = out.map { replace(targets, in: $0, tokens: &tokens) }
         }
+        return (out, tokens)
+    }
+
+    /// Replaces only `names` (Ivan's muted names and the names of anyone marked "no release"), each whole name and
+    /// each of its words of three letters or more where it stands alone, case ignored; nothing the tagger finds.
+    static func tokenize(_ texts: [String], only names: [String]) -> (texts: [String], tokens: NameTokens) {
+        var targets: [String] = []
+        func add(_ name: String) {
+            let trimmed = name.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty, !targets.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) else { return }
+            targets.append(trimmed)
+        }
+        for name in names {
+            add(name)
+            let parts = words(name)
+            for word in parts where parts.count > 1 && word.count >= 3 { add(word) }
+        }
+        var tokens = NameTokens()
+        guard !targets.isEmpty else { return (texts, tokens) }
+        let out = texts.map { replace(targets, in: $0, tokens: &tokens) }
         return (out, tokens)
     }
 
