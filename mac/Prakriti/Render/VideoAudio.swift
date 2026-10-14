@@ -6,9 +6,11 @@ import Foundation
 //    floats in the job folder, with any name said aloud that Ivan muted silenced on the original's clock (v1's
 //    `Mastering.muteFilter`, the podcast's own).
 // 2. Swift joins the plan's spans from those samples, each exactly as long as its picture (`EditTimeline.audioPieces`), and
-//    every join is a 20 ms crossfade of steady power centred on the cut (equal power, eased where both sides are alike), made with 10 ms of handle from the sound taken out on
-//    each side. The handles are why the total length stays exactly the sum of the spans: nothing overlaps, nothing is
-//    stretched, so the picture stays in sync (research 1.7; ffmpeg's `acrossfade` would shorten the output instead).
+//    every join is a 20 ms crossfade of steady power centred on the cut (equal power, eased where both sides are alike), made
+//    with 10 ms of handle from the sound taken out on each side. The handles are why the total length stays exactly the sum
+//    of the spans: nothing overlaps, nothing is stretched, so the picture stays in sync (research 1.7; ffmpeg's `acrossfade`
+//    would shorten the output instead). Where a handle carries a knock, the fade moves to the clean side of the cut; and every
+//    fade is held calmer than the 25 ms either side of it (`calm`), so no join is busier than the room (research 1.8).
 // 3. v1's speech chain, re-targeted to the video master: two-pass loudnorm in linear mode to -14 LUFS with the limiter under
 //    a -1 dBTP ceiling (`Mastering`, the same filters as the podcast at its own -16), written as a float WAV that the
 //    writer encodes as AAC-LC 48 kHz stereo at 320 kbps (research 6.1 asks 384; see VideoWriter for why 320).
@@ -97,6 +99,12 @@ enum VideoAudio {
         let out = try FileHandle(forWritingTo: output)
         defer { try? out.close() }
         var written: Int64 = 0
+        // The last `around + 1` sample frames written, as mono: the sound a join's fade is held calmer than.
+        var recent: [Float] = []
+        func wrote(_ frames: [Float]) {
+            out.write(Data(floatsAsBytes: frames))
+            recent = Array((recent + mono(Array(frames.suffix(channels * (around + 1))))).suffix(around + 1))
+        }
         // Half of each join's crossfade, in samples: 10 ms, or less where a piece is too short to hold both of its ends.
         let halves = zip(pieces, pieces.dropFirst()).map { min(handle, Int($0.samples / 2), Int($1.samples / 2)) }
         for (index, piece) in pieces.enumerated() {
@@ -110,7 +118,7 @@ enum VideoAudio {
                 var left = bodyLength
                 while left > 0 {
                     let count = Int(min(left, 48_000 * 10))
-                    out.write(Data(floatsAsBytes: try source.read(from: at, count: count)))
+                    wrote(try source.read(from: at, count: count))
                     at += Int64(count)
                     left -= Int64(count)
                 }
@@ -122,11 +130,102 @@ enum VideoAudio {
                 // from its handle, before its own start.
                 let outgoing = try source.read(from: piece.sourceSample + piece.samples - Int64(tail), count: 2 * tail)
                 let incoming = try source.read(from: next.sourceSample - Int64(tail), count: 2 * tail)
-                out.write(Data(floatsAsBytes: crossfade(outgoing, incoming, frames: 2 * tail)))
+                // What follows the fade in the output: the next piece from its own start plus `tail`.
+                let following = mono(try source.read(from: next.sourceSample + Int64(tail), count: around + 1))
+                wrote(joinFade(outgoing, incoming, frames: 2 * tail, before: recent, after: following))
                 written += Int64(2 * tail)
             }
         }
         return written
+    }
+
+    /// The 25 ms either side of a fade that it is measured against (research 1.8: "the surrounding 50 ms").
+    static let around = 1_200
+    /// How much calmer than the sound around it a join is held: no sample-to-sample step inside the fade over 0.7 of the
+    /// largest step in the 25 ms either side. Research 1.8's bar is "no sample jump at a join exceeds the largest jump in the
+    /// surrounding 50 ms"; untouched room tone fails it by chance on about 29% of joins (the largest of 3,360 steps falls in
+    /// the fade's 960 that often), so the fade is held under it by construction. 0.7 rather than 1 because the AAC encoder
+    /// moves single steps by up to about 15% (measured 14 Oct on the 6 Sep sound, 163 joins: worst 0.84 after encoding at 0.7,
+    /// 1.13 at 1.0).
+    static let calm: Float = 0.7
+
+    /// Where the fade sits in its 2 x 10 ms window. Centred is the rule (20 ms, research 1.7). When a handle carries a
+    /// transient (a knock or a breath taken out with the pause: the fade's largest step more than twice the sound around it,
+    /// 6 Sep at 9:48), the fade moves to the side whose handle is clean: 10 ms ending at the cut (only the next piece's handle
+    /// is heard) or 10 ms starting at it (only this piece's).
+    enum FadeShape: CaseIterable, Sendable { case centred, beforeCut, afterCut }
+
+    /// One join: the fade in the shape whose handles are cleanest, then held calmer than the sound either side of it.
+    /// `before` is the output just before the fade, `after` what follows it, both mono.
+    static func joinFade(_ a: [Float], _ b: [Float], frames: Int, before: [Float], after: [Float]) -> [Float] {
+        let reference = max(largestStep(before), largestStep(after))
+        let first = before.last, last = after.first
+        func ratio(_ faded: [Float]) -> Float {
+            largestStep((first.map { [$0] } ?? []) + mono(faded) + (last.map { [$0] } ?? [])) / max(reference, 1e-12)
+        }
+        var faded = crossfade(a, b, frames: frames, shape: .centred)
+        if ratio(faded) > 2 {
+            let others = [FadeShape.beforeCut, .afterCut].map { crossfade(a, b, frames: frames, shape: $0) }
+            if let best = others.min(by: { ratio($0) < ratio($1) }), ratio(best) < ratio(faded) { faded = best }
+        }
+        guard let first, let last else { return faded }
+        let m = mono(faded)
+        let steadied = steady(m, from: first, to: last, limit: calm * reference)
+        for n in 0..<frames {
+            let d = steadied[n] - m[n]
+            guard d != 0 else { continue }
+            for ch in 0..<channels { faded[n * channels + ch] += d }
+        }
+        return faded
+    }
+
+    /// `window` changed as little as it takes for no step (including the one in from `from` and the one out to `to`, which
+    /// stay as they are) to be larger than `limit`: each step over is shared back between its two samples until none is
+    /// (projection onto the allowed steps). Where that does not settle, the window is drawn toward the straight line between
+    /// its ends just far enough. A limit too small for the ends to be reached is raised to the straight line's step.
+    static func steady(_ window: [Float], from: Float, to: Float, limit: Float) -> [Float] {
+        let count = window.count
+        guard count > 0 else { return window }
+        let c = max(limit, abs(to - from) / Float(count + 1) * 1.0001, 1e-9)
+        var full = [from] + window + [to]
+        func overs() -> Bool { (1..<full.count).contains { abs(full[$0] - full[$0 - 1]) > c } }
+        var pass = 0
+        while overs(), pass < 400 {
+            for i in 1..<full.count {
+                let d = full[i] - full[i - 1]
+                guard abs(d) > c else { continue }
+                let excess = (abs(d) - c) * (d > 0 ? 1 : -1)
+                if i == 1 { full[1] -= excess }
+                else if i == full.count - 1 { full[i - 1] += excess }
+                else { full[i - 1] += excess / 2; full[i] -= excess / 2 }
+            }
+            pass += 1
+        }
+        if !overs() { return Array(full[1...count]) }
+        // Toward the straight line between the ends, by halves, until every step is within the limit.
+        let line = (0..<count).map { from + (to - from) * Float($0 + 1) / Float(count + 1) }
+        var low: Float = 0, high: Float = 1
+        func blended(_ t: Float) -> [Float] { (0..<count).map { line[$0] + t * (full[$0 + 1] - line[$0]) } }
+        for _ in 0..<30 {
+            let t = (low + high) / 2
+            if largestStep([from] + blended(t) + [to]) <= c { low = t } else { high = t }
+        }
+        return blended(low)
+    }
+
+    /// Interleaved stereo frames as mono, the average of the channels (what the acceptance measures).
+    static func mono(_ frames: [Float]) -> [Float] {
+        stride(from: 0, to: frames.count - channels + 1, by: channels).map { i in
+            (0..<channels).reduce(Float(0)) { $0 + frames[i + $1] } / Float(channels)
+        }
+    }
+
+    /// The largest step from one sample to the next.
+    static func largestStep(_ x: [Float]) -> Float {
+        guard x.count > 1 else { return 0 }
+        var m: Float = 0
+        for i in 1..<x.count { m = max(m, abs(x[i] - x[i - 1])) }
+        return m
     }
 
     /// A crossfade over `frames` stereo sample frames that keeps the power steady: the equal-power curves (cos and sin of a
@@ -134,11 +233,17 @@ enum VideoAudio {
     /// sides adds up like one sound, and equal power would lift it by up to 3 dB in the middle of the fade. Measured 13 Oct on
     /// the 13 Sep talk with plain equal power: 32 of 96 joins had a sample jump inside the fade bigger than any in the 50 ms
     /// around it, the worst on room tone either side of a shortened pause.
-    static func crossfade(_ a: [Float], _ b: [Float], frames: Int) -> [Float] {
+    static func crossfade(_ a: [Float], _ b: [Float], frames: Int, shape: FadeShape = .centred) -> [Float] {
         let r = max(0, correlation(a, b))
         var out = [Float](repeating: 0, count: frames * channels)
         for n in 0..<frames {
-            let p = (Double(n) + 0.5) / Double(frames)
+            let along = (Double(n) + 0.5) / Double(frames)
+            let p: Double
+            switch shape {
+            case .centred: p = along
+            case .beforeCut: p = min(1, 2 * along)
+            case .afterCut: p = max(0, 2 * along - 1)
+            }
             let c = cos(Double.pi / 2 * p), s = sin(Double.pi / 2 * p)
             let k = 1 / sqrt(1 + 2 * r * c * s)
             let gOut = Float(c * k), gIn = Float(s * k)

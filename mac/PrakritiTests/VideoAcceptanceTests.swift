@@ -218,24 +218,25 @@ final class VideoAcceptanceTests: XCTestCase {
         let joins = joinJumps(made: madeSound, original: originalSound, gain: Float(pow(10, gain / 20)), timeline: timeline)
         let over = joins.filter { $0.inside > $0.around }
         let worstRatio = joins.map { Double($0.inside / max($0.around, 1e-9)) }.max() ?? 0
-        lines.append(String(format: "  Joins: the worst jump inside a crossfade is %.2f times the largest in the 50 ms around it; the loudest jump inside one %.1f dBFS",
-                            worstRatio, 20 * log10(Double(joins.map(\.inside).max() ?? 1e-9))))
-        // The bar as written compares the largest jump in 960 samples (the fade) with the largest in 2,400 around it. On room
-        // tone with the same statistics either side, the largest of all 3,360 falls in the fade about 29% of the time
-        // (960 / 3,360), so the bar fails by chance alone; it is written down as measured. What it is for, a click, is gated:
-        // no jump in a fade more than twice (6 dB over) the largest around it, in the made sound or in the original's own 50 ms
-        // around the two cuts (a knock in the room at a cut is the room's: 6 Sep at 9:47, -53 dB in the original's handle).
-        let clicks = joins.filter { $0.inside > 2 * max($0.around, $0.originalAround) }
-        verdict("\(slug) check 2: no click at a join (no jump in a fade over twice the largest in the 50 ms around it, made or original)", clicks.isEmpty,
+        // Check 2's bar as written (research 1.8): no sample jump inside a join's 20 ms crossfade exceeds the largest in the
+        // 50 ms of the made sound around it (25 ms either side). Untouched room tone fails this by chance on about 29% of
+        // joins (960 of 3,360 steps), so the join is held calmer than the room by construction (`VideoAudio.calm`, 0.7) and
+        // this measures it on the decoded MP4, made sound alone. A knock in the room near a cut is not excused by the
+        // original: it is left out of the fade (`VideoAudio.FadeShape`) or held down with the rest.
+        verdict("\(slug) check 2: no sample jump at a join exceeds the largest in the 50 ms around it (made sound alone)", over.isEmpty,
+                String(format: "%d of %d joins over; the worst %.2f times the largest around it, the median %.2f; the loudest jump inside a fade %.1f dBFS",
+                       over.count, joins.count, worstRatio,
+                       joins.isEmpty ? 0 : joins.map { Double($0.inside / max($0.around, 1e-9)) }.sorted()[joins.count / 2],
+                       20 * log10(Double(joins.map(\.inside).max() ?? 1e-9)))
+                + (over.isEmpty ? "" : ": " + over.prefix(12).map { String(format: "%@ %.4f against %.4f (%.1f dBFS)", Format.timecode($0.at), $0.inside, $0.around,
+                                                                       20 * log10(Double(max($0.inside, 1e-9)))) }.joined(separator: "; ")))
+        let clicks = joins.filter { $0.inside > 2 * $0.around }
+        verdict("\(slug) check 2: no click at a join (no jump in a fade over twice the largest in the 50 ms around it, made sound alone)", clicks.isEmpty,
                 "\(joins.count) joins, \(clicks.count) over twice" + (clicks.isEmpty ? "" : ": "
-                    + clicks.prefix(8).map { String(format: "%@ %.4f against %.4f made, %.4f original", Format.timecode($0.at), $0.inside, $0.around, $0.originalAround) }.joined(separator: "; ")))
+                    + clicks.prefix(8).map { String(format: "%@ %.4f against %.4f", Format.timecode($0.at), $0.inside, $0.around) }.joined(separator: "; ")))
         let overOriginal = joins.filter { $0.inside > $0.originalAround }
-        lines.append("  Against the original's own 50 ms around the two cuts, times the gain (M8a's measure): \(overOriginal.count) of \(joins.count) joins over, the worst "
+        lines.append("  Against the original's own 50 ms around the two cuts, times the gain (M8a's measure, not gated): \(overOriginal.count) of \(joins.count) joins over, the worst "
                      + String(format: "%.2f times", joins.map { Double($0.inside / max($0.originalAround, 1e-9)) }.max() ?? 0))
-        lines.append("  Check 2's sample-jump bar as written (by chance on room tone it fails about 29% of joins): " + (over.isEmpty ? "met" : "NOT met")
-                     + ", \(over.count) of \(joins.count) joins whose largest jump in the 20 ms crossfade is over the largest in the 50 ms around it"
-                     + (over.isEmpty ? "" : ": " + over.prefix(12).map { String(format: "%@ %.4f against %.4f (%.1f dBFS)", Format.timecode($0.at), $0.inside, $0.around,
-                                                                          20 * log10(Double(max($0.inside, 1e-9)))) }.joined(separator: "; ")))
 
         // Pauses, on the made sound, with the thresholds the plan used (its floor), moved by the mastering's gain (measured
         // above, sample against sample): the edit has less room tone in it, so its own 10th percentile would sit on quiet

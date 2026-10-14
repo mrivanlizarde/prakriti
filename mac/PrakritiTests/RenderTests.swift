@@ -180,6 +180,63 @@ final class RenderTests: XCTestCase {
         for i in stride(from: 0, to: tone.count, by: 97) { XCTAssertEqual(faded[i], tone[i], accuracy: 0.0005) }
     }
 
+    func testNoJoinIsBusierThanTheRoomAroundItAndAKnockInAHandleIsLeftOut() throws {
+        // Room tone (seeded noise, the same on both channels, as OBS records a mono microphone) with a knock planted in the
+        // sound taken out just after the first piece ends, inside that piece's 10 ms handle: 6 Sep at 9:48, measured 14 Oct.
+        let folder = FileManager.default.temporaryDirectory.appending(path: "join-room-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        var state: UInt64 = 0x9E37_79B9_7F4A_7C15
+        func noise() -> Float { state = state &* 6_364_136_223_846_793_005 &+ 1; return Float(Int64(bitPattern: state >> 11) % 2001 - 1000) / 1000 }
+        let total = 48_000 * 12
+        var mono = (0..<total).map { _ in 0.003 * noise() }
+        for i in 0..<300 { mono[20_100 + i] += 0.05 * Float(exp(-Double(i) / 60)) * (i % 2 == 0 ? 1 : -1) }
+        let raw = folder.appending(path: "raw.f32"), joined = folder.appending(path: "joined.f32")
+        try Data(floatsAsBytes: mono.flatMap { [$0, $0] }).write(to: raw)
+        // The knock's join, then 40 more joins of plain room tone: by chance alone about 29% of them would fail the bar.
+        var pieces = [EditTimeline.AudioPiece(sourceSample: 0, editSample: 0, samples: 20_000)]
+        var source: Int64 = 30_000, edit: Int64 = 20_000
+        for k in 0..<41 {
+            let length = Int64(4_000 + 97 * k)
+            pieces.append(EditTimeline.AudioPiece(sourceSample: source, editSample: edit, samples: length))
+            source += length + 2_500
+            edit += length
+        }
+        let written = try VideoAudio.join(raw: raw, pieces: pieces, into: joined)
+        XCTAssertEqual(written, edit, "the total is still the sum of the pieces")
+        let stereo = try Data(contentsOf: joined).withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
+        let out = VideoAudio.mono(stereo)
+        func largest(_ range: Range<Int>) -> Float {
+            var m: Float = 0
+            for i in range where i > 0 && i < out.count { m = max(m, abs(out[i] - out[i - 1])) }
+            return m
+        }
+        for piece in pieces.dropFirst() {
+            let j = Int(piece.editSample)
+            let inside = largest((j - 480)..<(j + 480))
+            let around = max(largest((j - 480 - 1_200)..<(j - 480)), largest((j + 480)..<(j + 480 + 1_200)))
+            XCTAssertLessThanOrEqual(inside, around * VideoAudio.calm * 1.0001, "the join at \(j) is no busier than the room")
+        }
+        let knockJoin = 20_000
+        let loudest = out[(knockJoin - 480)..<(knockJoin + 480)].map { abs($0) }.max() ?? 0
+        XCTAssertLessThan(loudest, 0.006, "the knock in the handle is not heard: the fade moved to the clean side")
+        // Room tone keeps its level through the join: the hold changes only a few samples, by little.
+        let window = Array(out[(knockJoin + 2_000)..<(knockJoin + 2_960)])
+        XCTAssertEqual(window, Array(mono[(30_000 + 2_000)..<(30_000 + 2_960)]), "past the join, the next piece exactly as it was")
+    }
+
+    func testSteadyChangesOnlyTheStepsOverTheLimit() {
+        let window: [Float] = [0, 0.1, 0, 0.5, 0, 0.1, 0]
+        let held = VideoAudio.steady(window, from: 0, to: 0, limit: 0.2)
+        let steps = zip([0] + held, held + [0]).map { abs($1 - $0) }
+        XCTAssertLessThanOrEqual(steps.max() ?? 0, 0.2 + 1e-6)
+        XCTAssertEqual(held[0], 0, accuracy: 1e-6, "a sample whose steps were within the limit is left alone")
+        XCTAssertEqual(VideoAudio.steady([0.1, 0.1], from: 0.1, to: 0.1, limit: 1), [0.1, 0.1], "nothing over, nothing changed")
+        // Ends too far apart for the limit: the straight line between them.
+        let line = VideoAudio.steady([5, -5, 5], from: 0, to: 4, limit: 0.01)
+        XCTAssertEqual(line[1], 2, accuracy: 0.01)
+    }
+
     func testCaptionsKeepToFortyTwoCharactersTwoLinesAndTheirSpeed() {
         let text = "Prāṇāyāma is the practice of the breath, and it starts with simply noticing how you breathe right now"
         let words = text.split(separator: " ").enumerated().map { i, w in

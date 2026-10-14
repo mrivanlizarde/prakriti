@@ -734,7 +734,8 @@ recording and makes it again. The make plans the edit, then **Making the video**
 in whole frames; `CompositionBuilder` puts every kept span on one track of an `AVMutableComposition` with an
 `AVVideoComposition.Configuration`, one `RenderInstruction` per span and the custom `Compositor`, which passes a frame on
 untouched when nothing is drawn on it and draws through Core Image otherwise; `VideoAudio` decodes the first audio track,
-joins the spans in Swift with 20 ms crossfades from 10 ms handles, so the sound is exactly as long as the picture, and masters
+joins the spans in Swift with 20 ms crossfades from 10 ms handles, so the sound is exactly as long as the picture (a fade
+moves to the clean side of the cut when a handle holds a knock, and every fade is held calmer than the 25 ms either side), and masters
 it to -14 LUFS, true peak under -1; `VideoWriter` writes H.264 High at a constant 16 Mbps, a key frame every 15 frames, no
 B-frames, BT.709, fast start, AAC-LC 320 kbps; `Mp4Boxes` removes the writer's identity edit list on the picture), then
 **Checking the video** (`ReadyChecklist`, then `OutputGate`, the only code that moves a rendered file into place). **Until
@@ -944,7 +945,8 @@ tail -20 ~/Library/Logs/Prakriti/$(date +%Y-%m-%d).log
 and 6 Sep talks in development with the Edited video on and measures the MP4 from outside: ffprobe (H.264 High, 1080p, 30000/1001,
 BT.709, bitrate within 10% of 16 Mbps, AAC 48 kHz stereo), the boxes (moov before mdat, no edit list on the picture), ebur128 (-14
 LUFS within 1, true peak at or under -1), the last 5 s decoded, the length against the plan, the sound at every join
-cross-correlated with the original and six frames matched by pixel difference (in sync to the frame), no click at a join, the
+cross-correlated with the original and six frames matched by pixel difference (in sync to the frame), no sample jump at a join
+over the largest in the 50 ms of the made sound around it, the
 pauses, Parakeet run on the MP4 in about 60 s pieces (98% of kept words in order) and on 8 s around each join a filler was taken
 from (90% of them gone), the Ready checklist, StageTiming fed; the 13 Sep Video folder copied to `~/Prakriti/Dev/Listening check/`;
 then Make Video refused with someone hidden. It writes `acceptance-video.txt` and `acceptance-video-m8b.txt`; no frame of a talk is
@@ -1995,6 +1997,14 @@ top and its end. Reading the code is not verification, and neither is a passing 
 150. **The copy Ivan listens to for M8 check 9 lives in `~/Prakriti/Dev/Listening check/`, never only in `Outputs`.** Reason:
     the refusal check removes the 13 Sep Video folder on every `make accept-video`, and every later make of the talk replaces
     its output folder, so the file the M8b builder named was gone before Ivan could open it.
+151. **Every join in the video's sound is held calmer than the 25 ms either side of it (`VideoAudio.calm`, 0.7), and a fade
+    moves off a handle that holds a knock (`VideoAudio.FadeShape`).** Reason: research 1.8's bar is "no sample jump at a join
+    exceeds the largest in the surrounding 50 ms", and plain room tone fails it by chance on about 29% of joins (the largest of
+    3,360 steps lands in the fade's 960 that often): 22 of 95 joins on 13 Sep and 75 of 361 on 6 Sep (verifier, 14 Oct). Worse,
+    a knock in the sound taken out at 9:48 on 6 Sep came through a handle 6.4 times over the room around it. The hold changes
+    only the few steps over the limit (about 7 samples of 960, the change about -45 dB under the fade: median of a test plan of 163 joins on the 6 Sep sound), and 0.7 rather than 1 leaves room for
+    the AAC encoder, which moves single steps by up to about 15%. Measure it on the decoded MP4, made sound alone; never excuse
+    a join by the original's sound.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

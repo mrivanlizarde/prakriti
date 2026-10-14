@@ -5,6 +5,15 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-14, Wed: v2 part M8b, second fix: the joins meet the plan's bar as written
+
+- **Every join in the video's sound is held calmer than the room around it, and a fade moves off a handle with a knock in it.**
+  Why: PLAN check 2 says no sample jump at a join may exceed the largest in the 50 ms around it. The first fix replaced that
+  bar with a looser "no click" test that excused a join by the original's sound, which only Ivan could approve; it let through
+  a knock at 9:48 on 6 Sep, 6.4 times over the room. The join now meets the bar as written, by construction, and the check
+  measures the made sound alone.
+- **Not changed, still Ivan's:** 384 kbps (Apple's encoder stops at 320 for stereo, measured again) and the lock.
+
 ## 2026-10-14, Wed: v2 part M8b, fixes after the verifier
 
 - **A pause takes out only quiet time.** Why: Parakeet wrote no words for two 17 s stretches of the 6 Sep talk, the plan treated

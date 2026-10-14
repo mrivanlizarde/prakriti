@@ -58,7 +58,8 @@ every number of PLAN check 3 passes but the sound's bitrate (320 kbps, the Mac's
 Ivan's ear. Not installed, for M5a's reason. **After the verifier** ("v2 part M8b, fixes after the verifier"): the 6 Sep video had lost
 34 s of speech Parakeet never transcribed, cut as two "pauses"; a pause now takes out only quiet time. `make test` is green again
 (tmutil is no longer waited on), Parakeet measures the MP4 in pieces, and the listening copy lives in `~/Prakriti/Dev/Listening
-check/`. Still not installed: the sample-jump bar, 384 kbps and the lock wait for Ivan.
+check/`. **Second fix** ("v2 part M8b, second fix"): every join is held calmer than the room around it, so PLAN check 2's
+sample-jump bar is met as written (0 of 95 joins on 13 Sep, 0 of 361 on 6 Sep). Still not installed: 384 kbps and the lock wait for Ivan.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -4888,3 +4889,80 @@ fixer did not loosen it).
 - [ ] **384 or 320 kbps:** Apple's encoder stops at 320 for stereo; ffmpeg's own asked for 384 measures about 240.
 - [ ] **The lock:** the plan's 13 Oct note says loosen it and install; this run's rules say it must stay closed for classes and other
   people's words. Say which, then `cd ~/Code/prakriti/mac && make install`.
+
+## v2 part M8b, second fix: the joins meet the plan's bar as written. Wed 14 Oct 2026
+
+The verifier's second run of M8b (14 Oct) failed two lines as PLAN writes them: check 2's sample-jump bar (75 of 361 joins on
+6 Sep by its own measure, 22 of 95 on 13 Sep by the builder's) and check 3's 384 kbps. The first fix had gated a looser "no
+click" test in place of the bar, which only Ivan or the plan's owner may approve, and that test excused a join by the original's
+own sound: it let through a knock at 9:48.12 on 6 Sep, 6.42 times the largest jump in the 50 ms around it (-32.8 dBFS in -53
+dBFS room tone). Built and checked 14 Oct 07:45 to 09:00 on `main`. No Swift package, no SwiftData field, nothing downloaded.
+
+### What was wrong, at its cause, and what changed
+
+1. **A join was a fade of whatever lay either side of the cut, so it was exactly as busy as the room, and sometimes busier.** On
+   room tone the largest of 3,360 sample steps falls in the fade's 960 by chance about 29% of the time, which is why the bar
+   failed on about a fifth to a third of joins whatever the fade's shape; and a handle (the 10 ms of sound taken out that each
+   side lends the fade) could carry a knock into the video. Fix in `VideoAudio.joinFade`:
+   - **The fade moves off a dirty handle.** When the centred 20 ms fade's largest step is more than twice the largest in the
+     25 ms either side, the fade is drawn instead as 10 ms ending at the cut (only the next piece's handle heard) or 10 ms
+     starting at it (only this piece's), whichever is calmer (`VideoAudio.FadeShape`).
+   - **Every fade is held calmer than the room.** No step inside the fade, including the steps in and out of it, may be over
+     0.7 of the largest step in the 25 ms of the made sound either side (`VideoAudio.calm`, `VideoAudio.steady`): each step over
+     is shared back between its two samples until none is, on the mono sum, with the same correction added to both channels;
+     where that does not settle, the window is drawn toward the straight line between its ends just far enough. 0.7, not 1,
+     because the AAC encoder moves single steps: on a test plan of 163 joins cut from the 6 Sep sound, encoded with Apple's
+     AAC at 320 kbps as the writer does, the worst join after encoding was 1.13 times its surroundings when held at 1.0, 0.92 at
+     0.8 and 0.84 at 0.7. The hold changes about 7 samples of each join's 960, the change a median -45 dB under the fade (worst
+     -16 dB, on room tone at about -60 dBFS).
+2. **The check could pass a join on the original's sound.** `VideoAcceptanceTests` now gates the bar as PLAN writes it, on the
+   decoded MP4 alone: no sample jump in a join's 20 ms over the largest in the 50 ms around it. The "twice" line stays, made sound
+   alone. M8a's measure against the original is reported, not gated.
+
+`RenderTests`: `testNoJoinIsBusierThanTheRoomAroundItAndAKnockInAHandleIsLeftOut` (a knock planted in a handle is not heard, the
+fade moves to the clean side; 41 room-tone joins all held at 0.7; the piece after the join exactly as it was) and
+`testSteadyChangesOnlyTheStepsOverTheLimit`. Mac warning 151.
+
+**Not changed: 384 kbps.** Measured again on 60 s of the 6 Sep sound: `afconvert` (Apple's AAC) at 320000 gives 319,990 b/s and
+refuses 384000 ('!dat'); ffmpeg's `aac_at` (the same Apple encoder) asked for 384k in constant mode writes 320,097; ffmpeg's own
+`aac` asked for 384k writes 233,863. No encoder on this Mac makes an honest 384 kbps AAC-LC stereo; padding the stream to reach
+the number would change nothing anyone hears. Ivan's ruling.
+
+### Checks run, with results
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `RenderTests` | **PASS**, 9 of 9 (two new) |
+| 2 | `make accept-video MILESTONE=v2-m8b`, **13 Sep** | **PASS on every line, the sample-jump bar as written included.** Bar: **0 of 95 joins over**, the worst 0.82 times the largest in the 50 ms around it, median 0.72, loudest jump inside a fade -37.5 dBFS; 0 over twice. Plan half (`acceptance-video.txt`): 0 FAIL. MP4: picture and sound 890.590 s = kept spans; 34 joins lag 0.00 ms; 6 frames +0 (46.1 to 48.1 dB); 0 pauses over the trigger; Parakeet 2,865 of 2,879 kept words in order (99.5%, 16 pieces); fillers 6 of 6 gone |
+| 3 | The MP4 measured, both talks | **PASS on every number but 384 kbps.** H.264 High 1920 by 1080 30000/1001 BT.709 progressive, 15.99 Mbps, moov before mdat, no edit list on the picture, -14.0 and -13.9 LUFS, -1.4 dBTP, tail decodes, Ready checklist 17 PASS, 3 MISSING (Title, Description, Chapters), 0 FAIL. Sound **AAC-LC 48 kHz stereo 320.0 kbps** (needs Ivan) |
+| 5 | **6 Sep** | **PASS on every line, the bar as written included.** Bar: **0 of 361 joins over**, worst 0.84, median 0.71, loudest jump inside a fade -36.8 dBFS; 0 over twice. Picture and sound 3,041.405 s = kept spans; lag 0.00 ms; 6 frames +0; 33 silences over 0.40 s, 10 protected, 0 over the trigger; Parakeet 9,823 of 9,911 (99.1%, 53 pieces); fillers 2 of 2 gone; StageTiming 2 samples, last 9.10 s a minute. Test run 1,399 s for both talks |
+| 2, independent | My own measure of the 6 Sep MP4 (ffmpeg mono decode, joins from `edit-plan.json` spans in whole frames, ±10 ms against 25 ms each side, the verifier's method) | **0 of 361 over, 0 over twice**, worst 0.84 (37:22.81, -66.5 dBFS). The joins the verifier named: **9:48.12 0.61** (was 6.42), 26:00.19 0.76, 37:08.53 0.75, 43:11.62 0.76 |
+| 8 | Regression set; `make migrate-check` | **PASS.** `make build`: no warnings. `make test`: **359 tests, 21 skipped by design, 0 failures** (1,194 s). `make accept`: 13 Sep -16.8 LUFS, -1.7 dBTP, transcript to 15:47 of 15:48; silent-60s stopped at -91 dB; 6 Sep -16.7 LUFS, -1.4. `make accept-edits`: 38.82 s shorter (expected 38.82), 0 of 73 runs from the cut heard, 189 of 201 after it, the class refused. `make migrate-check`: recordings 13/13, folders 2/2, output settings 40/40, Activity lines 1,096/1,096 |
+
+No frame of either talk was drawn or looked at; frame checks are pixel-difference numbers. Originals unchanged (size and date).
+Em dashes: 0 in every file this fix changed (grep).
+
+### Decisions, each with its reason
+
+1. **Meet the bar as written rather than ask to change it.** It is what the plan says, it can be met by construction, and holding a
+   join calmer than the room is what the bar is for. The first fix's replacement test is retired.
+2. **0.7 of the room, on the mono sum.** The acceptance and the verifier measure mono; both talks' first track is the same on both
+   channels (L minus R measured -inf on 6 Sep). 0.7 leaves margin for the AAC encoder (worst after encoding 0.84 on both talks).
+3. **The 10 ms fade only where a handle is dirty.** Research 1.7 asks 20 ms; the shorter fade is used only when the centred one
+   would carry a transient over twice the room.
+
+### Installed
+
+**Not installed.** PLAN check 3's 384 kbps is still not met as written, and this run installs only when every M8b check passes. And
+`make install` would still ship M5a's lock, which the 13 Oct note in PLAN section 11 says to loosen and this run's rules say must
+fail closed. The live app is unchanged.
+
+### For Ivan
+
+- [ ] **384 or 320 kbps:** no encoder on this Mac makes 384 (Apple's stops at 320; ffmpeg's own asked for 384 makes about 234).
+  Say "320 is fine" and the plan's number changes, or name another encoder.
+- [ ] **The lock:** PLAN section 11 (13 Oct) says loosen it and install; this run's rules say it must fail closed for classes and
+  other people's words. Say which, then `cd ~/Code/prakriti/mac && make install`.
+- [ ] **Listen, if you like (PLAN M8 check 9):** `~/Prakriti/Dev/Listening check/2026-09-13 18-25-44 Video/2026-09-13.mp4`, made by
+  this fix. And on 6 Sep (`~/Prakriti/Dev/Listening check/2026-09-06 18-06-33 Video/2026-09-06.mp4`, copied there by hand so no make replaces
+  it), 9:48, where the knock was.
