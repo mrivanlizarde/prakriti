@@ -5,6 +5,18 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-14, Wed: the v2 run's handoff
+
+- **BUILD-LOG gains "v2 run: where it stands".** Why: the run stopped after M8b (18 of the plan's 31 parts), with every part from
+  M5a on built but never installed, and the next session needs one place that says what works with its evidence, what
+  was not reached, and that part LOCK comes first, then the install.
+- **START_HERE's day-to-day says which build Ivan actually has.** Why: the docs described M5a to M8b as if they were in
+  his app; his app is the M4b build until the install after LOCK.
+- **A check that quits the live app reopens it.** Why: on 14 Oct the live app was quit at 09:41 during a check and stayed
+  closed for an hour, watching nothing, until this handoff found and reopened it (no recording was missed: 0 events).
+- **Not installed.** Why: installing before LOCK would ship M5a's stricter lock and stop the live app writing with the
+  Claude API, against Ivan's 12 Oct decision.
+
 ## 2026-10-14, Wed: v2 part M8b, second fix: the joins meet the plan's bar as written
 
 - **Every join in the video's sound is held calmer than the room around it, and a fade moves off a handle with a knock in it.**

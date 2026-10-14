@@ -811,12 +811,20 @@ folders, beside the live one.
   until you open it again or log in again. To stop it opening at login: System Settings, General,
   Login Items, switch Prakriti off. **If it crashes, nothing restarts it until the next login** (engine
   v0 restarted itself): Activity going quiet, no "Checked 2 folders" line for more than 5 minutes, is
-  the sign.
+  the sign. The same goes for a quit: on Wed 14 Oct a check quit it at 09:41 and it sat closed for an hour until
+  the handoff reopened it, so **any session or check that quits the live app opens it again before it ends**
+  (`open ~/Applications/Prakriti.app`, then `pgrep -x Prakriti`).
 - **Engine v0 is retired** (Sat 10 Oct, 14:57). Prakriti for Mac is the only thing watching. Never
   run both: two watchers make and notify everything twice. Going back: "Engine v0: retired" above.
-- **What still needs you:** the checklist in `docs/BUILD-LOG.md`, "Finish line" (turning on
-  notifications first), and for the podcast, "Podcast-ready episode: the handoff", For Ivan (listen
-  to episode 1 old against new; the show name and artwork from Gabriel).
+- **What your copy has today (Wed 14 Oct).** The app in `~/Applications` is the v2 part M4b build: everything above
+  this line works in it. People, faces and voices, the People gallery, the edit plan and the edited video (parts M5a to
+  M8b, described below under "Prakriti for Mac") are built and checked in the repository but **not installed yet**; they
+  arrive together with the next `make install`, after part LOCK sets the privacy lock to your 12 Oct decision. Until
+  then Help on your Mac describes the M4b app.
+- **What still needs you:** the checklist in `docs/BUILD-LOG.md`, "v2 run: where it stands", For Ivan (notifications
+  first, then the listen to the 13 Sep edited video and the 320 kbps answer); the older lists in "Finish line" and, for
+  the podcast, "Podcast-ready episode: the handoff", For Ivan (listen to episode 1 old against new; the show name and
+  artwork from Gabriel).
 
 ### Build, run, test
 

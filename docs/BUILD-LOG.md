@@ -60,6 +60,9 @@ Ivan's ear. Not installed, for M5a's reason. **After the verifier** ("v2 part M8
 (tmutil is no longer waited on), Parakeet measures the MP4 in pieces, and the listening copy lives in `~/Prakriti/Dev/Listening
 check/`. **Second fix** ("v2 part M8b, second fix"): every join is held calmer than the room around it, so PLAN check 2's
 sample-jump bar is met as written (0 of 95 joins on 13 Sep, 0 of 361 on 6 Sep). Still not installed: 384 kbps and the lock wait for Ivan.
+**The v2 run stopped there; its handoff is the last section, "v2 run: where it stands" (Wed 14 Oct):** what works with its
+evidence, what was not reached, what the next session does first (part LOCK, then `make install`, which ships M5a to M8b),
+Ivan's checklist and the picture of every new screen. The live app is still the M4b build.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -4966,3 +4969,166 @@ fail closed. The live app is unchanged.
 - [ ] **Listen, if you like (PLAN M8 check 9):** `~/Prakriti/Dev/Listening check/2026-09-13 18-25-44 Video/2026-09-13.mp4`, made by
   this fix. And on 6 Sep (`~/Prakriti/Dev/Listening check/2026-09-06 18-06-33 Video/2026-09-06.mp4`, copied there by hand so no make replaces
   it), 9:48, where the knock was.
+
+## v2 run: where it stands. Wed 14 Oct 2026
+
+The handoff for the v2 run that began Sun 11 Oct. Written from the independent verifiers' results for every part, the
+entries above, and what was measured on this Mac at 10:44 on Wed 14 Oct. Weekdays computed with `date(1)`.
+
+### Where the run stopped, and why
+
+- **It stopped after part M8b (the rendered MP4), the eighteenth of the plan's thirty-one parts (LOCK, inserted today, makes thirty-two).** M8b's verifier failed it
+  after two rounds of fixes, and a run does not go past a failed part. By the second fix's own measure every line of M8b
+  now passes but one: PLAN check 3 asks for 384 kbps sound, and no encoder on this Mac makes an honest 384 kbps AAC stereo
+  (Apple's stops at 320, measured 320.0; ffmpeg's own asked for 384 makes about 234). That is a number in the plan, not
+  a defect in the video, and only Ivan can change it. M8b's check 9 (listening) is his ear in any case.
+- **Part LOCK was written into PLAN at 09:42 today and not started.** It turns Ivan's Mon 12 Oct decision (every
+  participant signed a likeness release) into code.
+- **Nothing from M5a on has reached the live app.** The live app is still the M4b build (installed Mon 12 Oct 18:20).
+  Every part from M5a to M8b passed its own checks but was held, because `make install` would have shipped M5a's lock,
+  which keeps classes, recordings with other people and recordings that name anyone aloud away from the Claude API, and
+  so would have turned Ivan's live Claude API writing back to LM Studio. Ivan's 12 Oct decision settles that; part LOCK
+  carries it out, and the install follows LOCK.
+- **Found while writing this, and fixed:** the live app was not running. Its log ends "09:41:59 Quit." (a clean quit, no
+  crash report), during the verifier's last run; nothing reopened it for an hour. Reopened at 10:44 with
+  `open ~/Applications/Prakriti.app`: running (`pgrep -x Prakriti` 84910), the log at once "Drop folder: listed 0
+  recordings", "Checked 2 folders. Nothing new." and "Caught up on changes made while Prakriti was closed: 0 events", so no
+  recording was missed. **Any check that quits the live app must open it again before it ends.**
+
+### What the next session must do first, in this order
+
+1. **Part LOCK** (PLAN, the last section): the lock blocks the cloud only for a person Ivan marked "no release" or Leave
+   Out; classes, recordings with other people and names said aloud are written by the Claude API (Anthropic,
+   claude-sonnet-5-5) like any talk; names said aloud are never asked about at Approve. Update the lock's tests, the
+   notice, Help 07 and 09 (today they describe M5a's stricter lock, which is what the repo builds), START_HERE and this log.
+2. **`cd ~/Code/prakriti/mac && make install`** once LOCK passes. That ships M5a to M8b and LOCK together. Confirm a new
+   pid with `pgrep -x Prakriti`, a fresh "Checked 2 folders." in `~/Library/Logs/Prakriti/<date>.log`, Settings, Models
+   showing Anthropic as the writer with the saved key, and one real write of the 13 Sep talk through Anthropic with its
+   cost recorded.
+3. **Close M8b:** with Ivan's word, change PLAN check 3 to 320 kbps (the recommendation: YouTube re-encodes the sound
+   anyway) and have the verifier run M8b once more.
+4. **The transcript gap** (M8b fixes, "Open" 1): the app's transcript step runs Parakeet over the whole file and on the
+   6 Sep talk wrote no words for two 17 s stretches of speech, so that talk's podcast transcript, captions and chapters
+   lack them. Run Parakeet in pieces in `Pipeline` (as `VideoAcceptanceTests` now does) and add a coverage check for sound
+   with no words. Do this before M8c: it is a defect in what Ivan already has.
+5. **Leftover card pictures:** 198 files in `~/Library/Application Support/Prakriti/Development/Thumbnails/` (counted
+   today; 65 on 13 Oct) belong to recordings that existed only in the tests' in-memory stores. Add the launch sweep the
+   M6d fix entry suggests.
+6. **Then M8c** (video in the Viewer), which also fixes the rendition picker's unreadable selected segment in light mode.
+
+### What works now (on `main`, with the measured evidence)
+
+Every part below was passed by an independent verifier; the full numbers are in its own entry above.
+
+| Part | What it does | Evidence | In the live app? |
+|---|---|---|---|
+| M0 Baseline | `make fixtures`, `make accept` without a class, `make regress` | fixtures SHA-256 identical over two runs; 13 Sep -16.8 LUFS, -1.7 dBFS, 2,948 words to 15:47 of 15:48 | yes |
+| M1 Icons | the cut disc in the Dock and Finder; one menu bar shape per state, turning every 0.7 s only while working | icon drawn at 512 and 32 px and looked at; ticker tested on an injected clock | yes |
+| M2a Help | Help window, search, Show Me, only built features shown | `HelpTests`; real window captured light and dark | yes |
+| M2b Welcome | five panels, once by itself, then from Help | 34 of 34 capture lines; first-launch rule run twice | yes |
+| M3a Main window | Needs You, In Progress, Ready, All Recordings, inspector, Settings | 36 of 36 real-window lines; 68 text colour pairs at 4.5 to 1 or more | yes |
+| M3b Viewer | plays Original, Podcast, Podcast-ready with a clickable transcript; Remove and Keep in the Edit | a clicked word plays within 0.25 s; 15 words removed cut exactly 15 | yes |
+| M4a Progress, Activity | percent and time left everywhere; Pause, Stop; Window > Activity | 13 Sep made twice, the second run's time left from this Mac's own timing | yes |
+| M4b Capture check | what was recorded and how well, Hybrid MOV accepted | 13 Sep read as 1920 by 1080, 29.97 fps, H.264, Rec. 709 | yes |
+| M5a Privacy lock | every cloud request through one lock, names replaced and checked again | cloud requests counted on a made-up transcript: a class 0 | no (LOCK, then install) |
+| M5b Anthropic and OpenAI | both in Settings, Models, keys in the Keychain, streamed requests | request shape tested on a stub; real calls not run (no test key) | no |
+| M6a Faces | faces two frames a second, kept as boxes and times only | 13 Sep 1,896 frames in 29 s; 6 Sep 105 s; 0 images stored | no |
+| M6b Voices | who speaks, linked to faces; no voice print exported | 13 Sep one voice 888.8 s; `embeddingsPath` nil in every configuration | no |
+| M6c Choices in audio | Include, Hide Face, Leave Out; Leave Out cuts that voice | 0 of 59 runs of the left-out voice heard; 182 of 184 of Gabriel's words kept | no |
+| M6d Hiding in pictures | a hidden face is covered on cards and in the Viewer | 0 faces found inside a hidden region in 5 frames | no |
+| M7a People | named people in the sidebar, releases recorded | a sealed crop opens only with the person's key; Name Only stores nothing | no |
+| M7b Recognition | learned only from faces Ivan named with a release | 15 of 15 vote tests; check on Ivan himself waits for his clip | no |
+| M8a Edit plan | the rough cut as a plan: pauses, fillers, retakes | 13 Sep 191 of 191 cut points 20 dB or more under speech | no |
+| M8b Edited MP4 | MP4, captions, Description.txt, Ready checklist | 13 Sep 890.590 s picture and sound; 0 of 95 joins over the sample-jump bar; Parakeet 99.5% of kept words; 6 Sep 0 of 361 joins over; 15.99 Mbps H.264; -14.0 LUFS | no |
+
+Regression at the last fix: `make test` 359 tests, 0 failures, 21 skipped by design; `make accept`, `make accept-edits`
+and `make migrate-check` pass. Gabriel's talks were looked at by measurement only (face counts, pixel differences).
+
+### Not reached
+
+Part LOCK; M8c Video in the Viewer; M8d People in the video; M9a to M9d (house style and zooms, text and graphics, beats
+and direction, hook, chapters and versions); M10a and M10b (timelines for Final Cut Pro and DaVinci Resolve, privacy-safe
+timeline media); M11a and M11b (shorts; thumbnails, Approve and Ready); M12a and M12b (supporting moments); M13 Finish
+line. So: no Final Cut or Resolve timeline exists yet, no shorts, no designed thumbnails, and Approve does not yet check
+a video's Ready checklist.
+
+### For Ivan (a short checklist)
+
+Decisions, in a sentence each:
+
+- [ ] **384 or 320 kbps:** say "320 is fine" and M8b can close. No encoder on this Mac makes 384.
+- [ ] **Fillers:** after listening, say if you want more "um" and "uh" out (the measured option takes 29 of 76 on 13 Sep).
+- [ ] **Caption speed:** 21 of 255 captions on 13 Sep run faster than 20 characters a second; keep them with the voice
+  (as built) or let them run up to 2 s behind.
+
+Looks and listens (each a few minutes):
+
+- [ ] **Listen to the 13 Sep edited video** (PLAN M8 check 9): `~/Prakriti/Dev/Listening check/2026-09-13 18-25-44 Video/2026-09-13.mp4`;
+  three random 30 s windows, "did anything sound cut?", and at 4:23, is an "uh" still there? The 6 Sep one is beside it;
+  listen at 9:48, where a knock used to be.
+- [ ] **The three 13 Sep frames** from 12:39 on, where up to 6 faces share the picture (never opened by the build):
+  `~/Code/prakriti/screens/mac/v2-m6a/for-ivan/13sep-1-12-39.png`, `13sep-2-13-09.png`, `13sep-3-15-48.png`. With
+  everyone released this no longer blocks anything; it answers whether the room or a screen is on camera.
+- [ ] **The hiding on card pictures:** `~/Code/prakriti/screens/mac/v2-m6d/for-ivan/m6d-card-everyone-included.jpg`,
+  `m6d-card-corner-left-out.jpg`, `m6d-card-corner-hidden.jpg`. Is the hiding strong enough?
+- [ ] **The Dock and menu bar** (M1): the cut disc in the Dock; the mark alternating while a recording is made; the outline
+  under Pause All; once in Dark and once with Tinted icons.
+- [ ] **Ten minutes with the window and the Viewer** (M3): click through the groups, double-click Sun 13 Sep, press Space,
+  click a word, press J to go back, Escape. Drag a file onto the window once; Settings from the menu bar once.
+- [ ] **Read the five welcome panels** (Help, Welcome to Prakriti) and say if five feel long.
+- [ ] **Check Capture** on an older recording in the Checks tab, once.
+
+Clicks only you can make:
+
+- [ ] **Notifications are still off for Prakriti** (the live log says so at every launch): Help, Welcome to Prakriti, last
+  panel, Open Notification Settings, then turn on Allow notifications.
+- [ ] **Type in the Help menu's own search field once, and press Command-?** (a person's keystrokes, which the build cannot make).
+- [ ] **VoiceOver once** over the Viewer's transcript and strip, if you use it.
+
+After the install that follows LOCK:
+
+- [ ] **Settings, Models:** your saved Anthropic key reads "Saved in your Keychain." and Anthropic is the writer.
+- [ ] **Releases:** in People, open each person, Record Release with the date and where the paper is kept, turn on that it
+  covers their face, and click Learn [Name]. Nothing is learned without it. After a few recordings and Reviews:
+  `cd ~/Code/prakriti/mac && make calibrate-people`.
+- [ ] **Recognition on yourself** (M7 check 3): record a 2-minute clip of yourself on this Mac, save it as
+  `~/Prakriti/Dev/Fixtures/ivan-clip.mov`, and say so; the next run enrolls you in the development copy only.
+- [ ] **Real provider calls** (M5b check 6, a few cents): put a test key in the tests' own Keychain item (service
+  `studio.therowan.prakriti.app.tests.claude-api`), say yes to the cost, then
+  `cd ~/Code/prakriti/mac && make accept-providers YES=1 MILESTONE=v2-m5b`.
+
+Not yet (when M10 lands): **the Final Cut Pro and DaVinci Resolve round trips.** Nothing exists to open yet; when it does,
+the ship gate is a validated XML and never a click in either app.
+
+LM Studio: **nothing to set.** The app loads qwen/qwen3.8-27b at 65,536 tokens itself (docs/LOCAL-MODEL.md). Keep its
+server on port 1235 running if you want the local fallback; it was answering at 10:44 today, with the embedding model too.
+
+### Where to see each new screen
+
+Snapshots are drawn by `make test` with test patterns in place of any face; every name below has a `-light` and `-dark`
+twin. The live app shows only the M4b screens until the install.
+
+| Screen | Best picture |
+|---|---|
+| Dock icon, menu bar | `screens/mac/v2-m1/` (`installed`, `menubar-live`) |
+| Help | `screens/mac/v2-m8b/help-00-index-light.png` and the other `help-*` (current articles) |
+| Welcome | `screens/mac/v2-m2b/welcome-1-light.png` to `welcome-5-light.png` |
+| Main window, inspector, Settings | `screens/mac/v2-m3a/01-needs-you-light.png`, `07-inspector-outputs-light.png`, `10-settings-01-general-light.png` |
+| Viewer | `screens/mac/v2-m3b-fix/20-viewer-podcast-light.png`, `20-viewer-span-selected-light.png` |
+| Activity and progress | `screens/mac/v2-m4a/11-activity-now-light.png`, `12-progress-inspector-light.png` |
+| Capture check | `screens/mac/v2-m4b/07-inspector-checks-capture-clean-light.png` |
+| Models with keys | `screens/mac/v2-m5b/10-settings-models-keys-saved-light.png` |
+| People tab, faces and voices | `screens/mac/v2-m6b/07-inspector-people-voices-light.png`; choices: `screens/mac/v2-m6c/07-inspector-people-choices-light.png` |
+| Hidden face in the Viewer | `screens/mac/v2-m6d-fix2/20-viewer-people-light.png` |
+| People gallery and a person | `screens/mac/v2-m7a/11-people-light.png`, `11-person-release-light.png` |
+| Review and Merge | `screens/mac/v2-m7b/11-review-sheet-light.png`, `11-merge-sheet-light.png` |
+| Edit plan in the Viewer | `screens/mac/v2-m8a/21-viewer-plan-light.png` |
+| Edited video, ready and refused | `screens/mac/v2-m8b/22-video-ready-light.png`, `22-video-refused-light.png` |
+
+Real window, after the install: `cd ~/Code/prakriti/mac && make look` draws the built app with sample data, and
+`swift scripts/capture-window.swift --window Prakriti <png>` captures the running app as it is.
+
+### Installed
+
+**Not installed by this handoff.** Installing now would ship M5a's lock without LOCK and stop the live app writing with the
+Claude API. The live app is the M4b build, reopened at 10:44 (pid 84910), sweeping every 5 minutes.
