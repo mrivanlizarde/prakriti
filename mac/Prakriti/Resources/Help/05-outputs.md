@@ -4,7 +4,7 @@ title: Outputs
 summary: What Prakriti makes from each recording, what is in each file, and where the files go.
 section: outputs
 order: 1
-keywords: [outputs, edit plan, rough cut, edited video, MP4, YouTube, Make Video, ready checklist, description, pauses, filler words, podcast episode, podcast-ready, MP3, loudness, LUFS, transcript, captions, SRT, VTT, report, show notes, chapters, titles, episode text, upload checklist, artwork, show name, word list, intro, outro, mono, stereo]
+keywords: [outputs, edit plan, rough cut, edited video, MP4, YouTube, Make Video, Watch Video, ready checklist, description, pauses, filler words, podcast episode, podcast-ready, MP3, loudness, LUFS, transcript, captions, SRT, VTT, report, show notes, chapters, titles, episode text, upload checklist, artwork, show name, word list, intro, outro, mono, stereo]
 related: [sources-and-watching, reviewing-and-approving, models-and-api-keys]
 ---
 
@@ -33,9 +33,6 @@ The original recording is never changed. Nothing is uploaded or posted.
 :::requires renderedVideo
 - **Edited video:** an MP4 cut from the edit plan, with its captions, a description to paste and a
   checklist against YouTube's rules.
-:::
-:::requires video
-- **Edited video:** a finished video file ready to post, with its captions and text.
 :::
 :::requires shorts
 - **Shorts:** vertical clips of the strongest moments.
@@ -153,8 +150,7 @@ minutes.
 
 For now, Prakriti makes a video only of a recording where everyone seen and heard is included, and
 only once its people check has run. If anyone is set to Hide Face or Leave Out, Make Video says so and
-makes nothing: video that hides or leaves out a person arrives in the next update. Watching the video
-inside Prakriti arrives in the next update too.
+makes nothing: video that hides or leaves out a person arrives in the next update.
 
 The files are in a folder named Video, inside the recording's folder:
 
@@ -176,6 +172,13 @@ converts the sound again when you upload, so the difference does not reach a vie
 :::
 
 :::requires video
+To watch it, open the recording and choose **Video** in the toolbar, or click **Watch Video** under
+Edited video. The viewer draws each frame the same way the file was made, from the same edit plan, and
+plays the video's own sound, so what you watch is what you would upload. See
+[Review and approve](06-reviewing-and-approving.md).
+:::
+
+:::requires style
 ### Edited video
 
 A video file ready to upload, made by Prakriti itself. The edit:

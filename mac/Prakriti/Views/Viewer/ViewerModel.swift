@@ -8,8 +8,8 @@ import Observation
 // or span chosen for Cut and Keep. One Viewer at a time, owned by AppModel, so the inspector, the menus
 // and the window's state restoration read the same one. Replaces v1's `RecordingPage` (retired here).
 
-/// What the Viewer plays. Video and Shorts are named now and come with their parts (M8, M11): they show in
-/// the picker, unavailable, with the reason.
+/// What the Viewer plays. Video plays since part M8c, through the same compositor as the file; Shorts is named now and
+/// comes with its part (M11): it shows in the picker, unavailable, with the reason.
 enum Rendition: String, CaseIterable, Identifiable, Sendable {
     case original, podcast, podcastReady, video, shorts
     var id: String { rawValue }
@@ -35,7 +35,7 @@ enum Rendition: String, CaseIterable, Identifiable, Sendable {
     }
 
     /// Whether this build can make it at all.
-    var isBuilt: Bool { self != .video && self != .shorts }
+    var isBuilt: Bool { self != .shorts }
 
     /// Has a picture to show (the others are sound with the transcript under it).
     var hasPicture: Bool { self == .original || self == .video || self == .shorts }
@@ -63,6 +63,20 @@ final class ViewerModel {
     var followPlayback = true
     /// The People overlay on the Original (v2 part M6d, design spec 3.4.1): off until turned on, for this session.
     var showsPeople = false
+    /// The Captions overlay on the Video (v2 part M8c, design spec 3.4.1): the captions file as it will be uploaded, shown
+    /// over the picture. Off until turned on, for this session.
+    var showsCaptions = false
+    /// The made video's captions, on the video's clock, read from its `.srt` (v2 part M8c).
+    private(set) var captions: [Captions.Cue] = []
+    /// The plan the made video was made from, and its timeline between the original's clock and the video's (v2 part M8c).
+    /// Nil when the recording has no video the Viewer can play; `videoNote` then says why.
+    private(set) var videoPlan: EditPlan?
+    private(set) var videoTimeline: EditTimeline?
+    private(set) var videoNote: String?
+    /// The Video rendition is being put together (the composition is built off the main thread).
+    private(set) var isBuildingVideo = false
+    /// The video's picture size, for drawing the captions over it.
+    private(set) var videoSize = CGSize(width: 1920, height: 1080)
     /// The words chosen in the transcript (indices into `document.words`), for Cut and Keep.
     var selectedWords: ClosedRange<Int>?
     /// The Timeline-lite span chosen: shown above the inspector's tabs with Restore or Remove.
@@ -75,6 +89,11 @@ final class ViewerModel {
     @ObservationIgnored private var loadedKey: String?
     @ObservationIgnored private var clocks: [Rendition: EpisodeClock] = [:]
     @ObservationIgnored private var originalItem: AVPlayerItem?
+    /// The Video rendition's player item: the plan's composition with `videoComposition` set to the compositor's (v2 part
+    /// M8c). The same object the player plays, kept so PLAN M8 check 4 measures exactly what the player is given.
+    @ObservationIgnored private(set) var videoItem: AVPlayerItem?
+    @ObservationIgnored private var videoSource: (mp4: URL, plan: EditPlan)?
+    @ObservationIgnored private var videoRequest = 0
     @ObservationIgnored private var pendingSeek: (time: Double, play: Bool)?
     @ObservationIgnored private var shuttleSpeed: Float = 0
     /// Writes one line a second while `--debug-playback-log` is on (docs/v2/PLAN.md rule 2.1.10).
@@ -111,7 +130,8 @@ final class ViewerModel {
     /// moment of the original (a restored window, a search result, the inspector's Play).
     func load(_ recording: Recording, applyLexicon: Bool, start: (rendition: Rendition?, original: Double?, play: Bool)? = nil) {
         let key = [recording.id.uuidString, recording.outputFolder ?? "", recording.madeAt.map { "\($0.timeIntervalSince1970)" } ?? "",
-                   recording.madeFiles.joined(separator: ","), recording.podcastReady?.fileName ?? "", applyLexicon ? "1" : "0"].joined(separator: "|")
+                   recording.madeFiles.joined(separator: ","), recording.podcastReady?.fileName ?? "", applyLexicon ? "1" : "0",
+                   recording.videoJSON ?? ""].joined(separator: "|")
         clocks = Self.clocks(for: recording)
         if key != loadedKey {
             let changedRecording = recordingID != recording.id
@@ -121,6 +141,7 @@ final class ViewerModel {
             document = RecordingTranscript.document(folder: recording.outputFolder, applyLexicon: applyLexicon)
             originalItem = nil
             originalNote = nil
+            readVideo(recording)
             selectedWords = nil
             selectedSpan = nil
             if changedRecording {
@@ -147,15 +168,40 @@ final class ViewerModel {
         }
     }
 
-    /// Podcast when the episode is made, else the original.
-    var defaultRendition: Rendition { files[.podcast] != nil ? .podcast : .original }
+    /// The Video when one is made and can play here (design spec 3.4.2: a recording waiting for a yes opens on its video),
+    /// else the Podcast when the episode is made, else the original.
+    var defaultRendition: Rendition { isAvailable(.video) ? .video : files[.podcast] != nil ? .podcast : .original }
 
-    func isAvailable(_ rendition: Rendition) -> Bool { rendition.isBuilt && files[rendition] != nil }
+    func isAvailable(_ rendition: Rendition) -> Bool {
+        guard rendition.isBuilt, files[rendition] != nil else { return false }
+        return rendition != .video || videoPlan != nil
+    }
+
+    /// The made video's file, plan and captions, read once per make (v2 part M8c). Nothing is built until Video is chosen.
+    private func readVideo(_ recording: Recording) {
+        videoItem = nil
+        videoSource = nil
+        videoPlan = nil
+        videoTimeline = nil
+        captions = []
+        videoNote = nil
+        switch VideoPreview.source(folder: recording.outputFolder, video: recording.video) {
+        case .success(let found):
+            videoSource = (found.mp4, found.plan)
+            videoPlan = found.plan
+            videoTimeline = EditTimeline(plan: found.plan)
+            captions = ((try? String(contentsOf: found.captions, encoding: .utf8)).map(Captions.cues(srt:))) ?? []
+            files[.video] = found.mp4
+        case .failure(let failure):
+            files[.video] = nil
+            videoNote = failure.reason
+        }
+    }
 
     /// Why a rendition cannot be chosen, in one sentence; nil when it can.
     func unavailableReason(_ rendition: Rendition) -> String? {
         switch rendition {
-        case .video: return "The edited video does not play here yet. It is in the Video folder; Show in Finder is in Outputs."
+        case .video: return videoPlan == nil ? (videoNote ?? "The edited video is not made for this recording.") : nil
         case .shorts: return "Prakriti does not make shorts yet."
         case .podcast: return files[.podcast] == nil ? "The episode is not made for this recording." : nil
         case .podcastReady: return files[.podcastReady] == nil ? "The podcast-ready episode is not made for this recording." : nil
@@ -205,6 +251,8 @@ final class ViewerModel {
         shuttleSpeed = 0
         if next == .original {
             loadOriginal(path: path)
+        } else if next == .video {
+            loadVideo(path: path)
         } else if let url = files[next] {
             player.replaceCurrentItem(with: AVPlayerItem(url: url))
         }
@@ -245,11 +293,74 @@ final class ViewerModel {
         }
     }
 
+    /// The Video: the plan's composition, drawn by the compositor, with the made video's sound (`VideoPreview`). Built off
+    /// the main thread; the original is looked at first, as for the Original (START_HERE, Mac warning 44).
+    private func loadVideo(path: String) {
+        if let videoItem {
+            player.replaceCurrentItem(with: videoItem)
+            return
+        }
+        player.replaceCurrentItem(with: nil)
+        guard let source = videoSource else { return }
+        originalNote = nil
+        videoRequest += 1
+        let request = videoRequest, id = recordingID
+        isBuildingVideo = true
+        Task { [weak self] in
+            let outcome = await Task.detached { () -> Result<VideoPreview.Built, VideoPreview.Failure> in
+                let original = URL(fileURLWithPath: path)
+                guard FileManager.default.fileExists(atPath: path) else {
+                    return .failure(.init(reason: "The original is not on this Mac any more, so the video cannot play here."))
+                }
+                if Readiness.isDataless(original) {
+                    return .failure(.init(reason: "This recording is in iCloud and not on this Mac yet, so the video cannot play here."))
+                }
+                do {
+                    return .success(try await VideoPreview.build(plan: source.plan, original: original, mp4: source.mp4))
+                } catch let failure as VideoPreview.Failure {
+                    return .failure(failure)
+                } catch {
+                    return .failure(.init(reason: "The video could not be put together: \(error.localizedDescription)"))
+                }
+            }.value
+            guard let self, self.videoRequest == request, self.recordingID == id else { return }
+            self.isBuildingVideo = false
+            guard self.rendition == .video else { return }
+            switch outcome {
+            case .success(let built):
+                let item = AVPlayerItem(asset: built.composition)
+                item.videoComposition = built.videoComposition
+                self.videoItem = item
+                self.videoTimeline = built.timeline
+                self.videoSize = built.renderSize
+                self.player.replaceCurrentItem(with: item)
+                if let pending = self.pendingSeek {
+                    self.pendingSeek = nil
+                    self.seek(original: pending.time, play: pending.play)
+                }
+            case .failure(let failure):
+                self.originalNote = failure.reason
+            }
+        }
+    }
+
+    /// The Video's player item once it is built (PLAN M8 check 4 and the tests wait on it).
+    func videoItemReady(timeout: Duration = .seconds(60)) async -> AVPlayerItem? {
+        let clock = ContinuousClock(), deadline = clock.now + timeout
+        while clock.now < deadline {
+            if let videoItem, player.currentItem === videoItem { return videoItem }
+            if !isBuildingVideo && rendition == .video && originalNote != nil { return nil }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        return nil
+    }
+
     // MARK: The clock
 
     /// The moment playing, on the original's clock, or nil inside an intro or outro.
     var currentOriginal: Double? {
         guard rendition != .original else { return time }
+        if rendition == .video { return videoTimeline?.originalTime(time) }
         guard let clock = clocks[rendition] else { return time }
         return clock.originalTime(time)
     }
@@ -264,8 +375,13 @@ final class ViewerModel {
     /// cut, from where the episode carries on).
     func seek(original t: Double, play: Bool = true) {
         hasPosition = true
-        if rendition == .original && player.currentItem == nil { pendingSeek = (t, play) }
-        let target = rendition == .original ? t : (clocks[rendition]?.episodeTime(t).time ?? t)
+        if (rendition == .original || rendition == .video) && player.currentItem == nil { pendingSeek = (t, play) }
+        let target: Double = switch rendition {
+        case .original: t
+        // A moment the plan took out plays from where the video carries on after it.
+        case .video: videoTimeline?.editTimeAtOrAfter(t) ?? videoTimeline?.duration ?? t
+        default: clocks[rendition]?.episodeTime(t).time ?? t
+        }
         player.seek(to: CMTime(seconds: target, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
         time = target
         if play { self.play() }
@@ -366,6 +482,12 @@ final class ViewerModel {
                 self.playbackLog?(String(format: "Playback: currentTime %.3f s, rate %.2f, rendition %@", now.isFinite ? now : 0, self.player.rate, self.rendition.rawValue))
             }
         }
+    }
+
+    /// The caption on screen now, on the Video, when the Captions overlay is on.
+    var currentCaption: Captions.Cue? {
+        guard showsCaptions, rendition == .video, hasPosition || time > 0 else { return nil }
+        return Captions.cue(at: time, in: captions)
     }
 
     /// Leaves the Viewer: the player stops.

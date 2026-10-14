@@ -36,8 +36,9 @@ struct TimelineLite: View {
                         .accessibilityLabel(span.line)
                         .accessibilityAddTraits(.isButton)
                         .accessibilityAction { choose(span) }
-                        .quickHelp(span.isRemoved && !span.isPlanned ? span.line + " Click to play from it and see it in the inspector, with Restore."
-                                                   : span.line + " Click to play from it.", article: "reviewing-and-approving")
+                        .quickHelp(span.line + (span.isRemoved ? " Click to play from it and see it in the inspector, with Restore."
+                                                               : " Click to play from it and see it in the inspector, with Remove."),
+                                   article: "reviewing-and-approving")
                 }
                 if let position, duration > 0 {
                     Rectangle()

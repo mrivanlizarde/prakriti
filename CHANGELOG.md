@@ -5,6 +5,22 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-14, Wed: v2 part M8c, the edited video in the Viewer
+
+- **Video in the toolbar plays the edited video inside the app, drawn by the same compositor from the same plan as the file,
+  with the file's own sound.** Why: REQUEST item 10 asks to preview inside the app, and a preview that is a second renderer
+  can differ from what is uploaded; measured 45 to 46 dB against the MP4's frames (PLAN M8 check 4 asks 38).
+- **It plays only the plan the video was made from, and says so after Plan Again.** Why: Plan Again rewrites the plan without
+  making the video, and the Viewer must never show an edit that is not in the file.
+- **Restore and Remove on the plan's spans, then Take Out Again and Keep; Delete; Undo for these and for the transcript's
+  Remove and Keep.** Why: the design spec's Timeline-lite lets Ivan overrule the rough cut where it took out a pause or a
+  word he wanted; a restore is kept on the recording (`planRestores`) so the next plan honours it, and never overrides a cut,
+  a trim or a person left out (research 3.4 rule 5).
+- **Approve waits until a restore is in the video, and the Viewer says "Not in the video yet" until Make Again.** Why: Mac
+  warning 36's rule, changes are not approved until they are made.
+- **Captions over the picture show the video's own .srt.** Why: the design spec's Captions toggle shows captions as they will
+  be published, so the file itself is what is drawn.
+
 ## 2026-10-14, Wed: v2 part TXGAP, speech with no words is heard again and caught
 
 - **After Parakeet's whole-file run, every stretch of 3 s or more with no words but with speech is transcribed again on its

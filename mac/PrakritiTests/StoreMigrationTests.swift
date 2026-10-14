@@ -177,6 +177,11 @@ final class StoreMigrationTests: XCTestCase {
         if !before.has("ZRECORDING", "ZTRANSCRIPTGAPS") {
             XCTAssertTrue(recordings.allSatisfy { $0.transcriptGaps.isEmpty }, "an upgrade lists no missing words")
         }
+        // Part M8c: a store from before it has no planRestores column; every recording arrives with nothing restored.
+        if !before.has("ZRECORDING", "ZPLANRESTORES") {
+            XCTAssertTrue(recordings.allSatisfy { $0.planRestores.isEmpty }, "an upgrade restores nothing")
+        }
+        print("part M8c: \(recordings.filter { !$0.planRestores.isEmpty }.count) recordings with restores; the store had the column before: \(before.has("ZRECORDING", "ZPLANRESTORES"))")
         print("part TXGAP: \(recordings.filter { !$0.transcriptGaps.isEmpty }.count) recordings with missing words listed; the store had the column before: \(before.has("ZRECORDING", "ZTRANSCRIPTGAPS"))")
         print("part LOCK: \(people.filter(\.noRelease).count) of \(people.count) named people marked no release; the store had the column before: \(before.has("ZPERSON", "ZNORELEASE"))")
         print("v2 part M7a: \(people.count) named people, \(people.filter(\.hasRelease).count) with a release, \(people.filter(\.mayAppear).count) able to appear")

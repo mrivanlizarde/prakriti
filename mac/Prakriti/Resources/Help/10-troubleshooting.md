@@ -4,7 +4,7 @@ title: If something isn't working
 summary: What to check when a recording is not found, has no sound, sends no notice, or a model does not answer, and where the log is.
 section: troubleshooting
 order: 1
-keywords: [troubleshooting, problem, edit plan, Plan the Edit, not found, silent, no sound, capture check, audio tracks, both channels, Check Capture, notifications, stopped, quit, flicker, bands, sync, LM Studio, API key, Claude API, Anthropic, OpenAI, model list, cut, disk space, encoding overloaded, log, show log]
+keywords: [troubleshooting, problem, edit plan, Plan the Edit, video does not play, watch video, not found, silent, no sound, capture check, audio tracks, both channels, Check Capture, notifications, stopped, quit, flicker, bands, sync, LM Studio, API key, Claude API, Anthropic, OpenAI, model list, cut, disk space, encoding overloaded, log, show log]
 related: [capture-the-best-video, set-up-obs-for-prakriti, sources-and-watching, models-and-api-keys]
 ---
 
@@ -82,6 +82,21 @@ Under Edited video in the inspector's Outputs, Prakriti says why in one sentence
   folder, and deletes one that does not play to its end or is not the length the plan keeps. Click Make
   Again. If it keeps happening, send the day's log (see "Find the log" below).
 - **A line of the Ready checklist says FAIL:** the line says what to do. Most need only Make Again.
+:::
+
+:::requires video
+### If the video does not play in the viewer
+
+Choosing Video says why in one sentence.
+
+- **The edited video is not made for this recording:** select it and click Make Video under Edited video
+  in the inspector's Outputs.
+- **The edit was planned again after this video was made:** Plan Again changed the plan, so the video
+  in the folder no longer matches it. Click Make Again.
+- **The original is not on this Mac:** the viewer draws the video from the original recording. Download
+  it in the Finder, then choose Video again.
+- **It says your newest changes are not in the video yet:** you restored or removed a piece, or changed
+  the trim, cuts or who is in it. Click Make Again to see them in the video.
 :::
 
 ### If a recording says it is silent or has no sound

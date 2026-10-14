@@ -4,7 +4,7 @@ title: Review and approve
 summary: Play the recording and its episodes in the viewer, read the transcript, trim and cut, check what is said, and approve the finished files.
 section: reviewing
 order: 1
-keywords: [review, approve, listen, play, viewer, podcast-ready, follow playback, remove from the edit, keep in the edit, restore, find, episode, original, transcript, cut, trim, make again, accuracy checklist, waiting for your yes, needs a decision, needs you, ready, inspector, approved folder, receipt, talk, class, what this is, remove from library]
+keywords: [review, approve, listen, play, viewer, video, edited video, watch video, captions, take out again, undo, delete, podcast-ready, follow playback, remove from the edit, keep in the edit, restore, find, episode, original, transcript, cut, trim, make again, accuracy checklist, waiting for your yes, needs a decision, needs you, ready, inspector, approved folder, receipt, talk, class, what this is, remove from library]
 related: [outputs, people-and-privacy, models-and-api-keys]
 ---
 
@@ -60,9 +60,22 @@ The viewer takes the place of the library while a recording is open. Choose what
 - **Original:** the recording as it was recorded, picture and sound.
 - **Podcast:** the episode as made.
 - **Podcast-ready:** the podcast-ready episode, once it is made.
+:::
+:::requires video
+- **Video:** the edited video, once it is made. A recording with a video opens on it.
+:::
 
-Two more choices in that control do not play here yet; choosing one says why. The player is
-the Mac's own. Press Space to play or pause. L plays forward, and faster each time you press it again; J
+:::unless video
+Two more choices in that control do not play here yet; choosing one says why.
+:::
+
+:::requires video
+The last choice in that control does not play here yet; choosing it says why. Video says why too until the
+video is made.
+:::
+
+:::requires viewer
+The player is the Mac's own. Press Space to play or pause. L plays forward, and faster each time you press it again; J
 plays backward where the file allows it; K stops. They are in the Playback menu too.
 
 Under the player:
@@ -85,6 +98,39 @@ filled in, and what it takes out, outlined with its reason: a pause shortened, a
 said twice, a false start, someone you chose to Leave Out, or your trim or a cut. Click a piece to play
 from it; the top of the inspector says what it is and why. Under the strip, Prakriti says how much the
 plan keeps. See "Edit plan" in [Outputs](05-outputs.md).
+:::
+
+:::requires video
+## Watch the edited video
+
+Choose **Video** in the toolbar. The viewer draws the video the same way the file was made, from the
+same edit plan, with the video's own sound, so what you watch is what you would upload. Clicking a word
+in the transcript plays the video from that word; a word the video takes out plays from where the video
+carries on after it.
+
+- **The strip** shows the plan the video was made from: what it keeps, filled in, and what it takes
+  out, outlined with its reason.
+- **The transcript** strikes through every word the video takes out.
+- **Captions,** at the top right of the picture, shows the video's captions file over the picture, as
+  it will be uploaded with the video. View > Captions does the same.
+
+To change the edit, click a piece of the strip. The top of the inspector says what it is, with one
+button:
+
+- **Restore,** on a piece taken out: a pause, a filler word, a word said twice or a false start comes
+  back as recorded; your own cut or trim gives its time back.
+- **Remove,** on a piece kept: it comes out of the video and the podcast episode, like a cut. Delete
+  does the same, and Delete also takes out words selected in the transcript.
+- Once changed, the button turns to **Take Out Again** or **Keep**, so a second click undoes the first.
+  Edit > Undo (Command-Z) undoes any of them too.
+- Time taken out for someone you chose to Leave Out has no Restore here: change their choice in the
+  People tab.
+
+A change is not in the video until you make it again: the line under the toolbar says "Not in the
+video yet", with Make Again. Approve waits until what you restored is in the video.
+
+If the edit was planned again after the video was made (Plan Again), Video says so and plays once you
+make it again, so the viewer never shows an edit that is not in the file.
 :::
 
 :::unless voices

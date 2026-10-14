@@ -66,6 +66,11 @@ extension AppModel {
         viewer.showsPeople = on
     }
 
+    /// The Viewer's Captions toggle and View > Captions (v2 part M8c).
+    func setShowsCaptions(_ on: Bool) {
+        viewer.showsCaptions = on
+    }
+
     func setFollowPlayback(_ on: Bool) {
         viewer.followPlayback = on
         settings.followPlayback = on
@@ -121,10 +126,13 @@ extension AppModel {
     @discardableResult
     func removeSelectedWords(from recording: Recording) -> String? {
         guard canRemoveSelectedWords(recording), let chosen = viewer.selectedWords, let span = viewer.document.span(of: chosen) else { return nil }
+        let before = EditSnapshot(recording)
         if let problem = addCut(span, to: recording) {
             notice = Notice(title: "Not removed", message: problem)
             return problem
         }
+        // Undoable (design spec 6.7, v2 part M8c).
+        registerEditUndo(editUndoManager, recording: recording, before: before, name: "Remove from the Edit")
         return nil
     }
 
@@ -132,10 +140,12 @@ extension AppModel {
     @discardableResult
     func keepSelectedWords(in recording: Recording) -> String? {
         guard canKeepSelectedWords(recording), let chosen = viewer.selectedWords, let span = viewer.document.span(of: chosen) else { return nil }
+        let before = EditSnapshot(recording)
         if let problem = keep(span, in: recording) {
             notice = Notice(title: "Not kept", message: problem)
             return problem
         }
+        registerEditUndo(editUndoManager, recording: recording, before: before, name: "Keep in the Edit")
         return nil
     }
 
@@ -285,7 +295,7 @@ extension AppModel {
 /// now whatever holds the focus, except a field being typed in, the transcript (it handles the same keys
 /// itself), and a control Ivan reached with Full Keyboard Access (Space presses it).
 enum ViewerKeys {
-    enum Action: Equatable { case togglePlay, shuttle(Character), back }
+    enum Action: Equatable { case togglePlay, shuttle(Character), back, delete }
 
     /// What a key does in the Viewer, or nil when it belongs to something else.
     static func action(characters: String, modifiers: NSEvent.ModifierFlags, viewerOpen: Bool,
@@ -293,6 +303,8 @@ enum ViewerKeys {
         guard viewerOpen, !responderIsText, !responderIsKeyboardControl else { return nil }
         guard modifiers.intersection([.command, .control, .option]).isEmpty else { return nil }
         if characters == "\u{1b}" { return .back }
+        // Delete and Forward Delete (design spec 6.7, v2 part M8c): the chosen span or words out of the edit.
+        if characters == "\u{7f}" || characters == "\u{f728}" { return .delete }
         if characters == " " { return .togglePlay }
         if characters.count == 1, let key = characters.first, "jklJKL".contains(key) { return .shuttle(key) }
         return nil
@@ -325,8 +337,9 @@ enum ViewerKeys {
                 case .togglePlay: model.viewer.togglePlay()
                 case .shuttle(let key): model.viewer.shuttle(key)
                 case .back: model.back()
+                case .delete: model.deleteInViewer()
                 }
-                let name = action == .togglePlay ? "Space" : (action == .back ? "Escape" : "J, K or L")
+                let name = action == .togglePlay ? "Space" : action == .back ? "Escape" : action == .delete ? "Delete" : "J, K or L"
                 model.viewer.playbackLog?(String(format: "Playback: key %@ in the Viewer, rate now %.2f", name, model.viewer.player.rate))
                 return true
             }

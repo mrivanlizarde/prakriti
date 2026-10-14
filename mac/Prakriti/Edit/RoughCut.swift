@@ -169,7 +169,17 @@ struct RoughCut: Sendable {
         var edits = EpisodeEdits()
         /// The stretches cut for the people Ivan left out (`LeaveOut.cuts`, their overlaps included).
         var leftOut: [TimeRange] = []
+        /// Stretches Ivan restored from the Viewer (v2 part M8c, `Recording.planRestores`): no filler, stutter or restart
+        /// whose words touch one is proposed, and no pause or silence that touches one is shortened or trimmed, so each plays
+        /// as recorded. They never override the forced time above (research 3.4 rule 5): a restore cannot bring back Ivan's
+        /// own cut or a person he left out.
+        var restored: [TimeRange] = []
         var preset = RoughCutPreset.clear
+
+        /// Whether the stretch from `a` to `b` touches a restored one (by more than a millisecond).
+        func touchesRestored(_ a: Double, _ b: Double) -> Bool {
+            restored.contains { $0.end > a + 0.001 && $0.start < b - 0.001 }
+        }
     }
 
     var refinedStart: [Double] = []
@@ -269,6 +279,9 @@ struct RoughCut: Sendable {
         var proposals = markers.proposals + sentences.proposals
             + Restarts.stutters(words, starts: cut.refinedStart, ends: cut.refinedEnd) + Restarts.fillers(open)
         proposals = proposals.filter { p in (p.first...p.last).allSatisfy { forcedWord[$0] == nil } }
+        // Restored by Ivan (v2 part M8c): a proposal over words he brought back is not made.
+        proposals = proposals.filter { p in !input.touchesRestored(min(words[p.first].start, cut.refinedStart[p.first]),
+                                                                    max(words[p.last].end, cut.refinedEnd[p.last])) }
 
         // Join by join, from the first word to the last; a proposal that cannot be cut cleanly is kept and the joins are
         // worked out again without it.
@@ -449,7 +462,14 @@ struct RoughCut: Sendable {
             return .removal(removal, pause)
         }
 
-        // Nothing to take out but time: the start, the end, or a pause between two words.
+        // Nothing to take out but time: the start, the end, or a pause between two words. Time Ivan restored stays as
+        // recorded (v2 part M8c).
+        if input.touchesRestored(leftEnd, rightStart) {
+            guard let left, right != nil else { return .kept(nil) }
+            let closes = words[left].closes
+            return .kept(PlannedPause(after: left, closes: closes, protected: isProtected(after: left, words: words), was: rightStart - leftEnd,
+                                      now: rightStart - leftEnd, start: leftEnd, end: rightStart))
+        }
         if left == nil {
             // Silence before the first word, beyond what is kept.
             guard rightStart > preset.keepBeforeFirst + frame.seconds,

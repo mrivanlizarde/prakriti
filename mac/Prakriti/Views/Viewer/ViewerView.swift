@@ -26,12 +26,13 @@ struct ViewerView: View {
         .onAppear { model.openViewer(recording) }
         .onChange(of: recording.madeAt) { model.openViewer(recording) }
         .onChange(of: recording.podcastReady?.fileName) { model.openViewer(recording) }
+        .onChange(of: recording.videoJSON) { model.openViewer(recording) }
         .onDisappear { viewer.close() }
     }
 }
 
-/// The rendition picker for the toolbar while a recording is open: Original, Podcast and Podcast-ready, and
-/// Video and Shorts, which this build does not make (choosing one says why).
+/// The rendition picker for the toolbar while a recording is open: Original, Podcast, Podcast-ready and Video (v2 part
+/// M8c), and Shorts, which this build does not make (choosing one says why, as does Video before it is made).
 struct RenditionPicker: View {
     @Environment(AppModel.self) private var model
 
@@ -47,7 +48,7 @@ struct RenditionPicker: View {
         .pickerStyle(.segmented)
         .labelsHidden()
         .fixedSize()
-        .quickHelp("Choose what plays: the Original as recorded, the Podcast episode, or the Podcast-ready episode. Video and Shorts are not made yet.",
+        .quickHelp("Choose what plays: the Original as recorded, the Podcast episode, the Podcast-ready episode, or the edited Video. Shorts are not made yet.",
                    article: "reviewing-and-approving")
     }
 }
@@ -131,8 +132,13 @@ struct ViewerBanner: View {
         default:
             break
         }
-        if viewer.rendition == .original, let note = viewer.originalNote {
+        if viewer.rendition == .original || viewer.rendition == .video, let note = viewer.originalNote {
             return ("icloud.and.arrow.down", note, nil)
+        }
+        // The Video (v2 part M8c): a change made since the video was planned shows once it is made again.
+        if viewer.rendition == .video, let behind = model.videoBehind(recording) {
+            return ("exclamationmark.circle", behind,
+                    model.canMakeAgain(recording) ? Action(title: "Make Again…") { model.ask(.makeAgain, for: recording) } : nil)
         }
         if recording.editsPending {
             return ("exclamationmark.circle", "Your newest trim and cuts are not in the episode yet. Make it again to hear them, and before approving.",
@@ -160,6 +166,8 @@ struct ViewerPicture: View {
                 .accessibilityLabel(viewer.rendition.title + " player")
             // Who is where, over the Original (v2 part M6d): boxes and names, and the toggle that shows them.
             PeopleOverlay(recording: recording)
+            // The video's captions as they will be uploaded (v2 part M8c).
+            CaptionsOverlay()
             ViewerPictureToggles(recording: recording)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
             if !viewer.rendition.hasPicture {
@@ -280,6 +288,9 @@ struct ViewerLower: View {
     /// "Keeps 15:08 of 15:48": what the trim and cuts leave, as they stand now; on the Original with an edit plan, what
     /// the plan keeps (v2 part M8a).
     private var keptLine: String? {
+        if model.viewer.rendition == .video, let plan = model.viewer.videoPlan {
+            return "The video keeps \(Format.timecode(plan.keptSeconds)) of \(Format.timecode(plan.sourceDuration))"
+        }
         if model.viewer.rendition == .original, let plan = model.editPlan(for: recording) {
             return "The plan keeps \(Format.timecode(plan.keptSeconds)) of \(Format.timecode(plan.sourceDuration))"
         }
@@ -306,9 +317,11 @@ struct ViewerTimeline: View {
 }
 
 extension ViewerTimeline {
-    /// On the Original with an edit plan (v2 part M8a), the plan's spans; otherwise the trim and cuts as they stand now.
+    /// On the Video (v2 part M8c), the spans of the plan it was made from; on the Original with an edit plan (v2 part M8a),
+    /// the plan's spans; otherwise the trim and cuts as they stand now.
     @MainActor
     static func spans(_ recording: Recording, duration: Double, model: AppModel) -> [TimelineSpan] {
+        if model.viewer.rendition == .video, let plan = model.viewer.videoPlan { return TimelineSpan.spans(plan: plan) }
         if model.viewer.rendition == .original, let plan = model.editPlan(for: recording) { return TimelineSpan.spans(plan: plan) }
         return TimelineSpan.spans(edits: recording.edits, duration: duration)
     }
@@ -321,7 +334,10 @@ struct ViewerTranscript: View {
 
     var body: some View {
         let viewer = model.viewer
-        let kept = recording.duration.map { recording.edits.segments(duration: $0) } ?? [Mastering.Span(start: 0, end: .greatestFiniteMagnitude)]
+        // On the Video (v2 part M8c), the words the video keeps; every word it took out is struck through.
+        let kept = viewer.rendition == .video && viewer.videoPlan != nil
+            ? viewer.videoPlan!.spans.map { Mastering.Span(start: $0.in, end: $0.out) }
+            : recording.duration.map { recording.edits.segments(duration: $0) } ?? [Mastering.Span(start: 0, end: .greatestFiniteMagnitude)]
         TranscriptTextView(
             document: viewer.document, kept: kept, playing: viewer.currentSentence?.id, selected: viewer.selectedWords, follow: viewer.followPlayback,
             revealRequest: viewer.revealRequest, findRequest: model.viewerFindRequest,
@@ -390,26 +406,30 @@ struct ViewerTip: View {
     }
 }
 
-/// Above the inspector's tabs (design spec 3.5.0): the Timeline-lite span chosen, with Restore for time the
-/// trim or a cut takes out.
+/// Above the inspector's tabs (design spec 3.5.0): the Timeline-lite span chosen, with its one action (v2 part M8c): Restore
+/// for time the plan, the trim or a cut takes out, Remove for time it keeps, and the opposite once changed, until Make Again.
 struct SelectedSpanStrip: View {
     let span: TimelineSpan
     @Bindable var recording: Recording
     @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undoManager
 
     var body: some View {
+        let edit = model.spanEdit(span, in: recording)
         VStack(alignment: .leading, spacing: 8) {
             Label {
                 // At most four lines: a plan's sentence is longer than a cut's, and a strip that grows without a limit asked
                 // the window for 1,620 pt in the snapshots (v2 part M8a).
-                Text(span.line).font(AppFont.body).lineLimit(4).frame(maxWidth: .infinity, alignment: .leading)
+                // Once changed, the state takes the line's place, so the strip never grows (a second line made the window ask
+                // for 1,006 pt in the 23-viewer-video-restored snapshot, 14 Oct).
+                Text(Self.stateLine(edit, span: span) ?? span.line).font(AppFont.body).lineLimit(4).frame(maxWidth: .infinity, alignment: .leading)
             } icon: {
                 Image(systemName: span.symbol).font(AppFont.body)
             }
             HStack(spacing: 10) {
-                if span.isRemoved && !span.isPlanned {
-                    Button("Restore") { model.restore(span, in: recording) }
-                        .disabled(!model.canEditEpisode(recording))
+                if let title = Self.actionTitle(edit) {
+                    Button(title) { model.applySpanEdit(span, in: recording, undo: undoManager) }
+                        .quickHelp(Self.actionHelp(edit), article: "reviewing-and-approving")
                 }
                 Spacer()
                 Button("Done") { model.viewer.selectedSpan = nil }
@@ -422,5 +442,36 @@ struct SelectedSpanStrip: View {
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .accessibilityElement(children: .contain)
+    }
+
+    static func actionTitle(_ edit: SpanEdit) -> String? {
+        switch edit {
+        case .restore: "Restore"
+        case .restored: "Take Out Again"
+        case .remove: "Remove"
+        case .removed: "Keep"
+        case .restoredTrim, .person, .none: nil
+        }
+    }
+
+    static func actionHelp(_ edit: SpanEdit) -> String {
+        switch edit {
+        case .restore: "Brings this stretch back as recorded, the next time it is made. Command-Z undoes it."
+        case .restored: "Lets the plan take this stretch out again, the next time it is made."
+        case .remove: "Takes this stretch out of the video and the episode, the next time they are made. Delete does the same."
+        case .removed: "Keeps this stretch in the video and the episode after all."
+        case .restoredTrim, .person, .none: ""
+        }
+    }
+
+    /// What the span's state is, when there is more to say than its own line.
+    static func stateLine(_ edit: SpanEdit, span: TimelineSpan) -> String? {
+        switch edit {
+        case .restored: "Restored, \(TimeText.string(span.start)) to \(TimeText.string(span.end)). Not in the video yet: Make Again to see it."
+        case .removed: "Removed, \(TimeText.string(span.start)) to \(TimeText.string(span.end)). Not in the video yet: Make Again to see it."
+        case .restoredTrim: "Your trim was moved. Not in the video yet: Make Again to see it."
+        case .person: "Someone you chose to leave out. To bring them back, change their choice in the People tab."
+        case .restore, .remove, .none: nil
+        }
     }
 }

@@ -191,6 +191,31 @@ enum Captions {
         return m
     }
 
+    /// The .srt as written, as cues to show over the picture (v2 part M8c, the Viewer's Captions overlay): exactly the file
+    /// that is uploaded with the video, so what is shown is what will be published. Blocks that do not parse are passed over.
+    static func cues(srt: String) -> [Cue] {
+        let blocks = srt.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n\n")
+        return blocks.compactMap { block in
+            let lines = block.trimmingCharacters(in: .newlines).components(separatedBy: "\n")
+            guard lines.count >= 3 else { return nil }
+            let times = lines[1].components(separatedBy: " --> ")
+            guard times.count == 2, let start = stamp(times[0]), let end = stamp(times[1]), end > start else { return nil }
+            return Cue(start: start, end: end, lines: Array(lines[2...]))
+        }
+    }
+
+    /// The cue on screen at `t` (edited clock), or nil.
+    static func cue(at t: Double, in cues: [Cue]) -> Cue? {
+        var lo = 0, hi = cues.count
+        while lo < hi {
+            let mid = (lo + hi) / 2
+            if cues[mid].start <= t { lo = mid + 1 } else { hi = mid }
+        }
+        guard lo > 0 else { return nil }
+        let cue = cues[lo - 1]
+        return t < cue.end ? cue : nil
+    }
+
     /// "00:01:02,345" in seconds.
     static func stamp(_ text: String) -> Double? {
         let parts = text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".").split(separator: ":")

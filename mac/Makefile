@@ -130,7 +130,7 @@ ONLY      ?=
 YES       ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -165,6 +165,26 @@ accept-progress:
 
 accept-video:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=video TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/EditPlanAcceptanceTests -only-testing:PrakritiTests/VideoAcceptanceTests
+
+# accept-viewer-video  v2 part M8c's acceptance (PLAN M8 check 4 on a real talk): a 5-minute excerpt of the REAL 13 Sep talk
+#                 (~/Prakriti/Dev/Excerpts, cut with -c copy from 2:00) made in development with the edited video on, opened in the
+#                 Viewer on Video, and six frames at known plan times compared by PSNR: the MP4's against the Viewer's own player item
+#                 with its videoComposition (38 dB or better). Numbers only, no frame of the talk is written. Also writes the
+#                 test-pattern video folder look-video captures. Writes acceptance-viewer-video.txt to ../screens/mac/$(MILESTONE)/
+#                 (about 3 minutes)
+accept-viewer-video:
+	./scripts/make-fixtures.sh --if-missing
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=viewer-video TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/ViewerVideoAcceptanceTests
+
+# look-video  v2 part M8c's real window (PLAN M8 check 7): a development copy on sample data opens the test-pattern video that
+#                 accept-viewer-video wrote, on Video with the Captions overlay on and --debug-playback-log, Space is sent, and
+#                 playback is proved from the log (two currentTime lines 3 s apart differ by 2.5 to 3.5 s at rate 1, rendition
+#                 video); the window is captured to ../screens/mac/$(MILESTONE)/real/14-viewer-video.png. Takes the screen's focus
+#                 for about half a minute
+VIDEO_SAMPLE ?= $(HOME)/Prakriti/Dev/Fixtures/viewer-video-sample
+
+look-video: build
+	swift scripts/capture-window.swift --video $(APP) "$(VIDEO_SAMPLE)" ../screens/mac/$(MILESTONE)/real
 
 accept-capture:
 	./scripts/make-fixtures.sh --if-missing

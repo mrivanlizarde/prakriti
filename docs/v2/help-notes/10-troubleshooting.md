@@ -65,3 +65,8 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
   listen fails the coverage check, the notice reads "...the transcript has no words for 1 stretch of speech. Its Checks tab says
   where; listen there before trusting it.", the Checks tab shows a Missing words row, and REPORT.md says "NO WORDS for 1 stretch
   of speech at 0:30 (12 s)" (`TranscriptGapsTests`, a stretch planted and the second listen made deaf).
+
+## Notes from part M8c (Wed 14 Oct 2026)
+
+- New section "If the video does not play in the viewer" (`requires video`), one bullet per sentence `VideoPreview.source` and the
+  Viewer can say.

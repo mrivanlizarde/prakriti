@@ -76,8 +76,8 @@ struct PeopleOverlayBox: View {
 }
 
 /// The toggles over the picture, top trailing, in one clear-glass group (design spec 3.4.1: the HIG's case for clear
-/// glass over video). This build has one, People; Captions and Vertical Guide come with their parts. Each shows its
-/// word under the symbol at 12 pt semibold, because there are no tooltips.
+/// glass over video): People on the Original (v2 part M6d), Captions on the Video (v2 part M8c); Vertical Guide comes with
+/// its part. Each shows its word under the symbol at 12 pt semibold, because there are no tooltips.
 struct ViewerPictureToggles: View {
     @Bindable var recording: Recording
     @Environment(AppModel.self) private var model
@@ -85,28 +85,73 @@ struct ViewerPictureToggles: View {
     var body: some View {
         let viewer = model.viewer
         if viewer.rendition == .original, model.peopleBoxes.file(for: recording, folders: model.peopleFolders) != nil {
-            Button { model.setShowsPeople(!viewer.showsPeople) } label: {
-                VStack(spacing: 3) {
-                    Image(systemName: viewer.showsPeople ? "person.crop.rectangle.fill" : "person.crop.rectangle")
-                        .font(AppFont.body)
-                    Text("People")
-                        .font(AppFont.toggleLabel)
-                }
-                // White on a darkened clear glass: measured in `make look` (13 Oct), accent text on clear glass over a bright
-                // picture could not be read. On and off differ by the symbol's fill, never by color alone.
-                .foregroundStyle(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .contentShape(Rectangle())
+            PictureToggle(title: "People", symbol: "person.crop.rectangle", isOn: viewer.showsPeople) { model.setShowsPeople(!viewer.showsPeople) }
+                .accessibilityHint("Shows a box and a name around each face in the original.")
+                .quickHelp("Draws a box around each face in the original, with its name or Unnamed, and the choice for anyone hidden.",
+                           article: "people-and-privacy")
+        } else if viewer.rendition == .video, !viewer.captions.isEmpty {
+            PictureToggle(title: "Captions", symbol: "captions.bubble", isOn: viewer.showsCaptions) { model.setShowsCaptions(!viewer.showsCaptions) }
+                .accessibilityHint("Shows the captions file that goes with the video, as it will be uploaded.")
+                .quickHelp("Shows the video's captions over the picture: the same .srt file that is uploaded with it.",
+                           article: "reviewing-and-approving")
+        }
+    }
+}
+
+/// One toggle over the picture: its symbol, filled when on, and its word under it.
+struct PictureToggle: View {
+    let title: String
+    let symbol: String
+    let isOn: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                Image(systemName: isOn ? symbol + ".fill" : symbol)
+                    .font(AppFont.body)
+                Text(title)
+                    .font(AppFont.toggleLabel)
             }
-            .buttonStyle(.plain)
-            .glassEffect(.clear.tint(.black.opacity(0.4)), in: .rect(cornerRadius: 12))
-            .padding(12)
-            .accessibilityLabel(viewer.showsPeople ? "People, shown" : "People, hidden")
-            .accessibilityHint("Shows a box and a name around each face in the original.")
-            .accessibilityAddTraits(viewer.showsPeople ? [.isButton, .isSelected] : .isButton)
-            .quickHelp("Draws a box around each face in the original, with its name or Unnamed, and the choice for anyone hidden.",
-                       article: "people-and-privacy")
+            // White on a darkened clear glass: measured in `make look` (13 Oct), accent text on clear glass over a bright
+            // picture could not be read. On and off differ by the symbol's fill, never by color alone.
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .glassEffect(.clear.tint(.black.opacity(0.4)), in: .rect(cornerRadius: 12))
+        .padding(12)
+        .accessibilityLabel(isOn ? "\(title), shown" : "\(title), hidden")
+        .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
+    }
+}
+
+/// The Captions overlay on the Video (v2 part M8c, design spec 3.4.1): the caption the video's `.srt` shows at the moment
+/// playing, white on a dark box near the bottom of the picture, as a player shows a captions file. Text only; nothing drawn
+/// as hardware.
+struct CaptionsOverlay: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let viewer = model.viewer
+        if let cue = viewer.currentCaption {
+            GeometryReader { proxy in
+                let picture = PeopleOverlay.pictureRect(in: proxy.size, frame: viewer.videoSize)
+                Text(cue.lines.joined(separator: "\n"))
+                    .font(AppFont.body)
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .fixedSize()
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(.black.opacity(0.75)))
+                    .position(x: picture.midX, y: picture.maxY - max(40, picture.height * 0.1))
+            }
+            .allowsHitTesting(false)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Caption: " + cue.text)
         }
     }
 }

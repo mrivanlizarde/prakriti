@@ -31,6 +31,9 @@ extension AppModel {
         if plan.basis.peopleSignature != recording.videoSignature {
             return "Your newest choices of who is in the video are not in the plan yet."
         }
+        if !EditPlan.sameRestores(plan.basis.restored ?? [], recording.planRestores) {
+            return "What you restored is not in the plan yet."
+        }
         return nil
     }
 

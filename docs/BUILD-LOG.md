@@ -69,7 +69,10 @@ Approve. Every check passed, one real 13 Sep write went through Anthropic for $0
 (11:38, pid 92711). **Then part TXGAP** (the last section, "v2 part TXGAP", Wed 14 Oct): after Parakeet's whole-file run, every
 stretch of speech it wrote no words for is transcribed again on its own and its words added once each, and the coverage check
 fails on any stretch of speech still without words, wherever it is. The 6 Sep talk gains 153 words at 24:22, 39:24 and 43:04;
-the 13 Sep transcript.json is byte for byte unchanged.
+the 13 Sep transcript.json is byte for byte unchanged. **Then part M8c, the video in the Viewer** (the last section, "v2 part
+M8c", Wed 14 Oct): Video in the toolbar plays the edited video inside the app, drawn by the same compositor from the same plan as
+the file (46 dB against the MP4's frames on a 13 Sep excerpt), with Captions over the picture, the strip and struck-through words of
+its plan, and Restore, Remove, Delete and Undo on its spans, each waiting for Make Again. Installed.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -5320,3 +5323,101 @@ nothing already made was changed.
 - [ ] **Make the 6 Sep talk again** (select Sun 6 Sep, click Make Again). Its transcript, captions and chapters in your Outputs were
   made before this fix and lack 153 words at 24:22, 39:24 and 43:04. If it is approved, Make Again takes the approval back, so
   approve it again after a listen. The 13 Sep talk needs nothing: nothing was missing.
+
+## v2 part M8c: the edited video in the Viewer. Wed 14 Oct 2026
+
+The part after TXGAP (`docs/v2/PLAN.md`, M8, part M8c; REQUEST item 10, "preview inside the app"). Built on `main` 14:55 to
+16:25. No package added, nothing downloaded. **One stored field added (`Recording.planRestores`, default empty), an
+addition:** `make migrate-check` run (below). Under Ivan's decision of Mon 12 Oct every participant counts as released; nothing
+in this part sends anything anywhere.
+
+### What was built
+
+- **`Render/VideoPreview.swift`.** The Viewer's Video is built from the edit plan the video was made from: `CompositionBuilder`
+  (the writer's own composition and `AVVideoComposition` with the same `Compositor` and `RenderInstruction`s) plus the made MP4's
+  sound track laid on the same clock. The player item's `videoComposition` is that object, so the preview is drawn by the code
+  that drew the file. `VideoPreview.source` refuses, in one sentence, a recording with no video, a missing file or plan, or a plan
+  newer than the video (`VideoRecord.planMadeAt`, new, set by `VideoStep.check`; Mac warning 153).
+- **Viewer (`ViewerModel`):** `Rendition.video` is built; a recording with a video opens on it (design spec 3.4.2); the composition
+  is built off the main thread after checking the original is on this Mac; the clock maps the original to the video and back
+  (`EditTimeline`), so a word click plays from its place and a word taken out plays from where the video goes on; the strip shows
+  the video's plan; the transcript strikes through every word the video takes out; "The video keeps 14:50 of 15:48".
+- **Captions overlay:** `Captions.cues(srt:)` reads the video's own `.srt`; **Captions** over the picture (`PictureToggle`, the People
+  toggle's shape, now shared) and View > Captions show the cue at the moment playing, white on a dark box near the picture's foot.
+- **Restore and Remove (`App/VideoEditActions.swift`).** A chosen span has one action above the inspector's tabs: Restore (a pause,
+  filler, stutter or restart goes into `Recording.planRestores`; Ivan's own cut or trim through v1's `keep`), Remove (a kept span
+  becomes Ivan's cut), then Take Out Again or Keep; time cut for someone left out has none ("change their choice in the People
+  tab"). The strip's line becomes the state once changed ("Restored, 0:15.9 to 0:16. Not in the video yet: Make Again to see it.").
+  Delete (in the Viewer and in the transcript) removes the chosen kept span or the selected words; Edit > Restore Span or Remove
+  Span. Every one of these, and the transcript's Remove from the Edit and Keep in the Edit, registers with the window's undo
+  manager (Edit > Undo, Command-Z; Redo). The banner on Video says "Not in the video yet: your newest changes show once you Make
+  Again." with Make Again; Approve waits for a restore ("Make Again first: what you restored is not in the video yet.").
+- **The plan honours restores (`RoughCut.Input.restored`):** no filler, stutter or restart whose words touch a restored stretch is
+  proposed, and no pause or silence touching one is shortened or trimmed; forced time (Ivan's cuts and trim, people left out) is
+  never overridden (Mac warning 155). `EditPlan.Basis.restored` records them; `planIsBehind` says "What you restored is not in the
+  plan yet."; `PipelineOptions.planRestores` carries them into every make.
+- **Inspector:** Edited video has **Watch Video** and the line "Watch it here with Video in the toolbar"; the old "Watching it here
+  comes in the next update" is gone.
+- **Development checks:** `--sample-video=<folder>` and `--captions` (sample data only), `make accept-viewer-video`
+  (`ViewerVideoAcceptanceTests`), `make look-video` (`capture-window.swift --video`).
+- **Capability `video` on.** Help 05 (how to watch it; the zooms-and-text section moved to `requires style`), 06 (Video in the list,
+  "Watch the edited video"), 09 (zooming moved to `style`), 10 ("If the video does not play in the viewer"); notes appended to
+  `docs/v2/help-notes/05`, `06`, `09`, `10`. Welcome panel 3 now shows its `review-v2` step. START_HERE: the M8c paragraph, Mac
+  warnings 153 to 155, the file map, the two make targets. Tests: `ViewerVideoTests` (3, in `make test`), `ViewerTests`,
+  `HelpTests`, `WelcomeTests`, `StoreMigrationTests` updated; snapshots `23-viewer-video-span`, `23-viewer-video-restored`.
+
+### Checks run, with results (PLAN M8, the checks part M8c runs: 4, 7, 8)
+
+Real media: a 5-minute excerpt of the 13 Sep talk (`~/Prakriti/Dev/Excerpts/2026-09-13 excerpt 2m to 7m.mp4`, `-c copy` from
+2:00; PLAN, Part TXGAP's note: full talks wait for M8d). No frame of a talk was written or looked at (numbers only, as this run
+was told under D1); every picture looked at shows a test pattern. Original unchanged (730,464,600 bytes, same date).
+
+| # | Check | Result |
+|---|---|---|
+| 4 | **Preview equals output:** six frames at known plan times, decoded from the MP4 and taken by `AVAssetImageGenerator` from the Viewer's own player item with its exact `videoComposition`, 38 dB or better | **PASS.** 13 Sep excerpt (`make accept-viewer-video`, `screens/mac/v2-m8c/acceptance-viewer-video.txt`): video made in development in 78 s (4:45, 34 spans), opened on Video by the Viewer itself, player item 284.918 s = MP4 284.918 s, compositor `Prakriti.Compositor`, 34 instructions; six frames in spans k4, k9, k18, k24, k28, k31: **46.1 to 46.5 dB**; the MP4 against the preview 3 frames later 22.2 to 33.9 dB, so the measure tells frames apart. Test pattern (`ViewerVideoTests`, in `make test`): six frames **44.9 to 45.8 dB**, each more than 3 dB over the frame 3 later. Also in `make test`: clock both ways (a moment taken out plays from where the video goes on), the strip is the video's plan, captions read back from the `.srt`, and Plan Again stops the Video with its sentence |
+| 7 | Snapshots and one real-window capture of the Viewer on Video with the Timeline-lite, looked at; playback from `--debug-playback-log` | **PASS.** `make look-video` (`real/14-viewer-video.png`, `real/video-playback.txt`): the test-pattern video on Video with Captions on; "currentTime 5.103 s ... 8.102 s, **2.999 s apart**, rate 1.00, rendition video"; Space again paused it (8.665 s, rate 0.00). **Looked at:** the picture drawn by the compositor, the caption "every morning we sit / together for a few minutes," on a dark box at the foot, the Captions toggle filled, the strip with the plan (restart outlined with its symbol, the tail trim with scissors, the position line), "The video keeps 0:22 of 0:30", the restart, "um", "uh" and the stutter's first "so" struck through. Snapshots `23-viewer-video-span-light/dark` (a filler chosen, its sentence and **Restore**) and `23-viewer-video-restored-light/dark` ("Restored, 0:15.9 to 0:16. Not in the video yet: Make Again to see it.", **Take Out Again**, the banner with Make Again, Approve dimmed with "Make Again first: what you restored is not in the video yet."), Help 06 light p2 and dark p3 (the Video bullet, "Watch the edited video"), all readable at 17 pt in light and dark. **Found by looking:** the first restored snapshot asked for a 1,006 pt window (the state line added a second text under the sentence); the state now takes the sentence's place. The selected segment of the rendition picker draws blank in every bitmap snapshot (20-viewer-original too, since M3b); the real window draws it |
+| 8 | Regression set; `make migrate-check` | **PASS.** `make build`: No warnings. **`make test`: 369 tests, 0 failures, 22 skipped by design** (1,282 s; the first run failed only `HelpTests` and `WelcomeTests`, which had not yet counted the `video` capability, and Help 06's "Shorts" line, which ran into the Video bullet; fixed and run again whole). `make accept`: 13 Sep -16.8 LUFS (-16.82), -1.7 dBFS, 2,948 words to 15:47 of 15:48; silent-60s at -91 dB; the 30 s clip; 6 Sep -16.7 LUFS, -1.4 dBFS, 72 and 59 words in TXGAP's two stretches. `make accept-edits`: **38.82 s shorter (expected 38.82)**, 0 of 73 runs from the cut heard, 189 of 201 after it, the class refused. `make migrate-check` on a copy of the live store: 13 recordings, 2 folders, 40 output settings, 1,172 Activity lines before and after, 2 approved; "part M8c: 0 recordings with restores; the store had the column before: false" |
+| Also | Restore on the real plan | A shortened pause of the excerpt's plan: Restore, 1 restore kept, "Not in the video yet", Approve refused until Make Again. `ViewerVideoTests`: Restore, Undo, Redo, Remove, Undo, Delete, Undo, no Restore for someone left out, and the replanned fixture keeps the restored filler (one filler fewer taken out, nothing removed inside it, `PlanValidation` clean) |
+
+**Em dashes:** 0 in every line this part added (`git diff | grep '^+'` for U+2014 and U+2013: 0).
+
+### Decisions, each with its reason
+
+1. **The preview's sound is the MP4's own track, not a live mix of the original.** Reason: the video's sound is joined and
+   mastered by ffmpeg (`VideoAudio`), which no player can do live; the file's track is exactly as long as the picture, so it lines
+   up by construction and what Ivan hears is what he uploads.
+2. **The Video plays the plan it was made from, and refuses after Plan Again** (warning 153), rather than showing the new plan.
+   Reason: preview equals output only if both come from one plan.
+3. **Remove makes one of Ivan's cuts, so the podcast loses it too.** Reason: it is what Remove from the Edit has always done, and
+   one plan drives every output; a video-only cut would be a second kind of edit with its own rules.
+4. **A restore is a stored list on the recording (`planRestores`), applied when the plan is made, not an edit of
+   `edit-plan.json`.** Reason: the plan is written only by code from its inputs (warning 138); editing the file would be lost at
+   the next make.
+5. **No Restore on time cut for someone left out.** Reason: research 3.4 rule 5; the choice belongs to the People tab.
+6. **A recording with a video opens on Video** (design spec 3.4.2). Recordings without one open as before.
+7. **The `video` Help blocks describing zooms, text and blurring moved to `style`.** Reason: Help describes only what is built;
+   switching `video` on would otherwise have shown M9's features.
+8. **The 5-minute excerpt, not the full talk,** for check 4: PLAN's Wed 14 Oct note (full talks at M8d, the group's last part).
+
+### What does not work yet, or was not seen working
+
+- Hidden faces and removed voices in the video (M8d); zooms and text (M9). The Video shows them once built, through the compositor.
+- The design spec's Everything and What Stays clock switch, Option-Left and Option-Right between spans, and zooming the strip were
+  not built (not in M8c's part line).
+- **The excerpt's own video fails one Ready checklist line, "Frame timing" (2 frames 2 apart):** the `-c copy` excerpt ends with
+  two frames 66.7 ms apart (ffprobe: 299.966, 300.033, 300.100 s), and the plan keeps that tail. The full talks passed in M8b. For
+  M8d: cut excerpts so the tail is whole (or trim the last half-second).
+- `make look-video` and the snapshots never draw a talk; the Video was never watched on a real recording by eye (D1, as told).
+
+### Installed
+
+**Installed** at 16:21:14 on Wed 14 Oct with `make install`: old pid 8165 quit, new pid **25098** from `~/Applications/Prakriti.app`,
+signature verified, only the installed copy registered. Live log: "Finished launching. Mode: live.", "Studio Recordings: listed 13
+recordings", "Drop folder: listed 0 recordings", **"16:21:14 Checked 2 folders. Nothing new."**, "Caught up on changes made while
+Prakriti was closed: 0 events." The next sweep, **"16:26:14 Checked 2 folders. Nothing new."**, pid 25098 still running.
+
+### For Ivan
+
+- [ ] **Watch one video in the app:** open Sun 13 Sep (or any recording with an edited video), choose Video in the toolbar, turn on
+  Captions. If a pause or an "um" came out that you wanted, click it on the strip and Restore, then Make Again.
+- [ ] Nothing else new: the earlier lists stand (the listening check of M8 check 9, notifications, Make Again on 6 Sep).

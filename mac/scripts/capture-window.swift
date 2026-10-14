@@ -1213,6 +1213,74 @@ func runPlaybackCheck(_ app: URL, file: String, out: URL) -> Int {
     try? text.write(to: out.appending(path: "playback.txt"), atomically: true, encoding: .utf8)
     return failures
 }
+// The edited video in the REAL app (v2 part M8c, PLAN M8 check 7): a development copy on sample data opens the test-pattern
+// video `make accept-viewer-video` wrote (no person in its picture), on Video with the Captions overlay on and
+// --debug-playback-log; Space is sent and playback is proved from the player's own lines (rule 2.1.10): two currentTime lines
+// three lines (3 s) apart, rendition video, must differ by 2.5 to 3.5 s at rate 1. The window is captured while it plays, for
+// a look at the picture drawn by the compositor, the captions, the strip with the plan and the struck-through words.
+//   cd ~/Code/prakriti/mac && swift scripts/capture-window.swift --video build/Build/Products/Debug/Prakriti.app <sample folder> <output folder>
+func runVideoCheck(_ app: URL, sample: String, out: URL) -> Int {
+    quitAll(app)
+    let before = developmentLogLines().count
+    run("/usr/bin/open", ["-n", app.path, "--args", "--sample-data", "--open=ready", "--rendition=video", "--sample-video=" + sample, "--captions",
+                          "--appearance=light", "--debug-playback-log"])
+    var pid: pid_t = 0
+    var window: (CGWindowID, CGRect)?
+    let deadline = Date().addingTimeInterval(20)
+    while Date() < deadline {
+        Thread.sleep(forTimeInterval: 0.3)
+        if let first = pids(of: app).first, let main = mainWindowID(pid: first) { pid = first; window = main; break }
+    }
+    guard pid != 0, let window else { print("FAIL  video: the window did not appear"); quitAll(app); return 1 }
+    NSRunningApplication(processIdentifier: pid)?.activate()
+    Thread.sleep(forTimeInterval: 4)
+    sendKey(pid: pid, 49)                                   // Space
+    Thread.sleep(forTimeInterval: 6)
+    try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+    let png = out.appending(path: "14-viewer-video.png")
+    run("/usr/sbin/screencapture", ["-x", "-o", "-l", String(window.0), png.path])
+    Thread.sleep(forTimeInterval: 2)
+    sendKey(pid: pid, 49)
+    Thread.sleep(forTimeInterval: 1.5)
+    quitAll(app)
+    let all = Array(developmentLogLines().dropFirst(before))
+    let lines = all.filter { $0.contains("Playback: currentTime") }
+    func parse(_ line: String) -> (time: Double, rate: Double, rendition: String)? {
+        let parts = line.components(separatedBy: "Playback: currentTime ").last?.components(separatedBy: " ") ?? []
+        guard parts.count >= 6, let t = Double(parts[0]), let r = Double(parts[3].trimmingCharacters(in: .punctuationCharacters)) else { return nil }
+        return (t, r, parts[5])
+    }
+    let playing = lines.compactMap { line in parse(line).map { (line, $0) } }.filter { $0.1.rate == 1 && $0.1.rendition == "video" }
+    var report = ["Video playback check, \(Date())", "Opened the test-pattern video \(sample) in the Viewer on Video, Captions on",
+                  "\(lines.count) playback lines; \(playing.count) at rate 1 on the video."]
+    var failures = 0
+    if playing.count >= 4 {
+        let a = playing[playing.count - 4], b = playing[playing.count - 1]
+        let delta = b.1.time - a.1.time
+        let ok = delta >= 2.5 && delta <= 3.5
+        if !ok { failures += 1 }
+        report.append(String(format: "%@  two currentTime lines three lines apart: %.3f s and %.3f s, %.3f s apart, rate %.2f and %.2f, rendition %@",
+                             ok ? "PASS" : "FAIL", a.1.time, b.1.time, delta, a.1.rate, b.1.rate, b.1.rendition))
+        report.append("      " + a.0)
+        report.append("      " + b.0)
+    } else {
+        failures += 1
+        report.append("FAIL  fewer than four lines at rate 1 on the video: playback was not proved")
+        report += all.suffix(12).map { "      log: " + $0 }
+    }
+    let paused = lines.last.flatMap(parse)?.rate == 0
+    report.append("\(paused ? "PASS" : "FAIL")  Space again paused it (last line: \(lines.last ?? "none"))")
+    if !paused { failures += 1 }
+    report.append("Window captured: \(png.path)")
+    let text = report.joined(separator: "\n") + "\n"
+    print(text)
+    try? text.write(to: out.appending(path: "video-playback.txt"), atomically: true, encoding: .utf8)
+    return failures
+}
+if args.first == "--video", args.count == 4 {
+    let failures = runVideoCheck(URL(fileURLWithPath: args[1]).standardizedFileURL, sample: args[2], out: URL(fileURLWithPath: args[3]).standardizedFileURL)
+    finish(failures == 0 ? 0 : 1)
+}
 if args.first == "--playback", args.count == 4 {
     let failures = runPlaybackCheck(URL(fileURLWithPath: args[1]).standardizedFileURL, file: args[2], out: URL(fileURLWithPath: args[3]).standardizedFileURL)
     finish(failures == 0 ? 0 : 1)

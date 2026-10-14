@@ -153,6 +153,8 @@ final class AppModel {
 
     /// Something Ivan tried that was refused, shown by the main window as an alert.
     var notice: Notice?
+    /// The undo manager edits register with in tests, where there is no main window (v2 part M8c).
+    @ObservationIgnored var undoOverride: UndoManager?
 
     /// What each model's test button found, shown on the Models screen (milestone 6).
     /// Recordings whose capture check runs now from Check Capture, and why one could not run (v2 part M4b).
@@ -328,6 +330,19 @@ final class AppModel {
                 // script (no podcast-ready file of the talk exists on this Mac), so that rendition can be seen.
                 let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
                 for recording in all where recording.title == "Talk with Gabriel" { recording.outputFolder = folder }
+            }
+            if let folder = launch.sampleVideo {
+                // The test-pattern video (v2 part M8c): no person in its picture (docs/v2/PLAN.md section 11, D1).
+                let base = URL(fileURLWithPath: folder, isDirectory: true)
+                let all = (try? model.context.fetch(FetchDescriptor<Recording>())) ?? []
+                for recording in all where recording.title == "Talk with Gabriel" {
+                    recording.filePath = base.appending(path: VideoSampleFolder.original).path
+                    recording.outputFolder = base.path
+                    recording.videoJSON = (try? String(contentsOf: base.appending(path: VideoSampleFolder.record), encoding: .utf8))
+                    if let plan = EditPlan.read(folder: base.path) { recording.duration = plan.sourceDuration }
+                    recording.madeFiles = ((try? FileManager.default.contentsOfDirectory(atPath: base.path)) ?? []).filter { !$0.hasPrefix(".") }.sorted()
+                }
+                if launch.captions { model.viewer.showsCaptions = true }
             }
             // The welcome alone (v2 part M2b): never under sample data unless asked for, at one panel, and
             // optionally with a folder chosen on the last panel (in memory, through the panel's own path).
@@ -911,6 +926,11 @@ struct CaptureLaunch {
     var activityTab: ActivityTab?
     /// `--name-sheet`: Name This Person open over the main window, for a face of the sample talk (v2 part M7a).
     var nameSheet = false
+    /// `--sample-video=<folder>`: the sample talk becomes the test-pattern video the M8c acceptance writes there (its original,
+    /// transcript, edit plan, Video folder and `video-record.json`), so the Viewer's Video rendition can be watched and captured
+    /// without a picture of anyone. `--captions` turns the Captions overlay on (v2 part M8c).
+    var sampleVideo: String?
+    var captions = false
 
     static var current: CaptureLaunch? {
         let args = CommandLine.arguments
@@ -940,7 +960,9 @@ struct CaptureLaunch {
                              quickHelp: args.contains("--quick-help"),
                              peopleOverlay: args.contains("--people-overlay"),
                              activityTab: value("--activity-tab").flatMap(ActivityTab.init(rawValue:)),
-                             nameSheet: args.contains("--name-sheet"))
+                             nameSheet: args.contains("--name-sheet"),
+                             sampleVideo: value("--sample-video"),
+                             captions: args.contains("--captions"))
     }
 
     /// The window this capture shows, for the log line.

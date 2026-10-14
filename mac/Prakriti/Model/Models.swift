@@ -203,6 +203,10 @@ final class Recording {
     /// and why it was not made when it was asked for. Additions with nil defaults, so the store migrates on its own.
     var videoJSON: String?
     var videoProblem: String?
+    /// Stretches the edit plan took out that Ivan brought back from the Viewer (v2 part M8c, Restore on a span of the plan):
+    /// pauses, filler words, words said twice and false starts, on the original's clock. The next plan keeps each as recorded.
+    /// An addition with an empty default, so the store migrates on its own. Ivan's own trim and cuts stay in `cuts`.
+    var planRestores: [TimeRange] = []
 
     var source: Source?
 

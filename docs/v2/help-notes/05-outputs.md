@@ -80,3 +80,11 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
   24:22, 17 s at 39:24 and 5 s at 43:04; each stretch heard again on its own gave 72, 59 and 22 words (153 in all), written once
   each. The rule is 3 s or more with no words and 1 s or more of speech by the sound's envelope (`TranscriptGaps`).
 - "Checks and report" names the two new report entries (stretches listened to again, and stretches still without words).
+
+## Notes from part M8c (Wed 14 Oct 2026)
+
+- The `requires video` bullet in "The outputs" was removed: the `renderedVideo` bullet already describes the file, and two
+  "Edited video" bullets would show once `video` is on. A `requires video` paragraph under the M8b section says how to watch it.
+- The long `requires video` section (zooms, on-screen text, transitions, blurring each person) is now `requires style`: none of it
+  is built in M8c. M9 (and M8d for blurring) must reconcile it with the `renderedVideo` section before switching `style` on, or
+  two "Edited video" sections will show.

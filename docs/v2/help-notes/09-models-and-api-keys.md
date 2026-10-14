@@ -114,3 +114,7 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
 - Names said aloud are kept unless Ivan chooses Mute; Approve never asks about them.
 - `Person.mayReadInCloud` and its switch "Cloud models may read their words" are retired (the stored field is kept so
   older stores open unchanged).
+
+## Notes from part M8c (Wed 14 Oct 2026)
+
+- "Cutting, zooming and making the video" moved from `requires video` to `requires style`: zooms are M9.

@@ -119,6 +119,8 @@ struct EditPlan: Codable, Equatable, Sendable {
     struct Basis: Codable, Equatable, Sendable {
         var edits: EpisodeEdits
         var peopleSignature: String
+        /// The stretches Ivan restored from the Viewer (v2 part M8c). Nil in a plan made before M8c, read as none.
+        var restored: [TimeRange]?
     }
 
     // MARK: Made from a rough cut
@@ -129,7 +131,8 @@ struct EditPlan: Codable, Equatable, Sendable {
         var plan = EditPlan(recording: recording, transcriptSHA256: words.transcriptSHA256, frameDuration: input.frame, style: input.preset.name,
                             people: people, madeAt: madeAt, sourceDuration: input.duration,
                             envelope: EnvelopeLevels(floorDB: round2(input.envelope.floor), speechDB: round2(input.envelope.speech)),
-                            basis: Basis(edits: input.edits, peopleSignature: signature))
+                            basis: Basis(edits: input.edits, peopleSignature: signature,
+                                         restored: input.restored.isEmpty ? nil : EpisodeEdits.merged(input.restored)))
         plan.spans = cut.kept.enumerated().map { n, span in
             Span(id: "k\(n + 1)", source: recording, from: all[span.first].id, to: all[span.last].id, in: round6(span.start), out: round6(span.end),
                  text: PlanWords.text(all[span.first...span.last]))
@@ -177,6 +180,12 @@ struct EditPlan: Codable, Equatable, Sendable {
             if r.words == nil { return "Silence after the last word, \(length)." }
             return "Your trim, \(length)."
         }
+    }
+
+    /// The same restored stretches, to a hundredth of a second (v2 part M8c).
+    static func sameRestores(_ a: [TimeRange], _ b: [TimeRange]) -> Bool {
+        let x = EpisodeEdits.merged(a), y = EpisodeEdits.merged(b)
+        return x.count == y.count && zip(x, y).allSatisfy { abs($0.start - $1.start) < 0.01 && abs($0.end - $1.end) < 0.01 }
     }
 
     // MARK: Reading it

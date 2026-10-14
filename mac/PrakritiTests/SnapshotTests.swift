@@ -620,8 +620,38 @@ final class SnapshotTests: XCTestCase {
             _ = try openPlan(model) { r in Fixtures.showPeopleOverlay(model, on: r) }
             model.inspectorTab = .outputs
         }
+        // The edited video in the Viewer (v2 part M8c): the sample talk on Video, a filler chosen on the strip with Restore, then
+        // restored (Take Out Again, the line under the toolbar "Not in the video yet"). The video file is the test pattern, so
+        // nothing of anyone is drawn; the player's picture is black in a bitmap (Mac warning 43), the real window is look-video's.
+        try plan.encoded().write(to: planURL)
+        var playable = SnapshotTests.sampleVideoRecord()
+        playable.planMadeAt = plan.madeAt
+        let stand = videoFolder.appending(path: playable.fileName)
+        try? FileManager.default.removeItem(at: stand)
+        try FileManager.default.copyItem(at: media.pattern, to: stand)
+        let filler = try XCTUnwrap(TimelineSpan.spans(plan: plan).first { $0.reason == .filler } ?? TimelineSpan.spans(plan: plan).first { $0.reason == .pause })
+        func openVideo(_ model: AppModel) throws -> Recording {
+            try openTalk(model, rendition: .video) { r in
+                r.videoJSON = playable.json()
+                if !r.madeFiles.contains(EditPlan.fileName) { r.madeFiles += [TranscriptFiles.asHeard, EditPlan.fileName, VideoStep.folderName] }
+            }
+        }
+        try draw("23-viewer-video-span") { model in
+            let r = try openVideo(model)
+            XCTAssertEqual(model.viewer.rendition, .video, model.viewer.unavailableReason(.video) ?? "")
+            model.viewer.selectedSpan = filler
+            XCTAssertEqual(model.spanEdit(filler, in: r), .restore)
+            model.inspectorTab = .outputs
+        }
+        try draw("23-viewer-video-restored") { model in
+            let r = try openVideo(model)
+            model.applySpanEdit(filler, in: r, undo: UndoManager())
+            model.viewer.selectedSpan = filler
+            XCTAssertEqual(model.spanEdit(filler, in: r), .restored)
+            model.inspectorTab = .outputs
+        }
         try? FileManager.default.removeItem(at: planURL)
-        let viewerCount = 18 * 2
+        let viewerCount = 20 * 2
 
         if only == "recording" {
             print("Snapshots written to \(outputFolder.path): \(written.count) Viewer pictures")

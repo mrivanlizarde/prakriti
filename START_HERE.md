@@ -773,6 +773,23 @@ order. The coverage check then fails on any stretch still holding 3 s or more of
 REPORT.md say where. Measured: the 6 Sep talk gains 153 words in those three stretches; the 13 Sep transcript.json is byte
 for byte what it was.
 
+**v2 part M8c, the video in the Viewer, Wed 14 Oct (see BUILD-LOG "v2 part M8c"):** the toolbar's **Video** plays the edited
+video inside the app, and a recording with a video opens on it. The picture is not the MP4's: `Render/VideoPreview.swift`
+builds the same `AVMutableComposition` from the same edit plan through `CompositionBuilder` and hands the player item the
+same `AVVideoComposition` with the same `Compositor`, so the preview is drawn exactly as the file was (PLAN M8 check 4,
+measured 45 to 46 dB against the MP4 on the test pattern and on a 13 Sep excerpt); the sound is the MP4's own track on the
+same clock. It plays only the plan the video was made from (`VideoRecord.planMadeAt`); after Plan Again it says why and
+does not play (Mac warning 153). On Video the strip shows that plan, the transcript strikes through every word the video
+takes out, and **Captions** (over the picture, and View > Captions) shows the video's own `.srt`. A span chosen on the strip
+has one action above the inspector's tabs (`App/VideoEditActions.swift`): **Restore** (a pause, filler, stutter or restart
+goes into `Recording.planRestores`, a stored addition, and the next plan keeps it as recorded, `RoughCut.Input.restored`;
+Ivan's own cut or trim gives its time back through v1's `keep`), **Remove** (a kept span becomes one of Ivan's cuts, so the
+episode loses it too), then **Take Out Again** or **Keep**; time cut for someone left out has none (change it in People).
+Delete removes the chosen kept span or the selected words; every one of these, and Remove from the Edit and Keep in the
+Edit, is undoable (Edit > Undo). Each waits for Make Again ("Not in the video yet" under the toolbar), and Approve waits for
+a restore (`Recording.restoresPending`). Watch Video in the inspector's Edited video opens it. Development checks:
+`make accept-viewer-video` and `make look-video`.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -852,7 +869,8 @@ folders, beside the live one.
   Oct decision: the Claude API writes every recording unless you set someone in it to Leave Out or mark someone "no
   release". Since part TXGAP (installed Wed 14 Oct) a new transcript also has the speech Parakeet's first listen missed;
   a recording made before it keeps its old transcript until you click Make Again (the 6 Sep talk lacks 153 words at
-  24:22, 39:24 and 43:04 until then).
+  24:22, 39:24 and 43:04 until then). Since part M8c (Wed 14 Oct) a recording with an edited video plays it in the app:
+  choose Video in the toolbar, or Watch Video under Edited video; click a piece of the strip to Restore or Remove it.
 - **What still needs you:** the checklist in `docs/BUILD-LOG.md`, "v2 run: where it stands", For Ivan (notifications
   first, then the listen to the 13 Sep edited video and the 320 kbps answer); the older lists in "Finish line" and, for
   the podcast, "Podcast-ready episode: the handoff", For Ivan (listen to episode 1 old against new; the show name and
@@ -990,7 +1008,12 @@ over the largest in the 50 ms of the made sound around it, the
 pauses, Parakeet run on the MP4 in about 60 s pieces (98% of kept words in order) and on 8 s around each join a filler was taken
 from (90% of them gone), the Ready checklist, StageTiming fed; the 13 Sep Video folder copied to `~/Prakriti/Dev/Listening check/`;
 then Make Video refused with someone hidden. It writes `acceptance-video.txt` and `acceptance-video-m8b.txt`; no frame of a talk is
-drawn. `make accept-capture` (v2 part M4b, about 2 minutes) runs the **real 13 Sep talk**, `two-people-tracks.mov`,
+drawn. `make accept-viewer-video` (v2 part M8c, about 3 minutes) makes a 5-minute excerpt of the **real 13 Sep talk**
+(`~/Prakriti/Dev/Excerpts/2026-09-13 excerpt 2m to 7m.mp4`, cut once with `-c copy` from 2:00) with the video on, opens it in
+the Viewer on Video and compares six frames of the MP4 with the Viewer's own player item by PSNR (38 dB or better; numbers only),
+then writes the test-pattern video `make look-video` plays (`~/Prakriti/Dev/Fixtures/viewer-video-sample`). `make look-video`
+opens that test pattern in a development copy on Video with Captions on, presses Space, proves playback from
+`--debug-playback-log` (rendition video) and captures `real/14-viewer-video.png`. `make accept-capture` (v2 part M4b, about 2 minutes) runs the **real 13 Sep talk**, `two-people-tracks.mov`,
 `silent-60s.mp4` and the 30 s clip through the app's runner in development (in-memory store) and needs the 13 Sep
 talk at 1920 by 1080, 29.97 fps, H.264, Rec. 709, one stereo track flagged as one microphone in both channels with
 the tip "Give each speaker a microphone on its own track."; the fixture's three tracks each with its own loudness
@@ -1185,7 +1208,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | The welcome window (v2 part M2b) | `mac/Prakriti/Views/Welcome/`: `WelcomeContent.swift` (the five panels' words, each row with the capabilities it describes, `requires` and `unless`; `WelcomeContent.version`), `WelcomeModel.swift` (the open panel, the first-launch rule, Choose Folder), `WelcomeWindow.swift` (the window, its rows and buttons, its own fit measurement); the scene and Help, Welcome to Prakriti in `App/PrakritiApp.swift`; `welcomeSeenVersion` in `App/AppSettings.swift`; Turn On Notifications and `Notifier.openSystemSettings` in `App/Notices.swift`; the copy source and its status: `docs/v2/help-notes/welcome-panels.md`; tests `WelcomeTests` and `SnapshotTests.testRenderWelcome` |
 | The capture check (v2 part M4b) | `mac/Prakriti/Engine/CaptureCheck.swift` (`CaptureReport`, `CaptureFinding`, reading ffprobe and the per-track ffmpeg call, the findings and their tips, `run`), the pipeline's `.capture` step, `Recording.captureJSON`, `Views/Inspector/CaptureSection.swift` (the Checks tab's Capture section), `App/CaptureActions.swift` (Check Capture for older recordings); tests `CaptureCheckTests` (in `make test`) and `CaptureAcceptanceTests` (`make accept-capture`) |
 | Progress and Activity (v2 part M4a) | `mac/Prakriti/Progress/`: `JobProgress.swift` (`ProgressTracker`, the pure arithmetic: weights, the percent that never goes back, the time left only from a measured rate, the stall line; `ProgressSnapshot` with its status line; `TimeLeft`; `JobProgress`, published at most twice a second), `ProgressMeter.swift` (what the pipeline and ffmpeg report, read twice a second; `ProcessControl`, Pause by SIGSTOP and SIGCONT), `StageTimings.swift` (`StageTiming`, a SwiftData model, the last 10 runs of each stage, seeded once from the store; `firstGuess`, measured 12 Oct). `Engine/Subprocess.swift` (`onStdoutLine`, `control`), `Engine/Pipeline.swift` (`meter`, `passes`, ffmpeg's `-progress pipe:1` in `tool`), `App/PipelineRunner.swift` (`currentJob`, `pause`, `resume`, `stop`, `makeNext`, `queueFraction`, `queueTimeLeft`, `showSample`), `App/StatusSummary.swift` (`noteStatusLine`, `--debug-status-log`); views: `Views/Activity/ActivityWindow.swift` (the window, Now, Finished, Log, `ActivityButton`), `Views/ProgressViews.swift` (`ProgressRing`, `ProgressBlock`, `ProgressButtons`), the card's `StatusCapsule`, the list's Status column, `StatusBlock` in `OutputsTab`, `ViewerBanner`, `Views/MenuBar.swift`; `Fixtures.showProgress` (the sample talk being made, for snapshots and captures); tests `ProgressTests` (in `make test`) and `ProgressAcceptanceTests` (`make accept-progress`) |
-| The edited video (v2 part M8b) | `mac/Prakriti/Render/`: `EditTimeline.swift` (the plan in frames and samples), `CompositionBuilder.swift`, `Instructions.swift` (`RenderInstruction`), `Compositor.swift`, `VideoAudio.swift` (decode, join with crossfades, master), `VideoWriter.swift`, `Mp4Boxes.swift` (moov, edit lists), `Captions.swift`, `VideoDescription.swift` (`Description.txt`), `ReadyChecklist.swift`, `OutputGate.swift` (the refusal and the only move), `VideoStep.swift` (`VideoRecord`, make and check); the pipeline's `.renderVideo` and `.checkVideo` steps and `PipelineOptions.makeVideo`; `Recording.videoJSON` and `videoProblem`; `App/VideoActions.swift` (Make Video); `Views/Inspector/VideoSection.swift`; tests `RenderTests` (in `make test`) and `VideoAcceptanceTests` (`make accept-video`) |
+| The edited video (v2 parts M8b and M8c) | `mac/Prakriti/Render/`: `VideoPreview.swift` (M8c: the Viewer's Video, built from the plan the video was made from, `VideoSampleFolder`), `EditTimeline.swift` (the plan in frames and samples), `CompositionBuilder.swift`, `Instructions.swift` (`RenderInstruction`), `Compositor.swift`, `VideoAudio.swift` (decode, join with crossfades, master), `VideoWriter.swift`, `Mp4Boxes.swift` (moov, edit lists), `Captions.swift`, `VideoDescription.swift` (`Description.txt`), `ReadyChecklist.swift`, `OutputGate.swift` (the refusal and the only move), `VideoStep.swift` (`VideoRecord`, make and check); the pipeline's `.renderVideo` and `.checkVideo` steps and `PipelineOptions.makeVideo`; `Recording.videoJSON` and `videoProblem`; `App/VideoActions.swift` (Make Video); `Views/Inspector/VideoSection.swift`; since M8c `App/VideoEditActions.swift` (Restore, Remove, Take Out Again, Keep, Delete, Undo, `Recording.planRestores`, `restoresPending`, Watch Video), the Video rendition in `Views/Viewer/ViewerModel.swift`, `CaptionsOverlay` and `PictureToggle` in `Views/Viewer/PeopleOverlay.swift`, `Captions.cues(srt:)`; tests `RenderTests`, `ViewerVideoTests` (in `make test`), `VideoAcceptanceTests` (`make accept-video`), `ViewerVideoAcceptanceTests` (`make accept-viewer-video`) and `capture-window.swift --video` (`make look-video`) |
 | Faces (v2 part M6a) | `mac/Prakriti/People/`: `FaceScan.swift` (the reader, Vision at two frames a second, the change-of-picture measure), `Tracks.swift` (`FaceBox` and the Vision conversion, `FaceTracker`, `FaceGrouping`, `FacesFound` with its lines), `PeopleFile.swift` (`PeopleFolders`, the people file, `FaceStep` with its job folder), `FaceCrops.swift` (the People tab's live crops, memory only); the pipeline's `.faces` step and `PipelineOptions.people`; `Recording.facesJSON`; `App/FaceActions.swift` (`applyFaces`, Look for Faces); `Views/Inspector/PeopleTab.swift` (`PeopleTab`, `FaceRow`, `PeopleLine`); the job cleanup in `AppModel.launch`; `--debug-face-scan` in `App/DebugSwitches.swift`; tests `PeopleTests` (in `make test`), `PeopleAcceptanceTests` and `scripts/people-crash-check.sh` (`make accept-people`) |
 | People files and job folders | `~/Library/Application Support/Prakriti/People/Recordings/<recording id>.json` and `.../Jobs/` (live); `.../Prakriti/Development/People/...` and `.../Development/Jobs/` (development) |
 | Swift packages | `swift-markdown` 0.9.0 (21 Sep 2026, with `swift-cmark` 0.9.0), pinned in `mac/project.yml` and `mac/Prakriti.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, both committed (v2 part M2a) |
@@ -2061,6 +2084,22 @@ top and its end. Reading the code is not verification, and neither is a passing 
     covers at most 1 s from its start, because Parakeet stretches the last word before a pause across it. Never rewrite the
     files when nothing was found, never re-time or reorder the first run's cues (Parakeet's sentences are not always in start
     order: 6 Sep, 31:44.5 after 31:45.8), and never take a word from the 2 s of context either side.
+
+153. **The Viewer's Video plays only the plan the video was made from (`VideoPreview.source`: `edit-plan.json`'s `madeAt` must equal
+    `VideoRecord.planMadeAt`, to the second as both files keep it).** Reason: the preview is built from the plan, not decoded
+    from the MP4, and Plan Again rewrites `edit-plan.json` without making the video; a preview of the newer plan beside the
+    older file would show an edit that is not in the file Ivan uploads. Then Video says "The edit was planned again after this
+    video was made, so it plays here once you Make Again." Never build the preview from the plan as it stands now.
+154. **The Viewer's player item is the composition with `videoComposition` set to `CompositionBuilder`'s own (the same
+    `Compositor`, the same instructions), never the MP4 and never a second renderer.** Reason: REQUEST item 10 and PLAN M8
+    check 4, "preview equals output": measured 14 Oct, 45.0 to 45.8 dB on the test pattern and 46.1 to 46.5 dB on a 13 Sep
+    excerpt against the MP4's frames (the rest is the encoder), while the file against the preview 3 frames later is 22 to 34
+    dB, so the measure tells frames apart. M8d's hiding and M9's zooms and text then show in the Viewer with no extra code.
+    The sound is the MP4's own track laid on the composition's clock, because the video's sound is mastered by ffmpeg.
+155. **A restore never overrides forced time (`RoughCut.Input.restored`).** Reason: research 3.4 rule 5, people are applied on
+    top of the plan: a restored stretch drops only the fillers, stutters and restarts whose words it touches and keeps its
+    pauses and silences as recorded; Ivan's cuts and trim and the people left out are still taken out, and the strip offers no
+    Restore on time cut for someone left out (they are changed in People).
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

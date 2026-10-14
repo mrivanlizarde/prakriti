@@ -23,6 +23,11 @@ struct VideoRecord: Codable, Equatable, Sendable {
     var peopleSignature: String
     var loudness: Double?
     var truePeak: Double?
+    /// When the plan it was made from was made (`EditPlan.madeAt`), so the Viewer plays the video from that plan and no
+    /// other (v2 part M8c). Nil for a video made before M8c.
+    var planMadeAt: Date?
+    /// The stretches Ivan had restored when it was made (v2 part M8c), so Approve can wait for newer ones.
+    var restored: [TimeRange]?
 
     var failed: Int { checklist.filter { $0.status == .fail }.count }
     var missing: Int { checklist.filter { $0.status == .missing }.count }
@@ -174,6 +179,7 @@ enum VideoStep {
         return VideoRecord(fileName: made.mp4.lastPathComponent, captionsName: made.srt.lastPathComponent, duration: measured.videoDuration ?? made.timeline.duration,
                            bytes: measured.bytes, frames: made.frames, renderSeconds: made.renderSeconds, checklist: lines, madeAt: now,
                            planSummary: setup.plan.summary, peopleSignature: setup.plan.people.applied, loudness: measured.integratedLUFS,
-                           truePeak: measured.truePeak)
+                           truePeak: measured.truePeak, planMadeAt: setup.plan.madeAt,
+                           restored: setup.plan.basis.restored)
     }
 }

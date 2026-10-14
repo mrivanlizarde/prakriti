@@ -22,6 +22,8 @@ enum PlanStep {
         /// The video's frame rate, or nil for sound alone.
         var frameRate: Double?
         var edits = EpisodeEdits()
+        /// Stretches Ivan restored from the Viewer (v2 part M8c): kept as recorded.
+        var restored: [TimeRange] = []
         var people = EditPlan.People()
         var signature = ""
         var preset = RoughCutPreset.clear
@@ -51,7 +53,7 @@ enum PlanStep {
         }
         let frame = setup.frameRate.map { FrameDuration(rate: $0) } ?? .audioOnly
         let input = RoughCut.Input(words: words, envelope: envelope, duration: setup.duration, frame: frame, edits: setup.edits,
-                                   leftOut: setup.people.cuts, preset: setup.preset)
+                                   leftOut: setup.people.cuts, restored: setup.restored, preset: setup.preset)
         let cut = RoughCut.make(input)
         guard !cut.kept.isEmpty else {
             throw Failure(reason: "Nothing would be left after the trim, the cuts and the people left out, so no plan was made.")

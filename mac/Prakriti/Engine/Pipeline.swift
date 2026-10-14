@@ -142,6 +142,8 @@ struct PipelineOptions: Sendable {
     /// Ivan's edits from the recording's page (milestone 5): where the episode starts and ends, and
     /// the sections cut out, on the original's clock. Empty: the episode is made as milestone 4 made it.
     var edits = EpisodeEdits()
+    /// Stretches the plan took out that Ivan restored in the Viewer (v2 part M8c): the next plan keeps each as recorded.
+    var planRestores: [TimeRange] = []
 
     /// Titles, show notes and chapters (milestone 6): who writes them, or nil when they are not made.
     /// They are written from the transcript, so they are made only with it.
@@ -1477,7 +1479,8 @@ struct Pipeline: Sendable {
         if capture == nil { frameRate = await PlanStep.frameRate(of: file, ffprobe: tools.ffprobe) }
         let setup = PlanStep.Setup(original: file, transcript: staging.appending(path: TranscriptFiles.asHeard),
                                    jobFolder: staging.appending(path: ".planning", directoryHint: .isDirectory), duration: duration,
-                                   frameRate: frameRate, edits: options.edits, people: people, signature: people.applied)
+                                   frameRate: frameRate, edits: options.edits, restored: options.planRestores, people: people,
+                                   signature: people.applied)
         defer { try? FileManager.default.removeItem(at: setup.jobFolder) }
         let ffmpeg = tools.ffmpeg
         let outcome = try await PlanStep.run(setup, now: Date()) { arguments in

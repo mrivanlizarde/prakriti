@@ -208,6 +208,13 @@ struct AppCommands: Commands {
     let model: AppModel
     @Environment(\.openWindow) private var openWindow
 
+    /// The Edit menu's name for the chosen span's action.
+    private var spanActionTitle: String {
+        guard let recording = model.focusedRecording, let span = model.viewer.selectedSpan,
+              let title = SelectedSpanStrip.actionTitle(model.spanEdit(span, in: recording)) else { return "Restore or Remove Span" }
+        return title + " Span"
+    }
+
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             Button("Process File…") { model.chooseFilesToProcess() }
@@ -237,12 +244,18 @@ struct AppCommands: Commands {
                 .disabled(model.path.isEmpty || model.focusedRecording.map(model.canRemoveSelectedWords) != true)
             Button("Keep in the Edit") { model.focusedRecording.map { _ = model.keepSelectedWords(in: $0) } }
                 .disabled(model.path.isEmpty || model.focusedRecording.map(model.canKeepSelectedWords) != true)
+            // The chosen Timeline-lite span's one action (v2 part M8c): Restore or Remove, as the inspector's strip shows it.
+            Button(spanActionTitle) { model.focusedRecording.map { r in model.viewer.selectedSpan.map { _ = model.applySpanEdit($0, in: r) } } }
+                .disabled(model.path.isEmpty || spanActionTitle == "Restore or Remove Span")
         }
         CommandGroup(after: .sidebar) {
             Toggle("Follow Playback", isOn: Binding(get: { model.viewer.followPlayback }, set: { model.setFollowPlayback($0) }))
             // The People overlay over the Original (v2 part M6d), the same as the toggle on the picture.
             Toggle("People", isOn: Binding(get: { model.viewer.showsPeople }, set: { model.setShowsPeople($0) }))
                 .disabled(model.path.isEmpty || model.viewer.rendition != .original)
+            // The video's captions over the picture (v2 part M8c), the same as the toggle on the picture.
+            Toggle("Captions", isOn: Binding(get: { model.viewer.showsCaptions }, set: { model.setShowsCaptions($0) }))
+                .disabled(model.path.isEmpty || model.viewer.rendition != .video || model.viewer.captions.isEmpty)
             Divider()
             Button(model.inspectorShown ? "Hide Inspector" : "Show Inspector") { model.inspectorShown.toggle() }
                 .keyboardShortcut("i", modifiers: [.command, .option])

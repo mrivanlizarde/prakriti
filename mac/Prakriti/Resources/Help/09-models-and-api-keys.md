@@ -45,7 +45,7 @@ These always run on this Mac, whatever you choose:
 :::requires renderedVideo
 - Making the edited video and checking it.
 :::
-:::requires video
+:::requires style
 - Cutting, zooming and making the video.
 :::
 

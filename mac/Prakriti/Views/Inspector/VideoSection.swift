@@ -53,9 +53,14 @@ struct VideoSection: View {
                     : "\(video.failed) FAIL, \(video.missing) MISSING, \(video.passed) PASS."))
                 .font(AppFont.body)
                 .fixedSize(horizontal: false, vertical: true)
-            RowNote("Watching it here comes in the next update. It is in the Video folder with its captions and Description.txt.")
-            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([file]) }
-                .padding(.top, 2)
+            RowNote("Watch it here with Video in the toolbar: the picture is drawn the same way as the file. It is in the Video folder with its "
+                    + "captions and Description.txt.")
+            HStack(spacing: 10) {
+                Button("Watch Video") { model.showVideo(recording) }
+                    .quickHelp("Opens the recording in the viewer on Video, the edited video as it will be posted.", article: "reviewing-and-approving")
+                Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([file]) }
+            }
+            .padding(.top, 2)
         }
         .padding(.vertical, 4)
     }

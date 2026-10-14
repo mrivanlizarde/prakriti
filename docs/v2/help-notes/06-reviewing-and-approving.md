@@ -53,3 +53,9 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
 - Keyboard: AVKit's player handles Space; J, K and L (Final Cut Pro's shuttle keys) and arrow-key
   frame stepping are recommended for the viewer but not promised here `[unverified in AVPlayerView]`.
 - v1 says "a changed copy voids approvals" (SCOPE). "Approve it again" matches that.
+
+## Notes from part M8c (Wed 14 Oct 2026)
+
+- New section "Watch the edited video" (`requires video`): Video in the toolbar, the strip and transcript on Video, Captions,
+  Restore, Remove, Delete, Take Out Again and Keep, Undo, "Not in the video yet", Approve waiting for a restore, and Plan Again
+  stopping the Video from playing. The rendition list gains Video; "Two more choices" became "Shorts does not play here yet".

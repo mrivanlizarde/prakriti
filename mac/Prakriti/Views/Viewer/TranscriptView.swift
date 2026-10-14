@@ -264,6 +264,11 @@ final class PlayableTextView: NSTextView {
             coordinator?.actions?.shuttle(key)
             return
         }
+        // Delete takes the selected words out of the edit (design spec 6.7, v2 part M8c), undoably.
+        if plain, characters == "\u{7f}" || characters == "\u{f728}", coordinator?.actions?.canRemove() == true {
+            coordinator?.actions?.remove()
+            return
+        }
         super.keyDown(with: event)
     }
 

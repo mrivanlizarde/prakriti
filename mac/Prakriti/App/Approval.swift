@@ -50,6 +50,10 @@ struct ApprovalCheck: Equatable, Sendable {
             return ApprovalCheck(canApprove: false, line: "Make Again first: your newest choices of who is in the episode, or of names to mute, are not in it yet.",
                                  speakersNotChecked: false)
         }
+        // The edited video (v2 part M8c): a stretch of the plan restored in the Viewer must be in the video before a yes.
+        if recording.restoresPending {
+            return ApprovalCheck(canApprove: false, line: "Make Again first: what you restored is not in the video yet.", speakersNotChecked: false)
+        }
         if let check = recording.peopleApplied?.check, !check.passed {
             return ApprovalCheck(canApprove: false, line: check.line { recording.label(forVoice: $0) }
                                  + " Listen there in the People tab, then change who is left out and make it again.", speakersNotChecked: false)
