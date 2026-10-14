@@ -453,14 +453,16 @@ struct RoughCut: Sendable {
         if left == nil {
             // Silence before the first word, beyond what is kept.
             guard rightStart > preset.keepBeforeFirst + frame.seconds,
-                  let c1 = quietPoint(in: frame.seconds, maxC1, near: rightStart - preset.keepBeforeFirst) else { return .kept(nil) }
+                  let c1 = quietPoint(in: frame.seconds, maxC1, near: rightStart - preset.keepBeforeFirst),
+                  LoudCount(envelope: env, from: 0, to: c1).seconds(0, c1) <= Self.soundAllowed else { return .kept(nil) }
             return .removal(Removal(kind: .trimmed, from: 0, to: c1, words: nil, confidence: 1), nil)
         }
         guard let left else { return .kept(nil) }
         guard right != nil else {
             // Silence after the last word, beyond what is kept.
             guard duration - leftEnd > preset.keepAfterLast + frame.seconds,
-                  let c0 = quietPoint(in: minC0, frame.below(duration) - frame.seconds, near: leftEnd + preset.keepAfterLast) else { return .kept(nil) }
+                  let c0 = quietPoint(in: minC0, frame.below(duration) - frame.seconds, near: leftEnd + preset.keepAfterLast),
+                  LoudCount(envelope: env, from: c0, to: duration).seconds(c0, duration) <= Self.soundAllowed else { return .kept(nil) }
             return .removal(Removal(kind: .trimmed, from: c0, to: duration, words: nil, confidence: 1), nil)
         }
         let protected = isProtected(after: left, words: words)
@@ -468,28 +470,100 @@ struct RoughCut: Sendable {
         let trigger = protected ? preset.protectedLimit : preset.trigger(after: closes)
         let unchanged = PlannedPause(after: left, closes: closes, protected: protected, was: natural, now: natural, start: leftEnd, end: rightStart)
         guard natural > trigger else { return .kept(unchanged) }
-        var length = frame.nearest(natural - keep)
-        while length >= frame.seconds - 1e-9 {
-            // Both ends quiet, the removal inside the bounds, the pause's own start and end kept around it.
-            var best: Double?
-            var t = frame.above(minC0)
-            let desired = leftEnd + keep / 2
-            while t + length <= maxC1 + 1e-9 {
-                if env.isQuiet(around: t), env.isQuiet(around: t + length), env.quietRun(at: t) >= 2 * frame.seconds - 1e-9,
-                   env.quietRun(at: t + length) >= 2 * frame.seconds - 1e-9, best.map({ abs(t - desired) < abs($0 - desired) }) ?? true {
-                    best = t
+        // Load-bearing (v2 part M8b, fixes after the verifier, 14 Oct): a pause is a gap in Parakeet's words, and Parakeet can
+        // skip speech. On the 6 Sep talk it wrote no word for 17 s at 24:22 and at 39:23 (49 and 44 words when that stretch is
+        // transcribed alone), and both were "shortened" to 0.35 s, cutting 34 s of Gabriel out of the video with both cut
+        // points quiet. So the time a pause removes must itself be quiet: at most `soundAllowed` seconds of it louder than
+        // 20 dB under speech (a breath or a click, never a word). Where the gap holds sound, only its truly quiet stretches go.
+        let loud = LoudCount(envelope: env, from: minC0, to: maxC1)
+        /// The longest removal inside [lo, hi] that leaves `keep` of a quiet stretch of `natural` seconds starting at `quietStart`:
+        /// both ends quiet, at most `soundAllowed` of sound inside, as near the stretch's start plus half of `keep` as it fits.
+        func shorten(lo: Double, hi: Double, natural: Double, quietStart: Double) -> (Double, Double)? {
+            var length = frame.nearest(natural - keep)
+            let desired = quietStart + keep / 2
+            while length >= frame.seconds - 1e-9 {
+                var best: Double?
+                var t = frame.above(lo)
+                while t + length <= hi + 1e-9 {
+                    if env.isQuiet(around: t), env.isQuiet(around: t + length), env.quietRun(at: t) >= 2 * frame.seconds - 1e-9,
+                       env.quietRun(at: t + length) >= 2 * frame.seconds - 1e-9, loud.seconds(t, t + length) <= Self.soundAllowed,
+                       best.map({ abs(t - desired) < abs($0 - desired) }) ?? true {
+                        best = t
+                    }
+                    t += frame.seconds
                 }
-                t += frame.seconds
+                if let c0 = best { return (c0, frame.nearest(c0 + length)) }
+                length -= frame.seconds
             }
-            if let c0 = best {
-                let c1 = frame.nearest(c0 + length)
-                var pause = unchanged
-                pause.now = natural - (c1 - c0)
-                return .removal(Removal(kind: .pause, from: c0, to: c1, words: nil, confidence: 1, keptSeconds: pause.now, pauseWas: natural), pause)
-            }
-            length -= frame.seconds
+            return nil
         }
-        return .kept(unchanged)
+        guard loud.seconds(minC0, maxC1) > Self.soundAllowed else {
+            // A true pause: one removal, the pause's own start and end kept around it.
+            guard let (c0, c1) = shorten(lo: minC0, hi: maxC1, natural: natural, quietStart: leftEnd) else { return .kept(unchanged) }
+            var pause = unchanged
+            pause.now = natural - (c1 - c0)
+            return .removal(Removal(kind: .pause, from: c0, to: c1, words: nil, confidence: 1, keptSeconds: pause.now, pauseWas: natural), pause)
+        }
+        // Sound Parakeet wrote no word for (warning 148): every bit of it is kept, and only its longest quiet stretch is
+        // shortened, as a pause after the word before the gap. Only one: a second would leave a kept piece with no word in
+        // it, which a plan cannot hold (every span is tied to its words, EE 3.4). Sound no longer than `soundAllowed` (a click, a
+        // breath, a word's tail) does not split a stretch, since a removal may hold that much; sound less than 0.15 s apart
+        // is one piece.
+        var islands: [(Double, Double)] = []
+        var i = max(0, env.frameIndex(minC0))
+        let last = min(env.levels.count, env.frameIndex(maxC1))
+        while i < last {
+            guard env.levels[i] > env.quietLevel else { i += 1; continue }
+            var j = i
+            var lastLoud = i
+            while j < last, j - lastLoud < 15 {
+                if env.levels[j] > env.quietLevel { lastLoud = j }
+                j += 1
+            }
+            if Double(lastLoud + 1 - i) * Envelope.frame > Self.soundAllowed {
+                islands.append((Double(i) * Envelope.frame, Double(lastLoud + 1) * Envelope.frame))
+            }
+            i = lastLoud + 1
+        }
+        var stretches: [(quiet: Double, lo: Double, sound: Double, hi: Double)] = []
+        var quiet = leftEnd, lo = minC0
+        for (start, end) in islands {
+            stretches.append((quiet, lo, start, min(maxC1, env.soundEdge(from: start, forward: false) - preset.leadIn)))
+            quiet = end
+            lo = env.soundEdge(from: end, forward: true) + preset.tail
+        }
+        stretches.append((quiet, lo, rightStart, maxC1))
+        for s in stretches.sorted(by: { $0.sound - $0.quiet > $1.sound - $1.quiet }) where s.sound - s.quiet > trigger && s.hi > s.lo {
+            guard let (c0, c1) = shorten(lo: s.lo, hi: s.hi, natural: s.sound - s.quiet, quietStart: s.quiet) else { continue }
+            return .removal(Removal(kind: .pause, from: c0, to: c1, words: nil, confidence: 1, keptSeconds: s.sound - s.quiet - (c1 - c0),
+                                    pauseWas: s.sound - s.quiet), nil)
+        }
+        return .kept(nil)
+    }
+
+    /// The most sound louder than 20 dB under speech a pause or trim may take out with it: a breath or a click, never a word.
+    static let soundAllowed = 0.25
+
+    /// How much of a stretch is louder than 20 dB under speech, in seconds, counted once per gap (a running sum over its
+    /// frames) so the pause search stays linear in the gap's length.
+    struct LoudCount {
+        let first: Int
+        let prefix: [Int]
+        init(envelope env: Envelope, from: Double, to: Double) {
+            first = max(0, env.frameIndex(from))
+            let last = min(env.levels.count, env.frameIndex(to) + 2)
+            var prefix = [0]
+            if last > first {
+                prefix.reserveCapacity(last - first + 1)
+                for i in first..<last { prefix.append(prefix[prefix.count - 1] + (env.levels[i] > env.quietLevel ? 1 : 0)) }
+            }
+            self.prefix = prefix
+        }
+        func seconds(_ from: Double, _ to: Double) -> Double {
+            let a = min(max(0, Int((from / Envelope.frame).rounded(.down)) - first), prefix.count - 1)
+            let b = min(max(0, Int((to / Envelope.frame).rounded(.down)) - first), prefix.count - 1)
+            return Double(max(0, prefix[b] - prefix[a])) * Envelope.frame
+        }
     }
 
     /// The frame boundary in [from, to] where the 20 ms around it are quietest, when that is at least `under` dB under the

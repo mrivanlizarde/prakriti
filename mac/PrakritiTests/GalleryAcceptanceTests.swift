@@ -101,12 +101,15 @@ final class GalleryAcceptanceTests: XCTestCase {
         report.append("Vault for Guest: \(model.vault.holdsAnything(person: guest.id) ? "HOLDS SOMETHING" : "nothing sealed, no key")")
 
         // Out of Time Machine.
-        let development = try output(URL(fileURLWithPath: "/usr/bin/tmutil"), ["isexcluded", model.peopleFolders.people.path])
-        XCTAssertTrue(development.contains("[Excluded]"), development)
-        report.append("tmutil isexcluded (development): \(development)")
+        // The attribute tmutil reads, read directly; tmutil itself waited on for 10 s at most (TimeMachineProbe says why).
+        XCTAssertTrue(TimeMachineProbe.isExcluded(model.peopleFolders.people), "no exclusion attribute on the development People folder")
+        let development = TimeMachineProbe.tmutil(model.peopleFolders.people) ?? "tmutil did not answer in 10 s under the test host"
+        if development.hasPrefix("[") { XCTAssertTrue(development.contains("[Excluded]"), development) }
+        report.append("Exclusion attribute (development): \(TimeMachineProbe.exclusionAttribute(model.peopleFolders.people) ?? "none"); tmutil isexcluded: \(development)")
         let livePeople = live.people
         let liveAnswer = FileManager.default.fileExists(atPath: livePeople.path)
-            ? try output(URL(fileURLWithPath: "/usr/bin/tmutil"), ["isexcluded", livePeople.path]) : "\(livePeople.path) does not exist yet"
+            ? "attribute \(TimeMachineProbe.exclusionAttribute(livePeople) ?? "none"); tmutil "
+                + (TimeMachineProbe.tmutil(livePeople) ?? "did not answer in 10 s") : "\(livePeople.path) does not exist yet"
         report.append("tmutil isexcluded (live, prepared by the installed copy at launch, not by this test): \(liveAnswer)")
 
         // Clean up the name in this in-memory store, and check the fixture was only read.
@@ -137,17 +140,5 @@ final class GalleryAcceptanceTests: XCTestCase {
     private func fingerprint(_ url: URL) -> String {
         let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
         return "\(values?.fileSize ?? -1) \(values?.contentModificationDate?.timeIntervalSince1970 ?? -1)"
-    }
-
-    private func output(_ tool: URL, _ arguments: [String]) throws -> String {
-        let process = Process()
-        process.executableURL = tool
-        process.arguments = arguments
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        try process.run()
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        return String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

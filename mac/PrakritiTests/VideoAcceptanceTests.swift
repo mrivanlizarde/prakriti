@@ -72,6 +72,17 @@ final class VideoAcceptanceTests: XCTestCase {
         if let recording = made13, let row = recording.faces?.people.first {
             let folder = try XCTUnwrap(recording.outputFolder.map { URL(fileURLWithPath: $0, isDirectory: true) })
             let video = folder.appending(path: VideoStep.folderName)
+            // The copy Ivan watches for check 9, kept where no make reaches. Load-bearing: the refusal below removes the
+            // 13 Sep Video folder (decision 7: a refused make keeps nothing), and every later make of the talk (make accept,
+            // make regress) replaces its output folder, so the file the M8b builder pointed Ivan at was gone by the verifier's
+            // run. This folder is never written by the app.
+            let listening = paths.outputs.deletingLastPathComponent().appending(path: "Listening check", directoryHint: .isDirectory)
+            precondition(listening.path.hasPrefix(FileManager.default.homeDirectoryForCurrentUser.appending(path: "Prakriti/Dev").path))
+            let kept = listening.appending(path: "2026-09-13 18-25-44 Video", directoryHint: .isDirectory)
+            try? FileManager.default.removeItem(at: kept)
+            try FileManager.default.createDirectory(at: listening, withIntermediateDirectories: true)
+            try FileManager.default.copyItem(at: video, to: kept)
+            report.append("Listening copy for check 9: \(paths.display(kept.path)) (" + (try FileManager.default.contentsOfDirectory(atPath: kept.path).sorted().joined(separator: ", ")) + ")")
             let filesBefore = try FileManager.default.contentsOfDirectory(atPath: video.path).sorted()
             let key = PersonKey.face(row.id, names: recording.resolvedNameTable)
             model.setChoice(.hideFace, for: key, in: recording)
@@ -239,6 +250,8 @@ final class VideoAcceptanceTests: XCTestCase {
         }
         var tooLong: [String] = []
         var quietWords: [String] = []
+        var insideSound: [String] = []
+        let originalEnvelope = Envelope.of(samples: originalSound)
         var protectedKept = 0
         var silences = 0
         var start: Int?
@@ -258,8 +271,15 @@ final class VideoAcceptanceTests: XCTestCase {
                     // between words: the plan's word times say something is said in it.
                     let end = timeline.originalTime(at + length - 0.011) ?? original
                     let holdsWord = plan.words.contains { $0.in >= original + 0.02 && $0.out <= end - 0.02 && $0.out > $0.in }
+                    // A silence inside a gap Parakeet wrote no word for though it holds sound (warning 148) is not a pause
+                    // between two words: the plan keeps the sound and may shorten one quiet stretch of it. Counted apart.
+                    let gapFrom = before.map { plan.words[$0].out } ?? 0
+                    let gapTo = before.flatMap { $0 + 1 < plan.words.count ? plan.words[$0 + 1].in : nil } ?? plan.sourceDuration
+                    let gapSound = RoughCut.LoudCount(envelope: originalEnvelope, from: gapFrom, to: gapTo).seconds(gapFrom, gapTo)
                     if holdsWord && length > trigger + 0.02 {
                         quietWords.append(String(format: "%@ %.2f s", Format.timecode(at), length))
+                    } else if length > trigger + 0.02 && gapSound > RoughCut.soundAllowed {
+                        insideSound.append(String(format: "%@ %.2f s (the gap holds %.1f s of sound)", Format.timecode(at), length, gapSound))
                     } else if length > trigger + 0.02 {
                         if let before, RoughCut.isProtected(after: before, words: words.words) { protectedKept += 1 }
                         else { tooLong.append(String(format: "%@ %.2f s after \"%@\"", Format.timecode(at), length, word?.text ?? "?")) }
@@ -271,11 +291,53 @@ final class VideoAcceptanceTests: XCTestCase {
         verdict("\(slug) check 2: no pause in the made sound longer than the trigger except protected ones", tooLong.isEmpty,
                 String(format: "gain %.1f dB, floor %.1f dBFS; ", gain, floor)
                 + "\(silences) silences over 0.40 s, \(protectedKept) protected kept, \(tooLong.count) over the trigger" + (tooLong.isEmpty ? "" : ": " + tooLong.prefix(12).joined(separator: "; "))
-                + (quietWords.isEmpty ? "" : "; \(quietWords.count) quiet stretches over it hold a kept word (" + quietWords.prefix(6).joined(separator: ", ") + ")"))
+                + (quietWords.isEmpty ? "" : "; \(quietWords.count) quiet stretches over it hold a kept word (" + quietWords.prefix(6).joined(separator: ", ") + ")")
+                + (insideSound.isEmpty ? "" : "; \(insideSound.count) inside sound Parakeet wrote no words for, kept (" + insideSound.prefix(8).joined(separator: ", ") + ")"))
 
-        // Parakeet on the MP4.
-        let retold = try transcribe(mp4, in: scratch, name: slug.replacingOccurrences(of: " ", with: "-"))
-        let retoldWords = tokens(retold)
+        // Parakeet on the MP4, in pieces. Load-bearing: one Parakeet run over the whole file is not a reliable measure. On the
+        // verifier's run of 14 Oct it skipped 23.5 s at 4:39 and 57.6 s at 27:02 of the 6 Sep MP4, both normal speech (-13 to
+        // -19 dB a half second) that it transcribes in full when given just that stretch, so the same file scored 96.5% one run
+        // and 98.6% the next. So the made sound is cut into pieces of about 60 s, each cut at the quietest 10 ms in the 5 s
+        // before its mark (never inside a word), every piece transcribed on its own in one Parakeet call, and the words joined
+        // in order on the edited clock.
+        let pieceStarts = quietCuts(madeSound, every: 60, search: 5, duration: timeline.duration)
+        let pieceFolder = scratch.appending(path: "\(slug.replacingOccurrences(of: " ", with: "-"))-pieces", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: pieceFolder, withIntermediateDirectories: true)
+        var pieceFiles: [(URL, Double)] = []
+        for (k, from) in pieceStarts.enumerated() {
+            let to = k + 1 < pieceStarts.count ? pieceStarts[k + 1] : timeline.duration
+            let wav = pieceFolder.appending(path: String(format: "piece-%03d.wav", k))
+            try cut(mp4, from: from, length: to - from, to: wav)
+            pieceFiles.append((wav, from))
+        }
+        // The fillers the plan took out, each listened for where it was cut: 8 s of the made sound around its join, each
+        // window transcribed on its own (the verifier's measure, 14 Oct). An "um" or "uh" Parakeet hears within 0.6 s of the
+        // join, more than the kept fillers the plan's own word times put there, means it is still there.
+        let removed = plan.removed.filter { $0.kind == .filler }
+        var windows: [(URL, Double, Double)] = []
+        for (k, item) in removed.enumerated() {
+            guard let at = timeline.editTimeAtOrAfter(item.to) else { continue }
+            let from = max(0, at - 4)
+            let wav = pieceFolder.appending(path: String(format: "window-%03d.wav", k))
+            try cut(mp4, from: from, length: min(8, timeline.duration - from), to: wav)
+            windows.append((wav, from, at))
+        }
+        try run(ToolPaths.standard.parakeet, (pieceFiles.map(\.0) + windows.map(\.0)).map(\.path)
+                + ["--output-dir", pieceFolder.path, "--output-format", "all", "--output-template", "{filename}"])
+        func heardWords(_ wav: URL, offset: Double) -> (text: String, timed: [(norm: String, start: Double)]) {
+            let base = wav.deletingPathExtension()
+            let text = (try? String(contentsOf: base.appendingPathExtension("txt"), encoding: .utf8)) ?? ""
+            let timed = ((try? Data(contentsOf: base.appendingPathExtension("json"))).flatMap(PlanWords.from(json:))?.words ?? [])
+                .map { (norm: $0.norm, start: $0.start + offset) }
+            return (text, timed)
+        }
+        var retoldWords: [String] = []
+        var retoldTimed: [(norm: String, start: Double)] = []
+        for (wav, offset) in pieceFiles {
+            let heard = heardWords(wav, offset: offset)
+            retoldWords += tokens(heard.text)
+            retoldTimed += heard.timed
+        }
         var keptWords: [String] = []
         var keptTimes: [Double] = []
         var keptFillers = 0
@@ -295,18 +357,12 @@ final class VideoAcceptanceTests: XCTestCase {
         let heard = retoldWords.filter { !isFiller($0) }
         let share = Double(lcs(keptWords, heard)) / Double(max(1, keptWords.count))
         verdict("\(slug) check 2: Parakeet on the MP4 finds at least 98% of kept non-filler words in order", share >= 0.98,
-                String(format: "%d of %d (%.1f%%)", lcs(keptWords, heard), keptWords.count, share * 100))
+                String(format: "%d of %d (%.1f%%), transcribed in %d pieces of about 60 s cut at quiet moments", lcs(keptWords, heard), keptWords.count,
+                       share * 100, pieceFiles.count))
         let notHeard = missingWords(Array(zip(keptWords, keptTimes)), heard)
         let nearJoin = notHeard.filter { m in timeline.pieces.contains { abs(timeline.seconds($0.editFrame) - m.1) < 0.5 } }
         lines.append("  Kept words Parakeet did not hear in the MP4: \(notHeard.count), \(nearJoin.count) of them within 0.5 s of a join: "
                      + notHeard.prefix(40).map { String(format: "\"%@\" %@", $0.0, Format.timecode($0.1)) }.joined(separator: ", "))
-        // The fillers the plan took out, each looked for where it was cut: an "um" or "uh" Parakeet hears within 0.4 s of that
-        // join in the made file means it is still there. (Counting all of them would mix in Parakeet hearing a kept "um" one run
-        // and not the next.)
-        let retoldTimed = try XCTUnwrap(PlanWords.from(json: Data(contentsOf: scratch.appending(path: "\(slug.replacingOccurrences(of: " ", with: "-"))-retold.json"))))
-        let heardFillers = retoldTimed.words.filter { ["um", "uh"].contains($0.norm) }.map(\.start)
-        let removed = plan.removed.filter { $0.kind == .filler }
-        var still: [String] = []
         // The kept fillers on the edited clock, from the plan's own word times: a join with a kept "uh" next to it is heard
         // with that "uh", which is not the one taken out.
         var keptFillerTimes: [Double] = []
@@ -316,16 +372,29 @@ final class VideoAcceptanceTests: XCTestCase {
                 if let t = plan.words.first(where: { $0.id == words.words[i].id }), let e = timeline.editTime(max(t.in, span.in)) { keptFillerTimes.append(e) }
             }
         }
-        for item in removed {
-            guard let at = timeline.editTimeAtOrAfter(item.to) else { continue }
-            let heardNear = heardFillers.filter { abs($0 - at) <= 0.6 }.count
+        var still: [String] = []
+        var windowLines: [String] = []
+        for (wav, from, at) in windows {
+            let window = heardWords(wav, offset: from)
+            let heardNear = window.timed.filter { ["um", "uh"].contains($0.norm) && abs($0.start - at) <= 0.6 }.count
             let keptNear = keptFillerTimes.filter { abs($0 - at) <= 0.8 }.count
             if heardNear > keptNear { still.append(Format.timecode(at)) }
+            let near = window.timed.filter { abs($0.start - at) <= 1.5 }.map(\.norm).joined(separator: " ")
+            windowLines.append("\(Format.timecode(at)) \"\(near)\"")
         }
         let gone = removed.isEmpty ? 1 : Double(removed.count - still.count) / Double(removed.count)
+        let heardFillers = retoldTimed.filter { ["um", "uh"].contains($0.norm) }.map(\.start)
         verdict("\(slug) check 2: at least 90% of removed \"um\" and \"uh\" absent", gone >= 0.90,
-                String(format: "%d taken out by the plan, %d heard again at their joins (%.0f%% gone)%@; Parakeet hears %d \"um\" and \"uh\" in the MP4 in all, the plan kept %d",
+                String(format: "%d taken out by the plan, %d heard again in the 8 s around their joins (%.0f%% gone)%@; Parakeet hears %d \"um\" and \"uh\" in the MP4 in all, the plan kept %d",
                        removed.count, still.count, gone * 100, still.isEmpty ? "" : " at " + still.joined(separator: ", "), heardFillers.count, keptFillers))
+        lines.append("  What Parakeet hears within 1.5 s of each join a filler was taken out of (8 s windows): " + windowLines.joined(separator: "; "))
+        // The same question asked of the 60 s pieces, for comparison (not the gate: a longer stretch gives Parakeet more
+        // context to guess an "uh" into a murmur, and its output varies run to run).
+        let stillInPieces = windows.filter { w in
+            retoldTimed.filter { ["um", "uh"].contains($0.norm) && abs($0.start - w.2) <= 0.6 }.count > keptFillerTimes.filter { abs($0 - w.2) <= 0.8 }.count
+        }.map { Format.timecode($0.2) }
+        lines.append("  The same fillers looked for in the 60 s pieces instead: \(stillInPieces.count) of \(windows.count) heard again"
+                     + (stillInPieces.isEmpty ? "" : " at " + stillInPieces.joined(separator: ", ")))
 
         // Captions, independently.
         let captions = try XCTUnwrap(Captions.measure(srt: String(contentsOf: srt, encoding: .utf8)))
@@ -455,13 +524,29 @@ final class VideoAcceptanceTests: XCTestCase {
         return previous[b.count]
     }
 
-    /// The MP4 transcribed again, as Prakriti transcribes: mono 16 kHz, then Parakeet.
-    private func transcribe(_ file: URL, in work: URL, name: String) throws -> String {
-        let wav = work.appending(path: "\(name).wav")
-        try run(ToolPaths.standard.ffmpeg, ["-y", "-v", "error", "-i", file.path, "-vn", "-ac", "1", "-ar", "16000", wav.path])
-        defer { try? FileManager.default.removeItem(at: wav) }
-        try run(ToolPaths.standard.parakeet, [wav.path, "--output-dir", work.path, "--output-format", "all", "--output-template", "\(name)-retold"])
-        return try String(contentsOf: work.appending(path: "\(name)-retold.txt"), encoding: .utf8)
+    /// A stretch of the MP4's sound as Prakriti gives sound to Parakeet: mono 16 kHz WAV.
+    private func cut(_ file: URL, from: Double, length: Double, to wav: URL) throws {
+        try run(ToolPaths.standard.ffmpeg, ["-y", "-v", "error", "-ss", String(format: "%.3f", from), "-t", String(format: "%.3f", length),
+                                            "-i", file.path, "-vn", "-ac", "1", "-ar", "16000", wav.path])
+    }
+
+    /// Where to cut the made sound into pieces of about `every` seconds: 0, then for each mark the start of the quietest
+    /// 10 ms in the `search` seconds before it (48 kHz samples), so no piece starts or ends inside a word.
+    private func quietCuts(_ samples: [Float], every: Double, search: Double, duration: Double) -> [Double] {
+        var starts: [Double] = [0]
+        var mark = every
+        while mark < duration - 10 {
+            let first = Int((mark - search) * 48_000), last = min(samples.count - 480, Int(mark * 48_000))
+            var best = (energy: Float.infinity, at: last)
+            for i in stride(from: max(0, first), to: last, by: 240) {
+                var e: Float = 0
+                for j in i..<(i + 480) { e += samples[j] * samples[j] }
+                if e < best.energy { best = (e, i) }
+            }
+            starts.append(Double(best.at) / 48_000)
+            mark = starts.last! + every
+        }
+        return starts
     }
 
     private func run(_ tool: URL, _ arguments: [String]) throws {

@@ -118,6 +118,10 @@ final class EditPlanAcceptanceTests: XCTestCase {
         let folder06 = paths.outputs.appending(path: "2026-09-06 18-06-33", directoryHint: .isDirectory)
         let transcript06 = folder06.appending(path: TranscriptFiles.asHeard)
         if FileManager.default.fileExists(atPath: transcript06.path) {
+            // What the 6 Sep folder holds before (a `make accept-video` before this one leaves its own edit-plan.json there):
+            // planning here must not add or change a file in it.
+            let planFile06 = folder06.appending(path: EditPlan.fileName)
+            let planBefore06 = fingerprint(planFile06)
             let ffmpeg = ToolPaths.standard.ffmpeg
             let probe = try await Subprocess.run(ToolPaths.standard.ffprobe, ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", talk06.path],
                                                  timeout: .seconds(60))
@@ -132,7 +136,7 @@ final class EditPlanAcceptanceTests: XCTestCase {
                        + outcome.plan.summary + String(format: " Planned in %.1f s.", outcome.seconds)]
             let samples06 = try await PlanMeasure.decode(talk06, scratch: scratch)
             report += measure(outcome.plan, words: words06, samples: samples06, verdict: { name, pass, measured in verdict("6 Sep: " + name, pass, measured) })
-            XCTAssertFalse(FileManager.default.fileExists(atPath: folder06.appending(path: EditPlan.fileName).path), "nothing written into the 6 Sep folder")
+            XCTAssertEqual(fingerprint(planFile06), planBefore06, "nothing written into the 6 Sep folder")
         } else {
             report.append("6 Sep talk: SKIPPED, no development transcript at \(transcript06.path)")
         }
@@ -173,11 +177,27 @@ final class EditPlanAcceptanceTests: XCTestCase {
                 + ", \(failing.count) other; the least quiet \(String(format: "%.1f", quietest)) dB under"
                 + (failing.isEmpty ? "" : ": " + failing.prefix(10).map { "\(TimeText.string($0.at)) \($0.kind.rawValue) \(String(format: "%.1f", $0.under))" }.joined(separator: ", ")))
 
+        // What a pause or trim takes out must be silence, not words Parakeet did not write (v2 part M8b, fixes after the
+        // verifier: on 6 Sep two 17 s "pauses" held 93 words). Measured on the original's own 10 ms levels: the time in each
+        // such stretch louder than 20 dB under speech.
+        let env = m.envelope
+        let soundTaken = plan.removed.filter { $0.kind == .pause || $0.kind == .trimmed }.map { item -> (EditPlan.Item, Double) in
+            let a = max(0, env.frameIndex(item.from)), b = min(env.levels.count, env.frameIndex(item.to))
+            let loudFrames = a < b ? env.levels[a..<b].filter { $0 > env.quietLevel }.count : 0
+            return (item, Double(loudFrames) * Envelope.frame)
+        }
+        let soundy = soundTaken.filter { $0.1 > RoughCut.soundAllowed + 0.0001 }
+        verdict("No pause or trim takes out sound (at most 0.25 s louder than 20 dB under speech in each)", soundy.isEmpty,
+                "\(soundTaken.count) pauses and trims, the most sound in one \(String(format: "%.2f", soundTaken.map(\.1).max() ?? 0)) s"
+                + (soundy.isEmpty ? "" : ": " + soundy.prefix(10).map { "\(TimeText.string($0.0.from)) to \(TimeText.string($0.0.to)) holds \(String(format: "%.2f", $0.1)) s" }.joined(separator: "; ")))
+
         // Pauses: silences in the edit.
         let silences = m.silences(longer: 0.40)
         var leading = 0.0
         var tooLong: [String] = []
         var protectedKept = 0
+        var insideSound: [String] = []
+        let planWord = Dictionary(plan.words.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         for s in silences {
             guard let after = s.after else { leading = s.length; continue }
             let word = words.words[after]
@@ -185,13 +205,22 @@ final class EditPlanAcceptanceTests: XCTestCase {
             let trigger = word.closes == .none ? 0.40 : 0.60
             let atEnd = s.at + s.length >= plan.keptSeconds - 0.05
             if atEnd { continue }
-            if s.length > trigger + 0.005 {
+            // A silence inside a gap Parakeet wrote no word for though it holds sound (warning 148) is not a pause between two
+            // words: the plan keeps the sound and may shorten only one quiet stretch of it. Counted apart, never hidden.
+            // The gap as the plan placed its words (their times moved onto the sound), not Parakeet's raw times.
+            let gapStart = planWord[word.id]?.out ?? word.end
+            let gapEnd = after + 1 < words.words.count ? (planWord[words.words[after + 1].id]?.in ?? words.words[after + 1].start) : plan.sourceDuration
+            let gapSound = RoughCut.LoudCount(envelope: env, from: gapStart, to: gapEnd).seconds(gapStart, gapEnd)
+            if s.length > trigger + 0.005 && gapSound > RoughCut.soundAllowed {
+                insideSound.append("\(TimeText.string(s.original)) \(String(format: "%.2f", s.length)) s (the gap holds \(String(format: "%.1f", gapSound)) s of sound)")
+            } else if s.length > trigger + 0.005 {
                 if isProtected { protectedKept += 1 } else { tooLong.append("\(TimeText.string(s.original)) \(String(format: "%.2f", s.length)) s after \"\(word.text)\"") }
             }
         }
         verdict("No silence in the edit over the trigger except protected ones", tooLong.isEmpty && leading <= RoughCutPreset.clear.keepBeforeFirst + frame.seconds + 0.01,
                 "\(tooLong.count) over (0.60 s after punctuation, 0.40 s inside a sentence), \(protectedKept) protected kept, opening silence \(String(format: "%.2f", leading)) s"
-                + (tooLong.isEmpty ? "" : ": " + tooLong.prefix(10).joined(separator: "; ")))
+                + (tooLong.isEmpty ? "" : ": " + tooLong.prefix(10).joined(separator: "; "))
+                + (insideSound.isEmpty ? "" : "; \(insideSound.count) longer inside sound Parakeet wrote no words for, kept: " + insideSound.prefix(10).joined(separator: "; ")))
         let pauses = m.pauses
         let shortenedSentence = pauses.filter { $0.closes != .none && $0.shortened && !$0.protected }
         let shortenedInside = pauses.filter { $0.closes == .none && $0.shortened && !$0.protected }
@@ -210,6 +239,13 @@ final class EditPlanAcceptanceTests: XCTestCase {
         verdict("Kept length is the sum of spans, a whole number of frames", offGrid.isEmpty && abs(frames - frames.rounded()) < 1e-3 && abs(plan.keptSeconds - frames.rounded() * frame.seconds) < 1e-3,
                 "\(plan.spans.count) spans, \(String(format: "%.3f", frames)) frames of \(frame) = \(String(format: "%.3f", plan.keptSeconds)) s, \(offGrid.count) off a frame")
         verdict("Picture and sound cut on the same frame", offGridCuts.isEmpty, "\(plan.removed.count) stretches, \(offGridCuts.count) cut off a frame boundary")
+        // Every second of the original is either kept in a span or taken out by a listed removal, so nothing leaves the edit
+        // without a reason Ivan can see (a stretch with no word in it once fell between the spans unlisted).
+        let listed = plan.removed.reduce(0.0) { $0 + $1.to - $1.from }
+        let unaccounted = plan.sourceDuration - plan.keptSeconds - listed
+        verdict("Every second is kept or taken out by a listed removal", abs(unaccounted) <= frame.seconds + 0.001,
+                String(format: "source %.3f s = kept %.3f s + removed %.3f s, %.3f s unaccounted (one frame %.4f s)",
+                       plan.sourceDuration, plan.keptSeconds, listed, unaccounted, frame.seconds))
 
         // Reported only: joins and filler recall.
         let joins = m.joins

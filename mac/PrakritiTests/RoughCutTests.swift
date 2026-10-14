@@ -151,6 +151,30 @@ final class RoughCutTests: XCTestCase {
         XCTAssertEqual(PlanValidation.check(plan, words: words), [])
     }
 
+    func testAGapWithSoundButNoWordsIsNeverCutAsAPause() throws {
+        // "One two." then 17 s Parakeet wrote no word for, though 12 s of it is speech (as on 6 Sep at 24:22), with a 3 s
+        // silence inside it, then "Three four.". Only quiet time may go: the speech stays and only the inner silence shortens.
+        let speech: [(Double, Double)] = [(1.0, 1.4), (1.5, 2.0), (2.5, 8.5), (11.5, 17.5), (19.0, 19.4), (19.5, 20.0)]
+        let (cut, words, input) = Self.cut([[("One", 1.0, 1.4), ("two.", 1.5, 2.0)], [("Three", 19.0, 19.4), ("four.", 19.5, 20.0)]],
+                                       seconds: 22, sound: speech)
+        for removal in cut.removed where removal.kind == .pause {
+            let loud = RoughCut.LoudCount(envelope: input.envelope, from: removal.from, to: removal.to).seconds(removal.from, removal.to)
+            XCTAssertLessThanOrEqual(loud, RoughCut.soundAllowed, "a pause from \(removal.from) to \(removal.to) took out \(loud) s of sound")
+            XCTAssertFalse(speech.contains { removal.from < $0.1 && removal.to > $0.0 }, "a pause took out speech: \(removal.from) to \(removal.to)")
+        }
+        let pauses = cut.removed.filter { $0.kind == .pause }
+        // One removal per gap, its longest quiet stretch: two would leave a kept piece with no word, which a plan cannot hold.
+        XCTAssertEqual(pauses.count, 1, "\(pauses.map { ($0.from, $0.to) })")
+        XCTAssertTrue(pauses.contains { $0.from >= 8.5 && $0.to <= 11.5 && $0.to - $0.from > 2.0 }, "the 3 s silence inside the gap")
+        let plan = EditPlan.from(cut, words: words, input: input, recording: "test", people: .init(), signature: "", madeAt: Date())
+        XCTAssertEqual(PlanValidation.check(plan, words: words), [])
+        XCTAssertEqual(plan.keptSeconds, plan.sourceDuration - cut.removed.reduce(0) { $0 + $1.to - $1.from }, accuracy: 0.034,
+                       "every second not taken out by a listed removal is in a span")
+        // Sound before the first word Parakeet wrote is not trimmed either.
+        let (lead, _, _) = Self.cut([[("Three", 6.0, 6.4), ("four.", 6.5, 7.0)]], seconds: 9, sound: [(0.5, 4.0), (6.0, 6.4), (6.5, 7.0)])
+        XCTAssertFalse(lead.removed.contains { $0.kind == .trimmed && $0.from < 4.0 && $0.to > 0.5 }, "speech before the first word is kept")
+    }
+
     func testAPauseAfterABreathCueOrAQuestionIsKept() throws {
         let (cut, _, _) = Self.cut([[("Now", 1.0, 1.3), ("inhale.", 1.4, 1.9)], [("Can", 4.9, 5.1), ("you", 5.2, 5.4), ("feel", 5.5, 5.8), ("it?", 5.9, 6.2)],
                                     [("Good.", 8.2, 8.6)]], seconds: 10)

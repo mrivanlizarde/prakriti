@@ -116,16 +116,16 @@ final class GalleryTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: folders.people.path))
         XCTAssertTrue(vault.prepare())
         XCTAssertTrue(PrintVault.isExcludedFromBackup(folders.people))
-        // What tmutil reads: the backup exclusion attribute on the folder itself.
-        let output = Pipe()
-        let tmutil = Process()
-        tmutil.executableURL = URL(fileURLWithPath: "/usr/bin/tmutil")
-        tmutil.arguments = ["isexcluded", folders.people.path]
-        tmutil.standardOutput = output
-        try tmutil.run()
-        tmutil.waitUntilExit()
-        let said = String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-        XCTAssertTrue(said.contains("[Excluded]"), "tmutil said: \(said)")
+        // What tmutil reads: the backup exclusion attribute on the folder itself, read directly (TimeMachineProbe says why
+        // tmutil itself cannot be waited on from the test host).
+        XCTAssertEqual(TimeMachineProbe.exclusionAttribute(folders.people), "com.apple.backupd")
+        // tmutil, when it answers within 10 s, must agree. When it hangs (it does under the test host on this Mac), the
+        // attribute above is the check.
+        if let said = TimeMachineProbe.tmutil(folders.people) {
+            XCTAssertTrue(said.contains("[Excluded]"), "tmutil said: \(said)")
+        } else {
+            print("GalleryTests: tmutil isexcluded did not answer in 10 s under the test host; checked the attribute it reads instead.")
+        }
         XCTAssertTrue(files(under: folders.people).isEmpty, "preparing makes no file")
     }
 

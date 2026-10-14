@@ -55,7 +55,10 @@ learned until a release is recorded in the app. Not installed, for M5a's reason.
 **Then part M8b, the rendered MP4** (the last section, "v2 part M8b"): the edited MP4, its captions, Description.txt and a Ready
 checklist measured from the files, made from the edit plan only for recordings where everyone is Included; on 13 Sep and 6 Sep
 every number of PLAN check 3 passes but the sound's bitrate (320 kbps, the Mac's own maximum), and one filler at 4:23 waits for
-Ivan's ear. Not installed, for M5a's reason.
+Ivan's ear. Not installed, for M5a's reason. **After the verifier** ("v2 part M8b, fixes after the verifier"): the 6 Sep video had lost
+34 s of speech Parakeet never transcribed, cut as two "pauses"; a pause now takes out only quiet time. `make test` is green again
+(tmutil is no longer waited on), Parakeet measures the MP4 in pieces, and the listening copy lives in `~/Prakriti/Dev/Listening
+check/`. Still not installed: the sample-jump bar, 384 kbps and the lock wait for Ivan.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -4788,3 +4791,100 @@ unchanged (pid 36940, the M4b build).
   would rather they run up to 2 s behind the voice (6 over) or stay as they are.
 - [ ] **The lock and the install** (unchanged since M5a): say "loosen the lock as written on 13 Oct" and the next run changes it, then
   `cd ~/Code/prakriti/mac && make install` ships M5a to M8b together.
+
+## v2 part M8b, fixes after the verifier. Wed 14 Oct 2026
+
+The verifier's run of M8b (14 Oct) failed `make test` on one test, failed check 2's filler bar on 13 Sep and check 5's Parakeet
+bar on 6 Sep, found the file Ivan was told to watch missing, and flagged the sample-jump bar, the 320 kbps sound and the lock.
+Each was taken to its cause, and measuring the causes found a worse defect nobody had listed: **the 6 Sep video was missing
+34 s of Gabriel speaking.** Built and checked 14 Oct 03:40 to 06:45 on `main`. No Swift package added, nothing downloaded, no
+SwiftData field changed.
+
+### What was wrong, at its cause, and what changed
+
+1. **The rough cut cut speech as "pauses" wherever Parakeet wrote no words (found here, not on the list).** The app's own 6 Sep
+   transcript has no word for 17 s at 24:22 and 17 s at 39:23; both stretches are normal speech (-18 to -27 dB a half second;
+   49 and 44 words when each is transcribed alone). M8a's plan "shortened" each to 0.35 s ("A pause of 17 s shortened to 0.35
+   s"), both cut points quiet, so every check passed while the video lost 34 s of the talk. Fix in `RoughCut.join`: the time a
+   pause or trim removes may hold at most 0.25 s louder than 20 dB under speech (`RoughCut.soundAllowed`, a breath or a click,
+   never a word), counted with a running sum per gap (`RoughCut.LoudCount`). A gap that holds more sound keeps all of it and
+   shortens only its longest quiet stretch: a second removal would leave a kept piece with no word in it, which a plan cannot
+   hold (spans are tied to their words, EE 3.4). Measured: the 6 Sep edit now keeps 50:41 (3,041.4 s, was 3,002.6 s); the 13
+   Sep plan is unchanged (96 spans, 890.590 s). Mac warning 148.
+2. **`make test` hung on `tmutil` (`GalleryTests.testThePeopleFolderIsLeftOutOfTimeMachine`).** `/usr/bin/tmutil isexcluded`
+   does not answer under the XCTest host on this Mac (reproduced: 10 s without an answer, every run; the verifier saw the same on
+   M7b's commit), while a shell gets "[Excluded]" in 0.01 s. The test waited on it forever. New `TimeMachineProbe`: it reads the
+   attribute tmutil reads (`com.apple.metadata:com_apple_backup_excludeItem`, "com.apple.backupd", checked against a folder
+   Foundation excluded and `tmutil` from a shell) and still asks tmutil, for 10 s at most. `GalleryAcceptanceTests` uses the same.
+   No tmutil process is left behind (pgrep). Mac warning 131 updated.
+3. **Parakeet over a whole long file is not a reliable measure.** It skipped 23.5 s and 57.6 s of the 6 Sep MP4 in the verifier's
+   run (96.5%, against 98.6% in the builder's, same file). `VideoAcceptanceTests` now cuts the made sound into pieces of about 60 s,
+   each cut at the quietest 10 ms in the 5 s before its mark, and transcribes them in one Parakeet call (13 Sep 16 pieces, 6 Sep
+   53). Mac warning 149. The app's own transcript step still runs Parakeet on the whole file, which is how cause 1 arose; see
+   "Open".
+4. **The filler bar depended on how Parakeet was asked.** Each removed "um" and "uh" is now listened for in 8 s of the made MP4
+   around its join, each window transcribed on its own (the verifier's method), and counted only beyond the kept fillers the plan
+   puts there. The 60 s pieces are asked the same question and reported beside it, not gated: they hear the 13 Sep "uh" at 4:23
+   again, the 8 s window reads "come and present all of that we will be adding more classes sorry". Ivan's ear decides (check 9).
+5. **The file Ivan was to watch was deleted by the test itself.** The refusal step removes the 13 Sep Video folder (decision 7),
+   and every later make replaces the output folder. `VideoAcceptanceTests` now copies the Video folder, before the refusal, to
+   `~/Prakriti/Dev/Listening check/2026-09-13 18-25-44 Video/`, which no make touches. Measured after `make accept` and
+   `make accept-edits` ran over the talk: still there, 890.59 s, the last 5 s decode with no error. Mac warning 150.
+6. **`EditPlanAcceptanceTests` failed whenever an earlier `make accept-video` had left a plan in the 6 Sep folder** (it asserted the
+   file absent). It now asserts the file unchanged (size and date). Found by running `make accept-video` twice in a row.
+7. **New plan checks, because the old ones could not see cause 1:** "No pause or trim takes out sound" (the inside of every pause
+   and trim measured on the original) and "Every second is kept or taken out by a listed removal" (source = kept + removed within
+   a frame). Silences left inside sound Parakeet wrote no words for are counted apart and listed, never hidden.
+
+Help 05 (Edit plan): a pause is only ever quiet time; sound the transcript missed is kept. `RoughCutTests`
+`testAGapWithSoundButNoWordsIsNeverCutAsAPause` (a 17 s wordless gap with 12 s of speech: no pause removal touches the speech,
+one removal shortens the 3 s silence, `PlanValidation` passes, every second accounted; and sound before the first word is not
+trimmed).
+
+### Checks run, with results
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `RenderTests` and `RoughCutTests` | **PASS.** 7 and 10 of 10 (one new) |
+| 2 | `make accept-video` on the **13 Sep talk** | **PASS on every gated line; the sample-jump bar as written still NOT met (needs Ivan, below).** Plan: 191 of 191 cut points 20 dB or more under speech (least 20.3); 89 pauses and trims, the most sound inside one 0.14 s; 0 silences over the trigger; median sentence pause 0.352 s; 890.590 s = kept, 57.190 s removed, 0.000 s unaccounted. MP4: picture 890.590 s, sound 890.590 s; 34 joins in sync, every lag 0.00 ms; 6 frames +0 (45.8 to 48.1 dB); 0 clicks in 95 joins; 0 pauses over the trigger; **Parakeet 2,865 of 2,879 kept words in order (99.5%)**, 16 pieces; **fillers 6 of 6 gone (100%)** in the 8 s windows (the 60 s pieces hear 1 again, at 4:23). Sample-jump bar as written: 22 of 95 joins over |
+| 3 | The MP4 measured | **PASS** on both: H.264 High 1920 by 1080 30000/1001 BT.709, 15.99 Mbps, moov before mdat, no edit list on the picture, -14.0 and -13.9 LUFS, -1.4 dBTP, tail decodes; Ready checklist 17 PASS, 3 MISSING (Title, Description, Chapters), 0 FAIL. Sound AAC-LC 48 kHz stereo **320.0 kbps**, not 384 (needs Ivan) |
+| 5 | The **6 Sep talk** (now 50:41 kept) | **PASS on every gated line.** Plan: 359 pauses and trims, the most sound inside one 0.19 s; 0 silences over the trigger, 10 protected, 8 longer ones inside sound Parakeet wrote no words for, kept and listed (24:21.8 1.72 s, 39:23.2 1.25 s, ...); 3,339.102 s = 3,041.405 kept + 297.664 removed, 0.033 s unaccounted (one frame). MP4: picture and sound 3,041.405 s; lag 0.00 ms at 34 joins; 6 frames +0; 0 clicks in 361 joins; **Parakeet 9,822 of 9,911 (99.1%)**, 53 pieces; fillers 2 of 2 gone. Render: the video step 486.7 s (6.2 times real time for the whole step, picture and sound); StageTiming holds 2 samples, 8.83 s a minute. Sample-jump bar as written: 75 of 361 joins over |
+| 8 | Regression set; `make migrate-check` | **PASS.** `make test`: **357 tests, 21 skipped by design, 0 failures** (1,191 s; the tmutil line reads "did not answer in 10 s under the test host; checked the attribute it reads instead"). `make accept`: 13 Sep -16.8 LUFS, -1.7 dBFS, 2,948 words to 15:47 of 15:48; silent-60s stopped at -91 dB; 6 Sep -16.7 LUFS. `make accept-edits`: 38.82 s shorter (expected 38.82), 0 of 73 runs from the cut heard, 189 of 201 after it, the class refused. `make migrate-check`: 13 recordings, 2 folders, 40 output settings, 1,070 Activity lines |
+
+Every frame check is a pixel-difference number; no frame of either talk was drawn or looked at. Originals unchanged (size and
+date) after every run. Em dashes: 0 in every file this fix changed (grep).
+
+### Decisions, each with its reason
+
+1. **One removal per gap that holds sound.** A plan's spans are tied to words (EE 3.4 rule 2 and 3); a second removal would leave a
+   kept stretch with no word. The cost, listed in the check: 8 silences of 0.64 to 1.72 s stay in the 6 Sep video inside speech
+   Parakeet did not transcribe. The real fix is a transcript with those words (Open, 1).
+2. **The filler gate is the 8 s window per join; the 60 s pieces are reported beside it.** Both are written in the report; the
+   window is what the verifier measured independently and does not change with the length of file Parakeet is given.
+3. **Not changed: the sample-jump bar, the 384 kbps sound, and the privacy lock.** Each is a change to the plan or to privacy, which
+   only Ivan (or the plan's owner) may make; see "For Ivan".
+
+### Open
+
+1. **The app's transcript step runs Parakeet on the whole file and checks only that it reaches the end.** On the 6 Sep talk it
+   missed 2 stretches of 17 s; the podcast transcript, captions and chapters of that talk lack those words too. Next part: run
+   Parakeet in pieces in `Pipeline` (as `VideoAcceptanceTests` now does) and add a coverage check for gaps with sound and no words.
+2. The rendition picker's selected segment draws as a black pill with no readable label in light mode (verifier, snapshot
+   `22-video-ready-light.png`); for M8c.
+
+### Installed
+
+**Not installed.** The live app is unchanged (pid 36940). Every gated check of M8b now passes, but three items in the plan are not
+met as written and are Ivan's to decide: the sample-jump bar, 384 kbps, and the lock (PLAN section 11 says loosen it and install;
+this run's instructions say a cloud request must never carry a class or other people's words and the lock must fail closed, so the
+fixer did not loosen it).
+
+### For Ivan
+
+- [ ] **Watch and listen (PLAN M8 check 9):** `~/Prakriti/Dev/Listening check/2026-09-13 18-25-44 Video/2026-09-13.mp4`; three
+  random 30 s windows, "did anything sound cut?", and at 4:23, is an "uh" still there?
+- [ ] **The sample-jump bar:** as written it fails about 29% of joins on room tone by chance (13 Sep 22 of 95, 6 Sep 75 of 361);
+  the build gates "no click" instead (0 on both). Say "approve the click bar" or ask for the bar as written.
+- [ ] **384 or 320 kbps:** Apple's encoder stops at 320 for stereo; ffmpeg's own asked for 384 measures about 240.
+- [ ] **The lock:** the plan's 13 Oct note says loosen it and install; this run's rules say it must stay closed for classes and other
+  people's words. Say which, then `cd ~/Code/prakriti/mac && make install`.

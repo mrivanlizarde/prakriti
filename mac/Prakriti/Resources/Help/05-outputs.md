@@ -111,7 +111,9 @@ Select a recording, then in the inspector's Outputs, under Edit plan, click **Pl
 - Shortens long pauses, and never takes a pause out entirely. Inside a sentence, a pause longer than
   0.4 s becomes 0.18 s. After a comma or a full stop, a pause longer than 0.6 s becomes 0.35 s. After a
   breathing or practice cue, such as "inhale", "notice" or "close your eyes", or after a question, a
-  pause is kept up to 4 s.
+  pause is kept up to 4 s. A pause is only ever quiet time: where the transcript has no words but there
+  is sound, such as speech the transcription missed, the sound is kept and only the quiet around it is
+  shortened.
 - Takes out filler words (um, uh, er, erm, ah), the first of a word said twice ("so so"), and a false
   start ended with "let me start over", "take two" or "scratch that".
 - Cuts only where the sound is quiet, never inside a word, and keeps what it cannot cut cleanly. Where it

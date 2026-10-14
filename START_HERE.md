@@ -945,7 +945,8 @@ and 6 Sep talks in development with the Edited video on and measures the MP4 fro
 BT.709, bitrate within 10% of 16 Mbps, AAC 48 kHz stereo), the boxes (moov before mdat, no edit list on the picture), ebur128 (-14
 LUFS within 1, true peak at or under -1), the last 5 s decoded, the length against the plan, the sound at every join
 cross-correlated with the original and six frames matched by pixel difference (in sync to the frame), no click at a join, the
-pauses, Parakeet run on the MP4 (98% of kept words in order, the removed "um" and "uh" gone), the Ready checklist, StageTiming fed;
+pauses, Parakeet run on the MP4 in about 60 s pieces (98% of kept words in order) and on 8 s around each join a filler was taken
+from (90% of them gone), the Ready checklist, StageTiming fed; the 13 Sep Video folder copied to `~/Prakriti/Dev/Listening check/`;
 then Make Video refused with someone hidden. It writes `acceptance-video.txt` and `acceptance-video-m8b.txt`; no frame of a talk is
 drawn. `make accept-capture` (v2 part M4b, about 2 minutes) runs the **real 13 Sep talk**, `two-people-tracks.mov`,
 `silent-60s.mp4` and the 30 s clip through the app's runner in development (in-memory store) and needs the 13 Sep
@@ -1901,8 +1902,11 @@ top and its end. Reading the code is not verification, and neither is a passing 
     and tries one of their old crops, held in memory from before the key was destroyed, against it (`ForgetIndexProof`).
 131. **The People folder is excluded from Time Machine at every launch (`PrintVault.prepare`, from `didLaunch`), and before
     anything is sealed.** Reason: Ivan's Mac backs up to a local Time Machine disk; without it a forgotten print would live
-    on in an old backup (research-people.md 5.2). Checked with `tmutil isexcluded` by `make accept-gallery` and
-    `GalleryTests`.
+    on in an old backup (research-people.md 5.2). Checked by `GalleryTests` and `make accept-gallery` through
+    `TimeMachineProbe`: the attribute tmutil reads (`com.apple.metadata:com_apple_backup_excludeItem` = "com.apple.backupd"),
+    read directly, then `tmutil isexcluded` given 10 s at most. **Never wait on tmutil from the test host:** since 14 Oct it
+    hangs there for over an hour on this Mac (on M7b's code too), while a shell gets "[Excluded]" in 0.1 s; a plain
+    `waitUntilExit()` kept `make test` red.
 132. **A key photo is a reference, never a picture: `Person.keyPhotoJSON` holds a recording id and a face row, and
     `KeyPhotos` crops the frame in memory while People shows it.** Reason: the card pictures stay the only images under
     Application Support (PLAN M6 check 7), and a stored face picture is kept only where the plan allows it. Name This
@@ -1976,6 +1980,21 @@ top and its end. Reading the code is not verification, and neither is a passing 
 147. **Captions keep every word and stay within 1 s of the voice; their speed over 20 characters a second is reported, never
     fixed by dropping words.** Reason: the edited 13 Sep talk is faster than 20 characters a second in places; pinned to the
     voice 78 of 255 captions went over, allowed to drift they fell 3.5 s behind (measured 13 Oct).
+148. **A pause or trim takes out only quiet time: at most 0.25 s of it louder than 20 dB under speech
+    (`RoughCut.soundAllowed`, `RoughCut.LoudCount`).** Reason: a pause is a gap in Parakeet's words, and Parakeet skips
+    speech. On 14 Oct the 6 Sep transcript had no word for 17 s at 24:22 and at 39:23 (49 and 44 words when each stretch is
+    transcribed alone), the plan "shortened" both to 0.35 s with quiet cut points, and the video lost 34 s of Gabriel.
+    Checking only the cut points could not see it; `EditPlanAcceptanceTests` now measures the inside of every pause and trim.
+    A gap that holds sound is not a pause: the sound is kept and each quiet stretch between its pieces is shortened on its
+    own (`JoinOutcome.removals`), so no silence over the trigger is left inside it either.
+149. **Parakeet as a measure runs on pieces, never on a whole long file.** Reason: one whole-file run of the 6 Sep MP4 skipped
+    23.5 s at 4:39 and 57.6 s at 27:02 of normal speech (verifier, 14 Oct), so the same file scored 96.5% one run and 98.6%
+    the next. `VideoAcceptanceTests` cuts the made sound into about 60 s pieces at the quietest 10 ms before each mark and
+    listens for each removed filler in 8 s around its join. The app's own transcript step still runs Parakeet on the whole
+    file (its coverage check sees only the end): the cause of warning 148, open for a later part.
+150. **The copy Ivan listens to for M8 check 9 lives in `~/Prakriti/Dev/Listening check/`, never only in `Outputs`.** Reason:
+    the refusal check removes the 13 Sep Video folder on every `make accept-video`, and every later make of the talk replaces
+    its output folder, so the file the M8b builder named was gone before Ivan could open it.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

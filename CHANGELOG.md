@@ -5,6 +5,19 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-14, Wed: v2 part M8b, fixes after the verifier
+
+- **A pause takes out only quiet time.** Why: Parakeet wrote no words for two 17 s stretches of the 6 Sep talk, the plan treated
+  them as pauses, and the video lost 34 s of Gabriel with every check passing. Sound with no words is now kept, and the plan
+  checks measure the inside of every pause and that every second is either kept or listed as removed.
+- **The tests read Time Machine's exclusion attribute and give tmutil 10 s.** Why: tmutil hangs under the test host on this Mac,
+  which kept `make test` red for a reason that had nothing to do with the code.
+- **The MP4 is transcribed in 60 s pieces for the checks, and each removed filler is listened for in 8 s around its join.** Why:
+  one Parakeet run over a long file skipped up to 57 s of speech, so the same file passed one run and failed the next.
+- **The 13 Sep video Ivan is to watch is copied to `~/Prakriti/Dev/Listening check/`.** Why: the refusal check and every later
+  make deleted the copy the build log pointed him to.
+- **Not changed, waiting for Ivan:** the sample-jump bar, 384 kbps, and the lock. Why: each changes the plan or privacy.
+
 ## 2026-10-13, Tue: v2 part M8b, the rendered MP4
 
 - **The edit plan becomes a video Ivan could upload: an MP4, its captions, Description.txt and a Ready checklist.** Why:
