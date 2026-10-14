@@ -1674,3 +1674,8 @@ found by comparing the sound envelope to word times), merge without duplicates, 
 any such gap, not only at the tail. Acceptance: both 17 s stretches on the 6 Sep talk now have words; a coverage test
 plants a silent-text gap and catches it; the 13 Sep transcript is unchanged except for any newly found words; full
 suite passes; make install.
+- **Wed 14 Oct, Sonny (Ivan asked whether the test material could be smaller): routine checks use 5-minute
+  excerpts** cut with ffmpeg -c copy from the 13 Sep talk (from 2:00) and the 6 Sep talk (from 20:00), kept in
+  ~/Prakriti/Dev/Excerpts/. Full-length runs on both talks happen only on the LAST part of each milestone group
+  (M8d, M9d, M10b, M11b, M12b) and at M13. Any check whose bar is a full-length count (joins, coverage, words)
+  is scaled to the excerpt and says so.
