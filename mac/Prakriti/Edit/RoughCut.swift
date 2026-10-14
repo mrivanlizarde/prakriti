@@ -195,20 +195,25 @@ struct RoughCut: Sendable {
     /// has been off for `endHold` inside it. A word with no sound at all inside its span was placed in a silence by
     /// Parakeet (measured 13 Oct, 13 Sep at 4:45: "back" and "to" sit in 1.2 s of room tone, said after it): it is moved
     /// to the edge of the sound nearer to it, the end of the sound before or the start of the sound after, so the silence
-    /// it hid becomes a pause the plan can see. A filler with no sound stays where it is, inside the silence, and is taken
-    /// out with it.
+    /// it hid becomes a pause the plan can see. A filler is moved the same way (v2 part M8b, 13 Oct): left in its silence and
+    /// taken out with it, the "uh" itself stayed in the video, run into the word beside it. Measured by Parakeet on the made
+    /// MP4s: 5 of the 10 fillers the 13 Sep plan took out, and 4 of 6 on 6 Sep, were heard again at their joins, and each of
+    /// those 9 had no sound in Parakeet's span (-50 to -76 dB) while the sound beside it was speech. Moved onto that sound, a
+    /// filler is cut only where it can be cut cleanly, like any other, and the silence is a pause. Only a word with no sound
+    /// within 3 s either way stays where it is (`soundless`).
     static func refine(_ words: [PlanWord], envelope: Envelope, preset: RoughCutPreset) -> (starts: [Double], ends: [Double], soundless: [Bool]) {
         var starts: [Double] = [], ends: [Double] = [], soundless: [Bool] = []
         let reach = 3.0
         for word in words {
             var s = word.start, e = max(word.end, word.start + 0.02)
+            var moved = false
             let heard = envelope.activeSeconds(from: s, to: e) >= preset.shortestSound
             if heard, let first = envelope.firstActive(from: s, to: e) {
                 s = first
                 if let off = envelope.offFor(preset.endHold, from: s, to: e), off > s { e = off }
                 // And the quiet at the very end of its span, shorter than `endHold`, is not the word either.
                 else if let last = envelope.lastActiveEnd(from: s, to: e), last > s { e = last }
-            } else if !Restarts.isFiller(word) {
+            } else {
                 let before = envelope.lastActiveEnd(from: max(0, s - reach), to: s)
                 let after = envelope.firstActive(from: e, to: e + reach)
                 switch (before, after) {
@@ -218,10 +223,11 @@ struct RoughCut: Sendable {
                 case let (nil, a?): (s, e) = (a, a + 0.05)
                 case (nil, nil): break
                 }
+                moved = before != nil || after != nil
             }
             starts.append(s)
             ends.append(max(e, s + 0.02))
-            soundless.append(!heard)
+            soundless.append(!heard && !moved)
         }
         return (starts, ends, soundless)
     }

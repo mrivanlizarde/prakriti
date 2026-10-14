@@ -65,6 +65,25 @@ Under Edit plan in the inspector's Outputs, Prakriti says why in one sentence.
 - **It says your newest trim, cuts or choices are not in the plan yet:** click Plan Again.
 :::
 
+:::requires renderedVideo
+### If the video is not made
+
+Under Edited video in the inspector's Outputs, Prakriti says why in one sentence.
+
+- **Make Video is dimmed:** the recording has no transcript yet, or it is being made. Wait for it to
+  finish, or turn on Transcript for it and click Make Again.
+- **It says who appears and speaks in it has not been checked:** click Check People in the People tab,
+  then Make Video.
+- **It says video for recordings with someone hidden or left out arrives in the next update:** someone in
+  the People tab is set to Hide Face or Leave Out. Set them to Include to make the video now, or wait for
+  the next update.
+- **It says the edit plan could not be made:** see "If the edit plan is not made" above.
+- **The video was not kept:** Prakriti measures every video before it moves it into the recording's
+  folder, and deletes one that does not play to its end or is not the length the plan keeps. Click Make
+  Again. If it keeps happening, send the day's log (see "Find the log" below).
+- **A line of the Ready checklist says FAIL:** the line says what to do. Most need only Make Again.
+:::
+
 ### If a recording says it is silent or has no sound
 
 Prakriti checks the sound first. If the loudest moment is close to silence, or the file has no sound

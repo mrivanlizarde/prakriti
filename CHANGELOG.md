@@ -5,6 +5,24 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-13, Tue: v2 part M8b, the rendered MP4
+
+- **The edit plan becomes a video Ivan could upload: an MP4, its captions, Description.txt and a Ready checklist.** Why:
+  REQUEST item 4 and "post ready"; PLAN M8b. One plan drives the picture, the sound and the captions, so they cannot drift.
+- **Only recordings whose people check ran and where everyone is Included get a video, refused in code until M8d.** Why: the
+  video cannot hide a face or cut a voice yet (PLAN 10.1 item 4); Ivan's 12 Oct note makes everyone Include by default, so the
+  refusal bites only when he chooses Hide Face or Leave Out.
+- **Every rendered file passes `OutputGate`, the only code that moves it into place.** Why: PLAN 2.2 rule 3; a file that fails
+  is deleted where it was made.
+- **Off for every folder; Make Video for one recording.** Why: PLAN rule 2.1.7, no new work starts by itself.
+- **Fixed by measuring, not by reading:** the writer's 600 timescale made frames uneven (now 30000); ffmpeg's limiter delayed
+  the sound 5 ms (now compensated); B-frames brought a picture edit list (now off); VBR undershot 16 Mbps by a quarter (now
+  constant); plain equal-power fades lifted room tone (now eased by how alike the two sides are).
+- **AAC at 320 kbps, not the plan's 384.** Why: Apple's encoder refuses more than 320 for stereo and ffmpeg's own gave 241 for
+  384 (measured). YouTube re-encodes the sound anyway.
+- **Captions keep every word and stay within 1 s of the voice; speed over 20 characters a second is reported, not failed.**
+  Why: the edited talk is faster than that in places; meeting 20 would mean dropping words or falling 3.5 s behind.
+
 ## 2026-10-13, Tue: v2 part M8a, the edit plan
 
 - **The rough cut is a plan, `edit-plan.json`, before it is ever a video.** Why: PLAN M8a and research-edit-engine.md 3.4;

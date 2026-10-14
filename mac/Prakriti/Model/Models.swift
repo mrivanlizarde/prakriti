@@ -196,6 +196,10 @@ final class Recording {
     /// audio output check found in the files it made (v2 part M6c): a PeopleApplied as JSON, read through
     /// `peopleApplied`. Nil when nobody was left out and nothing was muted.
     var peopleAppliedJSON: String?
+    /// The edited video the last finished make made and checked (v2 part M8b): a VideoRecord as JSON, read through `video`,
+    /// and why it was not made when it was asked for. Additions with nil defaults, so the store migrates on its own.
+    var videoJSON: String?
+    var videoProblem: String?
 
     var source: Source?
 
@@ -307,6 +311,9 @@ final class Recording {
 
     /// What the last podcast-ready make measured and checked, or nil.
     var podcastReady: PodcastReadyRecord? { PodcastReadyRecord.decode(podcastReadyJSON) }
+
+    /// The edited video (v2 part M8b), or nil.
+    var video: VideoRecord? { VideoRecord.decode(videoJSON) }
 
     /// What the capture check measured, or nil.
     var capture: CaptureReport? { CaptureReport.decode(captureJSON) }

@@ -109,7 +109,7 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
         case .transcript: "The words, with times, in the formats you choose."
         case .checksAndReport: "Length, sound, loudness and coverage, in one short report."
         case .titlesNotesChapters: "Written by the model you choose for writing."
-        case .editedVideo: "The talk cut to the teaching, ready for YouTube."
+        case .editedVideo: "An MP4 cut from the edit plan, with captions, a description and a checklist for YouTube."
         case .thumbnails: "Three still images to choose from for each video."
         case .shorts: "Short vertical clips from the strongest moments."
         case .knowledgeBase: "Each talk added to a searchable library of the teaching."
@@ -134,7 +134,7 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
 
     var isBuilt: Bool {
         switch self {
-        case .podcastEpisode, .podcastReady, .transcript, .checksAndReport, .titlesNotesChapters: true
+        case .podcastEpisode, .podcastReady, .transcript, .checksAndReport, .titlesNotesChapters, .editedVideo: true
         default: false
         }
     }

@@ -90,7 +90,8 @@ final class ViewerTests: XCTestCase {
 
     func testRenditionsNotMadeSayWhy() {
         let viewer = ViewerModel()
-        XCTAssertEqual(viewer.unavailableReason(.video), "Prakriti does not make an edited video yet.")
+        XCTAssertEqual(viewer.unavailableReason(.video), "The edited video does not play here yet. It is in the Video folder; Show in Finder is in Outputs.",
+                       "v2 part M8b makes the video; playing it here is M8c")
         XCTAssertEqual(viewer.unavailableReason(.shorts), "Prakriti does not make shorts yet.")
         XCTAssertFalse(Rendition.video.isBuilt)
         XCTAssertTrue(Rendition.podcastReady.isBuilt)

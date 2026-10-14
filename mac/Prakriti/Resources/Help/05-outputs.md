@@ -4,7 +4,7 @@ title: Outputs
 summary: What Prakriti makes from each recording, what is in each file, and where the files go.
 section: outputs
 order: 1
-keywords: [outputs, edit plan, rough cut, pauses, filler words, podcast episode, podcast-ready, MP3, loudness, LUFS, transcript, captions, SRT, VTT, report, show notes, chapters, titles, episode text, upload checklist, artwork, show name, word list, intro, outro, mono, stereo]
+keywords: [outputs, edit plan, rough cut, edited video, MP4, YouTube, Make Video, ready checklist, description, pauses, filler words, podcast episode, podcast-ready, MP3, loudness, LUFS, transcript, captions, SRT, VTT, report, show notes, chapters, titles, episode text, upload checklist, artwork, show name, word list, intro, outro, mono, stereo]
 related: [sources-and-watching, reviewing-and-approving, models-and-api-keys]
 ---
 
@@ -30,6 +30,10 @@ The original recording is never changed. Nothing is uploaded or posted.
 - **Checks and report:** length, sound, loudness and how much the transcript covers, in one short
   report.
 - **Titles, show notes and chapters:** drafts written by the model you choose.
+:::requires renderedVideo
+- **Edited video:** an MP4 cut from the edit plan, with its captions, a description to paste and a
+  checklist against YouTube's rules.
+:::
 :::requires video
 - **Edited video:** a finished video file ready to post, with its captions and text.
 :::
@@ -46,6 +50,9 @@ The original recording is never changed. Nothing is uploaded or posted.
 The podcast episode, the transcript and the report are on for every new folder. The podcast-ready
 episode and the titles, show notes and chapters start off, because they take longer: turn them on for a
 folder, or for one recording.
+:::requires renderedVideo
+The edited video starts off too, for every folder: it takes a few more minutes for each recording.
+:::
 
 ### Podcast episode
 
@@ -113,8 +120,51 @@ Select a recording, then in the inspector's Outputs, under Edit plan, click **Pl
 - Takes out your trim, your cuts and anyone you chose to Leave Out.
 
 The plan is saved as `edit-plan.json` in the recording's folder, and the strip under the Original in the
-viewer shows it. Nothing else is made from it yet. Once a recording has a plan, Make Again plans it
-again with your newest changes; Plan Again does that alone, without making anything else.
+viewer shows it. Once a recording has a plan, Make Again plans it again with your newest changes; Plan
+Again does that alone, without making anything else.
+:::
+:::unless renderedVideo
+Nothing else is made from the plan yet.
+:::
+
+:::requires renderedVideo
+### Edited video
+
+An MP4 made by Prakriti itself from the edit plan, on this Mac. To make one for a recording already made,
+select it, then in the inspector's Outputs, under Edited video, click **Make Video**. To make one for
+every new recording in a folder, turn on Edited video for that folder. A 15-minute talk takes a few
+minutes.
+
+- The cuts are the edit plan's: shortened pauses, filler words, words said twice and false starts
+  taken out, and your trim and cuts. The picture and the sound are cut on the same frame.
+- Each cut in the sound is a 20 ms crossfade, so no cut clicks, and the video is exactly as long as
+  what the plan keeps.
+- The sound is leveled to -14 LUFS with its peaks at -1 dBTP or under, the level YouTube turns
+  louder videos down to (measured by others; YouTube publishes no figure).
+- The picture is H.264 at 16 Mbps for 1080p, in the size and frame rate it was recorded.
+
+For now, Prakriti makes a video only of a recording where everyone seen and heard is included, and
+only once its people check has run. If anyone is set to Hide Face or Leave Out, Make Video says so and
+makes nothing: video that hides or leaves out a person arrives in the next update. Watching the video
+inside Prakriti arrives in the next update too.
+
+The files are in a folder named Video, inside the recording's folder:
+
+- The video, named after the recording's title, or its date until it has one.
+- Its captions as a separate `.srt` file to upload with it: at most 42 characters a line and two lines,
+  never more than a second behind the voice. Where the talk is faster than 20 characters a second, the
+  captions keep every word and the checklist says how many are that fast.
+- `Description.txt`: the title, the description and the chapters to paste into YouTube. They come from
+  the title and notes you gave the recording in Info, else from the titles, show notes and chapters when
+  they were written. Anything neither has is marked MISSING with what to do; Prakriti never makes one up.
+- `Ready checklist.txt`: every line measured from the files, PASS, MISSING or FAIL, against YouTube's
+  published upload settings. It checks the container, the codecs, the size, the frame rate, the bitrate,
+  the color tags, the key frames, that the file starts playing before it finishes downloading, the
+  loudness, that the video plays to its end, the captions, the title, description and chapters, and who
+  is in it. The same lines are in the inspector, those that do not pass first.
+
+The sound is AAC at 320 kbps, the most the Mac's own encoder makes. YouTube suggests 384 kbps; it
+converts the sound again when you upload, so the difference does not reach a viewer.
 :::
 
 :::requires video

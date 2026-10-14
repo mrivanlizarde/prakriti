@@ -42,6 +42,9 @@ These always run on this Mac, whatever you choose:
 :::requires hiding
 - Hiding faces in the pictures of a recording.
 :::
+:::requires renderedVideo
+- Making the edited video and checking it.
+:::
 :::requires video
 - Cutting, zooming and making the video.
 :::

@@ -725,6 +725,23 @@ again (step "Planning the edit"); nothing plans a recording before Ivan asks onc
 is made from it (M8b). Measured on 13 Sep: keeps 14:50 of 15:48, 85 pauses shortened, 10 fillers, 1 stutter, 193 cut points
 all 20 dB or more under speech.
 
+**v2 part M8b, the rendered MP4, Tue 13 Oct (see BUILD-LOG "v2 part M8b"; built, not installed):** the edited video,
+made from the edit plan on this Mac, in a `Video` folder inside the recording's output folder: the MP4 (named by the title,
+else the date), its `.srt` captions on the edited clock, `Description.txt` (title, description and chapters from Ivan's Info,
+else the writing step, else MISSING, never invented) and `Ready checklist.txt` (every line measured from the files). The
+**Edited video** output is off for every folder; **Make Video** (inspector, Outputs, Edited video) switches it on for one
+recording and makes it again. The make plans the edit, then **Making the video** (`Render/`: `EditTimeline` counts the plan
+in whole frames; `CompositionBuilder` puts every kept span on one track of an `AVMutableComposition` with an
+`AVVideoComposition.Configuration`, one `RenderInstruction` per span and the custom `Compositor`, which passes a frame on
+untouched when nothing is drawn on it and draws through Core Image otherwise; `VideoAudio` decodes the first audio track,
+joins the spans in Swift with 20 ms crossfades from 10 ms handles, so the sound is exactly as long as the picture, and masters
+it to -14 LUFS, true peak under -1; `VideoWriter` writes H.264 High at a constant 16 Mbps, a key frame every 15 frames, no
+B-frames, BT.709, fast start, AAC-LC 320 kbps; `Mp4Boxes` removes the writer's identity edit list on the picture), then
+**Checking the video** (`ReadyChecklist`, then `OutputGate`, the only code that moves a rendered file into place). **Until
+part M8d, a video is made only of a recording whose people check ran and found everyone Included** ("Video for recordings
+with someone hidden or left out arrives in the next update."). Watching it in the Viewer is M8c. Measured on 13 Sep: 26,685
+frames written in 100 s (8.9 times real time), picture and sound within one frame of the plan's 890.389 s.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -905,6 +922,9 @@ cd ~/Code/prakriti/mac && open -n build/Build/Products/Debug/Prakriti.app --args
 cd ~/Code/prakriti/mac && make accept-people MILESTONE=v2-m6a
 ```
 ```bash
+cd ~/Code/prakriti/mac && make accept-video MILESTONE=v2-m8b
+```
+```bash
 cd ~/Code/prakriti/mac && make migrate-check
 ```
 ```bash
@@ -920,7 +940,14 @@ cd ~/Code/prakriti/mac && make drop MODE=live MILESTONE=m3
 tail -20 ~/Library/Logs/Prakriti/$(date +%Y-%m-%d).log
 ```
 
-`make accept-capture` (v2 part M4b, about 2 minutes) runs the **real 13 Sep talk**, `two-people-tracks.mov`,
+`make accept-video` (v2 parts M8a and M8b, about 35 minutes) plans the **real 13 Sep talk** (M8a's half), then makes the 13 Sep
+and 6 Sep talks in development with the Edited video on and measures the MP4 from outside: ffprobe (H.264 High, 1080p, 30000/1001,
+BT.709, bitrate within 10% of 16 Mbps, AAC 48 kHz stereo), the boxes (moov before mdat, no edit list on the picture), ebur128 (-14
+LUFS within 1, true peak at or under -1), the last 5 s decoded, the length against the plan, the sound at every join
+cross-correlated with the original and six frames matched by pixel difference (in sync to the frame), no click at a join, the
+pauses, Parakeet run on the MP4 (98% of kept words in order, the removed "um" and "uh" gone), the Ready checklist, StageTiming fed;
+then Make Video refused with someone hidden. It writes `acceptance-video.txt` and `acceptance-video-m8b.txt`; no frame of a talk is
+drawn. `make accept-capture` (v2 part M4b, about 2 minutes) runs the **real 13 Sep talk**, `two-people-tracks.mov`,
 `silent-60s.mp4` and the 30 s clip through the app's runner in development (in-memory store) and needs the 13 Sep
 talk at 1920 by 1080, 29.97 fps, H.264, Rec. 709, one stereo track flagged as one microphone in both channels with
 the tip "Give each speaker a microphone on its own track."; the fixture's three tracks each with its own loudness
@@ -1115,6 +1142,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | The welcome window (v2 part M2b) | `mac/Prakriti/Views/Welcome/`: `WelcomeContent.swift` (the five panels' words, each row with the capabilities it describes, `requires` and `unless`; `WelcomeContent.version`), `WelcomeModel.swift` (the open panel, the first-launch rule, Choose Folder), `WelcomeWindow.swift` (the window, its rows and buttons, its own fit measurement); the scene and Help, Welcome to Prakriti in `App/PrakritiApp.swift`; `welcomeSeenVersion` in `App/AppSettings.swift`; Turn On Notifications and `Notifier.openSystemSettings` in `App/Notices.swift`; the copy source and its status: `docs/v2/help-notes/welcome-panels.md`; tests `WelcomeTests` and `SnapshotTests.testRenderWelcome` |
 | The capture check (v2 part M4b) | `mac/Prakriti/Engine/CaptureCheck.swift` (`CaptureReport`, `CaptureFinding`, reading ffprobe and the per-track ffmpeg call, the findings and their tips, `run`), the pipeline's `.capture` step, `Recording.captureJSON`, `Views/Inspector/CaptureSection.swift` (the Checks tab's Capture section), `App/CaptureActions.swift` (Check Capture for older recordings); tests `CaptureCheckTests` (in `make test`) and `CaptureAcceptanceTests` (`make accept-capture`) |
 | Progress and Activity (v2 part M4a) | `mac/Prakriti/Progress/`: `JobProgress.swift` (`ProgressTracker`, the pure arithmetic: weights, the percent that never goes back, the time left only from a measured rate, the stall line; `ProgressSnapshot` with its status line; `TimeLeft`; `JobProgress`, published at most twice a second), `ProgressMeter.swift` (what the pipeline and ffmpeg report, read twice a second; `ProcessControl`, Pause by SIGSTOP and SIGCONT), `StageTimings.swift` (`StageTiming`, a SwiftData model, the last 10 runs of each stage, seeded once from the store; `firstGuess`, measured 12 Oct). `Engine/Subprocess.swift` (`onStdoutLine`, `control`), `Engine/Pipeline.swift` (`meter`, `passes`, ffmpeg's `-progress pipe:1` in `tool`), `App/PipelineRunner.swift` (`currentJob`, `pause`, `resume`, `stop`, `makeNext`, `queueFraction`, `queueTimeLeft`, `showSample`), `App/StatusSummary.swift` (`noteStatusLine`, `--debug-status-log`); views: `Views/Activity/ActivityWindow.swift` (the window, Now, Finished, Log, `ActivityButton`), `Views/ProgressViews.swift` (`ProgressRing`, `ProgressBlock`, `ProgressButtons`), the card's `StatusCapsule`, the list's Status column, `StatusBlock` in `OutputsTab`, `ViewerBanner`, `Views/MenuBar.swift`; `Fixtures.showProgress` (the sample talk being made, for snapshots and captures); tests `ProgressTests` (in `make test`) and `ProgressAcceptanceTests` (`make accept-progress`) |
+| The edited video (v2 part M8b) | `mac/Prakriti/Render/`: `EditTimeline.swift` (the plan in frames and samples), `CompositionBuilder.swift`, `Instructions.swift` (`RenderInstruction`), `Compositor.swift`, `VideoAudio.swift` (decode, join with crossfades, master), `VideoWriter.swift`, `Mp4Boxes.swift` (moov, edit lists), `Captions.swift`, `VideoDescription.swift` (`Description.txt`), `ReadyChecklist.swift`, `OutputGate.swift` (the refusal and the only move), `VideoStep.swift` (`VideoRecord`, make and check); the pipeline's `.renderVideo` and `.checkVideo` steps and `PipelineOptions.makeVideo`; `Recording.videoJSON` and `videoProblem`; `App/VideoActions.swift` (Make Video); `Views/Inspector/VideoSection.swift`; tests `RenderTests` (in `make test`) and `VideoAcceptanceTests` (`make accept-video`) |
 | Faces (v2 part M6a) | `mac/Prakriti/People/`: `FaceScan.swift` (the reader, Vision at two frames a second, the change-of-picture measure), `Tracks.swift` (`FaceBox` and the Vision conversion, `FaceTracker`, `FaceGrouping`, `FacesFound` with its lines), `PeopleFile.swift` (`PeopleFolders`, the people file, `FaceStep` with its job folder), `FaceCrops.swift` (the People tab's live crops, memory only); the pipeline's `.faces` step and `PipelineOptions.people`; `Recording.facesJSON`; `App/FaceActions.swift` (`applyFaces`, Look for Faces); `Views/Inspector/PeopleTab.swift` (`PeopleTab`, `FaceRow`, `PeopleLine`); the job cleanup in `AppModel.launch`; `--debug-face-scan` in `App/DebugSwitches.swift`; tests `PeopleTests` (in `make test`), `PeopleAcceptanceTests` and `scripts/people-crash-check.sh` (`make accept-people`) |
 | People files and job folders | `~/Library/Application Support/Prakriti/People/Recordings/<recording id>.json` and `.../Jobs/` (live); `.../Prakriti/Development/People/...` and `.../Development/Jobs/` (development) |
 | Swift packages | `swift-markdown` 0.9.0 (21 Sep 2026, with `swift-cmark` 0.9.0), pinned in `mac/project.yml` and `mac/Prakriti.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, both committed (v2 part M2a) |
@@ -1922,10 +1950,32 @@ top and its end. Reading the code is not verification, and neither is a passing 
     windows, and a burst of "speech" under 30 ms is a click.** Reason: measured 13 Oct, a one-second window in a talk almost
     always holds a word, so the windows' 10th percentile sat on speech (13 Sep -33.7 dB against the room's -69.5) and every
     pause read as speech; a single -47 dB click in 1.6 s of room tone made a word look said there.
-141. **A word with under 50 ms of speech inside Parakeet's span is moved to the nearer edge of the sound around it (a
-    filler stays in its silence).** Reason: Parakeet places words inside long silences (13 Sep at 4:45: "back" and "to" sit
+141. **A word with under 50 ms of speech inside Parakeet's span is moved to the nearer edge of the sound around it, a
+    filler included (since v2 part M8b: left in its silence, the plan cut the silence and the "uh" stayed in the video, 9 of 16
+    taken-out fillers on 13 and 6 Sep heard again by Parakeet in the MP4).** Reason: Parakeet places words inside long silences (13 Sep at 4:45: "back" and "to" sit
     in 1.2 s of room tone said after it); left in place, the silence hid between two "words" and no pause could be
     shortened (10 silences over 0.6 s stayed in the 13 Sep edit before this rule, 1 after, and that one is after a question).
+
+142. **A rendered file reaches a recording's folder only through `OutputGate.admit` (its move is private), from a hidden
+    staging folder inside the make's staging folder; a video that fails the gate is deleted where it was made.** Reason:
+    PLAN 2.1.11 and 2.2 rule 3: a video that failed a check must never sit in Outputs, one drag from YouTube. `RulesTests`
+    fails if any other file under `Render/` moves a file.
+143. **Make Video refuses, in code, any recording whose people check has not run (faces and voices both) or where anyone
+    is not Included in the video; only part M8d may lift it.** Reason: PLAN 10.1 item 4, the video cannot hide a face or cut
+    a voice until M8d, so any order of shipping must stay safe.
+144. **The picture's media timescale is the frame's own (30000), never the writer's default 600.** Reason: measured 13 Oct,
+    at 600 the 1001/30000 s frames sat 20 or 21 units apart and a frame asked for at its exact time was, in a 50-frame
+    rhythm, the one before. The checklist's Frame timing line fails any file with uneven frames.
+145. **The video's limiter runs with `latency=1`.** Reason: ffmpeg's `alimiter` looks 5 ms ahead and delays its output by
+    that much; measured 13 Oct, the made sound sat 239 samples behind its picture at every join until this was set. The
+    podcast's chain keeps its old string (warning 30); there the delay harms nothing.
+146. **No B-frames, a constant bitrate, AAC at 320 kbps.** Reason, all measured 13 Oct: with B-frames AVAssetWriter writes an
+    edit list on the picture (YouTube asks for none); with only an average bitrate VideoToolbox gave 11.9 Mbps for 16 on a
+    still camera; Apple's AAC encoder refuses more than 320 kbps stereo ("Cannot Encode Media"), and ffmpeg's own encoder
+    asked for 384 gave 241.
+147. **Captions keep every word and stay within 1 s of the voice; their speed over 20 characters a second is reported, never
+    fixed by dropping words.** Reason: the edited 13 Sep talk is faster than 20 characters a second in places; pinned to the
+    voice 78 of 255 captions went over, allowed to drift they fell 3.5 s behind (measured 13 Oct).
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

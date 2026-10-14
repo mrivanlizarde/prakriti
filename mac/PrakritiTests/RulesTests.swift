@@ -285,10 +285,27 @@ final class RulesTests: XCTestCase {
         let banned = ["URLSession", "URLRequest", "AnthropicClient", "OpenAIClient", "CloudHTTP", "LockedCloudClient", "CloudPayload", "LMStudioClient"]
         let guarded = appSourceFiles.filter { url in ["People", "Render", "Export"].contains(url.deletingLastPathComponent().lastPathComponent) }
         XCTAssertGreaterThanOrEqual(guarded.count, 4, "the People folder's files are read: \(guarded.map(\.lastPathComponent))")
+        XCTAssertTrue(guarded.contains { $0.deletingLastPathComponent().lastPathComponent == "Render" }, "the Render folder's files are read (v2 part M8b)")
         for file in guarded {
             let text = try String(contentsOf: file, encoding: .utf8)
             for word in banned where text.contains(word) {
                 XCTFail("\(file.lastPathComponent) names \(word): face and voice work must not reach the network")
+            }
+        }
+    }
+
+    /// docs/v2/PLAN.md 2.2 rule 3 (v2 part M8b): a rendered file reaches a recording's folder only through `OutputGate`. Under
+    /// Render/, only OutputGate.swift may move or replace a file, and its move is private.
+    func testOnlyTheGateMovesARenderedFile() throws {
+        let render = appSourceFiles.filter { $0.deletingLastPathComponent().lastPathComponent == "Render" }
+        XCTAssertTrue(render.contains { $0.lastPathComponent == "OutputGate.swift" })
+        for file in render {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            let moves = text.contains(".moveItem(") || text.contains(".replaceItemAt(")
+            if file.lastPathComponent == "OutputGate.swift" {
+                XCTAssertTrue(text.contains("private static func move("), "the gate's move is private")
+            } else {
+                XCTAssertFalse(moves, "\(file.lastPathComponent) moves a file: only OutputGate may")
             }
         }
     }

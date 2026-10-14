@@ -35,7 +35,14 @@
 #                 20 dB or more under speech, no silence over the trigger but protected ones, the shortened pauses'
 #                 median, every span and cut on a video frame, PlanValidation, nothing made but the plan. Then the REAL
 #                 6 Sep talk planned from its development transcript, measured the same way. Writes acceptance-video.txt
-#                 to ../screens/mac/$(MILESTONE)/ (about 3 minutes). M8b extends it to the made MP4
+#                 to ../screens/mac/$(MILESTONE)/ (about 3 minutes). Then v2 part M8b's half (VideoAcceptanceTests, PLAN M8
+#                 checks 2, 3 and 5 on the made MP4): the REAL 13 Sep and 6 Sep talks made in development with the Edited video
+#                 on; the MP4 measured by ffprobe, ffmpeg (ebur128, the last 5 s decoded), the box reader (moov before mdat, no
+#                 elst on the picture), Parakeet run on it (98% of kept words in order, 90% of removed "um" and "uh" gone), the
+#                 sound at every join (no jump in a crossfade over the largest in the 50 ms around it; cross-correlated with the
+#                 original: in sync), six frames by pixel difference against the original's at the plan's moment, the pauses
+#                 and length, the Ready checklist, StageTiming fed; then Make Video refused with someone hidden. Writes
+#                 acceptance-video-m8b.txt (about 30 minutes; PRAKRITI_VIDEO_ONLY="13 Sep" runs one talk)
 # make accept-outputs  milestone 4's acceptance on the REAL 13 Sep talk: the standard choices, the
 #                 Outputs screen's loudness changed to -19 and made again, the transcript turned off
 #                 on the recording's page and made again, then everything off (must equal engine v0
@@ -157,7 +164,7 @@ accept-progress:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=progress TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/ProgressAcceptanceTests
 
 accept-video:
-	TEST_RUNNER_PRAKRITI_ACCEPTANCE=video TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/EditPlanAcceptanceTests
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=video TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/EditPlanAcceptanceTests -only-testing:PrakritiTests/VideoAcceptanceTests
 
 accept-capture:
 	./scripts/make-fixtures.sh --if-missing

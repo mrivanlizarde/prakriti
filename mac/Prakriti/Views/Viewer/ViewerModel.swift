@@ -155,7 +155,7 @@ final class ViewerModel {
     /// Why a rendition cannot be chosen, in one sentence; nil when it can.
     func unavailableReason(_ rendition: Rendition) -> String? {
         switch rendition {
-        case .video: return "Prakriti does not make an edited video yet."
+        case .video: return "The edited video does not play here yet. It is in the Video folder; Show in Finder is in Outputs."
         case .shorts: return "Prakriti does not make shorts yet."
         case .podcast: return files[.podcast] == nil ? "The episode is not made for this recording." : nil
         case .podcastReady: return files[.podcastReady] == nil ? "The podcast-ready episode is not made for this recording." : nil

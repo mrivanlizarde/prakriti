@@ -590,8 +590,28 @@ final class SnapshotTests: XCTestCase {
             _ = try openPlan(model) { r in model.addCut(TimeRange(start: 300, end: 330), to: r) }
             model.inspectorTab = .outputs
         }
+        // The edited video (v2 part M8b) under the plan in the inspector's Outputs: a made-up video record (the checklist as
+        // the 13 Sep test made it, writing off) with an empty stand-in file in a Video folder made here and taken away after;
+        // then the refusal, with the sample's made-up corner face set to Hide Face. No picture of anyone is drawn.
+        try plan.encoded().write(to: planURL)
+        let videoFolder = media.outputs.appending(path: VideoStep.folderName, directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: videoFolder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: videoFolder) }
+        let sampleVideo = SnapshotTests.sampleVideoRecord()
+        try Data().write(to: videoFolder.appending(path: sampleVideo.fileName))
+        try draw("22-video-ready") { model in
+            _ = try openPlan(model) { r in
+                r.videoJSON = sampleVideo.json()
+                if !r.madeFiles.contains(VideoStep.folderName) { r.madeFiles += [VideoStep.folderName] }
+            }
+            model.inspectorTab = .outputs
+        }
+        try draw("22-video-refused") { model in
+            _ = try openPlan(model) { r in Fixtures.showPeopleOverlay(model, on: r) }
+            model.inspectorTab = .outputs
+        }
         try? FileManager.default.removeItem(at: planURL)
-        let viewerCount = 16 * 2
+        let viewerCount = 18 * 2
 
         if only == "recording" {
             print("Snapshots written to \(outputFolder.path): \(written.count) Viewer pictures")
@@ -705,6 +725,24 @@ extension SnapshotTests {
     /// A plan of the sample talk for the pictures (v2 part M8a): its own words, a made-up envelope (-20 dBFS where Parakeet
     /// says a word is, -70 between), 29.97 fps, made at the fixtures' moment.
     @MainActor
+    /// A video record as the M8b test pattern run made it (13 Oct), writing off: three MISSING lines, the rest PASS.
+    static func sampleVideoRecord() -> VideoRecord {
+        let pass: [(String, String)] = [
+            ("Container and codecs", "MP4, picture H.264, sound AAC."), ("H.264 profile", "High."),
+            ("Size", "1920 by 1080, as recorded (1920 by 1080)."), ("Frame rate", "30000/1001, progressive; the recording is 30000/1001."),
+            ("Picture bitrate", "15.6 Mbps, aimed at 16 Mbps (2% off; within 10% passes)."),
+            ("Loudness", "-14.1 LUFS (-14, within 1 LU)."), ("True peak", "-1.6 dBTP (at or under -1)."),
+            ("Plays to its end", "The last 5 seconds decode with no error."), ("People", "Checked: 1 face and 1 voice found, everyone included in the video, as you chose."),
+        ]
+        var lines = pass.map { ChecklistLine(status: .pass, item: $0.0, detail: $0.1) }
+        lines.insert(ChecklistLine(status: .missing, item: "Title", detail: "No title chosen or written.",
+                                   todo: "Give the recording a title in Info, or turn on Titles, show notes and chapters, then Make Again."), at: 0)
+        lines.insert(ChecklistLine(status: .missing, item: "Chapters", detail: "No chapters were written for it.",
+                                   todo: "Turn on Titles, show notes and chapters, then Make Again."), at: 1)
+        return VideoRecord(fileName: "2026-09-13.mp4", captionsName: "2026-09-13.srt", duration: 890.389, bytes: 1_720_000_000, frames: 26_685,
+                           renderSeconds: 112, checklist: lines, madeAt: Fixtures.now, planSummary: "", peopleSignature: "", loudness: -14.1, truePeak: -1.6)
+    }
+
     static func samplePlan(outputs: URL) throws -> EditPlan {
         let words = try XCTUnwrap(PlanWords.from(json: Data(contentsOf: outputs.appending(path: TranscriptFiles.asHeard))))
         let duration = 947.78

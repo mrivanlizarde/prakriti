@@ -61,7 +61,7 @@ The viewer takes the place of the library while a recording is open. Choose what
 - **Podcast:** the episode as made.
 - **Podcast-ready:** the podcast-ready episode, once it is made.
 
-Two more choices in that control are not made by Prakriti yet; choosing one says so. The player is
+Two more choices in that control do not play here yet; choosing one says why. The player is
 the Mac's own. Press Space to play or pause. L plays forward, and faster each time you press it again; J
 plays backward where the file allows it; K stops. They are in the Playback menu too.
 
@@ -196,6 +196,13 @@ approved files stay as they were until you do.
 The recording moves to Ready. Upload the files yourself. For the podcast-ready episode, the Ready to
 upload section, in the inspector's Outputs, has the upload checklist and a
 Copy button for each piece of text the podcast host asks for. See [Outputs](05-outputs.md).
+
+:::requires renderedVideo
+When the recording has an edited video, Approve copies its Video folder too: the video, its captions,
+`Description.txt` and `Ready checklist.txt`. Before you upload it, read its Ready checklist, under
+Edited video in the inspector's Outputs or in the file: upload only when every line passes, or when the
+lines left are the ones you are about to fill in on YouTube.
+:::
 
 ## Remove a recording from the library
 

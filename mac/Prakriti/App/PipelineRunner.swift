@@ -309,6 +309,12 @@ final class PipelineRunner {
         // The edit plan (v2 part M8a) is made again with every make once Ivan has asked for one (Plan the Edit), so it
         // follows his newest trim, cuts and choices; never before he asks (PLAN rule 2.1.7: no new work on its own).
         options.planEdit = recording.madeFiles.contains(EditPlan.fileName)
+        // The edited video (v2 part M8b), only when its switch is on for this recording, its folder or the defaults; off for
+        // every folder until Ivan turns it on (PLAN rule 2.1.7). It always plans the edit first.
+        if make.contains(.editedVideo) {
+            options.makeVideo = true
+            options.video = VideoFacts(title: recording.title, notes: recording.notes, recordedAt: recording.recordedAt ?? recording.foundAt)
+        }
         if make.contains(.podcastReady) {
             options.podcastReady = PodcastReadySetup(settings: OutputResolver.podcastReady(recording: recording, defaults: defaults), facts: recording.podcastFacts)
         }
@@ -774,6 +780,16 @@ final class PipelineRunner {
             }
             if result.output == nil, let ready = result.podcastReady { recording.episodeDuration = ready.duration }
             // The edit plan this make wrote (v2 part M8a), read into the window, or why it could not be made.
+            // The edited video (v2 part M8b): this make's, or none, and why when it was asked for.
+            recording.videoJSON = result.video?.json()
+            recording.videoProblem = activeOptions.makeVideo ? result.videoProblem : nil
+            if let video = result.video {
+                model.record("\(label) (\(recording.fileName)): the video, \(video.fileName), \(Format.timecode(video.duration)), made in "
+                             + "\(Format.length(video.renderSeconds)). Ready checklist: \(video.summary.lowercasedFirst).",
+                             level: video.failed == 0 ? .info : .attention, run: run)
+            } else if let problem = result.videoProblem, activeOptions.makeVideo {
+                model.record("\(label) (\(recording.fileName)): no video was made. \(problem)", level: .attention, run: run)
+            }
             if let plan = result.editPlan {
                 model.record("\(label) (\(recording.fileName)): the edit plan. " + plan.summary, run: run)
                 model.forgetEditPlan(recording)

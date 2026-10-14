@@ -169,6 +169,8 @@ final class AppModel {
     /// (v2 part M8a), by recording.
     var planning: Set<UUID> = []
     var planProblems: [UUID: String] = [:]
+    /// Why Make Video refused a recording the last time Ivan asked (v2 part M8b), by recording.
+    var videoProblems: [UUID: String] = [:]
     /// Bumped when a plan is written, so the window reads it again.
     var planRevision = 0
     @ObservationIgnored var planCache: [String: (modified: Date, plan: EditPlan?)] = [:]

@@ -31,6 +31,8 @@ struct OutputsTab: View {
                 // comes before the long writing and podcast-ready sections.
                 if recording.madeFiles.contains(TranscriptFiles.asHeard) {
                     EditPlanSection(recording: recording)
+                    // The edited video (v2 part M8b), made from the plan.
+                    VideoSection(recording: recording)
                 }
                 if recording.outputFolder != nil || recording.written != nil {
                     WritingSection(recording: recording, showsChecklist: false)
@@ -197,7 +199,7 @@ struct Deliverable: Identifiable, Equatable {
             return folder.appending(path: name)
         }
         var list: [Deliverable] = []
-        for kind in [OutputKind.podcastEpisode, .podcastReady, .transcript, .checksAndReport, .titlesNotesChapters] {
+        for kind in [OutputKind.podcastEpisode, .podcastReady, .editedVideo, .transcript, .checksAndReport, .titlesNotesChapters] {
             switch kind {
             case .podcastEpisode:
                 if let url = file("episode.mp3") {
@@ -214,6 +216,13 @@ struct Deliverable: Identifiable, Equatable {
                     list.append(Deliverable(kind: kind,
                                             detail: "MP3, \(String(format: "%.1f LUFS", ready.integratedLUFS)), \(Format.timecode(ready.duration)). Upload checklist: \(fails) FAIL, \(missing) MISSING.",
                                             url: folder.appending(path: PodcastPackage.folderName, directoryHint: .isDirectory)))
+                    continue
+                }
+            case .editedVideo:
+                if let video = recording.video, let folder, names.contains(VideoStep.folderName) {
+                    list.append(Deliverable(kind: kind,
+                                            detail: "MP4, \(Format.timecode(video.duration)), with captions and Description.txt. Ready checklist: \(video.failed) FAIL, \(video.missing) MISSING.",
+                                            url: folder.appending(path: VideoStep.folderName, directoryHint: .isDirectory).appending(path: video.fileName)))
                     continue
                 }
             case .transcript:

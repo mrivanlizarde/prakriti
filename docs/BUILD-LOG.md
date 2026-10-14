@@ -52,6 +52,10 @@ fixes after the verifier"). Not installed, for M5a's reason.
 Ivan names; a person whose recorded release covers their face is learned from the faces he named and recognized in new
 recordings, with Review Possible Matches, Not [Name], Merge 2 People and Forget rebuilding Apple's face index. Nothing is
 learned until a release is recorded in the app. Not installed, for M5a's reason.
+**Then part M8b, the rendered MP4** (the last section, "v2 part M8b"): the edited MP4, its captions, Description.txt and a Ready
+checklist measured from the files, made from the edit plan only for recordings where everyone is Included; on 13 Sep and 6 Sep
+every number of PLAN check 3 passes but the sound's bitrate (320 kbps, the Mac's own maximum), and one filler at 4:23 waits for
+Ivan's ear. Not installed, for M5a's reason.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -4639,3 +4643,148 @@ and the install waits for Ivan's word in the conversation. The live app is uncha
   "did anything sound cut?".
 - [ ] **Fillers:** if you want more "um" and "uh" out, say so after that listen; the measured option takes 29 of 76 on
   13 Sep instead of 10, with 4 cuts under the quiet bar.
+
+
+## v2 part M8b: the rendered MP4. Tue 13 to Wed 14 Oct 2026
+
+The eighteenth part of v2 (`docs/v2/PLAN.md`, M8, part M8b; REQUEST item 4 and "post ready"). Built on `main`, as this run's
+instructions said. No Swift package added, nothing downloaded. **Two SwiftData fields added** (`Recording.videoJSON`,
+`videoProblem`, both optional with nil defaults); `make migrate-check` run. Built and checked 13 Oct 22:10 to 14 Oct 02:30.
+
+### What was built
+
+- **`Render/`** (new): `EditTimeline` (the plan as whole frames and the samples that go with them, so picture and sound are cut
+  on the same frame and the file is the sum of the spans), `CompositionBuilder` (every kept span on one track of an
+  `AVMutableComposition`; `AVVideoComposition.Configuration` with one `RenderInstruction` per span and the custom compositor),
+  `Compositor` (`AVVideoCompositing`, `sourceReadOnlyPixelBuffer(byTrackID:)`; hands the source frame on untouched when nothing is
+  drawn, draws through one Core Image context otherwise, for M8d), `VideoAudio` (the first audio track decoded with muted names
+  silenced; the spans joined in Swift with 20 ms crossfades from 10 ms handles; v1's two-pass loudnorm and limiter re-targeted to
+  -14 LUFS and -1 dBTP), `VideoWriter` (`AVAssetReaderVideoCompositionOutput` through `outputProvider(for:)` and
+  `PixelBufferReceiver` into `AVAssetWriter`; H.264 High, CABAC, constant 16 Mbps, key frame every 15, no B-frames, BT.709, media
+  timescale 30000, fast start; AAC-LC 48 kHz stereo 320 kbps constant), `Mp4Boxes` (reads moov and mdat order and edit lists;
+  turns the writer's identity edit list on the picture into a free box), `Captions` (`.srt` on the edited clock from the plan's
+  word times, 42 characters a line, two lines, 7 s at most, at most 1 s behind the voice, [name] for muted names),
+  `VideoDescription` (`Description.txt`: Ivan's title and notes, else the writer's, chapters moved onto the edited clock and held
+  to YouTube's rules; MISSING otherwise, never invented), `ReadyChecklist` (20 lines measured from the files), `OutputGate` (the
+  people refusal and the only move into place), `VideoStep` (`VideoRecord`; make, then check).
+- **Pipeline:** steps **Making the video** and **Checking the video** after the writing (so Description.txt carries its words);
+  the edit is always planned first. A refusal or failure costs only these two steps. `StageTiming` first guesses 8.0 and 0.5 s a
+  minute, replaced by this Mac's own after one run (measured: 9.1 and 8.8 s a minute of recording for the whole video step).
+- **Output kind `editedVideo` built**, off for every folder (its stored switches were all off). **Make Video** in the inspector's
+  Outputs, section Edited video (refusal in words, the verdict, Show in Finder, the Ready checklist with failing lines first),
+  turns it on for one recording and makes it again. The Files list has an Edited video row. The Viewer's Video choice says
+  "The edited video does not play here yet..." (watching it is M8c).
+- **The refusal (PLAN M8b, by construction):** `OutputGate.refusal` refuses a recording whose people check has not run (faces
+  and voices both) or where any face row, glimpse or voice is not Include for the video: "Video for recordings with someone
+  hidden or left out arrives in the next update." It is checked by Make Video, again by the pipeline before anything is made,
+  and again at the gate. Only M8d may lift it.
+- Capability **`renderedVideo`** (new, M8b) on; `video` stays for M8c. Help 05 (Edited video, the outputs list), 06 (two
+  choices that do not play here yet; Approve copies the Video folder), 09 (on this Mac), 10 (If the video is not made).
+  START_HERE: the M8b paragraph, Mac warnings 141 (updated), 142 to 147, the file map, `make accept-video`.
+- Tests: `RenderTests` (7, in `make test`, synthetic media only), `VideoAcceptanceTests` (in `make accept-video`),
+  `RulesTests.testOnlyTheGateMovesARenderedFile`, snapshots `22-video-ready`, `22-video-refused`.
+
+### Found by measuring (each fixed, each with its measurement)
+
+1. **`outputProvider(for:)` takes an `AVAssetReaderVideoCompositionOutput`** (PLAN 2.2 had it [unverified]): 300 composed frames
+   out of a two-span composition on the first day, and every make since.
+2. **The writer's default picture timescale is 600**, where a 1001/30000 s frame is 20.02 units: frames sat 20 or 21 apart and,
+   read at their exact time, every so often gave the frame before (a 50-frame rhythm in RenderTests). Now 30000; the checklist's
+   Frame timing line fails uneven frames.
+3. **ffmpeg's limiter delays its output by its 5 ms lookahead:** the made sound sat 239 samples behind the picture at every
+   join (cross-correlation, 34 joins, 13 Sep). `latency=1` on the video's chain: 0.00 ms at every join on both talks. The
+   podcast's chain is unchanged (Mac warning 30).
+4. **B-frames bring an edit list on the picture** (one entry starting 41 units in); off. The writer still writes an identity edit
+   list, removed as a free box (`Mp4Boxes`). **VBR undershoots:** 11.9 Mbps asked for 16 on 13 Sep; constant 16 gives 15.99.
+5. **Apple's AAC encoder makes at most 320 kbps stereo** ("Cannot Encode Media" at 384; `afconvert` refuses with '!dat'); ffmpeg's
+   own encoder asked for 384 gave 241. PLAN's 384 is not reachable on this Mac; 320 constant is used (320.0 measured).
+6. **Plain equal-power crossfades lift matching room tone by up to 3 dB mid-fade:** the fade is now scaled by how alike the two
+   sides are (equal power for unrelated sound, a steady level for the same sound); a unit test proves the same tone passes through
+   unchanged.
+7. **Core Image needs the source's colour tags on the new buffer**, or it writes another matrix: 23.7 dB against the source frame
+   without them, 37.9 dB with them (the rest is 4:2:0 resampled twice on a test pattern). That is why a frame with nothing drawn is
+   passed on untouched.
+8. **M8a's fillers left in their silence were cutting the silence, not the "uh":** Parakeet heard 5 of the 10 fillers the 13 Sep
+   plan took out (4 of 6 on 6 Sep) again at their joins in the MP4, and each of those 9 had no sound in Parakeet's span (-50 to -76
+   dB). Fillers are now moved onto the sound beside them like any other word (`RoughCut.refine`, Mac warning 141), so a filler is
+   taken out only where it really is and can be cut cleanly. The 13 Sep plan now takes out 6 fillers and 88 pauses (was 10 and
+   85); 6 Sep 2 fillers (was 6).
+9. **Captions cannot keep to 20 characters a second and stay with the voice:** pinned to their words, 78 of 255 13 Sep captions
+   went over 20; allowed to drift, they fell 3.5 s behind. They now stay within 1 s; 21 of 255 (13 Sep, fastest 28.1) and 87 of
+   849 (6 Sep, fastest 32.1) are faster than 20, reported in the Captions line, never failed (decision 4).
+
+### Checks run, with results (PLAN M8, the checks part M8b runs: 1 RenderTests; 2; 3; 5; 8)
+
+All on the REAL 13 Sep and 6 Sep talks in development (`screens/mac/v2-m8b/acceptance-video-m8b.txt`; the plan half,
+`acceptance-video.txt`), and synthetic media for check 1. No frame of either talk was looked at: frames were compared by pixel
+difference only, and no picture of them was written (rule 2.1.9, this run's instructions). Snapshots draw test patterns only.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `RenderTests`: frames rendered at chosen times from a fixture plan, compared with expected images | **PASS.** 7 of 7. A test-pattern original (ffmpeg `testsrc2`, 1080p 29.97) with the sound of `ums-and-retake.wav`, planned by `PlanStep`, made and checked by `VideoStep` exactly as the pipeline calls it: 9 frames from 3 spans of the made MP4 each 39.2 to 45.7 dB against the original's frame at the plan's moment and 17.3 to 20.7 dB against 3 frames later; the composition's frame 99 dB (identical) to the source; through Core Image 37.9 dB; every Ready checklist line PASS but MISSING Title, Description, Chapters; no edit list on the picture; captions free of the planted "um", "uh" and "let me start over". Also: the timeline in frames and samples, joins (length kept, no jump over the fade's own step, the same tone through unchanged), caption layout, Description never invents and holds chapters to YouTube's rules, the refusal (not checked, faces alone, Hide Face, Leave Out; podcast-only Leave Out allowed), the gate deleting a failing file and never moving it |
+| 2 | `make accept-video` on the **13 Sep talk** (Clear): cut points, joins, Parakeet, fillers, pauses, length, sync | **FAIL on one half, the rest PASS.** Cut points (plan half): 191 of 191 at 20 dB or more under speech, least 20.3. **Length:** picture 890.590 s, sound 890.590 s, kept spans 890.590 s. **Sync:** sound cross-correlated with the original at 34 joins, every lag 0.00 ms; 6 frames each matching the original's frame at the plan's moment (45.8 to 48.1 dB, the next best 29.5 to 44.9). **Parakeet on the MP4:** 2,861 of 2,879 kept non-filler words in order (99.4%). **Pauses** in the made sound with the plan's thresholds: 9 silences over 0.40 s, 0 over the trigger. **Clicks:** 0 of 95 joins with a jump in the fade over twice the largest around it (made or original). **Fillers: FAIL, 5 of 6 taken out are gone (83%, bar 90%)**: Parakeet hears "uh" again at 4:23, where the plan cut 276.51 to 276.74 s, a murmur 23 dB under speech (its loudest frame -54 dB against -31) that Parakeet called "Uh"; the sound beside it is "classes." and "we". Whether an "uh" is still heard there is for Ivan's ear (check 9). **The sample-jump bar as written: not met**, 22 of 95 joins (largest -30.7 dBFS, 1.74 times): it compares the largest of 960 samples with the largest of 2,400 beside them, so on room tone it fails about 29% of joins by chance; gated instead as "no click" above (decision 3) |
+| 3 | The MP4 measured | **PASS on both talks**, with one number changed. 13 Sep and 6 Sep: H.264 High, 1920 by 1080, 30000/1001, progressive, BT.709 tags, 15.99 Mbps (16 within 10%); `moov` before `mdat`; no edit list on the picture (the sound's one priming entry, allowed); -14.0 and -13.9 LUFS, true peak -1.4 dBTP; the last 5 s decode with no error. **Sound: AAC-LC 48 kHz stereo 320.0 kbps, not 384** (finding 5). `Ready checklist.txt`: 17 PASS, 3 MISSING (Title, Description, Chapters: writing was off), 0 FAIL, on both |
+| 5 | The same on the **6 Sep talk** (55:39); render time recorded and fed to `StageTiming` | **PASS but one bar.** Length 3,001.999 s picture and sound against the plan's 3,001.999; every join lag 0.00 ms; 6 frames +0 (45.1 to 46.5 dB); pauses 25 over 0.40 s, 10 protected, 0 over the trigger; 0 clicks of 362; Parakeet 9,777 of 9,911 kept words (98.6%); fillers 2 of 2 gone; check 3 as above. Render: 89,970 frames in 339 s (8.8 times real time), the whole step 484.8 s, the check 59.9 s; StageTiming then held 2 samples for "Making the video", 8.80 s a minute. The bar not met: the sample-jump bar as written, 68 of 362 (decision 3). EE open question E7 answered: 8.8 times real time on the M5 Pro, the research's estimate was 4 to 8 |
+| 8 | Regression set; `make migrate-check` | **PASS but one test, which is the Mac's Time Machine tool, not this part.** `make build`: no warnings. **`make test`: 356 tests,
+21 skipped by design, 4 failures in the first run**: `ModelTests` and `ViewerTests` still expected the edited video unbuilt
+(updated: 6 outputs built, 4 not; the Viewer's Video line) and pass; `GalleryTests.testThePeopleFolderIsLeftOutOfTimeMachine`
+failed twice because `/usr/bin/tmutil isexcluded` hung for over an hour when the test host called it (killed by hand; from a
+shell the same call on an excluded folder answers in 0.09 s, "[Excluded]"). No file it touches changed in M8b; it passed in M7b;
+the verifier should run it again. `make accept`: 13 Sep -16.8 LUFS, -1.7 dBFS, 2,948 words to 15:47 of 15:48; silent-60s stopped
+at -91 dB; 30 s clip a test. `make accept-edits`: 38.82 s shorter (expected 38.82), 0 of 73 runs from the cut heard, 189 of 201
+after it, the class refused. `make migrate-check`: recordings 13/13, folders 2/2, output settings 40/40, Activity lines
+1,025/1,025, approved 2 (the two new fields arrive empty) |
+
+Also measured: Make Video with one face row of 13 Sep set to Hide Face is refused with the line, nothing queued; a Make Again
+then skips "Making the video" with the same line and the Video folder made before is removed with the make (Mac warning 29).
+Originals unchanged (size and date) after every run.
+
+**Snapshots, looked at** (`screens/mac/v2-m8b/`, test patterns only): `22-video-ready-light/dark` (inspector page 2: Edited video,
+"Not ready to upload yet", the file, 0 FAIL, 2 MISSING, the note that watching comes next, Show in Finder; page 3: the Ready
+checklist, MISSING first). **Found by looking:** Show in Finder beside the verdict squeezed it into a third of the width (now
+under it), and the Container line read "MP4 (mov,mp4,m4a,3gp,3g2,mj2)" (now "MP4, picture H.264, sound AAC."). `22-video-refused`
+shows the not-checked refusal on the sample talk (its people check has no voices); the Hide Face refusal is measured above.
+
+**Em dashes:** 0 in every file this part changed (grep). `RulesTests`: no network type under `Render/`; only `OutputGate` moves a file.
+
+### Decisions, each with its reason
+
+1. **AAC 320 kbps, not 384:** the most Apple's encoder makes; ffmpeg's own fell to 241 (finding 5). YouTube re-encodes the sound.
+2. **Make Video is a Make Again with Edited video switched on for that recording**, so it goes through the line, progress, Pause and
+   Stop, staging and the gate like any make, rather than a second path beside the pipeline.
+3. **Check 2's sample-jump bar is written down as measured and the gate is "no click"** (no jump in a fade over twice the largest
+   around it, in the made sound or the original's own 50 ms around the cuts). Reason: as written the bar fails by chance on room
+   tone (about 29% of joins); M8a's version against the original fails 26 of 95 at most 1.58 times. A real click (the 6 Sep knock at
+   9:47, -53 dB in the original's handle) is caught and checked against the room. The verifier and Ivan's ears may judge otherwise.
+4. **Caption speed is reported, not failed.** 20 characters a second is Netflix's reading guide, not YouTube's rule; meeting it on
+   these talks means dropping words (never) or running 3.5 s late. The Captions line fails on shape, order, length and lag over 1 s.
+5. **The people refusal follows Ivan's 12 Oct note:** everyone starts as Include, so a checked talk is refused only when he has
+   chosen Hide Face or Leave Out for the video. The line says "someone hidden or left out" rather than the plan's "other people".
+6. **A new capability `renderedVideo`**, so Help describes what M8b makes and nothing of M8c (Viewer) or M9 (zooms, text).
+7. **A failed or refused video removes the Video folder an earlier make left** (v1's rule: a make's files are that make's). A video
+   made before someone was hidden must not sit beside the new choices.
+8. **Frames of Gabriel were never looked at** (this run's instructions, D1 safe default): frame checks are PSNR numbers only.
+
+### What does not work yet
+
+- The video plays only in Finder; the Viewer's Video rendition, Restore and Remove spans are M8c.
+- No video of a recording with anyone hidden or left out (M8d). No zooms, text or transitions (M9).
+- The 13 Sep filler at 4:23 (above); filler recall stays low on Gabriel's talks (6 of 76 "um" and "uh" out on 13 Sep).
+- Approve does not yet refuse a video whose checklist fails (M11b).
+
+### Installed
+
+**Not installed.** Two reasons. Check 2 is not fully met (the 13 Sep filler at 4:23, and the sample-jump bar as written), and
+this run's rule is to install only when every check passes. And, as for M5a to M8a, `make install` would ship M5a's lock, which
+turns the live app's Claude API writing back to LM Studio until Ivan says the 13 Oct loosening may be built. The live app is
+unchanged (pid 36940, the M4b build).
+
+### For Ivan
+
+- [ ] **Watch and listen (PLAN M8 check 9):** `~/Prakriti/Dev/Outputs/2026-09-13 18-25-44/Video/2026-09-13.mp4` (development copy);
+  three random 30 s windows, "did anything sound cut?", and at 4:23, is an "uh" still there?
+- [ ] **384 or 320 kbps:** say if you want ffmpeg's encoder at 384 nominal (it measures about 240) instead of Apple's at 320.
+- [ ] **Caption speed:** 21 of 255 captions on 13 Sep are faster than 20 characters a second because the edit is; say if you
+  would rather they run up to 2 s behind the voice (6 over) or stay as they are.
+- [ ] **The lock and the install** (unchanged since M5a): say "loosen the lock as written on 13 Oct" and the next run changes it, then
+  `cd ~/Code/prakriti/mac && make install` ships M5a to M8b together.

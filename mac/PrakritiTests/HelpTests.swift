@@ -237,7 +237,8 @@ final class HelpTests: XCTestCase {
         ("Forget Face and Voice", false, .gallery), ("Record Release", false, .gallery),
         ("Review Possible Matches", false, .recognition), ("Merge 2 People", false, .recognition), ("Not This Person", false, .recognition),
         ("Plan the Edit", false, .editPlan), ("Edit plan", false, .editPlan), ("edit-plan.json", false, .editPlan),
-        ("edited video", false, .video), ("Ready to post", false, .video), ("Make Video", false, .video),
+        ("edited video", false, .renderedVideo), ("Make Video", false, .renderedVideo), ("Ready checklist", false, .renderedVideo),
+        ("Ready to post", false, .video), ("plays in the Viewer", false, .video),
         ("house style", false, .style), ("preset", false, .style), ("presets", false, .style), ("Direction", true, .style),
         ("zooms", false, .style),
         ("Final Cut Pro", false, .timelines), ("DaVinci", false, .timelines), ("FCPXML", false, .timelines),
@@ -276,7 +277,7 @@ final class HelpTests: XCTestCase {
     }
 
     func testOnlyWhatIsBuiltIsVisible() {
-        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan], "v2 parts M2a, M2b, M3b, M4a, M4b, M5b, M6a, M6b, M6c, M6d, M7a, M7b and M8a build Help, the welcome, the Viewer, progress, the capture check, the cloud providers, faces, voices, choices applied to audio, hiding in pictures, the People gallery, recognition and the edit plan; each later part adds its own capability")
+        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan, .renderedVideo], "v2 parts M2a, M2b, M3b, M4a, M4b, M5b, M6a, M6b, M6c, M6d, M7a, M7b, M8a and M8b build Help, the welcome, the Viewer, progress, the capture check, the cloud providers, faces, voices, choices applied to audio, hiding in pictures, the People gallery, recognition, the edit plan and the rendered MP4; each later part adds its own capability")
         let library = built
         XCTAssertEqual(unbuiltNamesFound(in: library, built: library.capabilities), [])
         XCTAssertNil(library.visibleArticle(id: "editorial-direction"), "editorial direction waits for the house style (M9)")

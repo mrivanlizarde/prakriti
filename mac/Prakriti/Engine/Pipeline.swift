@@ -28,7 +28,7 @@ import Foundation
 /// The steps, in order. `title` is what the recording page lists; `doing` is what the status line
 /// says while it runs ("Working on Sun 13 Sep: making the episode audio"). Never "Processing".
 enum PipelineStep: String, CaseIterable, Sendable {
-    case complete, capture, sound, speechAudio, transcript, coverage, wordList, namesSaid, faces, voices, trim, edits, leaveOut, planEdit, episode, loudness, podcastAudio, audioCheck, episodeTranscript, writing, podcastPackage, report
+    case complete, capture, sound, speechAudio, transcript, coverage, wordList, namesSaid, faces, voices, trim, edits, leaveOut, planEdit, episode, loudness, podcastAudio, audioCheck, episodeTranscript, writing, renderVideo, checkVideo, podcastPackage, report
 
     var title: String {
         switch self {
@@ -53,6 +53,8 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .podcastPackage: "Podcast-ready files"
         case .episodeTranscript: "Transcript matched to the episode"
         case .writing: "Titles, show notes and chapters"
+        case .renderVideo: "Making the video"
+        case .checkVideo: "Checking the video"
         case .report: "Report"
         }
     }
@@ -88,6 +90,8 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .podcastPackage: "Writing and checking the podcast-ready files"
         case .episodeTranscript: "Matching the transcript to the episode"
         case .writing: "Writing the titles, show notes and chapters"
+        case .renderVideo: "Making the video"
+        case .checkVideo: "Checking the video"
         case .report: "Writing the report"
         }
     }
@@ -160,6 +164,12 @@ struct PipelineOptions: Sendable {
     /// when asked for (the app asks once a recording has a plan, so Make Again keeps it current; M8b ties it to the
     /// edited video), and only with the transcript, which it is made from. No file a person could post comes of it.
     var planEdit = false
+    /// The edited video (v2 part M8b): the MP4, its captions, Description.txt and the Ready checklist, made from the edit
+    /// plan, which is then always planned. Only with the transcript, which the plan is made from. Off unless the
+    /// recording's output switches ask for it (PLAN rule 2.1.7).
+    var makeVideo = false
+    /// The recording's title and notes as Ivan set them, and when it was recorded: the video's name and Description.txt.
+    var video = VideoFacts()
 
     /// Anyone left out or any name muted: the podcast changes, so the step that applies it is planned.
     var appliesChoices: Bool { people != nil && choices.changesPodcast && (makeEpisode || makePodcastReady) }
@@ -190,17 +200,26 @@ struct PipelineOptions: Sendable {
             if !edits.isEmpty { steps.append(.edits) }
             if appliesChoices { steps.append(.leaveOut) }
         }
-        if planEdit && makeTranscript { steps.append(.planEdit) }
+        if (planEdit || makeVideo) && makeTranscript { steps.append(.planEdit) }
         if makeEpisode { steps += [.episode, .loudness] }
         if makePodcastReady { steps.append(.podcastAudio) }
         // The audio output check, whenever someone is left out (v2 part M6c).
         if appliesChoices && choices.leavesSomeoneOut { steps.append(.audioCheck) }
         if (makeEpisode || makePodcastReady) && makeTranscript && changesTheClock { steps.append(.episodeTranscript) }
         if makeTranscript && writing != nil { steps.append(.writing) }
+        // After the writing, so its title, notes and chapters can go in Description.txt (v2 part M8b).
+        if makeVideo && makeTranscript { steps += [.renderVideo, .checkVideo] }
         if makePodcastReady { steps.append(.podcastPackage) }
         if makeReport { steps.append(.report) }
         return steps
     }
+}
+
+/// What the edited video is named and described with, read from the recording (v2 part M8b).
+struct VideoFacts: Sendable, Equatable {
+    var title = ""
+    var notes = ""
+    var recordedAt: Date?
 }
 
 /// What a run measured and made.
@@ -290,6 +309,9 @@ struct PipelineResult: Sendable {
     /// The edit plan this make wrote (v2 part M8a), or why it could not, or neither when it was not asked for.
     var editPlan: EditPlan?
     var planProblem: String?
+    /// The edited video this make made and checked (v2 part M8b), or why it did not, or neither when it was not asked for.
+    var video: VideoRecord?
+    var videoProblem: String?
 }
 
 /// Where the face and voice steps write, for one recording, and Ivan's names the writing step's privacy lock reads.
@@ -557,7 +579,7 @@ struct Pipeline: Sendable {
     /// right), and each later pass takes half of what is left.
     func passes(_ step: PipelineStep) -> Int? {
         switch step {
-        case .sound, .speechAudio, .trim, .loudness, .faces, .voices, .planEdit: return 1
+        case .sound, .speechAudio, .trim, .loudness, .faces, .voices, .planEdit, .renderVideo: return 1
         case .episode:
             let intro = !(options.introPath ?? "").isEmpty, outro = !(options.outroPath ?? "").isEmpty
             return 2 + (intro ? 1 : 0) + (outro ? 1 : 0) + (intro || outro ? 1 : 0)
@@ -860,7 +882,7 @@ struct Pipeline: Sendable {
             // 5d. The edit plan (v2 part M8a): the rough cut as `edit-plan.json`, from the transcript and the original's
             //     sound, with Ivan's trim and cuts and the people left out of the video applied on top. A plan that cannot
             //     be made or does not pass its own check costs only this step; nothing else reads it in M8a.
-            if options.planEdit && options.makeTranscript {
+            if (options.planEdit || options.makeVideo) && options.makeTranscript {
                 await begin(.planEdit)
                 do {
                     let plan = try await planTheEdit(file: file, staging: staging, duration: ready.duration, capture: result.capture,
@@ -1066,6 +1088,54 @@ struct Pipeline: Sendable {
                 } else {
                     result.writingProblem = outcome.problem ?? "Nothing was written."
                     await finish(.writing, (result.writingProblem ?? "") + " The episode and transcript are kept.", state: .failed)
+                }
+            }
+
+            // 9b. The edited video (v2 part M8b): made from this make's edit plan, after the writing so Description.txt can
+            //     carry its title, notes and chapters, in a hidden folder inside the staging folder, then measured and let
+            //     through `OutputGate` into Video. A refusal or a failure costs only these two steps: everything else is kept.
+            if options.makeVideo && options.makeTranscript {
+                await begin(.renderVideo)
+                meter?.startPass()
+                let setup = videoSetup(file: file, staging: staging, label: label, result: result)
+                if let setup {
+                    let ffmpeg = tools.ffmpeg, ffprobe = tools.ffprobe, limit = limit(ready.duration), control = meter?.control
+                    let runFFmpeg: @Sendable ([String]) async throws -> String = { arguments in
+                        try await Subprocess.run(ffmpeg, arguments, timeout: limit, control: control).stderr
+                    }
+                    let runFFprobe: @Sendable ([String]) async throws -> String = { arguments in
+                        try await Subprocess.run(ffprobe, arguments, timeout: limit, control: control).stdout
+                    }
+                    do {
+                        let made = try await VideoStep.make(setup, ffmpeg: runFFmpeg, progress: { [meter] in meter?.passProgress($0) })
+                        await finish(.renderVideo, String(format: "%@ and its captions, %d frames in %.0f s (%.1f times real time).", made.mp4.lastPathComponent,
+                                                          made.frames, made.renderSeconds, made.timeline.duration / max(0.001, made.renderSeconds)))
+                        await begin(.checkVideo)
+                        let record = try await VideoStep.check(made, setup: setup, ffprobe: runFFprobe, ffmpeg: runFFmpeg, now: Date())
+                        result.video = record
+                        await finish(.checkVideo, "In the \(VideoStep.folderName) folder. Ready checklist: \(record.summary.lowercasedFirst).",
+                                     state: record.failed == 0 ? .done : .failed)
+                    } catch is CancellationError {
+                        throw CancellationError()
+                    } catch {
+                        let reason = (error as? VideoStep.Failure)?.reason ?? (error as? ToolError)?.logLine ?? error.localizedDescription
+                        result.videoProblem = reason
+                        try? FileManager.default.removeItem(at: staging.appending(path: VideoStep.stagingName))
+                        log?.write("\(name): the video was not made. \(reason)")
+                        if let i = index(.renderVideo), steps[i].state == .running {
+                            await finish(.renderVideo, reason + " Everything else is kept.", state: .failed)
+                            if let j = index(.checkVideo) { steps[j].state = .skipped }
+                        } else {
+                            await finish(.checkVideo, reason + " Everything else is kept.", state: .failed)
+                        }
+                    }
+                } else {
+                    let reason = result.editPlan == nil
+                        ? "No video was made, because the edit plan could not be made" + (result.planProblem.map { ": " + $0 } ?? ".")
+                        : (OutputGate.refusal(peopleFacts(result: result)) ?? OutputGate.notChecked)
+                    result.videoProblem = reason
+                    await finish(.renderVideo, reason, state: result.editPlan == nil ? .failed : .skipped)
+                    if let j = index(.checkVideo) { steps[j].state = .skipped }
                 }
             }
 
@@ -1401,6 +1471,32 @@ struct Pipeline: Sendable {
         }
     }
 
+    // MARK: The edited video (v2 part M8b)
+
+    /// What the gate reads about who is in this make: the people check it just ran and Ivan's names and choices.
+    func peopleFacts(result: PipelineResult) -> OutputGate.People {
+        let names = options.people?.names(for: result.voices).resolved(faces: result.faces, voices: result.voices) ?? ([:], [:])
+        return OutputGate.People(faces: options.people == nil ? nil : result.faces, voices: options.people == nil ? nil : result.voices,
+                                 names: names, choices: options.choices)
+    }
+
+    /// The video's setup for this make, or nil when it may not be made (no plan, or the gate refuses who is in it).
+    func videoSetup(file: URL, staging: URL, label: String, result: PipelineResult) -> VideoStep.Setup? {
+        guard let plan = result.editPlan else { return nil }
+        let people = peopleFacts(result: result)
+        guard OutputGate.refusal(people) == nil else { return nil }
+        // The writer's chapter times are on the episode's clock when the transcript followed the episode, else the original's.
+        let clock = result.written?.clock == "episode" ? result.clock : nil
+        let facts = options.video
+        return VideoStep.Setup(original: file, plan: plan, transcript: staging.appending(path: TranscriptFiles.asHeard), staging: staging,
+                               title: facts.title, notes: facts.notes, written: result.written,
+                               writtenToOriginal: { t in
+                                   guard let clock else { return t }
+                                   return clock.originalTime(t)
+                               },
+                               recordedAt: facts.recordedAt, label: label, people: people)
+    }
+
     // MARK: The intro and outro
 
     struct MeasuredPiece: Sendable {
@@ -1450,7 +1546,8 @@ struct Pipeline: Sendable {
 
     /// Every file a make can leave. Only these are ever replaced or removed from a recording's
     /// folder; anything else Ivan keeps there is left alone.
-    static let madeNames: Set<String> = Set(["episode.mp3", "REPORT.md", "speech.wav", TranscriptFiles.asHeard, PodcastPackage.folderName, EditPlan.fileName]
+    static let madeNames: Set<String> = Set(["episode.mp3", "REPORT.md", "speech.wav", TranscriptFiles.asHeard, PodcastPackage.folderName, EditPlan.fileName,
+                                                   VideoStep.folderName]
                                             + TranscriptFormat.allCases.map(TranscriptFiles.fileName))
         .union(WrittenPackage.fileNames)
 

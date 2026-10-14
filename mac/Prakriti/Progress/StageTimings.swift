@@ -99,7 +99,7 @@ struct StageTimings: Sendable, Equatable {
     static let firstGuess: [PipelineStep: Double] = [
         .capture: 0.21, .sound: 0.04, .speechAudio: 0.035, .transcript: 0.68, .coverage: 0.0, .wordList: 0.0, .namesSaid: 0.0, .faces: 2.0, .voices: 0.5,
         .trim: 0.04, .edits: 0.0, .leaveOut: 0.0, .planEdit: 0.07, .episode: 1.4, .loudness: 0.11, .podcastAudio: 2.3, .audioCheck: 0.5,
-        .episodeTranscript: 0.0, .podcastPackage: 0.25, .report: 0.0,
+        .episodeTranscript: 0.0, .renderVideo: 8.0, .checkVideo: 0.5, .podcastPackage: 0.25, .report: 0.0,
     ]
 
     /// The stages that learn from a run. Checking the file is complete is the readiness wait, so its time
