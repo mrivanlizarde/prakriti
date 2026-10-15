@@ -107,3 +107,12 @@ still owed; the "has agreed" checkbox records consent, it does not create it.
 - Names said aloud are kept unless Ivan chooses Mute; Approve never asks about them.
 - `Person.mayReadInCloud` and its switch "Cloud models may read their words" are retired (the stored field is kept so
   older stores open unchanged).
+
+## Notes from part M8d (Wed 14 Oct 2026)
+
+- New section "In the edited video" (`requires renderedVideo`), after "Pictures of a recording": Hide Face and Leave Out in the
+  video, the picture and sound output checks, and `video-hiding.json` (boxes and times only).
+- The notice sentence is now "Other people appear in this recording. Everyone is in the episode and the video until you choose
+  otherwise." (the plan's third wording assumed a Leave Out default, which Ivan's 12 Oct decision replaced).
+- The `requires people` blocks stay off: they describe every output, timelines and shorts included, which are not built (M10,
+  M11), so switching `people` on in M8d would show untrue text. M13 (or the last part that hides people in an output) switches it.

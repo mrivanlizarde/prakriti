@@ -92,7 +92,7 @@ final class ViewerModel {
     /// The Video rendition's player item: the plan's composition with `videoComposition` set to the compositor's (v2 part
     /// M8c). The same object the player plays, kept so PLAN M8 check 4 measures exactly what the player is given.
     @ObservationIgnored private(set) var videoItem: AVPlayerItem?
-    @ObservationIgnored private var videoSource: (mp4: URL, plan: EditPlan)?
+    @ObservationIgnored private var videoSource: (mp4: URL, plan: EditPlan, hidden: HiddenFaces?)?
     @ObservationIgnored private var videoRequest = 0
     @ObservationIgnored private var pendingSeek: (time: Double, play: Bool)?
     @ObservationIgnored private var shuttleSpeed: Float = 0
@@ -187,7 +187,7 @@ final class ViewerModel {
         videoNote = nil
         switch VideoPreview.source(folder: recording.outputFolder, video: recording.video) {
         case .success(let found):
-            videoSource = (found.mp4, found.plan)
+            videoSource = (found.mp4, found.plan, found.hidden)
             videoPlan = found.plan
             videoTimeline = EditTimeline(plan: found.plan)
             captions = ((try? String(contentsOf: found.captions, encoding: .utf8)).map(Captions.cues(srt:))) ?? []
@@ -316,7 +316,7 @@ final class ViewerModel {
                     return .failure(.init(reason: "This recording is in iCloud and not on this Mac yet, so the video cannot play here."))
                 }
                 do {
-                    return .success(try await VideoPreview.build(plan: source.plan, original: original, mp4: source.mp4))
+                    return .success(try await VideoPreview.build(plan: source.plan, original: original, mp4: source.mp4, hidden: source.hidden))
                 } catch let failure as VideoPreview.Failure {
                     return .failure(failure)
                 } catch {

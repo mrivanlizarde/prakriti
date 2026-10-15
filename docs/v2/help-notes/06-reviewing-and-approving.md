@@ -59,3 +59,8 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
 - New section "Watch the edited video" (`requires video`): Video in the toolbar, the strip and transcript on Video, Captions,
   Restore, Remove, Delete, Take Out Again and Keep, Undo, "Not in the video yet", Approve waiting for a restore, and Plan Again
   stopping the Video from playing. The rendition list gains Video; "Two more choices" became "Shorts does not play here yet".
+
+## Notes from part M8d (Wed 14 Oct 2026)
+
+- A `requires renderedVideo` paragraph after "Choose who is in the episode": Hide Face and Leave Out in the edited video, and that
+  Video in the toolbar shows the faces hidden as the file does.

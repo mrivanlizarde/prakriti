@@ -70,3 +70,10 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
 
 - New section "If the video does not play in the viewer" (`requires video`), one bullet per sentence `VideoPreview.source` and the
   Viewer can say.
+
+## Notes from part M8d (Wed 14 Oct 2026)
+
+- "If the video is not made": the "next update" bullet is replaced by the picture output check's sentence ("A face Prakriti
+  cannot account for at ...") and the sound output check's ("... sounds like ..., whom you chose to leave out.").
+- "If the video does not play in the viewer" gains the sentence `VideoPreview.source` says when `video-hiding.json` is missing or
+  from another make.

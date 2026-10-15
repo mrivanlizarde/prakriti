@@ -416,7 +416,7 @@ final class ChoicesTests: XCTestCase {
     }
 
     func testTheNoticeSaysWhatThisBuildDoes() {
-        XCTAssertEqual(NoticeBuilder.otherPeopleBody, "Other people appear in this recording. Everyone is in the episode until you choose otherwise.")
+        XCTAssertEqual(NoticeBuilder.otherPeopleBody, "Other people appear in this recording. Everyone is in the episode and the video until you choose otherwise.")
         XCTAssertFalse(NoticeBuilder.otherPeopleBody.contains("\u{2014}"))
         XCTAssertFalse(NoticeBuilder.otherPeopleBody.contains("Gabriel"))
     }

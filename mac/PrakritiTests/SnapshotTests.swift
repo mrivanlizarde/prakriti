@@ -620,6 +620,25 @@ final class SnapshotTests: XCTestCase {
             _ = try openPlan(model) { r in Fixtures.showPeopleOverlay(model, on: r) }
             model.inspectorTab = .outputs
         }
+        // A video that hides a face and leaves a voice out (v2 part M8d): the verdict's people line and the checklist's People
+        // line, with both output checks passed, as the two-people-mixed run made them (14 Oct). Made-up numbers of no one.
+        try draw("22-video-hidden") { model in
+            var hidden = SnapshotTests.sampleVideoRecord()
+            hidden.hiddenFaces = 1
+            hidden.leftOutVoices = 1
+            hidden.pictureCheck = PictureCheck(checkedAt: Fixtures.now, frames: 337, faces: 337, included: 337)
+            hidden.soundCheck = AudioCheck(checkedAt: Fixtures.now, files: ["the video"])
+            if let i = hidden.checklist.firstIndex(where: { $0.item == "People" }) {
+                hidden.checklist[i] = ChecklistLine(status: .pass, item: "People", detail: "Checked: 2 faces and 2 voices found; 1 face hidden and 1 voice left out, as you chose. "
+                                                    + "Seen again: every face in the video, 337 sightings in 337 frames looked at, is someone you included. "
+                                                    + "Listened to again: everyone heard in the video is someone you included.")
+            }
+            _ = try openPlan(model) { r in
+                r.videoJSON = hidden.json()
+                if !r.madeFiles.contains(VideoStep.folderName) { r.madeFiles += [VideoStep.folderName] }
+            }
+            model.inspectorTab = .outputs
+        }
         // The edited video in the Viewer (v2 part M8c): the sample talk on Video, a filler chosen on the strip with Restore, then
         // restored (Take Out Again, the line under the toolbar "Not in the video yet"). The video file is the test pattern, so
         // nothing of anyone is drawn; the player's picture is black in a bitmap (Mac warning 43), the real window is look-video's.
@@ -651,7 +670,7 @@ final class SnapshotTests: XCTestCase {
             model.inspectorTab = .outputs
         }
         try? FileManager.default.removeItem(at: planURL)
-        let viewerCount = 20 * 2
+        let viewerCount = 21 * 2 // v2 part M8d: 22-video-hidden
 
         if only == "recording" {
             print("Snapshots written to \(outputFolder.path): \(written.count) Viewer pictures")

@@ -23,9 +23,18 @@ enum CompositionBuilder {
         let reason: String
     }
 
+    /// How many whole frames the original's picture holds (what `build` cuts the timeline to).
+    static func pictureFrames(original: URL, plan: EditPlan) async throws -> Int64 {
+        guard let source = try await AVURLAsset(url: original).loadTracks(withMediaType: .video).first else {
+            throw Failure(reason: "The original has no picture, so no video can be made from it.")
+        }
+        let range = try await source.load(.timeRange)
+        return Int64((range.end.seconds / plan.frameDuration.seconds + 1e-6).rounded(.down))
+    }
+
     /// The composition for a plan over its original. The original's picture track is read for its size and length; the
     /// spans are inserted in the plan's order.
-    static func build(plan: EditPlan, original: URL, throughCoreImage: Bool = false) async throws -> Built {
+    static func build(plan: EditPlan, original: URL, throughCoreImage: Bool = false, hidden: HiddenFaces? = nil) async throws -> Built {
         let asset = AVURLAsset(url: original)
         guard let source = try await asset.loadTracks(withMediaType: .video).first else {
             throw Failure(reason: "The original has no picture, so no video can be made from it.")
@@ -54,12 +63,15 @@ enum CompositionBuilder {
             }
         }
 
+        let frameDuration = CMTime(value: plan.frameDuration.value, timescale: CMTimeScale(plan.frameDuration.timescale))
+        // The faces hidden in the video (v2 part M8d): one table shared by every instruction, read by the original's frame.
+        let table = hidden.flatMap { $0.isEmpty ? nil : $0.table() }
         let instructions = timeline.pieces.map { piece in
             RenderInstruction(timeRange: CMTimeRange(start: timeline.time(piece.editFrame), duration: timeline.time(piece.frames)),
                               trackID: track.trackID, spanID: piece.id, sourceStart: timeline.seconds(piece.sourceFrame),
-                              throughCoreImage: throughCoreImage)
+                              throughCoreImage: throughCoreImage, firstSourceFrame: piece.sourceFrame, frameDuration: frameDuration,
+                              hidden: table)
         }
-        let frameDuration = CMTime(value: plan.frameDuration.value, timescale: CMTimeScale(plan.frameDuration.timescale))
         let configuration = AVVideoComposition.Configuration(
             colorPrimaries: AVVideoColorPrimaries_ITU_R_709_2, colorTransferFunction: AVVideoTransferFunction_ITU_R_709_2,
             colorYCbCrMatrix: AVVideoYCbCrMatrix_ITU_R_709_2, customVideoCompositorClass: Compositor.self, frameDuration: frameDuration,

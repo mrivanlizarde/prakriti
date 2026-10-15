@@ -589,7 +589,7 @@ struct Pipeline: Sendable {
     /// right), and each later pass takes half of what is left.
     func passes(_ step: PipelineStep) -> Int? {
         switch step {
-        case .sound, .speechAudio, .trim, .loudness, .faces, .voices, .planEdit, .renderVideo: return 1
+        case .sound, .speechAudio, .trim, .loudness, .faces, .voices, .planEdit, .renderVideo, .checkVideo: return 1
         case .episode:
             let intro = !(options.introPath ?? "").isEmpty, outro = !(options.outroPath ?? "").isEmpty
             return 2 + (intro ? 1 : 0) + (outro ? 1 : 0) + (intro || outro ? 1 : 0)
@@ -1151,7 +1151,9 @@ struct Pipeline: Sendable {
                         await finish(.renderVideo, String(format: "%@ and its captions, %d frames in %.0f s (%.1f times real time).", made.mp4.lastPathComponent,
                                                           made.frames, made.renderSeconds, made.timeline.duration / max(0.001, made.renderSeconds)))
                         await begin(.checkVideo)
-                        let record = try await VideoStep.check(made, setup: setup, ffprobe: runFFprobe, ffmpeg: runFFmpeg, now: Date())
+                        meter?.startPass()
+                        let record = try await VideoStep.check(made, setup: setup, ffprobe: runFFprobe, ffmpeg: runFFmpeg, now: Date(),
+                                                               progress: { [meter] in meter?.passProgress($0) })
                         result.video = record
                         await finish(.checkVideo, "In the \(VideoStep.folderName) folder. Ready checklist: \(record.summary.lowercasedFirst).",
                                      state: record.failed == 0 ? .done : .failed)
@@ -1582,6 +1584,15 @@ struct Pipeline: Sendable {
         guard let plan = result.editPlan else { return nil }
         let people = peopleFacts(result: result)
         guard OutputGate.refusal(people) == nil else { return nil }
+        // Who is hidden and left out (v2 part M8d): read from the people check's own file, never guessed.
+        var hiding = HidePlan(), tracks: [PictureOutputCheck.Track] = [], segments: [VoiceSegment] = []
+        if let setup = options.people, let file = setup.folders.read(setup.recordingID) {
+            hiding = VideoHiding.plan(file, names: people.names, choices: people.choices)
+            tracks = PictureOutputCheck.tracks(file) { row in
+                people.choices.choice(PersonKey.face(row ?? 0, names: people.names), for: .video) != .include
+            }
+            segments = file.voices?.voiceSegments ?? []
+        }
         // The writer's chapter times are on the episode's clock when the transcript followed the episode, else the original's.
         let clock = result.written?.clock == "episode" ? result.clock : nil
         let facts = options.video
@@ -1591,7 +1602,9 @@ struct Pipeline: Sendable {
                                    guard let clock else { return t }
                                    return clock.originalTime(t)
                                },
-                               recordedAt: facts.recordedAt, label: label, people: people)
+                               recordedAt: facts.recordedAt, label: label, people: people, hiding: hiding, faceTracks: tracks,
+                               voiceSegments: segments, folders: options.people?.folders, control: meter?.control,
+                               log: { [log] line in log?.write("\(label): the video's people check. " + line) })
     }
 
     // MARK: The intro and outro
@@ -1644,7 +1657,7 @@ struct Pipeline: Sendable {
     /// Every file a make can leave. Only these are ever replaced or removed from a recording's
     /// folder; anything else Ivan keeps there is left alone.
     static let madeNames: Set<String> = Set(["episode.mp3", "REPORT.md", "speech.wav", TranscriptFiles.asHeard, PodcastPackage.folderName, EditPlan.fileName,
-                                                   VideoStep.folderName]
+                                                   VideoStep.folderName, HiddenFaces.fileName]
                                             + TranscriptFormat.allCases.map(TranscriptFiles.fileName))
         .union(WrittenPackage.fileNames)
 

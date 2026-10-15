@@ -3,8 +3,8 @@ import SwiftUI
 
 /// The edited video in the inspector's Outputs tab (v2 part M8b): whether the video is ready to upload, its files with Show
 /// in Finder, the Ready checklist with the lines that do not pass first, and Make Video for a recording made without it.
-/// Make Video is refused in words while the people check has not run or someone is set to Hide Face or Leave Out (until part
-/// M8d). Watching the video inside Prakriti is part M8c.
+/// Make Video is refused in words only while the people check has not run; since part M8d a video hides the face of everyone
+/// set to Hide Face or Leave Out and cuts the speech of everyone left out, and the verdict says so. Watching it is part M8c.
 struct VideoSection: View {
     @Bindable var recording: Recording
     @Environment(AppModel.self) private var model
@@ -53,6 +53,7 @@ struct VideoSection: View {
                     : "\(video.failed) FAIL, \(video.missing) MISSING, \(video.passed) PASS."))
                 .font(AppFont.body)
                 .fixedSize(horizontal: false, vertical: true)
+            if let people = Self.peopleNote(video) { RowNote(people) }
             RowNote("Watch it here with Video in the toolbar: the picture is drawn the same way as the file. It is in the Video folder with its "
                     + "captions and Description.txt.")
             HStack(spacing: 10) {
@@ -63,6 +64,19 @@ struct VideoSection: View {
             .padding(.top, 2)
         }
         .padding(.vertical, 4)
+    }
+
+    /// Who the video hides and leaves out, in one line, or nil when everyone is in it as recorded (v2 part M8d).
+    static func peopleNote(_ video: VideoRecord) -> String? {
+        let faces = video.hiddenFaces ?? 0, voices = video.leftOutVoices ?? 0
+        guard faces + voices > 0 else { return nil }
+        var parts: [String] = []
+        if faces > 0 { parts.append(faces == 1 ? "hides 1 face" : "hides \(faces) faces") }
+        if voices > 0 { parts.append(voices == 1 ? "leaves out 1 voice" : "leaves out \(voices) voices") }
+        let checked = [video.pictureCheck.map { $0.passed ? "every face in it was found again and is someone you included" : nil },
+                       video.soundCheck.map { $0.passed ? "every voice in it was heard again and is someone you included" : nil }]
+            .compactMap { $0 ?? nil }
+        return "It " + parts.joined(separator: " and ") + ", as you chose in People" + (checked.isEmpty ? "." : "; " + checked.joined(separator: ", and ") + ".")
     }
 
     private func checklist(_ video: VideoRecord, folder: URL) -> some View {

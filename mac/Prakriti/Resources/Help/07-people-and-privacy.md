@@ -51,7 +51,7 @@ release covers their face is recognized in another recording (see Recognition, b
 - **In the inspector's People tab,** a sentence says what was found, then one row for each face, Unnamed 1,
   Unnamed 2 and so on, with how long it is on screen. The face in each row is taken from the recording while
   the tab is open, and is never saved.
-- **A notice** says "Other people appear in this recording. Everyone is in the episode until you choose otherwise."
+- **A notice** says "Other people appear in this recording. Everyone is in the episode and the video until you choose otherwise."
   the first time two or more faces are seen at once. Like every notice, it never names the recording or anyone in it.
 
 Finding someone changes nothing that is made. Only your choices do (see Choose who is in the episode, below). A row is
@@ -140,6 +140,23 @@ Open a recording, choose Original in the toolbar, and click **People** at the to
 View > People). Each face gets a box with its name, or Unnamed. A face you chose to hide has a dashed box, and its label
 says the choice, such as "Unnamed 2, Hide Face". The Original always plays as recorded: the boxes show who is where, they
 hide nothing.
+:::
+
+:::requires renderedVideo
+## In the edited video
+
+The edited video follows the same choices, for Video in the People tab's Customize per Output:
+
+- **Hide Face:** their face is hidden in every frame, under the same heavy blur as the card picture. Prakriti follows
+  the face from frame to frame between the moments it looked for faces, and hides the place a little before it first
+  shows and a little after it last shows. Where a hidden face overlaps someone you included, the hidden one wins.
+- **Leave Out:** every stretch they speak is cut from the picture and the sound, and their face is hidden wherever it
+  still shows.
+
+Before the video is kept, Prakriti looks at it again, five frames a second: every face it finds must be someone you
+included. It listens to it again too, when you left someone out. If either check fails, no video is kept, and Edited
+video in the inspector says when, so you can hide or include the person and click Make Again. Where the video hides
+faces is kept beside the edit plan as `video-hiding.json`: boxes and times only, never a picture.
 :::
 
 :::requires choices

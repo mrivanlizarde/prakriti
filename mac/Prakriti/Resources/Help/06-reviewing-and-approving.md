@@ -167,6 +167,11 @@ Prakriti found, kept as said; choose Mute for any you want gone, and it is silen
 [Privacy and students](07-people-and-privacy.md).
 :::
 
+:::requires renderedVideo
+In the edited video, Hide Face hides that person's face in every frame and Leave Out cuts their speech from the
+picture and the sound. Choose Video in the toolbar to watch it as it will be posted: the faces are hidden there too.
+:::
+
 :::requires people
 ## Check who appears
 

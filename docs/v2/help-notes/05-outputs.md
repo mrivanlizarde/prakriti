@@ -88,3 +88,11 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
 - The long `requires video` section (zooms, on-screen text, transitions, blurring each person) is now `requires style`: none of it
   is built in M8c. M9 (and M8d for blurring) must reconcile it with the `renderedVideo` section before switching `style` on, or
   two "Edited video" sections will show.
+
+## Notes from part M8d (Wed 14 Oct 2026)
+
+- "Edited video" loses "video that hides or leaves out a person arrives in the next update": Make Video is refused only before
+  the people check. The new paragraph says what Hide Face and Leave Out do to the video and that the made file is looked at
+  again (faces, five frames a second) and listened to again before it is kept, with the gate's own sentence.
+- The `requires style` section still mentions blurring each person: M9 must drop that line when it switches `style` on, since the
+  `renderedVideo` paragraph now describes it.

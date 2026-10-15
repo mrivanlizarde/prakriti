@@ -130,7 +130,7 @@ ONLY      ?=
 YES       ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -175,6 +175,18 @@ accept-video:
 accept-viewer-video:
 	./scripts/make-fixtures.sh --if-missing
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=viewer-video TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/ViewerVideoAcceptanceTests
+
+# accept-people-video  v2 part M8d's acceptance (PLAN M8 check 6, and check 3 again, on two-people-mixed.mp4): the fixture made
+#                 in development with the Edited video on, everyone included, then Gabriel teaching and everyone else set to Leave
+#                 Out and made again: the video must be kept with the corner face hidden and the second voice cut, both output
+#                 checks passing inside the gate; the MP4 measured (ffprobe, ebur128, boxes, the last 5 s decoded, the Ready
+#                 checklist), transcribed again by Parakeet (0 runs of the say paragraph), the corner's place measured in the made
+#                 frames (no face, variance down 80%), the Viewer's composition against the file, and the video made again with
+#                 hiding switched off for that track by a test switch, which the gate must stop with the time. Numbers only; one
+#                 frame written to for-ivan/ for Ivan. Writes acceptance-people-video.txt to ../screens/mac/$(MILESTONE)/ (about 4 minutes)
+accept-people-video:
+	./scripts/make-fixtures.sh --if-missing
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=people-video TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/PeopleVideoAcceptanceTests
 
 # look-video  v2 part M8c's real window (PLAN M8 check 7): a development copy on sample data opens the test-pattern video that
 #                 accept-viewer-video wrote, on Video with the Captions overlay on and --debug-playback-log, Space is sent, and

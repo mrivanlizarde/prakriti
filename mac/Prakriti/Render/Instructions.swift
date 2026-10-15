@@ -21,16 +21,34 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol, 
     let sourceStart: Double
     /// Draw the frame through Core Image even with nothing over it. Only `RenderTests` sets it, to measure that path.
     let throughCoreImage: Bool
+    /// The span's first frame on the original's clock and the length of one frame, so a moment of the edited clock finds its
+    /// frame of the original (v2 part M8d: the hidden faces are kept by the original's frame).
+    let firstSourceFrame: Int64
+    let frameDuration: CMTime
+    /// The faces hidden in the video (v2 part M8d), shared by every instruction; nil when nobody is hidden.
+    let hidden: HiddenFaces.Table?
 
-    init(timeRange: CMTimeRange, trackID: CMPersistentTrackID, spanID: String, sourceStart: Double, throughCoreImage: Bool = false) {
+    init(timeRange: CMTimeRange, trackID: CMPersistentTrackID, spanID: String, sourceStart: Double, throughCoreImage: Bool = false,
+         firstSourceFrame: Int64 = 0, frameDuration: CMTime = CMTime(value: 1001, timescale: 30000), hidden: HiddenFaces.Table? = nil) {
         self.timeRange = timeRange
         self.trackID = trackID
         self.spanID = spanID
         self.sourceStart = sourceStart
         self.throughCoreImage = throughCoreImage
+        self.firstSourceFrame = firstSourceFrame
+        self.frameDuration = frameDuration
+        self.hidden = hidden
         requiredSourceTrackIDs = [NSNumber(value: trackID)]
     }
 
-    /// Nothing is drawn over the picture in this stretch.
-    var drawsNothing: Bool { !throughCoreImage }
+    /// The original's frame shown at a moment of the edited clock inside this instruction.
+    func sourceFrame(at compositionTime: CMTime) -> Int64 {
+        let offset = CMTimeSubtract(compositionTime, timeRange.start).seconds / frameDuration.seconds
+        return firstSourceFrame + Int64(max(0, offset).rounded())
+    }
+
+    /// The regions to hide in the frame at `compositionTime` (none when nobody is hidden).
+    func regions(at compositionTime: CMTime) -> [FaceBox] {
+        hidden?.regions(atSourceFrame: sourceFrame(at: compositionTime)) ?? []
+    }
 }

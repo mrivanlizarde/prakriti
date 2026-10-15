@@ -34,8 +34,9 @@ enum Capability: String, CaseIterable, Sendable {
     /// hidden by `FaceHide`, and the Viewer's People overlay (M6d). Faces hidden in the video and every other output are
     /// `people`.
     case hiding
-    /// Faces hidden and voices removed in every output Prakriti makes, the video included (M8d), and what later parts
-    /// build on it. Its Help text describes the whole of that, so it waits for the video.
+    /// Faces hidden and voices removed in every output Prakriti makes, timelines and shorts included, and what later parts
+    /// build on it. Its Help text describes the whole of that, so it stays off until the last of those outputs exists (M10b,
+    /// M11; M13 at the latest). The edited video's own hiding (M8d) is described under `renderedVideo`.
     case people
     /// The People gallery of every named person, Name Only included: the person page, the consent sheet (Name This
     /// Person), the sealed vault, Forget Face and Voice, retention (M7a).
@@ -49,7 +50,7 @@ enum Capability: String, CaseIterable, Sendable {
     case renderedVideo
     /// The edited video in the Viewer, made through the same compositor as the file; Restore and Remove on the plan's spans,
     /// Delete and Undo, struck-through words and the Captions overlay (M8c). The Help text about zooms, text and transitions in
-    /// the video is `style` (M9), and about hidden faces in it `people` (M8d).
+    /// the video is `style` (M9); hidden faces in it (M8d) are described under `renderedVideo`.
     case video
     /// The house style, presets and the direction field (M9).
     case style

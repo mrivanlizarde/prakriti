@@ -271,7 +271,7 @@ final class RenderTests: XCTestCase {
         XCTAssertEqual(VideoDescription.stamp(65), "1:05")
     }
 
-    func testMakeVideoRefusesARecordingNotCheckedOrWithSomeoneHiddenOrLeftOut() {
+    func testMakeVideoRefusesOnlyARecordingNotCheckedAndTheGateNeedsItsPeopleChecks() {
         var people = Self.everyoneIncluded()
         XCTAssertNil(OutputGate.refusal(people), "checked, nobody found: everyone (nobody) is included")
         people.faces = nil
@@ -286,18 +286,41 @@ final class RenderTests: XCTestCase {
         people.faces?.people = [row]
         people.voices?.voices = [FoundVoice(id: 1, label: "Voice 1", speaking: 10, first: 0, last: 10, face: 1)]
         XCTAssertNil(OutputGate.refusal(people), "everyone starts as Include (Ivan, 12 Oct)")
+        XCTAssertTrue(OutputGate.peopleLine(people).passes)
+        // v2 part M8d: anyone may be hidden or left out, and the gate then needs the output check that proves it.
+        let failedPicture = PictureCheck(checkedAt: Date(), frames: 10, faces: 1, included: 0,
+                                         findings: [.init(at: 12.4, original: 13, box: FaceBox(x: 0.1, y: 0.1, width: 0.1, height: 0.1), how: "unknown")])
+        let passedPicture = PictureCheck(checkedAt: Date(), frames: 10, faces: 3, included: 3)
+        var failedSound = AudioCheck(checkedAt: Date(), files: ["the video"])
+        failedSound.findings = [.init(file: "the video", at: 31, seconds: 2, voice: 1, how: "sounds like")]
+        let passedSound = AudioCheck(checkedAt: Date(), files: ["the video"])
         for choice in [PersonChoice.hideFace, .leaveOut] {
             var choices = PeopleChoices.none
             choices.set(choice, for: .face(1))
             people.choices = choices
-            XCTAssertEqual(OutputGate.refusal(people), OutputGate.notYet, "\(choice) is refused until M8d")
-            XCTAssertFalse(OutputGate.peopleLine(people).passes)
+            XCTAssertNil(OutputGate.refusal(people), "\(choice) is made since M8d")
+            XCTAssertEqual(OutputGate.hidden(people).faces, 1, "\(choice) hides the face in the video")
+            XCTAssertEqual(OutputGate.hidden(people).voices, choice == .leaveOut ? 1 : 0, "only Leave Out takes the linked voice out")
+            XCTAssertFalse(OutputGate.peopleProblems(people, picture: nil, sound: passedSound).isEmpty, "a needed picture check that did not run fails")
+            XCTAssertEqual(OutputGate.peopleProblems(people, picture: failedPicture, sound: passedSound),
+                           ["A face Prakriti cannot account for at 0:12. Hide it or include the person, then Make Again."])
+            XCTAssertFalse(OutputGate.peopleLine(people, picture: failedPicture, sound: passedSound).passes)
+            if choice == .leaveOut {
+                XCTAssertFalse(OutputGate.peopleProblems(people, picture: passedPicture, sound: nil).isEmpty, "a needed sound check that did not run fails")
+                XCTAssertFalse(OutputGate.peopleProblems(people, picture: passedPicture, sound: failedSound).isEmpty)
+            }
+            XCTAssertEqual(OutputGate.peopleProblems(people, picture: passedPicture, sound: passedSound), [])
+            let line = OutputGate.peopleLine(people, picture: passedPicture, sound: passedSound)
+            XCTAssertTrue(line.passes)
+            XCTAssertTrue(line.detail.contains("1 face hidden"), line.detail)
+            XCTAssertFalse(line.detail.contains("\u{2014}"))
         }
         var podcastOnly = PeopleChoices.none
         podcastOnly.set(.leaveOut, for: .face(1), output: .podcast)
         people.choices = podcastOnly
         XCTAssertNil(OutputGate.refusal(people), "left out of the podcast only: the video includes them")
-        XCTAssertFalse(OutputGate.notYet.contains("\u{2014}"))
+        XCTAssertEqual(OutputGate.hidden(people).faces, 0)
+        XCTAssertEqual(OutputGate.peopleProblems(people, picture: nil, sound: nil), [], "nobody hidden in the video: no check is needed")
     }
 
     func testTheGateDeletesAFileThatFailsAndNeverMovesIt() throws {

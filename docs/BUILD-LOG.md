@@ -72,7 +72,11 @@ fails on any stretch of speech still without words, wherever it is. The 6 Sep ta
 the 13 Sep transcript.json is byte for byte unchanged. **Then part M8c, the video in the Viewer** (the last section, "v2 part
 M8c", Wed 14 Oct): Video in the toolbar plays the edited video inside the app, drawn by the same compositor from the same plan as
 the file (46 dB against the MP4's frames on a 13 Sep excerpt), with Captions over the picture, the strip and struck-through words of
-its plan, and Restore, Remove, Delete and Undo on its spans, each waiting for Make Again. Installed.
+its plan, and Restore, Remove, Delete and Undo on its spans, each waiting for Make Again. Installed. **Then part M8d, people in the video**
+(the last section, "v2 part M8d", Wed 14 Oct): the edited video hides the face of everyone set to Hide Face or Leave Out in every
+frame and cuts the speech of everyone left out, and a video is kept only after its faces are found again and its sound is
+listened to again; on two-people-mixed the corner face is hidden on 625 frames and the second voice is gone, and with hiding
+switched off the gate stops the video at 0:19.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -5421,3 +5425,115 @@ Prakriti was closed: 0 events." The next sweep, **"16:26:14 Checked 2 folders. N
 - [ ] **Watch one video in the app:** open Sun 13 Sep (or any recording with an edited video), choose Video in the toolbar, turn on
   Captions. If a pause or an "um" came out that you wanted, click it on the strip and Restore, then Make Again.
 - [ ] Nothing else new: the earlier lists stand (the listening check of M8 check 9, notifications, Make Again on 6 Sep).
+
+## v2 part M8d: people in the video. Wed 14 Oct 2026
+
+The part after M8c (`docs/v2/PLAN.md`, M8, part M8d; REQUEST item 3b, "choose who is included in the output videos"). Built on
+`main` 17:00 to 19:30. No package added, nothing downloaded. **No SwiftData field added** (the new facts live in
+`VideoRecord`, which is stored as JSON in `Recording.videoJSON`); `make migrate-check` run anyway. Under Ivan's decision of Mon 12
+Oct every participant counts as released and everyone starts as Include; nothing in this part sends anything anywhere.
+
+### What was built
+
+- **Hiding in the compositor.** `Render/VideoHiding.swift` (new): `VideoHiding.plan` takes the people file's tracks whose row is
+  set to Hide Face or Leave Out for Video; `VideoHiding.make` reads the original once, in order, over every stretch where a
+  hidden face may be on screen (0.5 s either side of its sightings), and follows each hidden face at the full frame rate with
+  Vision's `TrackObjectRequest`, started again at every sighting, the sightings' boxes held 0.5 s either side, and the last place
+  plus any body's head kept hidden when the follower loses it (the rules of M6d's `FaceFollower`, streamed). The regions of every
+  kept frame are `HiddenFaces`, saved as `video-hiding.json` beside `edit-plan.json` (boxes and frame numbers only; it is in
+  `Pipeline.madeNames`, so a make that hides nobody removes an old one). `RenderInstruction` carries the shared table and its
+  span's first source frame; `Compositor` looks up the original's frame for each request and draws it through `FaceHide`; a frame
+  with nothing hidden is still passed on untouched.
+- **Remove as cut time.** Leave Out was already applied to the plan's spans since M8a (`EditPlan.people.cuts`); the video is now
+  made with them, and the face of everyone left out is hidden wherever it still shows.
+- **The picture output check** (`People/PictureOutputCheck.swift`, new): whenever someone is hidden, the made MP4 is read five
+  frames a second; each face Vision finds is mapped to the original's moment and must be someone included (the nearest track of
+  the people check within 1 s, its box padded 2.5 times). A face inside a hidden region, where a hidden person is, or near no track
+  at all is a finding: "A face Prakriti cannot account for at 12:41. Hide it or include the person, then Make Again."
+- **The sound output check:** whenever someone is left out, M6c's `AudioOutputCheck` runs on the MP4's sound with the timeline as
+  its clock.
+- **`OutputGate`:** `refusal` now refuses only a recording whose people check has not run; `peopleProblems` fails a needed check
+  that failed or did not run (fail closed); `admit` gates on both; `peopleLine` says what was hidden and found. `VideoStep.make`
+  refuses (fail closed) when someone is set hidden but the people file holds no sighting of them. `VideoRecord` gains
+  `hiddenFaces`, `leftOutVoices`, `pictureCheck`, `soundCheck`; the checks' details go to the make's log (times and boxes only).
+- **Viewer:** `VideoPreview.source` reads `video-hiding.json` from the same make (and refuses in one sentence without it), and
+  `build` passes it to the composition, so Video in the toolbar hides what the file hides.
+- **`FaceHide` is stronger** (decision 2): half-face-width blur, 6 blocks across the padded region (about 4 across the face), then a
+  blur of one block. Card pictures use it too.
+- **`EditTimeline.originalTime`** maps a moment exactly at a join to the piece after it (finding 2).
+- Inspector, Edited video: "It hides 1 face and leaves out 1 voice, as you chose in People; every face in it was found again ...".
+  Notice: "Other people appear in this recording. Everyone is in the episode and the video until you choose otherwise."
+- Help 05 (Edited video: what Hide Face and Leave Out do, the two checks), 06 (a `renderedVideo` paragraph), 07 (new "In the edited
+  video"), 10 (the two checks' sentences, the missing `video-hiding.json`); notes appended to `docs/v2/help-notes/05`, `06`, `07`,
+  `10`. START_HERE: the M8d paragraph, Mac warning 143 rewritten, 156 to 158, the file map, `make accept-people-video`.
+- Tests: `PeopleInVideoTests` (3, in `make test`), `RenderTests` gate test rewritten, `ChoicesTests` notice, `VideoAcceptanceTests`
+  (the refusal check now checks it is gone), `PeopleVideoAcceptanceTests` (`make accept-people-video`), snapshot `22-video-hidden`.
+
+### Found by measuring (each fixed, each with its measurement)
+
+1. **M6d's hiding was not strong enough for a small face.** The first two-people-mixed make was stopped by the new picture check:
+   Vision found a face inside the hidden corner region at 0:21 and 4 more moments (box about 0.037 by 0.065 of the frame, about 70
+   pixels). Measured on 201 frames of the corner stretch, five a second: 5 frames with a face found (confidence 0.11 to 0.25) with
+   M6d's quarter-width blur and 8 blocks, 3 with a half-width blur and 6 blocks, **0** once the blocks are softened by one block's
+   blur. That is the hiding now (Mac warning 157).
+2. **A frame exactly at a join was mapped to the frame before the cut.** `EditTimeline.originalTime` took the inclusive end of the
+   earlier piece, a frame the video never shows; on two-people-mixed, edited 28.40 s read as original 29.73 s instead of 48.58 s,
+   where the hidden region is elsewhere. Now the first frame after a join (Mac warning 158).
+3. **The test pattern's tracker loses a fixed box** (168 "lost" frames of 420 on `testsrc2`), which is why the lost place is kept
+   hidden and the frame's own regions, not a single box, are what the PSNR outside them is measured against.
+
+### Checks run, with results (PLAN M8, the checks part M8d runs: 6, 8, and 3 again on two-people-mixed; and the M8 group's
+full-length run on both talks, PLAN's Wed 14 Oct note)
+
+Real media: `two-people-mixed.mp4` (the fixture), and the REAL 13 Sep and 6 Sep talks in full for the group's last part. No frame of
+Gabriel's talks was looked at (D1, as told): every frame check is a number, and one frame of the fixture's video is written for Ivan.
+
+| # | Check | Result |
+|---|---|---|
+| 6 | On two-people-mixed with the corner person on Remove (Gabriel teaching, everyone else Leave Out): the picture output check passes; with hiding switched off for that track in a test build, the output is stopped with the time of the first unaccounted face; re-transcribed, 0 `say` runs remain | **PASS** (`make accept-people-video`, `screens/mac/v2-m8d/acceptance-people-video.txt`, 22 of 22 PASS). Video kept, 1:07, hides 1 face row, leaves out voice 2 (people cut 29.90 to 48.54 s); hidden regions on 625 frames (followed 579, held 1,191, lost 1; 4.6 s). **Picture check:** 337 frames, 337 faces, all someone included (3.2 s). **Sound check:** passed ("the video voice 1 (67.4 s): Voice 1 0.994, Voice 2 0.321"). **Hiding off (`hidingOffForTest`):** "A face Prakriti cannot account for at 0:19 ... 102 more moments too. The video was not kept."; the corner face first shows at 18.69 s of the video; no Video folder, no staging left. **Parakeet on the MP4:** 0 of 59 five-word runs of the `say` paragraph. Measured from outside at 5 distinct frames of the corner stretch: 0 faces in the corner's place, its variance down 84.7 to 88.6%, the Viewer's composition against the file 44.7 to 45.7 dB; `VideoPreview.source` reads the same `video-hiding.json`. Nothing stored for strangers: no Faces, Voices or FaceIndex folder, Jobs empty; `video-hiding.json` 625 rows, at most 13 numbers a row |
+| 3 | The MP4 of two-people-mixed measured | **PASS:** H.264 High, 1920 by 1080, 30000/1001, BT.709 tags; 15.88 Mbps; AAC-LC 48 kHz stereo 320.0 kbps (384 not reachable, accepted 14 Oct); ftyp moov mdat, no edit list on the picture; -13.8 LUFS, -1.5 dBTP; the last 5 s decode; length 67.267 s = kept spans; Ready checklist 17 PASS, 3 MISSING (Title, Description, Chapters, writing off), 0 FAIL |
+| Unit | `PeopleInVideoTests` (synthetic only) | **PASS.** Test pattern, a made-up face hidden 4 to 20 s: every kept frame from 3.5 to 20.5 s has the region, none outside; region variance down 80.5 to 84.5%; outside the frame's regions 36.2 to 36.5 dB (Core Image's round trip on a test pattern is 37.9); Viewer against file 44.6 to 45.0 dB; picture check ran, People line PASS, `video-hiding.json` written. Moving square (6 s, sightings two a second, a cut in the middle): every point of the square inside the picture hidden on all 160 kept frames, 147 frames followed. `account` sorts included, "hidden", "near hidden" and "unknown". **Looked at:** `m8d-hidden-in-video-test-pattern.png`, the test pattern as recorded above and as the video shows it below: one soft blurred ellipse where the made-up face is, the rest untouched |
+| 8 | Regression set; `make migrate-check` | **PASS.** `make build`: No warnings. **`make test`: 373 tests, 23 skipped by design, 1 failure in the first run:** `SnapshotTests` counted 192 screens and drew 194 (the new `22-video-hidden`); the count was raised and `make snapshots` run again: 3 of 3 snapshot tests pass, 194 screens. `make accept`: 13 Sep -16.8 LUFS (-16.82), -1.7 dBFS, 2,948 words to 15:47 of 15:48; silent-60s at -91 dB, nothing made; the 30 s clip a test. `make accept-edits`: 38.82 s shorter (expected 38.82), 0 of 73 runs from the cut heard, 189 of 201 after it. M6d's `HidingAcceptanceTests` again with the stronger hiding: PASS (card corner variance down 88.4%, 0 faces inside a hidden region in 5 frames). `make migrate-check` on a copy of the live store: passes, every field arrives as stored |
+| Full | The M8 group's full-length run (`make accept-video`, both talks) | **PASS, 36 of 36** (`acceptance-video-m8b.txt`; the plan half `acceptance-video.txt` 19 PASS). 13 Sep: 890.590 s, 0 of 95 joins over, Parakeet 2,865 of 2,879 kept words (99.5%), 6 of 6 fillers gone, -14.0 LUFS, -1.4 dBTP, 15.99 Mbps, 9.17 s a minute to make. 6 Sep: 3,037.468 s, 0 of 366 joins over, 9,927 of 10,020 (99.1%), 2 of 2 fillers gone, -13.8 LUFS, -1.4 dBTP, 8.89 s a minute. Make Video not refused with someone hidden. Originals unchanged |
+| 4 again | `make accept-viewer-video` (13 Sep excerpt) | **PASS:** six frames 46.1 to 46.5 dB, 34 instructions through `Prakriti.Compositor` |
+
+**Snapshots, looked at** (`screens/mac/v2-m8d/`, sample data and test patterns only): `22-video-hidden-light` p2 (Edited video: "It
+hides 1 face and leaves out 1 voice, as you chose in People; every face in it was found again and is someone you included, and every
+voice in it was heard again and is someone you included.") and p3 (the checklist), `22-video-hidden-dark` p4 (the People line PASS
+with both checks). All readable at 17 pt. The sample talk's people check has no voices, so under the verdict the snapshot also
+shows the not-checked refusal line: true of the sample data, not of a real recording.
+
+**Em dashes:** 0 in every file this part changed (grep for U+2014 and U+2013).
+
+### Decisions, each with its reason
+
+1. **A face found inside a hidden region fails the picture check**, stricter than PLAN's wording ("inside a hidden region" counts
+   as accounted). Reason: a face Vision can still see through the hiding is a hiding that did not work; this is what found
+   finding 1.
+2. **Stronger `FaceHide` for everything, card pictures included.** Reason: finding 1; one hiding for every picture (M6d's rule).
+3. **The picture check runs only when someone is hidden in the video.** Reason: Ivan's 12 Oct decision, everyone starts as
+   Include and all participants signed releases; with nobody hidden every face is shown as he chose, and there is nothing to prove.
+   A face the people check never saw is a finding only when someone is hidden (fail closed then).
+4. **The hidden regions are worked out once, before drawing, and kept as a file** (Mac warning 156). Reason: following needs frames
+   in order; the compositor and the Viewer ask out of order; the preview must equal the file.
+5. **Make Video still refuses a recording whose people check has not run.** Reason: without it nobody can be hidden, and M8b's
+   construction rule (a video only after the people check) costs nothing to keep.
+6. **The notice's third wording names the video, not blurring.** Reason: the plan's "Their faces are blurred and their voices left
+   out until you decide." assumed a Leave Out default; it would be false.
+7. **The `people` capability stays off.** Reason: its Help blocks describe hiding in every output, timelines and shorts included
+   (M10, M11), so switching it on now would show untrue text; the video's hiding is described under `renderedVideo`.
+
+### What does not work yet
+
+- Timelines (M10) and shorts and thumbnails (M11) do not hide anyone yet.
+- The picture check is measured on one fixture with one small hidden face; a hidden person filling the frame, or a crowded class,
+  has not been run (never a class, as told).
+- `make test` was run whole once with the one snapshot count failure; after the fix only `make snapshots` was run again (passed).
+
+### For Ivan
+
+- [ ] **Look at one frame** (D1 kept me to numbers): `screens/mac/v2-m8d/for-ivan/m8d-two-people-mixed-video-corner-hidden.png`, a
+  frame of the fixture's video with the corner face hidden. Say if the hiding looks right or too heavy.
+- [ ] To try it on a real recording: in People set someone to Hide Face for Video, then Make Video Again; watch it with Video in the
+  toolbar.
+- [ ] Nothing else new: the earlier lists stand (M8 check 9's listening, notifications).

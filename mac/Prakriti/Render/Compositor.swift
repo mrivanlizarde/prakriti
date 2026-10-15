@@ -6,10 +6,11 @@ import Foundation
 // frame of the edited video, for the file (`VideoWriter`, through `AVAssetReaderVideoCompositionOutput`) and, from part
 // M8c, for the Viewer (`AVPlayerItem.videoComposition`), so the preview is the output.
 //
-// In M8b an instruction has nothing to draw over the picture (no hidden faces, no zooms, no text: parts M8d and M9), so
-// the source frame is handed on unchanged, which is exact: the picture is the original's own pixels until the encoder.
-// When an instruction carries something to draw, the frame goes through Core Image on Metal (`draw`), one context for the
-// compositor's life. `RenderTests` runs both paths.
+// A frame with nothing to draw over it is handed on unchanged, which is exact: the picture is the original's own pixels
+// until the encoder. From part M8d a frame where someone is hidden goes through Core Image on Metal (`draw`, one context for
+// the compositor's life) with each region hidden by `FaceHide`; the regions are looked up by the original's frame in
+// `HiddenFaces`, worked out before the video is drawn (`VideoHiding`), so the file and the Viewer hide the same. Zooms and
+// text (M9) will draw here too. `RenderTests` runs both paths.
 //
 // The SDK's macOS 27 names only (Mac warning 4, PLAN 2.2): `sourceReadOnlyPixelBuffer(byTrackID:)` and
 // `renderContext.makeMutablePixelBuffer()`, never `sourceFrame(byTrackID:)` or `newPixelBuffer()`.
@@ -36,21 +37,26 @@ final class Compositor: NSObject, AVVideoCompositing, @unchecked Sendable {
             request.finish(with: Failure.noFrame)
             return
         }
-        if instruction.drawsNothing {
+        // The faces hidden in this frame (v2 part M8d), looked up by the original's frame. A frame with nothing to hide is
+        // handed on untouched, exactly the original's pixels.
+        let regions = instruction.regions(at: request.compositionTime)
+        if regions.isEmpty && !instruction.throughCoreImage {
             request.finish(withComposedPixelBuffer: source)
             return
         }
         do {
-            request.finish(withComposedPixelBuffer: try draw(source, into: request.renderContext))
+            request.finish(withComposedPixelBuffer: try draw(source, hiding: regions, into: request.renderContext))
         } catch {
             request.finish(with: error)
         }
     }
 
-    /// The frame through Core Image into a new buffer from the render context's pool.
-    func draw(_ source: CVReadOnlyPixelBuffer, into renderContext: AVVideoCompositionRenderContext) throws -> CVReadOnlyPixelBuffer {
+    /// The frame through Core Image into a new buffer from the render context's pool, with `hiding`'s regions hidden by
+    /// `FaceHide` (the same function as the card picture's).
+    func draw(_ source: CVReadOnlyPixelBuffer, hiding: [FaceBox] = [], into renderContext: AVVideoCompositionRenderContext) throws -> CVReadOnlyPixelBuffer {
         let output = try renderContext.makeMutablePixelBuffer()
-        let image = source.withUnsafeBuffer { CIImage(cvPixelBuffer: $0) }
+        let frame = source.withUnsafeBuffer { CIImage(cvPixelBuffer: $0) }
+        let image = FaceHide.apply(frame, regions: hiding)
         output.withUnsafeBuffer { buffer in
             // The source's colour tags (BT.709 matrix, primaries and transfer) go on the new buffer first: Core Image reads
             // them to turn its working colour back into the same YCbCr. Without them it wrote another matrix (measured 13 Oct

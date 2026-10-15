@@ -148,9 +148,18 @@ minutes.
   louder videos down to (measured by others; YouTube publishes no figure).
 - The picture is H.264 at 16 Mbps for 1080p, in the size and frame rate it was recorded.
 
-For now, Prakriti makes a video only of a recording where everyone seen and heard is included, and
-only once its people check has run. If anyone is set to Hide Face or Leave Out, Make Video says so and
-makes nothing: video that hides or leaves out a person arrives in the next update.
+Prakriti makes a video once the recording's people check has run, and applies your choices in the
+People tab to it:
+
+- **Hide Face:** their face is hidden in every frame under a heavy blur, followed from frame to frame,
+  and held half a second before and after each time it is seen. Their voice stays.
+- **Leave Out:** every stretch they speak is cut from the picture and the sound together, and their face
+  is hidden wherever it still shows.
+
+Before the video is kept, Prakriti looks for faces in it again, five frames a second, and listens to it
+again. If it finds a face that is not someone you included, or hears someone you left out, it keeps no
+video and says when, such as "A face Prakriti cannot account for at 12:41. Hide it or include the
+person, then Make Again." The People line of the Ready checklist says what it found.
 
 The files are in a folder named Video, inside the recording's folder:
 

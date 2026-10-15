@@ -87,11 +87,16 @@ struct EditTimeline: Equatable, Sendable {
         return nil
     }
 
-    /// A moment of the edited clock on the original's.
+    /// A moment of the edited clock on the original's. A moment exactly at a join is the first frame of the piece after it,
+    /// the frame the video shows there (v2 part M8d: the picture output check read the frame before the cut instead, a frame
+    /// the video never shows, and so the wrong hidden regions); only the very end of the video maps to its last piece's end.
     func originalTime(_ edited: Double) -> Double? {
         let f = edited / frame.seconds
-        for piece in pieces where f >= Double(piece.editFrame) - 1e-6 && f < Double(piece.editFrame + piece.frames) + 1e-6 {
+        for piece in pieces where f >= Double(piece.editFrame) - 1e-6 && f < Double(piece.editFrame + piece.frames) - 1e-6 {
             return (f - Double(piece.editFrame) + Double(piece.sourceFrame)) * frame.seconds
+        }
+        if let last = pieces.last, abs(f - Double(last.editFrame + last.frames)) <= 1e-6 {
+            return Double(last.sourceFrame + last.frames) * frame.seconds
         }
         return nil
     }

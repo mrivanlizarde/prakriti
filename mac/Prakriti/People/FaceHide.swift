@@ -6,8 +6,8 @@ import Foundation
 import Vision
 
 // Hiding in pictures (v2 part M6d, docs/v2/PLAN.md M6, research-people.md 3.2 and 3.5): the faces of the people Ivan
-// chose to hide (Hide Face or Leave Out) taken out of a frame. Used now for the card picture (`CardPicture`); the
-// renderer uses the same code from part M8d.
+// chose to hide (Hide Face or Leave Out) taken out of a frame. Used for the card picture (`CardPicture`) and, from part
+// M8d, for every frame of the edited video (`Compositor`, with the regions `VideoHiding` follows in order).
 //
 // Three pieces, each measured or tested on its own:
 //
@@ -21,8 +21,9 @@ import Vision
 //   follower loses a face between sightings, the last place it was seen stays hidden, and so does the head of any body
 //   Vision finds there (unknown means hidden).
 // - `FaceHide`: the Core Image function. Each region padded to 1.6 times the face, as a soft-edged ellipse, then a
-//   heavy blur (a radius of 30% of the face's width, more than the quarter research-people.md 3.2 asks) and then
-//   pixelated into blocks a fifth of the face wide (5 across the face, under the 8 that research allows). Where a
+//   heavy blur (a radius of half the face's width, more than the quarter research-people.md 3.2 asks), pixelated into
+//   blocks about a quarter of the face wide (under the 8 across that research allows), and the blocks softened by a last
+//   blur of one block, so no block pattern is left for a detector to read as eyes (part M8d, measured: `soften`). Where a
 //   hidden region covers part of an included face, the region wins: it is drawn over the whole frame, never around
 //   anyone (research-people.md 3.5).
 //
@@ -222,10 +223,18 @@ enum FaceHide {
     static let pad = 1.6
     /// The ellipse is solid to this share of its radius, then fades to its edge.
     static let solid = 0.9
-    /// The blur's radius, as a share of the face's width (research-people.md 3.2: at least a quarter).
-    static let blurShare = 0.3
-    /// Blocks across the padded region (research-people.md 3.2: no more than 8 across the face; this is 5 across it).
-    static let blocksAcross = 8.0
+    /// The blur's radius, as a share of the face's width (research-people.md 3.2: at least a quarter). Half, since part M8d.
+    static let blurShare = 0.5
+    /// Blocks across the padded region (research-people.md 3.2: no more than 8 across the face; this is about 4 across it).
+    static let blocksAcross = 6.0
+    /// After the blocks, a last blur of this many blocks softens their edges into one blob (part M8d).
+    ///
+    /// Load-bearing, with the two numbers above: measured 14 Oct on two-people-mixed's corner face (about 70 by 70 pixels),
+    /// 201 frames five a second, Vision still found a "face" inside the hidden region in 5 frames with M6d's quarter-width
+    /// blur and 8 blocks (confidence 0.11 to 0.25), in 3 with a half-width blur and 6 blocks, and in none once the blocks are
+    /// softened by one block's blur. The video's picture output check fails on any of them, so a weaker hiding stops the
+    /// video rather than leaking it, but it must not be weakened.
+    static let soften = 1.0
 
     /// The padded ellipse of a region in the picture's pixels, with y from the BOTTOM (Core Image's way round).
     static func ellipse(_ box: FaceBox, width: Double, height: Double) -> (center: CGPoint, radiusX: Double, radiusY: Double) {
@@ -258,7 +267,13 @@ enum FaceHide {
             pixels.inputImage = blur.outputImage
             pixels.center = shifted
             pixels.scale = Float(max(2, rx * 2 / blocksAcross))
-            guard let hidden = pixels.outputImage?.cropped(to: extent) else { continue }
+            // Only the ellipse's own rectangle is drawn hidden (outside it the mask is 0), so Core Image blurs only around the
+            // face, not the whole frame: the video draws this at every frame where someone is hidden (v2 part M8d).
+            let around = CGRect(x: shifted.x - rx, y: shifted.y - ry, width: rx * 2, height: ry * 2).intersection(extent)
+            let soft = CIFilter.gaussianBlur()
+            soft.inputImage = pixels.outputImage?.clampedToExtent()
+            soft.radius = Float(max(2, rx * 2 / blocksAcross * soften))
+            guard !around.isEmpty, let hidden = soft.outputImage?.cropped(to: around) else { continue }
             // A circle that fades from `solid` of its radius to its edge, stretched into the ellipse.
             let gradient = CIFilter.radialGradient()
             gradient.center = .zero

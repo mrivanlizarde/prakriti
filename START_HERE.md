@@ -745,9 +745,9 @@ joins the spans in Swift with 20 ms crossfades from 10 ms handles, so the sound 
 moves to the clean side of the cut when a handle holds a knock, and every fade is held calmer than the 25 ms either side), and masters
 it to -14 LUFS, true peak under -1; `VideoWriter` writes H.264 High at a constant 16 Mbps, a key frame every 15 frames, no
 B-frames, BT.709, fast start, AAC-LC 320 kbps; `Mp4Boxes` removes the writer's identity edit list on the picture), then
-**Checking the video** (`ReadyChecklist`, then `OutputGate`, the only code that moves a rendered file into place). **Until
-part M8d, a video is made only of a recording whose people check ran and found everyone Included** ("Video for recordings
-with someone hidden or left out arrives in the next update."). Watching it in the Viewer is M8c. Measured on 13 Sep: 26,685
+**Checking the video** (`ReadyChecklist`, then `OutputGate`, the only code that moves a rendered file into place). A video is
+made only of a recording whose people check ran (M8b also refused anyone hidden or left out; part M8d lifted that, below).
+Watching it in the Viewer is M8c. Measured on 13 Sep: 26,685
 frames written in 100 s (8.9 times real time), picture and sound within one frame of the plan's 890.389 s.
 
 **v2 part LOCK, the lock follows the signed releases, Wed 14 Oct (see BUILD-LOG "v2 part LOCK"; installed with M5a to
@@ -789,6 +789,28 @@ Delete removes the chosen kept span or the selected words; every one of these, a
 Edit, is undoable (Edit > Undo). Each waits for Make Again ("Not in the video yet" under the toolbar), and Approve waits for
 a restore (`Recording.restoresPending`). Watch Video in the inspector's Edited video opens it. Development checks:
 `make accept-viewer-video` and `make look-video`.
+
+**v2 part M8d, people in the video, Wed 14 Oct (see BUILD-LOG "v2 part M8d"):** the edited video follows the People tab's
+choices for Video. **Hide Face** hides that person's face in every frame and **Leave Out** cuts every stretch they speak from
+picture and sound (the edit plan's people cuts, as since M8a) and hides their face wherever it still shows. Before anything is
+drawn, `Render/VideoHiding.swift` reads the original once, in order, over every stretch where a hidden face may be on screen,
+and follows each hidden face at the full frame rate with Vision's `TrackObjectRequest`, started again from each of the face
+step's sightings (two a second), with each sighting's box held 0.5 s either side and the last place (and any body's head)
+kept hidden when the follower loses it; the regions of every kept frame go into `HiddenFaces`, saved as `video-hiding.json`
+beside `edit-plan.json` (boxes and frame numbers only). Every `RenderInstruction` carries that table, and the `Compositor`
+looks up the original's frame and draws it through `FaceHide` (since M8d: a half-face-width blur, about 4 blocks across the
+face, softened by one block's blur), so the file and the Viewer's Video hide exactly the same (`VideoPreview` reads the same
+file, warning 156). Then **Checking the video** runs two output checks inside `OutputGate`: the picture output check
+(`People/PictureOutputCheck.swift`, whenever someone is hidden: every face Vision finds in the made MP4, five frames a second,
+must be someone included; a face inside a hidden region, where a hidden person is, or that no track of the people check saw
+stops the video: "A face Prakriti cannot account for at 12:41. Hide it or include the person, then Make Again.") and the sound
+output check (M6c's `AudioOutputCheck` on the MP4, whenever someone is left out). A video that fails either is deleted where it
+was made. The Ready checklist's People line, the inspector's Edited video and `VideoRecord` (`hiddenFaces`, `leftOutVoices`,
+`pictureCheck`, `soundCheck`) say what was hidden and found. M8b's refusal is gone: only a recording whose people check has not
+run is refused. The notice now reads "Other people appear in this recording. Everyone is in the episode and the video until you
+choose otherwise." Measured on two-people-mixed: the corner face hidden on 625 frames, 0 faces found again in its place, its
+variance down 85% or more, the second voice's 59 five-word runs all gone, and with hiding switched off by a test switch the
+gate stops the video at 0:19 with nothing kept. `make accept-people-video`.
 
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
@@ -1007,8 +1029,13 @@ cross-correlated with the original and six frames matched by pixel difference (i
 over the largest in the 50 ms of the made sound around it, the
 pauses, Parakeet run on the MP4 in about 60 s pieces (98% of kept words in order) and on 8 s around each join a filler was taken
 from (90% of them gone), the Ready checklist, StageTiming fed; the 13 Sep Video folder copied to `~/Prakriti/Dev/Listening check/`;
-then Make Video refused with someone hidden. It writes `acceptance-video.txt` and `acceptance-video-m8b.txt`; no frame of a talk is
-drawn. `make accept-viewer-video` (v2 part M8c, about 3 minutes) makes a 5-minute excerpt of the **real 13 Sep talk**
+then (since M8d) Make Video not refused with someone hidden. It writes `acceptance-video.txt` and `acceptance-video-m8b.txt`; no
+frame of a talk is drawn. `make accept-people-video` (v2 part M8d, about 2 minutes) makes `two-people-mixed.mp4` in development with
+the video on, everyone included, then with Gabriel teaching and everyone else set to Leave Out, and needs the video kept with both
+output checks passed; it measures the MP4 as check 3 asks, transcribes it again (0 of the `say` paragraph's five-word runs), measures
+the corner's place in the made frames (no face, variance down 80% or more) and the Viewer's composition against the file (38 dB),
+then makes it again with hiding switched off by a test switch (`VideoStep.Setup.hidingOffForTest`) and needs the gate to stop it
+with the time. It writes `acceptance-people-video.txt` and one frame to `for-ivan/` (numbers only, never looked at). `make accept-viewer-video` (v2 part M8c, about 3 minutes) makes a 5-minute excerpt of the **real 13 Sep talk**
 (`~/Prakriti/Dev/Excerpts/2026-09-13 excerpt 2m to 7m.mp4`, cut once with `-c copy` from 2:00) with the video on, opens it in
 the Viewer on Video and compares six frames of the MP4 with the Viewer's own player item by PSNR (38 dB or better; numbers only),
 then writes the test-pattern video `make look-video` plays (`~/Prakriti/Dev/Fixtures/viewer-video-sample`). `make look-video`
@@ -1208,7 +1235,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | The welcome window (v2 part M2b) | `mac/Prakriti/Views/Welcome/`: `WelcomeContent.swift` (the five panels' words, each row with the capabilities it describes, `requires` and `unless`; `WelcomeContent.version`), `WelcomeModel.swift` (the open panel, the first-launch rule, Choose Folder), `WelcomeWindow.swift` (the window, its rows and buttons, its own fit measurement); the scene and Help, Welcome to Prakriti in `App/PrakritiApp.swift`; `welcomeSeenVersion` in `App/AppSettings.swift`; Turn On Notifications and `Notifier.openSystemSettings` in `App/Notices.swift`; the copy source and its status: `docs/v2/help-notes/welcome-panels.md`; tests `WelcomeTests` and `SnapshotTests.testRenderWelcome` |
 | The capture check (v2 part M4b) | `mac/Prakriti/Engine/CaptureCheck.swift` (`CaptureReport`, `CaptureFinding`, reading ffprobe and the per-track ffmpeg call, the findings and their tips, `run`), the pipeline's `.capture` step, `Recording.captureJSON`, `Views/Inspector/CaptureSection.swift` (the Checks tab's Capture section), `App/CaptureActions.swift` (Check Capture for older recordings); tests `CaptureCheckTests` (in `make test`) and `CaptureAcceptanceTests` (`make accept-capture`) |
 | Progress and Activity (v2 part M4a) | `mac/Prakriti/Progress/`: `JobProgress.swift` (`ProgressTracker`, the pure arithmetic: weights, the percent that never goes back, the time left only from a measured rate, the stall line; `ProgressSnapshot` with its status line; `TimeLeft`; `JobProgress`, published at most twice a second), `ProgressMeter.swift` (what the pipeline and ffmpeg report, read twice a second; `ProcessControl`, Pause by SIGSTOP and SIGCONT), `StageTimings.swift` (`StageTiming`, a SwiftData model, the last 10 runs of each stage, seeded once from the store; `firstGuess`, measured 12 Oct). `Engine/Subprocess.swift` (`onStdoutLine`, `control`), `Engine/Pipeline.swift` (`meter`, `passes`, ffmpeg's `-progress pipe:1` in `tool`), `App/PipelineRunner.swift` (`currentJob`, `pause`, `resume`, `stop`, `makeNext`, `queueFraction`, `queueTimeLeft`, `showSample`), `App/StatusSummary.swift` (`noteStatusLine`, `--debug-status-log`); views: `Views/Activity/ActivityWindow.swift` (the window, Now, Finished, Log, `ActivityButton`), `Views/ProgressViews.swift` (`ProgressRing`, `ProgressBlock`, `ProgressButtons`), the card's `StatusCapsule`, the list's Status column, `StatusBlock` in `OutputsTab`, `ViewerBanner`, `Views/MenuBar.swift`; `Fixtures.showProgress` (the sample talk being made, for snapshots and captures); tests `ProgressTests` (in `make test`) and `ProgressAcceptanceTests` (`make accept-progress`) |
-| The edited video (v2 parts M8b and M8c) | `mac/Prakriti/Render/`: `VideoPreview.swift` (M8c: the Viewer's Video, built from the plan the video was made from, `VideoSampleFolder`), `EditTimeline.swift` (the plan in frames and samples), `CompositionBuilder.swift`, `Instructions.swift` (`RenderInstruction`), `Compositor.swift`, `VideoAudio.swift` (decode, join with crossfades, master), `VideoWriter.swift`, `Mp4Boxes.swift` (moov, edit lists), `Captions.swift`, `VideoDescription.swift` (`Description.txt`), `ReadyChecklist.swift`, `OutputGate.swift` (the refusal and the only move), `VideoStep.swift` (`VideoRecord`, make and check); the pipeline's `.renderVideo` and `.checkVideo` steps and `PipelineOptions.makeVideo`; `Recording.videoJSON` and `videoProblem`; `App/VideoActions.swift` (Make Video); `Views/Inspector/VideoSection.swift`; since M8c `App/VideoEditActions.swift` (Restore, Remove, Take Out Again, Keep, Delete, Undo, `Recording.planRestores`, `restoresPending`, Watch Video), the Video rendition in `Views/Viewer/ViewerModel.swift`, `CaptionsOverlay` and `PictureToggle` in `Views/Viewer/PeopleOverlay.swift`, `Captions.cues(srt:)`; tests `RenderTests`, `ViewerVideoTests` (in `make test`), `VideoAcceptanceTests` (`make accept-video`), `ViewerVideoAcceptanceTests` (`make accept-viewer-video`) and `capture-window.swift --video` (`make look-video`) |
+| The edited video (v2 parts M8b and M8c) | `mac/Prakriti/Render/`: `VideoPreview.swift` (M8c: the Viewer's Video, built from the plan the video was made from, `VideoSampleFolder`), `EditTimeline.swift` (the plan in frames and samples), `CompositionBuilder.swift`, `Instructions.swift` (`RenderInstruction`), `Compositor.swift`, `VideoAudio.swift` (decode, join with crossfades, master), `VideoWriter.swift`, `Mp4Boxes.swift` (moov, edit lists), `Captions.swift`, `VideoDescription.swift` (`Description.txt`), `ReadyChecklist.swift`, `OutputGate.swift` (the not-checked refusal, the people output checks since M8d, and the only move), `VideoStep.swift` (`VideoRecord`, make and check); since M8d `VideoHiding.swift` (`HiddenFaces`, `video-hiding.json`) and `People/PictureOutputCheck.swift`; the pipeline's `.renderVideo` and `.checkVideo` steps and `PipelineOptions.makeVideo`; `Recording.videoJSON` and `videoProblem`; `App/VideoActions.swift` (Make Video); `Views/Inspector/VideoSection.swift`; since M8c `App/VideoEditActions.swift` (Restore, Remove, Take Out Again, Keep, Delete, Undo, `Recording.planRestores`, `restoresPending`, Watch Video), the Video rendition in `Views/Viewer/ViewerModel.swift`, `CaptionsOverlay` and `PictureToggle` in `Views/Viewer/PeopleOverlay.swift`, `Captions.cues(srt:)`; tests `RenderTests`, `ViewerVideoTests` (in `make test`), `VideoAcceptanceTests` (`make accept-video`), `ViewerVideoAcceptanceTests` (`make accept-viewer-video`), `PeopleInVideoTests` (in `make test`), `PeopleVideoAcceptanceTests` (`make accept-people-video`) and `capture-window.swift --video` (`make look-video`) |
 | Faces (v2 part M6a) | `mac/Prakriti/People/`: `FaceScan.swift` (the reader, Vision at two frames a second, the change-of-picture measure), `Tracks.swift` (`FaceBox` and the Vision conversion, `FaceTracker`, `FaceGrouping`, `FacesFound` with its lines), `PeopleFile.swift` (`PeopleFolders`, the people file, `FaceStep` with its job folder), `FaceCrops.swift` (the People tab's live crops, memory only); the pipeline's `.faces` step and `PipelineOptions.people`; `Recording.facesJSON`; `App/FaceActions.swift` (`applyFaces`, Look for Faces); `Views/Inspector/PeopleTab.swift` (`PeopleTab`, `FaceRow`, `PeopleLine`); the job cleanup in `AppModel.launch`; `--debug-face-scan` in `App/DebugSwitches.swift`; tests `PeopleTests` (in `make test`), `PeopleAcceptanceTests` and `scripts/people-crash-check.sh` (`make accept-people`) |
 | People files and job folders | `~/Library/Application Support/Prakriti/People/Recordings/<recording id>.json` and `.../Jobs/` (live); `.../Prakriti/Development/People/...` and `.../Development/Jobs/` (development) |
 | Swift packages | `swift-markdown` 0.9.0 (21 Sep 2026, with `swift-cmark` 0.9.0), pinned in `mac/project.yml` and `mac/Prakriti.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, both committed (v2 part M2a) |
@@ -2035,9 +2062,11 @@ top and its end. Reading the code is not verification, and neither is a passing 
     staging folder inside the make's staging folder; a video that fails the gate is deleted where it was made.** Reason:
     PLAN 2.1.11 and 2.2 rule 3: a video that failed a check must never sit in Outputs, one drag from YouTube. `RulesTests`
     fails if any other file under `Render/` moves a file.
-143. **Make Video refuses, in code, any recording whose people check has not run (faces and voices both) or where anyone
-    is not Included in the video; only part M8d may lift it.** Reason: PLAN 10.1 item 4, the video cannot hide a face or cut
-    a voice until M8d, so any order of shipping must stay safe.
+143. **Make Video refuses, in code, any recording whose people check has not run (faces and voices both); since part M8d nobody
+    else is refused, because the video hides and cuts them, and every video that hides or leaves anyone out passes the picture
+    and sound output checks inside `OutputGate` before it is kept.** Reason: PLAN 10.1 item 4, M8b refused anyone hidden or
+    left out until the video could hide a face and cut a voice; that refusal belonged to M8d alone to lift, and a check that
+    was needed and did not run counts as failed (`OutputGate.peopleProblems`).
 144. **The picture's media timescale is the frame's own (30000), never the writer's default 600.** Reason: measured 13 Oct,
     at 600 the 1001/30000 s frames sat 20 or 21 units apart and a frame asked for at its exact time was, in a 50-frame
     rhythm, the one before. The checklist's Frame timing line fails any file with uneven frames.
@@ -2100,6 +2129,22 @@ top and its end. Reading the code is not verification, and neither is a passing 
     top of the plan: a restored stretch drops only the fillers, stutters and restarts whose words it touches and keeps its
     pauses and silences as recorded; Ivan's cuts and trim and the people left out are still taken out, and the strip offers no
     Restore on time cut for someone left out (they are changed in People).
+
+156. **The faces hidden in the video are worked out once, in order, before it is drawn (`VideoHiding`), kept as
+    `video-hiding.json` beside the plan, and read by the compositor by the original's frame; the Viewer plays a video that
+    hides anyone only with that file from the same make (`VideoPreview.source`).** Reason: following a face between the
+    face step's sightings needs the frames in order, and the compositor is asked for frames out of order (the Viewer seeks);
+    worked out inside the compositor the file and the preview could hide different places. Measured 14 Oct: the Viewer's
+    frames against the MP4's 44.7 to 45.7 dB on two-people-mixed with the corner hidden. Never build the preview's hiding
+    from the choices as they stand now.
+157. **`FaceHide` is a half-face-width blur, about 4 blocks across the face, then one block's blur over the blocks; never
+    weaker.** Reason: measured 14 Oct on two-people-mixed's corner face (about 70 pixels wide), 201 frames: Vision still
+    found a face inside the hidden region in 5 frames with M6d's quarter-width blur and 8 blocks, 3 with half-width and 6
+    blocks, none once the blocks are softened. The picture output check fails the video on any of them.
+158. **A moment exactly at a join maps to the first frame of the piece after it (`EditTimeline.originalTime`).** Reason:
+    the inclusive end mapped the first frame after a cut to the frame before it, which the video never shows; the picture
+    output check then read the wrong frame's hidden regions (found 14 Oct at the cut for the left-out voice on
+    two-people-mixed).
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

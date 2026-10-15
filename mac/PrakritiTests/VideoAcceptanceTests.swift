@@ -67,15 +67,14 @@ final class VideoAcceptanceTests: XCTestCase {
             if slug == "13 Sep" { made13 = recording }
         }
 
-        // Make Video's refusal (PLAN M8b: by construction, until M8d). One face row of the 13 Sep talk set to Hide Face for the
-        // video: Make Video refuses with the line, nothing is queued, and the last good video stays where it was.
+        // The listening copy, then Make Video with someone hidden (PLAN M8b refused it until M8d): one face row of the 13 Sep
+        // talk set to Hide Face for the video is no longer refused.
         if let recording = made13, let row = recording.faces?.people.first {
             let folder = try XCTUnwrap(recording.outputFolder.map { URL(fileURLWithPath: $0, isDirectory: true) })
             let video = folder.appending(path: VideoStep.folderName)
-            // The copy Ivan watches for check 9, kept where no make reaches. Load-bearing: the refusal below removes the
-            // 13 Sep Video folder (decision 7: a refused make keeps nothing), and every later make of the talk (make accept,
-            // make regress) replaces its output folder, so the file the M8b builder pointed Ivan at was gone by the verifier's
-            // run. This folder is never written by the app.
+            // The copy Ivan watches for check 9, kept where no make reaches. Load-bearing: every later make of the talk (make
+            // accept, make regress) replaces its output folder, so the file the M8b builder pointed Ivan at was gone by the
+            // verifier's run. This folder is never written by the app.
             let listening = paths.outputs.deletingLastPathComponent().appending(path: "Listening check", directoryHint: .isDirectory)
             precondition(listening.path.hasPrefix(FileManager.default.homeDirectoryForCurrentUser.appending(path: "Prakriti/Dev").path))
             let kept = listening.appending(path: "2026-09-13 18-25-44 Video", directoryHint: .isDirectory)
@@ -83,21 +82,14 @@ final class VideoAcceptanceTests: XCTestCase {
             try FileManager.default.createDirectory(at: listening, withIntermediateDirectories: true)
             try FileManager.default.copyItem(at: video, to: kept)
             report.append("Listening copy for check 9: \(paths.display(kept.path)) (" + (try FileManager.default.contentsOfDirectory(atPath: kept.path).sorted().joined(separator: ", ")) + ")")
-            let filesBefore = try FileManager.default.contentsOfDirectory(atPath: video.path).sorted()
+            // Since part M8d Make Video no longer refuses a recording with someone hidden: the refusal is gone, and only a
+            // recording whose people check has not run is refused. (Making it with someone hidden is measured on
+            // two-people-mixed.mp4 by `make accept-people-video`.)
             let key = PersonKey.face(row.id, names: recording.resolvedNameTable)
             model.setChoice(.hideFace, for: key, in: recording)
             let refusal = model.videoRefusal(recording)
-            model.makeVideo(recording)
-            verdict("Make Video refuses a recording with someone hidden", refusal == OutputGate.notYet && !model.runner.isWaiting(recording)
-                    && model.videoProblems[recording.id] == OutputGate.notYet,
-                    "\"\(refusal ?? "no refusal")\"; queued: \(model.runner.isWaiting(recording)); the Video section says \"\(model.videoProblems[recording.id] ?? "")\"")
-            await model.runner.process(recording, trigger: .makeAgain)
-            let step = recording.latestRun?.steps.first { $0.name == PipelineStep.renderVideo.title }
-            let filesAfter = (try? FileManager.default.contentsOfDirectory(atPath: video.path).sorted()) ?? []
-            verdict("A make with someone hidden makes no video and keeps nothing it refused", step?.state == .skipped && recording.video == nil
-                    && recording.videoProblem == OutputGate.notYet && !FileManager.default.fileExists(atPath: video.path),
-                    "step \(step?.state.rawValue ?? "absent"): \(step?.detail ?? ""); Video folder before \(filesBefore.count) files, after "
-                    + (FileManager.default.fileExists(atPath: video.path) ? "\(filesAfter.count) files" : "removed with the make (Mac warning 29: the files of a make are this make's)"))
+            verdict("Make Video does not refuse a recording with someone hidden (part M8d lifted M8b's refusal)", refusal == nil,
+                    refusal.map { "refused: \($0)" } ?? "not refused; the video will hide row \(row.id)'s face")
             model.setChoice(.include, for: key, in: recording)
             XCTAssertNil(model.videoRefusal(recording))
         }

@@ -12,6 +12,9 @@ import Foundation
 // `edit-plan.json` says now. Plan Again rewrites that file without making the video, and a preview of a newer plan beside the
 // older file would show something that is not in the file. Then the Video rendition says so instead of playing.
 //
+// From part M8d the faces the video hid are drawn hidden here too: the same `HiddenFaces` the writer used, read from
+// `video-hiding.json` beside the plan, go into the same instructions (Mac warning 156).
+//
 // Nothing here reaches the network (RulesTests: no network type under Render/).
 
 enum VideoPreview {
@@ -29,7 +32,7 @@ enum VideoPreview {
     }
 
     /// The made video's file and its plan for a recording, or the reason the Video rendition cannot play, in one sentence.
-    static func source(folder: String?, video: VideoRecord?) -> Result<(mp4: URL, captions: URL, plan: EditPlan), Failure> {
+    static func source(folder: String?, video: VideoRecord?) -> Result<(mp4: URL, captions: URL, plan: EditPlan, hidden: HiddenFaces?), Failure> {
         guard let folder, let video else {
             return .failure(Failure(reason: "The edited video is not made for this recording. Make Video is in the inspector's Outputs."))
         }
@@ -44,7 +47,16 @@ enum VideoPreview {
         if !matches(plan: plan, video: video) {
             return .failure(Failure(reason: "The edit was planned again after this video was made, so it plays here once you Make Again."))
         }
-        return .success((mp4, base.appending(path: VideoStep.folderName).appending(path: video.captionsName), plan))
+        // The faces the video hid (v2 part M8d), from the same make: without them the Viewer would show faces the file hides,
+        // so a video that hides someone does not play without its own file (warning 156).
+        var hidden: HiddenFaces?
+        if (video.hiddenFaces ?? 0) > 0 {
+            guard let read = HiddenFaces.read(folder: base), abs(read.planMadeAt.timeIntervalSince(plan.madeAt)) < 1 else {
+                return .failure(Failure(reason: "Where the video hides faces is not in the recording's folder, so it plays here once you Make Again."))
+            }
+            hidden = read
+        }
+        return .success((mp4, base.appending(path: VideoStep.folderName).appending(path: video.captionsName), plan, hidden))
     }
 
     /// The plan on disk is the one the video was made from: the same moment (to the second, as both files keep it), or, for a
@@ -56,10 +68,10 @@ enum VideoPreview {
 
     /// Builds the preview: the plan's composition over the original (`CompositionBuilder`, as the writer builds it) with the
     /// made MP4's sound added on the edited clock.
-    static func build(plan: EditPlan, original: URL, mp4: URL) async throws -> Built {
+    static func build(plan: EditPlan, original: URL, mp4: URL, hidden: HiddenFaces? = nil) async throws -> Built {
         let built: CompositionBuilder.Built
         do {
-            built = try await CompositionBuilder.build(plan: plan, original: original)
+            built = try await CompositionBuilder.build(plan: plan, original: original, hidden: hidden)
         } catch let failure as CompositionBuilder.Failure {
             throw Failure(reason: failure.reason)
         }

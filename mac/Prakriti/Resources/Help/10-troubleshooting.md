@@ -74,9 +74,12 @@ Under Edited video in the inspector's Outputs, Prakriti says why in one sentence
   finish, or turn on Transcript for it and click Make Again.
 - **It says who appears and speaks in it has not been checked:** click Check People in the People tab,
   then Make Video.
-- **It says video for recordings with someone hidden or left out arrives in the next update:** someone in
-  the People tab is set to Hide Face or Leave Out. Set them to Include to make the video now, or wait for
-  the next update.
+- **It says a face Prakriti cannot account for at a time:** after the video was made, Prakriti found a face
+  in it that is not someone you included. Play the Original at that time with People on. If it is someone
+  you want hidden, choose Hide Face for them; if it is someone you are happy to show, choose Include. Then
+  click Make Again. If no box is drawn on that face, click Check People first.
+- **It says someone it heard sounds like a person you left out:** listen to the Original at that time,
+  check the choice for that voice in the People tab, then click Make Again.
 - **It says the edit plan could not be made:** see "If the edit plan is not made" above.
 - **The video was not kept:** Prakriti measures every video before it moves it into the recording's
   folder, and deletes one that does not play to its end or is not the length the plan keeps. Click Make
@@ -93,6 +96,8 @@ Choosing Video says why in one sentence.
   in the inspector's Outputs.
 - **The edit was planned again after this video was made:** Plan Again changed the plan, so the video
   in the folder no longer matches it. Click Make Again.
+- **It says where the video hides faces is not in the recording's folder:** the file that holds the hidden
+  places was moved or deleted. Click Make Again.
 - **The original is not on this Mac:** the viewer draws the video from the original recording. Download
   it in the Finder, then choose Video again.
 - **It says your newest changes are not in the video yet:** you restored or removed a piece, or changed

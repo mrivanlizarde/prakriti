@@ -22,7 +22,7 @@ extension AppModel {
             && !runner.isCurrent(recording) && !runner.isWaiting(recording) && recording.status != .working
     }
 
-    /// Make Video: refused in words when the people check has not run or someone is not Included (until part M8d);
+    /// Make Video: refused in words only when the people check has not run (since part M8d anyone may be hidden or left out);
     /// otherwise the Edited video is switched on for this recording and it is made again.
     func makeVideo(_ recording: Recording) {
         guard canMakeVideo(recording) else { return }

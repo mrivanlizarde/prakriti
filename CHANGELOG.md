@@ -5,6 +5,27 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-14, Wed: v2 part M8d, people in the video
+
+- **The edited video hides the face of everyone set to Hide Face or Leave Out in every frame, and cuts the speech of everyone
+  left out from picture and sound.** Why: REQUEST item 3b, "choose who is included in the output videos", and M8b had to
+  refuse those recordings until the video could do it (PLAN 10.1 item 4). Now only a recording never checked is refused.
+- **The hidden faces are followed once, in order, before the video is drawn, and kept as `video-hiding.json` beside the
+  plan; the compositor and the Viewer both read it.** Why: a face moves between the face step's two looks a second, so it
+  must be followed frame by frame, which needs the frames in order; the Viewer seeks, so the preview must read the same
+  regions the file used, or preview and file could hide different places.
+- **Before a video that hides or leaves anyone out is kept, its faces are found again five frames a second and its sound is
+  listened to again; any face that is not someone included, or any voice left out, stops it with the time.** Why: research
+  3.6 asks for both output checks, and a hiding that was only intended is not a hiding that was proved. A check that was
+  needed and did not run counts as failed.
+- **`FaceHide` is stronger: a half-face-width blur, about 4 blocks across the face, softened by one more blur.** Why: the new
+  picture check found Vision could still see a small face through M6d's lighter hiding in 5 of 201 frames of the fixture;
+  with the blocks softened it found none.
+- **A moment exactly at a cut now maps to the frame the video shows after it.** Why: the old mapping read the frame before the
+  cut, so the picture check looked up the wrong hidden regions there.
+- **The Other People Appear notice now names the video.** Why: the plan's third wording ("Their faces are blurred ...") was
+  written for a Leave Out default that Ivan's 12 Oct decision replaced; everyone starts as Include.
+
 ## 2026-10-14, Wed: v2 part M8c, the edited video in the Viewer
 
 - **Video in the toolbar plays the edited video inside the app, drawn by the same compositor from the same plan as the file,
