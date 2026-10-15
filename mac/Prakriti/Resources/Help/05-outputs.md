@@ -129,9 +129,15 @@ viewer shows it. Once a recording has a plan, Make Again plans it again with you
 Again does that alone, without making anything else.
 :::
 :::requires direction
-To steer one recording's plan (a style, a pace, a length, what to focus on), use Direction, just above
-Edit plan. The plan then shows in plain lines before anything is made. See
+To steer one recording's plan (a style, a pace, a length, what to focus on), use the inspector's
+Direction tab. The plan then shows in plain lines before anything is made. See
 [Editorial direction](08-editorial-direction.md).
+:::
+:::requires style
+A plan for a video also reads the parts of the talk (with the model chosen for Planning the edit), for
+its opening line, key phrases, terms, held moment and chapters. Those chapters go in the video's
+`Description.txt`, so the Ready checklist's Chapters line passes even with Titles, show notes and
+chapters off.
 :::
 :::unless renderedVideo
 Nothing else is made from the plan yet.
@@ -218,17 +224,20 @@ Again. Videos already made stay as they are.
 :::requires textOnScreen
 ### The title and names on screen
 
-Two kinds of text can appear on the edited video, each switched on or off in Settings, House Style,
-under Text on Screen.
+Text on the edited video is switched on or off in Settings, House Style, under Text on Screen.
 [Show Me](prakriti://show/settings/houseStyle)
 
-- **The title.** For the first 2 seconds, the recording's title as you set it in the inspector's Info.
+- **The title.** For 2 seconds as the talk begins, the recording's title as you set it in the inspector's Info.
   It sits on the side of the frame away from the teacher, as large as fits in three lines. A recording
   with no title shows none: nothing is written for you.
 - **The teacher's name.** Once, the first time the teacher is seen after the title, their name with
   "Teacher" under it, near the bottom of the frame on the side away from their face, for about 4
   seconds. Only for a teacher you named (Who Is Teaching, or a person whose role is Teacher) who is
   included in the video.
+- **Key phrases and terms.** The speaker's own words, and the Sanskrit terms the talk explains, from the
+  parts of the talk, switched on or off under Key phrases and Terms. See
+  [Editorial direction](08-editorial-direction.md). When the video opens on the talk's strongest line, the
+  title comes right after it.
 
 Text never covers a face: Prakriti checks every face it found, through each punch-in, for the whole
 time the text shows, and waits for a clear moment or leaves the text out. All text stays inside the
@@ -238,27 +247,6 @@ a soft shadow and no box behind it. It comes in over a third of a second and goe
 To change a title on screen, change the title in Info, then click Plan the Edit or Make Again.
 :::
 
-:::requires style
-### Edited video
-
-A video file ready to upload, made by Prakriti itself. The edit:
-
-- Takes out long pauses, filler words such as "um" and "uh", false starts and repeated takes.
-- Zooms in and out to hide cuts and to give weight to a key moment.
-- Puts key ideas on screen as clean text, in the speaker's own words.
-- Uses few, simple transitions.
-- Masters the sound so voices are clear and even.
-- Includes or blurs each person as you chose. See [Privacy and students](07-people-and-privacy.md).
-
-Beside the video you get:
-
-- Captions as a separate file (`.srt`) to upload with it.
-- A text file with the title, description, chapters and tags.
-- A **Ready to post** checklist. It measures the video against YouTube's published upload
-  recommendations: an MP4 file that starts playing before it finishes downloading, H.264 video, AAC
-  sound at 48 kHz, standard color (Rec. 709), the frame rate it was recorded at, and enough bitrate for
-  its size. Every line must pass before you approve.
-:::
 
 :::requires shorts
 ### Shorts

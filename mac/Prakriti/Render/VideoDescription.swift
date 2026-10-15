@@ -5,7 +5,8 @@ import Foundation
 // from the writing step when it ran; anything neither has is written as MISSING with what to do, never invented (Mac
 // warning 62).
 //
-// Chapters are the writer's, moved onto the edited video's clock through the plan (a chapter that starts in a stretch the
+// Chapters are the plan's own when it has them (v2 part M9d: one per part of the talk, made on the video's clock), else the
+// writer's, moved onto the edited video's clock through the plan (a chapter that starts in a stretch the
 // plan took out starts where the video picks up again), then held to YouTube's rules (support.google.com/youtube/answer/
 // 9884579, research-edit-engine.md 6.1): the first at 0:00, at least three, in order, each at least 10 seconds. Chapters
 // that break a rule are not written; the checklist says which rule.
@@ -28,13 +29,19 @@ struct VideoDescription: Codable, Equatable, Sendable {
     /// What goes with the video. `written` is the writing step's package (nil when it did not run); its chapter times are
     /// on `writtenClock`'s clock, mapped to the original's by `toOriginal`.
     static func make(title chosenTitle: String, notes: String, written: WrittenPackage?, toOriginal: (Double) -> Double?,
-                     timeline: EditTimeline) -> VideoDescription {
+                     timeline: EditTimeline, planChapters: [EditPlan.Chapter] = []) -> VideoDescription {
         var d = VideoDescription()
         let ownTitle = chosenTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         d.title = !ownTitle.isEmpty ? ownTitle : written?.titles.first.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.flatMap { $0.isEmpty ? nil : $0 }
         let ownNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         let writtenNotes = written?.showNotes.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         d.description = !ownNotes.isEmpty ? ownNotes : (writtenNotes.isEmpty ? nil : writtenNotes)
+        // The plan's own chapters first (v2 part M9d): made for this video, on its clock, opening line included.
+        let planned = planChapters.compactMap { c in c.seconds.map { Chapter(start: $0, title: c.title) } }
+        if planned.count == planChapters.count, !planned.isEmpty, problem(planned, duration: timeline.duration) == nil {
+            d.chapters = planned
+            return d
+        }
         guard let written, !written.chapters.isEmpty else {
             d.chapterProblem = "No chapters were written for it."
             return d

@@ -74,6 +74,14 @@ motivating parts"), or check that a model is chosen for Planning the edit in Set
 plan says it could not read the parts of the talk, that model did not answer: open LM Studio, or check
 the key in Settings, Models, then click Plan Again.
 
+### If the video has no opening line, key phrases or chapters
+
+They come from the parts of the talk, read by the model chosen for Planning the edit in Settings, Models.
+If the plan's lines say the parts could not be read, that model did not answer: open LM Studio, or check
+the key in Settings, Models, then click Plan Again. Check too that Open on the strongest line and Key
+phrases are on in Settings, House Style. A line that names money, a price or an offer is never used, and
+Calm opens on the talk itself.
+
 ### If the video is longer than the length you asked for
 
 The talk's main point and its close are always kept, with any part they depend on. When those alone run

@@ -30,8 +30,7 @@ struct OutputsTab: View {
                 // The edit plan (v2 part M8a), once a transcript is made: it is made from transcript.json. Short, so it
                 // comes before the long writing and podcast-ready sections.
                 if recording.madeFiles.contains(TranscriptFiles.asHeard) {
-                    // Direction (v2 part M9c), until the Direction tab (M9d): what the plan below is made with.
-                    DirectionSection(recording: recording)
+                    // Direction and the versions live in their own tab since v2 part M9d; the plan and the video stay here.
                     EditPlanSection(recording: recording)
                     // The edited video (v2 part M8b), made from the plan.
                     VideoSection(recording: recording)

@@ -63,7 +63,8 @@ enum Capability: String, CaseIterable, Sendable {
     /// the planning model, the chips, the parts of the talk (beats) and the choice among them under a length, and the plan in
     /// plain lines before the video is made. The Direction tab, versions, key phrases, the hook and chapters are `style`.
     case direction
-    /// The rest of M9 (M9d): key-phrase text, term cards, the hook, chapters, versions, the Direction tab and the marks lane.
+    /// The rest of M9 (M9d): key-phrase text, term cards, the opening line (the hook), the held moment, chapters, versions, the
+    /// Direction tab and the marks lane.
     case style
     /// Timelines for Final Cut Pro and DaVinci Resolve (M10).
     case timelines
@@ -80,10 +81,10 @@ enum Capabilities {
     /// Activity window (M4a), the capture check (M4b), Anthropic and OpenAI (M5b), faces (M6a), voices and names
     /// (M6b), choices applied to audio (M6c), hiding in pictures (M6d), the People gallery (M7a), recognition (M7b), the
     /// edit plan (M8a), the rendered MP4 (M8b), the video in the Viewer (M8c), the House Style with its zooms (M9a), the title and
-    /// names on screen (M9b), and direction for one recording (M9c). Each
-    /// later part switches its own on.
+    /// names on screen (M9b), direction for one recording (M9c), and the opening line, key phrases, terms, chapters, versions and
+    /// the Direction tab (M9d). Each later part switches its own on.
     static let built: Set<Capability> = [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery,
-                                         .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction]
+                                         .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style]
 
     /// Every capability, for the test that every article and every block is visible once all are built.
     static let all = Set(Capability.allCases)

@@ -82,9 +82,6 @@ From best to simplest:
 
 - **Resolution: 4K (3840 by 2160).** A 4K frame holds four 1080p frames, so the picture stays sharp
   when it is cropped or enlarged.
-:::requires style
-  Prakriti can zoom in up to twice as close and still deliver a sharp 1080p video.
-:::
 :::requires shorts
   It can also cut a full-quality vertical short from the middle of the frame.
 :::
@@ -147,10 +144,6 @@ Sound matters more than picture. A soft image is forgiven. A voice that cannot b
   repeat and keeps the last complete take.
 :::
 - Leave a second of quiet before you start and after you finish.
-:::requires style
-- Mark a moment as you record: press the OBS chapter marker key after a strong moment, or right after a
-  mistake. Prakriti reads the markers.
-:::
 
 ## Record a 10-second test
 

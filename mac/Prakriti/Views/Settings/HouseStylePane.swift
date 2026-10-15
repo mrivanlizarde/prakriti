@@ -84,10 +84,19 @@ struct HouseStylePane: View {
             }
 
             Section {
+                // The opening line (v2 part M9d), first, because the title follows it.
+                Toggle(isOn: $settings.houseStyle.openingLine) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Open on the strongest line").font(AppFont.body)
+                        Text(Self.openingLine(Style.make(settings.houseStyle.with(openingLine: true))))
+                            .font(AppFont.secondary).foregroundStyle(.appSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
                 Toggle(isOn: $settings.houseStyle.titleOnScreen) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Title at the start").font(AppFont.body)
-                        Text("The recording's title, as you set it in Info, for the first 2 seconds, beside the teacher and never over a face. A recording with no title shows none.")
+                        Text("The recording's title, as you set it in Info, for 2 seconds as the talk begins (after the opening line), beside the teacher and never over a face. A recording with no title shows none.")
                             .font(AppFont.secondary).foregroundStyle(.appSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -96,6 +105,24 @@ struct HouseStylePane: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Teacher's name").font(AppFont.body)
                         Text("Once, the first time the teacher is seen after the title: their name and \u{201C}Teacher\u{201D} near the bottom, on the side away from their face, for about 4 seconds. Only for a teacher you named who is included in the video.")
+                            .font(AppFont.secondary).foregroundStyle(.appSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Picker(selection: $settings.houseStyle.keyPhrases) {
+                    ForEach(TextLevel.allCases) { Text($0.title).tag($0) }
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Key phrases").font(AppFont.body)
+                        Text(Self.keyPhraseLine(settings.houseStyle))
+                            .font(AppFont.secondary).foregroundStyle(.appSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Toggle(isOn: $settings.houseStyle.termCards) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Terms").font(AppFont.body)
+                        Text("A Sanskrit term the talk explains, spelled as the Yoga Marga word list spells it, once, near the bottom on the side away from the teacher.")
                             .font(AppFont.secondary).foregroundStyle(.appSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -128,6 +155,23 @@ struct HouseStylePane: View {
             + "About \(n(style.changesPerMinute.lowerBound)) to \(n(style.changesPerMinute.upperBound)) changes of picture a minute"
         line += style.openingChanges > 0 ? ", \(style.openingChanges) in the first 30 seconds." : "."
         return line
+    }
+
+    /// The opening line in numbers for the chosen style (v2 part M9d).
+    static func openingLine(_ style: Style) -> String {
+        guard let range = style.opening else {
+            return "\(style.name.title) opens on the talk itself, so there is no opening line in this style."
+        }
+        return String(format: "The video opens on the talk's strongest line, %.0f to %.0f seconds in the speaker's own words, then the title, then the talk from its start. The line is chosen from the parts of the talk the planning model marks, and checked word for word.",
+                      range.lowerBound, range.upperBound)
+    }
+
+    /// What Key phrases does at its setting, in numbers (v2 part M9d).
+    static func keyPhraseLine(_ house: HouseStyle) -> String {
+        let style = Style.make(house)
+        guard let every = style.keyPhraseEvery else { return "None." }
+        return String(format: "2 to 6 of the speaker's own words, on the side away from the teacher, at most one every %.0f to %.0f seconds. Subtle is the style's own rate, Bold is Energetic's.",
+                      every.lowerBound, every.upperBound)
     }
 
     /// What the chosen punch-ins do with this style, in numbers.

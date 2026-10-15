@@ -81,14 +81,32 @@ enum PlanStep {
         guard !cut.kept.isEmpty else {
             throw Failure(reason: "Nothing would be left after the trim, the cuts and the people left out, so no plan was made.")
         }
+        // The held moment (v2 part M9d, research 2.3): whole sentences of the main point's beat, kept as recorded and still. Only
+        // for a recording with a picture and beats, in a style that holds one. Chosen before the parts are, so the length a
+        // direction asks for is measured with it: the main point is always kept (`Selection`).
+        let picture = setup.frameRate != nil && setup.pictureHeight > 0
+        var held: TimeRange?
+        if picture, let range = style.held, let all = setup.beats?.beats, !all.isEmpty {
+            var forced = setup.people.cuts + input.edits.cuts
+            if let s = input.edits.start { forced.append(TimeRange(start: 0, end: s)) }
+            if let e = input.edits.end { forced.append(TimeRange(start: e, end: setup.duration)) }
+            held = HeldMoment.choose(beats: all, kept: Set(all.map(\.id)), words: words.words, starts: cut.refinedStart, ends: cut.refinedEnd,
+                                     range: range, forced: forced)
+            if let h = held {
+                input.held = [h]
+                let again = RoughCut.make(input)
+                if again.kept.isEmpty { input.held = []; held = nil } else { cut = again }
+            }
+        }
         // Choosing beats under the direction (v2 part M9c): what the rough cut keeps of each beat is what it costs; the parts
         // left out are cut like Ivan's own cuts, from the middle of the pause before to the middle of the pause after.
         var choice: EditPlan.BeatChoice?
         var keptBeats: [Beat] = []
         if let beatsFile = setup.beats, fields.needsBeats, !beatsFile.beats.isEmpty {
             let beats = beatsFile.beats
-            // The ending's room is added after the selection, so the budget leaves room for it and a second.
-            let room = style.endingSeconds + 1
+            // The ending's room and the opening line (v2 part M9d) are added after the selection, so the budget leaves room for
+            // them and a second.
+            let room = style.endingSeconds + 1 + (style.opening?.upperBound ?? 0)
             var budget = fields.targetSeconds.map { max(0, $0 - room) }
             var outcome = Selection.Outcome(kept: beats.map(\.id), dropped: [], keptSeconds: 0, value: 0, overBudget: false)
             // What each beat costs is measured once, on the cut before anything is left out.
@@ -100,7 +118,7 @@ enum PlanStep {
                 // Joins change what a beat keeps by a little: when the cut runs over the length, the budget comes down by as
                 // much and the beats are chosen again.
                 guard let target = fields.targetSeconds, let b = budget else { break }
-                let over = cut.keptSeconds + style.endingSeconds - target
+                let over = cut.keptSeconds + style.endingSeconds + (style.opening?.upperBound ?? 0) - target
                 if over <= 0 || outcome.overBudget { break }
                 budget = max(0, b - over - 0.5)
             }
@@ -115,6 +133,7 @@ enum PlanStep {
         }
         let name = setup.original.deletingPathExtension().lastPathComponent
         var plan = EditPlan.from(cut, words: words, input: input, recording: name, people: setup.people, signature: setup.signature, madeAt: now)
+        plan.held = held.map { TimeRange(start: EditPlan.round3($0.start), end: EditPlan.round3($0.end)) }
         plan.basis.house = setup.house.signature
         plan.basis.direction = setup.direction.signature
         plan.style = style.name.rawValue
@@ -136,20 +155,58 @@ enum PlanStep {
             }
         }
         // The picture (v2 part M9a): punch-ins, push-ins and the held ending, only for a recording with a picture.
-        if setup.frameRate != nil && setup.pictureHeight > 0 {
+        if picture {
             let refined = Dictionary(plan.words.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-            plan.visual = VisualPlan.make(.init(plan: plan, words: words.words, style: style, subject: setup.subject,
-                                                sourceHeight: setup.pictureHeight, outputHeight: setup.pictureHeight,
-                                                beatStarts: keptBeats.dropFirst().map { refined[$0.from]?.in ?? $0.start },
-                                                keyLines: keptBeats.compactMap { b in b.keyLine.map { refined[$0.from]?.in ?? b.start } }))
-            // The text on screen (v2 part M9b), placed after the punch-ins so it is kept clear of every face as framed.
+            // The opening line (v2 part M9d): the strongest self-contained line, played first, made of the talk's own kept spans.
+            if let range = style.opening, !keptBeats.isEmpty,
+               let hook = Hook.choose(.init(spans: plan.spans, times: refined, words: words.words, envelope: envelope, frame: frame, beats: keptBeats,
+                                            range: range, pause: style.sentenceTarget)) {
+                // The talk now starts after the opening line, at a join: its first span keeps half a sentence's pause before its
+                // first word, not the half second of room a video's very start keeps (measured 15 Oct: 0.55 s of silence at 0:07 of
+                // the 6 Sep Energetic video, over its 0.35 s trigger). The silence before it goes with the trimmed start.
+                if let first = plan.spans.first, let start = refined[first.from]?.in,
+                   let t = Hook.quiet(from: first.in, to: start - style.leadIn, near: start - max(0.08, style.sentenceTarget / 2),
+                                      .init(spans: [], times: [:], words: [], envelope: envelope, frame: frame, beats: [], range: range)), t > first.in + frame.seconds / 2 {
+                    let old = first.in
+                    plan.spans[0].in = EditPlan.round6(t)
+                    if let k = plan.removed.firstIndex(where: { abs($0.to - old) < 1e-6 }) { plan.removed[k].to = plan.spans[0].in }
+                }
+                plan.spans = hook.spans + plan.spans
+            }
+            // The words to put on screen (v2 part M9d): each kept part's key phrase, and the word list's terms it explains.
             var text = setup.text
             text.showTitle = text.showTitle && house.titleOnScreen
             text.showNames = text.showNames && house.namesOnScreen
-            let items = TextPlan.make(plan: plan, setup: text, pictureHeight: setup.pictureHeight)
+            text.keyPhraseEvery = style.keyPhraseEvery
+            text.held = plan.held
+            text.keyPhrases = Self.keyPhrases(keptBeats, words: words.words, refined: refined)
+            text.terms = style.termCards ? Self.terms(keptBeats, words: words.words, refined: refined) : []
+            let minutes = plan.keptSeconds / 60
+            let phraseRoom = style.keyPhraseEvery.map { Int((minutes * 60 / $0.lowerBound).rounded(.down)) } ?? 0
+            let expectedText = min(text.keyPhrases.count, phraseRoom) + Set(text.terms.map { $0.text.lowercased() }).count
+                + (text.showTitle && !text.title.isEmpty ? 1 : 0) + (text.showNames ? text.teachers.count : 0)
+            plan.visual = VisualPlan.make(.init(plan: plan, words: words.words, style: style, subject: setup.subject,
+                                                sourceHeight: setup.pictureHeight, outputHeight: setup.pictureHeight,
+                                                beatStarts: keptBeats.dropFirst().map { refined[$0.from]?.in ?? $0.start },
+                                                keyLines: keptBeats.compactMap { b in b.keyLine.map { refined[$0.from]?.in ?? b.start } },
+                                                held: plan.held, textChanges: expectedText))
+            // The text on screen (v2 part M9b), placed after the punch-ins so it is kept clear of every face as framed.
+            var items = TextPlan.make(plan: plan, setup: text, pictureHeight: setup.pictureHeight)
+            // White text over a bright picture is placed again, that stretch kept clear like a face (`TextLight`, v2 part M9d).
+            for _ in 0..<TextLight.rounds where !items.isEmpty {
+                var placed = plan
+                placed.visual += items
+                let bright = await TextLight.bright(items, plan: placed, original: setup.original)
+                guard !bright.isEmpty else { break }
+                for (_, box, times) in bright { text.faces += times.map { FaceSpot(time: $0, box: box) } }
+                text.faces.sort { $0.time < $1.time }
+                items = TextPlan.make(plan: plan, setup: text, pictureHeight: setup.pictureHeight)
+            }
             if !items.isEmpty {
                 plan.visual = (plan.visual + items).sorted { ($0.in ?? .infinity, $0.kind) < ($1.in ?? .infinity, $1.kind) }
             }
+            // Chapters (v2 part M9d), from the kept parts, on the video's own clock.
+            plan.chapters = Chapters.make(plan: plan, beats: keptBeats, words: words.words)
         }
         plan.planLines = Self.lines(plan, style: style, beats: setup.beats?.beats ?? [], choice: choice)
         let problems = PlanValidation.check(plan, words: words)
@@ -158,6 +215,33 @@ enum PlanStep {
         }
         let d = clock.now - started
         return Outcome(plan: plan, seconds: Double(d.components.seconds) + Double(d.components.attoseconds) / 1e18)
+    }
+
+    /// Each kept part's key phrase as words to show (v2 part M9d): its words as said, the full stop or comma at the end left off.
+    static func keyPhrases(_ beats: [Beat], words: [PlanWord], refined: [String: EditPlan.WordTime]) -> [TextPlan.Moment] {
+        beats.compactMap { beat in
+            guard let phrase = beat.keyPhrase, let a = PlanWord.index(of: phrase.from), let b = PlanWord.index(of: phrase.to), a <= b, b < words.count else { return nil }
+            let shown = PlanWords.text(words[a...b]).trimmingCharacters(in: CharacterSet(charactersIn: ".,;: \u{201C}\u{201D}\""))
+            // Ivan's copy rules hold for words on screen too (`CopyRules`): a phrase naming money, a price or an offer is not shown.
+            guard !shown.isEmpty, CopyRules.flag(shown) == nil else { return nil }
+            return TextPlan.Moment(from: phrase.from, to: phrase.to, start: refined[phrase.from]?.in ?? words[a].start, end: refined[phrase.to]?.out ?? words[b].end,
+                                   text: shown, rank: Hook.rank(beat), words: b - a + 1)
+        }
+    }
+
+    /// The word list's terms each kept part explains (v2 part M9d), where the term is first said in it, spelled as the list spells
+    /// it (first letter capital). A term the model named that the list does not hold is never shown.
+    static func terms(_ beats: [Beat], words: [PlanWord], refined: [String: EditPlan.WordTime]) -> [TextPlan.Moment] {
+        var out: [TextPlan.Moment] = []
+        for beat in beats {
+            guard let a = PlanWord.index(of: beat.from), let b = PlanWord.index(of: beat.to), a <= b, b < words.count else { continue }
+            for said in beat.terms {
+                guard let term = Lexicon.term(said), let i = (a...b).first(where: { Lexicon.term(words[$0].text) == term }) else { continue }
+                out.append(TextPlan.Moment(from: words[i].id, to: words[i].id, start: refined[words[i].id]?.in ?? words[i].start,
+                                           end: refined[words[i].id]?.out ?? words[i].end, text: term.prefix(1).uppercased() + term.dropFirst(), rank: 0, words: 1))
+            }
+        }
+        return out
     }
 
     /// How much of a beat and a removed stretch overlap, in seconds.
@@ -220,6 +304,21 @@ enum PlanStep {
                 lines.append("The parts that must stay (the main point, the close, what you asked to keep whole) run over \(Direction.minutes(target)) min.")
             }
         }
+        // What the parts of the talk add (v2 part M9d), in numbers only.
+        if let hook = plan.hook, let first = plan.words.first(where: { $0.id == hook.from }) {
+            lines.append(String(format: "Opens on a line from %@ (%.0f s), then the title and the talk from its start.", Format.timecode(first.in), hook.seconds))
+        }
+        let phrases = plan.visual.filter { $0.kind == EditPlan.Visual.keyPhrase }.count, terms = plan.visual.filter { $0.kind == EditPlan.Visual.term }.count
+        if phrases + terms > 0 {
+            var parts: [String] = []
+            if phrases > 0 { parts.append(Format.count(phrases, "key phrase") + " in the speaker's own words") }
+            if terms > 0 { parts.append(Format.count(terms, "term") + " from the word list") }
+            lines.append("On screen: " + EditPlan.joined(parts) + ".")
+        }
+        if let held = plan.held {
+            lines.append(String(format: "Holds one still shot for %.0f s from %@, the main point, uncut.", held.end - held.start, Format.timecode(held.start)))
+        }
+        if !plan.chapters.isEmpty { lines.append(Format.count(plan.chapters.count, "chapter") + " for YouTube, the first at 0:00.") }
         lines.append("Ends at \(Format.timecode(timeline.duration)).")
         return lines
     }

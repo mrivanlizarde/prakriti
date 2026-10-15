@@ -188,7 +188,7 @@ enum VideoStep {
         let cues = Captions.cues(Captions.words(plan: setup.plan, words: words, timeline: built.timeline), duration: built.timeline.duration)
         try Captions.srt(cues).write(to: srt, atomically: true, encoding: .utf8)
         let description = VideoDescription.make(title: setup.title, notes: setup.notes, written: setup.written, toOriginal: setup.writtenToOriginal,
-                                                timeline: built.timeline)
+                                                timeline: built.timeline, planChapters: setup.plan.chapters)
         try description.text.write(to: folder.appending(path: VideoDescription.fileName), atomically: true, encoding: .utf8)
         return Made(folder: folder, mp4: mp4, srt: srt, description: description, timeline: built.timeline, renderSize: built.renderSize,
                     frames: written.frames, renderSeconds: written.seconds, audio: audio, captionsBehind: cues.map(\.behind).max() ?? 0,

@@ -112,7 +112,8 @@ struct MainView: View {
         case .makeAgain:
             "It is made again with its trim, its cuts and its choices. The files made before are replaced once the new ones are ready, and the original recording is not changed."
         case .approve:
-            "Copies \(Format.madeFiles(ApprovalCheck.filesToApprove(recording))) to \(model.paths.display(model.approvedFolder(for: recording).path)), with a receipt. Nothing is uploaded or published."
+            (model.approvalVersionLine(recording).map { "Approves the video's " + $0.prefix(1).lowercased() + $0.dropFirst() + " " } ?? "")
+                + "Copies \(Format.madeFiles(ApprovalCheck.filesToApprove(recording))) to \(model.paths.display(model.approvedFolder(for: recording).path)), with a receipt. Nothing is uploaded or published."
         case .removeFromLibrary:
             "Prakriti forgets this recording and moves its files in Outputs to the Trash. The original recording and anything in Approved are not touched, and its folder does not bring it back as new. To bring it back, add the file with File, Add File."
         }

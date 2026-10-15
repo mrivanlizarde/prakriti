@@ -112,11 +112,18 @@ struct HouseStyle: Codable, Equatable, Sendable {
     var titleOnScreen = true
     /// Each teacher's name on screen once, near the bottom of the frame (v2 part M9b): the lower third.
     var namesOnScreen = true
+    /// Key phrases on screen (v2 part M9d, research 2.5's Text): Off, Subtle (the style's own rate, Clear about one a minute and a
+    /// half) or Bold (Energetic's, one every 20 to 40 s). The speaker's own words, from the parts of the talk.
+    var keyPhrases = TextLevel.subtle
+    /// A Sanskrit term the talk explains, spelled as the Yoga Marga word list spells it, on screen once (v2 part M9d).
+    var termCards = true
+    /// The video opens on the talk's strongest line, then the title, then the talk from its start (v2 part M9d, research 2.3).
+    var openingLine = true
 
     static let standard = HouseStyle()
 
     init(style: StyleName = .clear, pace: Pace = .balanced, punchIns: PunchLevel = .standard, teaching: Bool = false, endingRoom: Bool = true,
-         titleOnScreen: Bool = true, namesOnScreen: Bool = true) {
+         titleOnScreen: Bool = true, namesOnScreen: Bool = true, keyPhrases: TextLevel = .subtle, termCards: Bool = true, openingLine: Bool = true) {
         self.style = style
         self.pace = pace
         self.punchIns = punchIns
@@ -124,6 +131,16 @@ struct HouseStyle: Codable, Equatable, Sendable {
         self.endingRoom = endingRoom
         self.titleOnScreen = titleOnScreen
         self.namesOnScreen = namesOnScreen
+        self.keyPhrases = keyPhrases
+        self.termCards = termCards
+        self.openingLine = openingLine
+    }
+
+    /// The same House Style with the opening line on or off (the pane's line describes the style's own opening line).
+    func with(openingLine: Bool) -> HouseStyle {
+        var h = self
+        h.openingLine = openingLine
+        return h
     }
 
     /// Reads every setting that is there and takes the standard for any that is not, so a House Style saved before a setting
@@ -139,12 +156,17 @@ struct HouseStyle: Codable, Equatable, Sendable {
         endingRoom = (try? c.decodeIfPresent(Bool.self, forKey: .endingRoom)) ?? standard.endingRoom
         titleOnScreen = (try? c.decodeIfPresent(Bool.self, forKey: .titleOnScreen)) ?? standard.titleOnScreen
         namesOnScreen = (try? c.decodeIfPresent(Bool.self, forKey: .namesOnScreen)) ?? standard.namesOnScreen
+        keyPhrases = (try? c.decodeIfPresent(TextLevel.self, forKey: .keyPhrases)) ?? standard.keyPhrases
+        termCards = (try? c.decodeIfPresent(Bool.self, forKey: .termCards)) ?? standard.termCards
+        openingLine = (try? c.decodeIfPresent(Bool.self, forKey: .openingLine)) ?? standard.openingLine
     }
+
 
     /// One line that changes whenever a setting does: kept in the plan's basis, so the app can say the plan is behind.
     var signature: String {
         "\(style.rawValue) pace \(pace.rawValue) punch-ins \(punchIns.rawValue) teaching \(teaching ? 1 : 0) ending \(endingRoom ? 1 : 0)"
             + " title \(titleOnScreen ? 1 : 0) names \(namesOnScreen ? 1 : 0)"
+            + " phrases \(keyPhrases.rawValue) terms \(termCards ? 1 : 0) opening \(openingLine ? 1 : 0)"
     }
 
     /// Reads the preference, falling back to the standard for anything missing or unreadable.
@@ -214,6 +236,15 @@ struct Style: Equatable, Sendable {
     var changeAim = 0.5
     /// Speech ends this long before the last frame, the picture held wide (0: no room at the end).
     var endingSeconds: Double
+    /// The opening line (v2 part M9d, research 2.3 and 2.4's Hook): how long the strongest line played first may be, in seconds;
+    /// nil for none (Calm opens on the welcome).
+    var opening: ClosedRange<Double>? = nil
+    /// Key phrases on screen (v2 part M9d, research 2.4): at most one in this many seconds of the video; nil for none.
+    var keyPhraseEvery: ClosedRange<Double>? = nil
+    /// The held moment (v2 part M9d, research 2.3): one stretch of the main point this long, kept uncut and still; nil for none.
+    var held: ClosedRange<Double>? = nil
+    /// Term cards (v2 part M9d): a term the talk explains, spelled from the word list, once.
+    var termCards = false
 
     var teaching: Bool
     var pace: Pace
@@ -236,22 +267,26 @@ struct Style: Equatable, Sendable {
             Style(name: .clear, insideTarget: 0.18, insideTrigger: 0.40, sentenceTarget: 0.35, sentenceTrigger: 0.60, protectedLimit: 4, leadIn: 0.08,
                   changesPerMinute: 6...8, openingChanges: 10, medianShot: 5.5...6.5, shortestShot: 2.0, openingShortest: 1.5,
                   punchScales: [1.00, 1.12], punchOnlyWhereCutsJump: false, punchInsideSpans: true,
-                  pushIn: PushIn(to: 1.05, seconds: 4, every: 90), snapZoom: nil, endingSeconds: 5, teaching: false, pace: .balanced, length: .whole)
+                  pushIn: PushIn(to: 1.05, seconds: 4, every: 90), snapZoom: nil, endingSeconds: 5, opening: 5...15, keyPhraseEvery: 60...90, held: 30...60,
+                  termCards: true, teaching: false, pace: .balanced, length: .whole)
         case .calm:
             Style(name: .calm, insideTarget: 0.30, insideTrigger: 0.70, sentenceTarget: 0.60, sentenceTrigger: 1.00, protectedLimit: 8, leadIn: 0.12,
                   changesPerMinute: 3...4, openingChanges: 0, medianShot: 10...15, shortestShot: 5.0, openingShortest: 5.0,
                   punchScales: [1.00, 1.06], punchOnlyWhereCutsJump: true, punchInsideSpans: true,
-                  pushIn: PushIn(to: 1.04, seconds: 6, every: 150), snapZoom: nil, endingSeconds: 5, teaching: false, pace: .balanced, length: .whole)
+                  pushIn: PushIn(to: 1.04, seconds: 6, every: 150), snapZoom: nil, endingSeconds: 5, opening: nil, keyPhraseEvery: 120...180,
+                  held: 30...60, termCards: true, teaching: false, pace: .balanced, length: .whole)
         case .energetic:
             Style(name: .energetic, insideTarget: 0.10, insideTrigger: 0.25, sentenceTarget: 0.20, sentenceTrigger: 0.35, protectedLimit: 2, leadIn: 0.06,
                   changesPerMinute: 12...15, openingChanges: 14, medianShot: 3...4, shortestShot: 1.5, openingShortest: 1.2,
                   punchScales: [1.00, 1.15, 1.25], punchOnlyWhereCutsJump: false, punchInsideSpans: true,
-                  pushIn: nil, snapZoom: SnapZoom(to: 1.30, frames: 6, every: 45), endingSeconds: 5, teaching: false, pace: .balanced, length: .whole)
+                  pushIn: nil, snapZoom: SnapZoom(to: 1.30, frames: 6, every: 45), endingSeconds: 5, opening: 3...8, keyPhraseEvery: 20...40,
+                  held: nil, termCards: true, teaching: false, pace: .balanced, length: .whole)
         case .story:
             Style(name: .story, insideTarget: 0.22, insideTrigger: 0.50, sentenceTarget: 0.45, sentenceTrigger: 0.80, protectedLimit: 4, leadIn: 0.10,
                   changesPerMinute: 4...6, openingChanges: 6, medianShot: 7...9, shortestShot: 3.0, openingShortest: 2.5,
                   punchScales: [1.00, 1.10], punchOnlyWhereCutsJump: false, punchInsideSpans: true,
-                  pushIn: PushIn(to: 1.06, seconds: 6, every: 60), snapZoom: nil, endingSeconds: 5, teaching: false, pace: .balanced, length: .whole)
+                  pushIn: PushIn(to: 1.06, seconds: 6, every: 60), snapZoom: nil, endingSeconds: 5, opening: 10...20, keyPhraseEvery: 50...70,
+                  held: 30...60, termCards: true, teaching: false, pace: .balanced, length: .whole)
         }
     }
 
@@ -301,6 +336,15 @@ struct Style: Equatable, Sendable {
             style.snapZoom = nil
         }
         style.endingSeconds = house.endingRoom ? 5 : 0
+        // What goes on the picture from the parts of the talk (v2 part M9d): key phrases at the style's own rate (Subtle) or
+        // Energetic's (Bold), or none; term cards; the opening line.
+        switch house.keyPhrases {
+        case .off: style.keyPhraseEvery = nil
+        case .subtle: break
+        case .bold: style.keyPhraseEvery = base(.energetic).keyPhraseEvery
+        }
+        style.termCards = house.termCards
+        if !house.openingLine { style.opening = nil }
         style.length = length
         return style
     }

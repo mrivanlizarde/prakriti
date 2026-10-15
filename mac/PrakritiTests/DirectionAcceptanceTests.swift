@@ -67,6 +67,8 @@ final class DirectionAcceptanceTests: XCTestCase {
         let model = AppModel(container: AppModel.inMemoryContainer(), paths: paths, settings: .ephemeral(), log: AppLog(directory: paths.logs), now: Date.init)
         _ = try PrakritiStore.seedIfEmpty(model.context, paths: paths, now: Date())
         model.runner.stableWait = .seconds(2)
+        // The parts of the talk are v2 part M9d's: this check measures what it always measured, with no model asked for them.
+        model.runner.askForBeats = false
         // Planning on LM Studio, counted; no cloud client can be made.
         model.settings.provider[.planning] = .lmStudio
         let counted = Mutex<[CountingClient]>([])

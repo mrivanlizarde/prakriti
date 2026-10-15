@@ -308,7 +308,8 @@ struct ViewerTimeline: View {
 
     var body: some View {
         let viewer = model.viewer
-        TimelineLite(spans: ViewerTimeline.spans(recording, duration: duration, model: model), duration: duration,
+        TimelineLite(spans: ViewerTimeline.spans(recording, duration: duration, model: model), marks: ViewerTimeline.marks(recording, model: model),
+                     duration: duration,
                      position: viewer.hasPosition ? viewer.currentOriginal : nil, selected: viewer.selectedSpan) { span in
             viewer.select(span)
             model.inspectorShown = true
@@ -325,6 +326,14 @@ extension ViewerTimeline {
         if model.viewer.rendition == .original, let plan = model.editPlan(for: recording) { return TimelineSpan.spans(plan: plan) }
         return TimelineSpan.spans(edits: recording.edits, duration: duration)
     }
+
+    /// The marks lane (v2 part M9d): what the plan on show adds, on the Video or the Original.
+    @MainActor
+    static func marks(_ recording: Recording, model: AppModel) -> [TimelineMark] {
+        if model.viewer.rendition == .video, let plan = model.viewer.videoPlan { return TimelineMark.marks(plan: plan) }
+        if model.viewer.rendition == .original, let plan = model.editPlan(for: recording) { return TimelineMark.marks(plan: plan) }
+        return []
+    }
 }
 
 /// The transcript, wired to the Viewer and the edit.
@@ -336,7 +345,7 @@ struct ViewerTranscript: View {
         let viewer = model.viewer
         // On the Video (v2 part M8c), the words the video keeps; every word it took out is struck through.
         let kept = viewer.rendition == .video && viewer.videoPlan != nil
-            ? viewer.videoPlan!.spans.map { Mastering.Span(start: $0.in, end: $0.out) }
+            ? viewer.videoPlan!.mainSpans.map { Mastering.Span(start: $0.in, end: $0.out) }
             : recording.duration.map { recording.edits.segments(duration: $0) } ?? [Mastering.Span(start: 0, end: .greatestFiniteMagnitude)]
         TranscriptTextView(
             document: viewer.document, kept: kept, playing: viewer.currentSentence?.id, selected: viewer.selectedWords, follow: viewer.followPlayback,

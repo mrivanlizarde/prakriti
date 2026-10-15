@@ -129,8 +129,8 @@ enum BrowserSort: String, CaseIterable, Identifiable, Hashable, Sendable {
 
 /// The inspector's tabs as built in part M3a (People and Direction come with their parts).
 enum InspectorTab: String, CaseIterable, Identifiable, Hashable, Sendable {
-    /// People (v2 part M6a) sits second, where the design spec puts it (3.5): Outputs, People, Direction, Checks, Info.
-    case outputs, people, checks, info
+    /// People (v2 part M6a) sits second, where the design spec puts it (3.5): Outputs, People, Direction (v2 part M9d), Checks, Info.
+    case outputs, people, direction, checks, info
 
     var id: String { rawValue }
 
@@ -138,6 +138,7 @@ enum InspectorTab: String, CaseIterable, Identifiable, Hashable, Sendable {
         switch self {
         case .outputs: "Outputs"
         case .people: "People"
+        case .direction: "Direction"
         case .checks: "Checks"
         case .info: "Info"
         }
@@ -147,6 +148,7 @@ enum InspectorTab: String, CaseIterable, Identifiable, Hashable, Sendable {
         switch self {
         case .outputs: "shippingbox"
         case .people: "person.2"
+        case .direction: "wand.and.sparkles"
         case .checks: "checklist"
         case .info: "info.circle"
         }

@@ -177,11 +177,14 @@ struct RoughCut: Sendable {
         var restored: [TimeRange] = []
         /// Parts of the talk the direction's selection leaves out (v2 part M9c, `Selection`): taken out like Ivan's cuts.
         var dropped: [TimeRange] = []
+        /// The held moment (v2 part M9d, research 2.3): kept as recorded, exactly as a stretch Ivan restored is, so it plays uncut.
+        /// Never recorded as Ivan's restore (the plan's basis keeps only his).
+        var held: [TimeRange] = []
         var preset = RoughCutPreset.clear
 
-        /// Whether the stretch from `a` to `b` touches a restored one (by more than a millisecond).
+        /// Whether the stretch from `a` to `b` touches a restored one or the held moment (by more than a millisecond).
         func touchesRestored(_ a: Double, _ b: Double) -> Bool {
-            restored.contains { $0.end > a + 0.001 && $0.start < b - 0.001 }
+            (restored + held).contains { $0.end > a + 0.001 && $0.start < b - 0.001 }
         }
     }
 

@@ -132,6 +132,15 @@ video yet", with Make Again. Approve waits until what you restored is in the vid
 If the edit was planned again after the video was made (Plan Again), Video says so and plays once you
 make it again, so the viewer never shows an edit that is not in the file.
 :::
+:::requires style
+Under the strip, a row of small symbols shows what the edit adds, where it is in the recording: a
+magnifying glass for a punch-in or a slow push-in, Aa for text on screen, a quotation mark
+for the opening line (it plays first in the video), and a bookmark for each chapter. With Quick Help on,
+pointing at one says what it is.
+
+To watch an earlier version of the video, click Play beside it under Versions in the inspector's
+Direction tab. See [Editorial direction](08-editorial-direction.md).
+:::
 
 :::unless voices
 ## Say what it is
@@ -236,6 +245,11 @@ Then click Approve, in the toolbar while the recording is open or in the inspect
 the finished files to the Approved folder, in a folder
 named after the recording, with `APPROVAL.md`: a receipt with the title, the notes, the edits, and
 each file's size and fingerprint. Nothing is uploaded or posted.
+:::requires style
+When the recording has an edited video, Approve covers the version in use: the question says which
+("Version 2, made Thu 15 Oct, 9:41 pm."), and so does the receipt. To approve another version, click Use
+This Version beside it in the Direction tab first.
+:::
 
 If you change anything after approving, such as the title, the notes, a trim or a cut, the approval is
 taken back and the inspector says "Approved before this change". Approve it again once it is right. The

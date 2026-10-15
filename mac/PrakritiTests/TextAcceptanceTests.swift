@@ -100,6 +100,8 @@ final class TextAcceptanceTests: XCTestCase {
                              log: AppLog(directory: paths.logs), now: Date.init)
         _ = try PrakritiStore.seedIfEmpty(model.context, paths: paths, now: Date())
         model.runner.stableWait = .seconds(2)
+        // The parts of the talk are v2 part M9d's: this check measures what it always measured, with no model asked for them.
+        model.runner.askForBeats = false
         XCTAssertTrue(model.settings.houseStyle.titleOnScreen && model.settings.houseStyle.namesOnScreen, "both texts start on")
         model.log.write("Acceptance test for v2 part M9b (text and graphics) started.")
         let teacher = Person(name: "Gabriel Galindo")

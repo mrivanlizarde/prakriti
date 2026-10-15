@@ -165,7 +165,8 @@ extension AppModel {
         let at = now()
         let receipt = Approval.Receipt(label: Format.dayLabel(recording.sessionDate), title: recording.title, notes: recording.notes,
                                        recordingFile: recording.fileName,
-                                       editsSummary: recording.madeEdits.summary, approvedAt: at, people: receiptPeople(recording))
+                                       editsSummary: recording.madeEdits.summary, approvedAt: at, people: receiptPeople(recording),
+                                       version: approvalVersionLine(recording))
         do {
             let copied = try Approval.copy(files, from: URL(fileURLWithPath: source, isDirectory: true), to: destination, receipt: receipt)
             recording.status = .approved
@@ -173,7 +174,8 @@ extension AppModel {
             recording.approvedFolder = copied.folder.path
             recording.approvedFiles = copied.files
             recording.statusReason = "Approved. Its files are in \(paths.display(copied.folder.path)). Nothing was uploaded or published."
-            record("Approved \(label(recording)): \(Format.madeFiles(files)) and the receipt copied to \(paths.display(copied.folder.path)). Nothing was uploaded or published.")
+            record("Approved \(label(recording)): \(Format.madeFiles(files)) and the receipt copied to \(paths.display(copied.folder.path))."
+                   + (approvalVersionLine(recording).map { " " + $0 } ?? "") + " Nothing was uploaded or published.")
             try? context.save()
             return true
         } catch {

@@ -60,7 +60,8 @@ enum Captions {
                 let word = all[i]
                 let t = times[word.id]
                 let start = max(t?.in ?? word.start, span.in), end = min(t?.out ?? word.end, span.out)
-                guard let s = timeline.editTime(start), let e = timeline.editTime(max(start, end)) else { continue }
+                // Each word on its own span's piece: the opening line's words where it plays first, the talk's in their place (v2 part M9d).
+                guard let s = timeline.editTime(start, span: span.id), let e = timeline.editTime(max(start, end), span: span.id) else { continue }
                 let isMuted = muted.contains { word.position >= $0.start && word.position <= $0.end }
                 let text = isMuted ? EpisodeTranscript.mutedWord + trailingPunctuation(word.text) : word.text
                 out.append(Word(text: text, start: s, end: max(s, e), endsSentence: word.endsSentence, endsClause: word.closes == .clause))

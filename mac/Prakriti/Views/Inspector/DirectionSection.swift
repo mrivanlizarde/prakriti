@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Direction for one recording (v2 part M9c, design spec 3.5.3 and 3.7), in the inspector's Outputs tab beside the edit plan
-/// until the Direction tab exists (M9d): the field for Ivan's own words, the preset capsules, Pace and Length, and every field
+/// Direction for one recording (v2 part M9c, design spec 3.5.3 and 3.7), at the top of the inspector's Direction tab (v2 part
+/// M9d): the field for Ivan's own words, the preset capsules, Pace and Length, and every field
 /// the direction was read as, shown back as chips he can remove before anything is planned or made. The rules read as he types
 /// (no model); words they cannot read are read by the "Planning the edit" model when he plans. Nothing changes until Plan Again
 /// or Make Again.
@@ -103,9 +103,6 @@ struct DirectionSection: View {
             }
             if !direction.isEmpty || !direction.removed.isEmpty {
                 HStack(spacing: 10) {
-                    Button("Plan Again") { model.planEdit(recording) }
-                        .disabled(!model.canPlanEdit(recording))
-                        .quickHelp("Plans the edit with this direction and shows the plan in plain lines before anything is made.", article: "editorial-direction")
                     Button("Clear Direction") {
                         text = ""
                         model.setDirection(RecordingDirection(), for: recording)

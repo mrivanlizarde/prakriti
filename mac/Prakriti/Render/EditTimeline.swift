@@ -19,6 +19,9 @@ struct EditTimeline: Equatable, Sendable {
         var frames: Int64
         /// Where it starts on the edited clock, in frames.
         var editFrame: Int64
+        /// A piece of the opening line (v2 part M9d): played first and again in its place, so a moment of the original it holds
+        /// is found in the talk's own piece by `editTime`, never here.
+        var hook = false
     }
 
     var frame: FrameDuration
@@ -40,7 +43,7 @@ struct EditTimeline: Equatable, Sendable {
             var last = Int64((span.out / plan.frameDuration.seconds).rounded())
             if let pictureFrames { last = min(last, pictureFrames) }
             guard last > first else { continue }
-            pieces.append(Piece(id: span.id, sourceFrame: first, frames: last - first, editFrame: at))
+            pieces.append(Piece(id: span.id, sourceFrame: first, frames: last - first, editFrame: at, hook: span.isHook))
             at += last - first
         }
         self.pieces = pieces
@@ -89,14 +92,26 @@ struct EditTimeline: Equatable, Sendable {
 
     var totalSamples: Int64 { sample(atFrame: totalFrames) }
 
-    /// A moment of the original on the edited clock, or nil when the plan took it out.
+    /// A moment of the original on the edited clock, or nil when the plan took it out. A moment the opening line repeats is
+    /// found in its place in the talk (v2 part M9d): the opening line's pieces are skipped.
     func editTime(_ original: Double) -> Double? {
         let f = original / frame.seconds
-        for piece in pieces where f >= Double(piece.sourceFrame) - 1e-6 && f <= Double(piece.sourceFrame + piece.frames) + 1e-6 {
+        for piece in pieces where !piece.hook && f >= Double(piece.sourceFrame) - 1e-6 && f <= Double(piece.sourceFrame + piece.frames) + 1e-6 {
             return (f - Double(piece.sourceFrame) + Double(piece.editFrame)) * frame.seconds
         }
         return nil
     }
+
+    /// A moment of the original inside one span's piece on the edited clock (the opening line's own, or the talk's), or nil.
+    func editTime(_ original: Double, span: String) -> Double? {
+        let f = original / frame.seconds
+        guard let piece = pieces.first(where: { $0.id == span }),
+              f >= Double(piece.sourceFrame) - 1e-6 && f <= Double(piece.sourceFrame + piece.frames) + 1e-6 else { return nil }
+        return (f - Double(piece.sourceFrame) + Double(piece.editFrame)) * frame.seconds
+    }
+
+    /// Frames the opening line takes at the start (v2 part M9d), 0 when the video opens on the talk.
+    var hookFrames: Int64 { pieces.prefix { $0.hook }.reduce(0) { $0 + $1.frames } }
 
     /// A moment of the edited clock on the original's. A moment exactly at a join is the first frame of the piece after it,
     /// the frame the video shows there (v2 part M8d: the picture output check read the frame before the cut instead, a frame
@@ -122,6 +137,6 @@ struct EditTimeline: Equatable, Sendable {
     func editTimeAtOrAfter(_ original: Double) -> Double? {
         if let t = editTime(original) { return t }
         let f = original / frame.seconds
-        return pieces.first { Double($0.sourceFrame) >= f }.map { seconds($0.editFrame) }
+        return pieces.first { !$0.hook && Double($0.sourceFrame) >= f }.map { seconds($0.editFrame) }
     }
 }

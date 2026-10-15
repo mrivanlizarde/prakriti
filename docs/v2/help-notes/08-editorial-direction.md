@@ -53,3 +53,14 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
   (biometric rule).
 - **"Calm" preset** exists because yin and slow classes are 31 to 41% silence by measurement
   (research/07 §1.3); the default tightening would destroy them.
+
+## Status after v2 part M9d (Thu 15 Oct 2026)
+
+- `style` is on. Direction moved to its own inspector tab (the wand, Command-Option-3), so "Where to find it" says so; the plan's
+  lines sit under "The plan" in that tab with Plan Again and Make Again (Make Video the first time).
+- New `:::requires style` blocks: "What the house style adds from the parts of the talk" (the opening line, key phrases, terms,
+  the held moment, chapters; every number is `Style.base` and `Chapters.shortest`) and "Versions" (Play, Use This Version, Approve
+  covers the version in use, five kept, APFS clones). The sentence "never adds words nobody said or changes their order" now says
+  the opening line is the one line moved, and stays in its place too.
+- The merge block (`requires merge`) is unchanged.
+- The selection paragraph adds one sentence: a longer part takes the place of shorter ones when what fits is well short of the length (`Selection.floor`, 85%).

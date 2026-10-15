@@ -30,6 +30,8 @@ import XCTest
 /// at (docs/v2/PLAN.md 2.1.9, this run's instructions): every frame check here is a number.
 @MainActor
 final class VideoAcceptanceTests: XCTestCase {
+    /// The direction each talk is made with (v2 part M9d, check 5), empty for none.
+    private var direction = ""
     func testTheVideoOfTheThirteenthAndSixthOfSeptember() async throws {
         let environment = ProcessInfo.processInfo.environment
         guard environment["PRAKRITI_ACCEPTANCE"] == "video" else {
@@ -40,6 +42,16 @@ final class VideoAcceptanceTests: XCTestCase {
                              log: AppLog(directory: paths.logs), now: Date.init)
         _ = try PrakritiStore.seedIfEmpty(model.context, paths: paths, now: Date())
         model.runner.stableWait = .seconds(Int(environment["PRAKRITI_STABLE_WAIT"] ?? "") ?? 5)
+        // v2 part M9d, PLAN M9 check 5: with PRAKRITI_VIDEO_DIRECTION set, each talk is made with that direction (the Energetic
+        // version), its opening line, key phrases and chapters from the parts of the talk (from ~/Prakriti/Dev/Beats when made from
+        // this transcript, else Qwen3.8-27B in LM Studio), and measured by the same checks. Without it, as M8b measured: no beats.
+        let direction = environment["PRAKRITI_VIDEO_DIRECTION"] ?? ""
+        model.runner.askForBeats = !direction.isEmpty
+        if !direction.isEmpty {
+            model.settings.provider[.planning] = .lmStudio
+            model.runner.makeCloudClient = { provider, _ in RefusingClient(provider: provider, counter: CallCounter()) }
+        }
+        self.direction = direction
         model.log.write("Acceptance test for v2 part M8b (the rendered MP4) started.")
 
         let talk13 = paths.studioRecordings.appending(path: "2026-09-13/2026-09-13 18-25-44.mp4")
@@ -69,7 +81,7 @@ final class VideoAcceptanceTests: XCTestCase {
 
         // The listening copy, then Make Video with someone hidden (PLAN M8b refused it until M8d): one face row of the 13 Sep
         // talk set to Hide Face for the video is no longer refused.
-        if let recording = made13, let row = recording.faces?.people.first {
+        if direction.isEmpty, let recording = made13, let row = recording.faces?.people.first {
             let folder = try XCTUnwrap(recording.outputFolder.map { URL(fileURLWithPath: $0, isDirectory: true) })
             let video = folder.appending(path: VideoStep.folderName)
             // The copy Ivan watches for check 9, kept where no make reaches. Load-bearing: every later make of the talk (make
@@ -101,7 +113,7 @@ final class VideoAcceptanceTests: XCTestCase {
                     + ["", "Details"] + report).joined(separator: "\n") + "\n"
         let out = SnapshotRenderer.milestoneFolder()
         try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
-        try text.write(to: out.appending(path: "acceptance-video-m8b.txt"), atomically: true, encoding: .utf8)
+        try text.write(to: out.appending(path: direction.isEmpty ? "acceptance-video-m8b.txt" : "acceptance-video-direction.txt"), atomically: true, encoding: .utf8)
         print(text)
         model.log.write("Acceptance test for v2 part M8b finished.")
     }
@@ -116,6 +128,15 @@ final class VideoAcceptanceTests: XCTestCase {
         recording.kind = .talk
         try model.context.save()
         model.setOutput(.editedVideo, on: true, for: recording)
+        if !direction.isEmpty {
+            model.setDirection(RecordingDirection(prompt: direction), for: recording)
+            let name = file.deletingPathExtension().lastPathComponent
+            if let beats = BeatsCache.seed(name, folder: paths.outputs.appending(path: name, directoryHint: .isDirectory)) {
+                lines.append("  Direction \u{201C}\(direction)\u{201D}; beats from the cache: \(beats.line)")
+            } else {
+                lines.append("  Direction \u{201C}\(direction)\u{201D}; no cached beats: the make asks Qwen3.8-27B")
+            }
+        }
         let started = Date()
         await model.runner.process(recording, trigger: .byHand)
         let seconds = Date().timeIntervalSince(started)
@@ -185,11 +206,12 @@ final class VideoAcceptanceTests: XCTestCase {
         let audioDuration = Double(audioProbe.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
         let frame = plan.frameDuration.seconds
         // Since part M9a the video ends on the held last frame (speech ends 5 s before the end): the kept spans plus the hold.
-        let expectedLength = plan.keptSeconds + plan.holdSeconds
+        // Since part M9d the opening line plays first too: every span (it included) plus the hold.
+        let expectedLength = plan.spans.reduce(0) { $0 + $1.out - $1.in } + plan.holdSeconds
         verdict("\(slug) check 2: output length equals the sum of kept spans (plus the held ending, M9a) within one frame",
                 abs(videoDuration - expectedLength) <= frame + 0.0005 && abs(audioDuration - expectedLength) <= frame + 0.0005,
-                String(format: "picture %.3f s, sound %.3f s, kept spans %.3f s + held ending %.3f s (one frame %.4f s)", videoDuration, audioDuration,
-                       plan.keptSeconds, plan.holdSeconds, frame))
+                String(format: "picture %.3f s, sound %.3f s, kept spans %.3f s + opening line %.3f s + held ending %.3f s (one frame %.4f s)", videoDuration, audioDuration,
+                       plan.keptSeconds, plan.hook?.seconds ?? 0, plan.holdSeconds, frame))
 
         // The made sound and the original's, mono 48 kHz, decoded here.
         let madeSound = try await PlanMeasure.decode(mp4, scratch: scratch)
@@ -250,6 +272,11 @@ final class VideoAcceptanceTests: XCTestCase {
         let originalEnvelope = Envelope.of(samples: originalSound)
         var protectedKept = 0
         var silences = 0
+        var inHeld = 0
+        // The plan's own triggers (v2 part M9d: the Energetic version cuts at 0.25 and 0.35 s, Clear at 0.40 and 0.60); a
+        // direction's pace step changes how long a kept pause is, never which are cut (Mac warning 169).
+        let planStyle = Style.make(HouseStyle(style: StyleName(rawValue: plan.style) ?? .clear, pace: Pace(rawValue: plan.modifiers.pace) ?? .balanced))
+        let shortestTrigger = min(planStyle.insideTrigger, planStyle.sentenceTrigger)
         var start: Int?
         for i in 0...active.count {
             let off = i < active.count && !active[i]
@@ -257,12 +284,12 @@ final class VideoAcceptanceTests: XCTestCase {
             if !off, let s = start {
                 let length = Double(i - s) * Envelope.frame
                 let at = Double(s) * Envelope.frame
-                if length > 0.40 && at > 1.0 && at + length < timeline.duration - 1.0 {
+                if length > shortestTrigger && at > 1.0 && at + length < timeline.duration - 1.0 {
                     silences += 1
                     let original = timeline.originalTime(at) ?? 0
                     let before = plan.words.lastIndex { $0.out <= original + 0.05 }
                     let word = before.map { words.words[$0] }
-                    let trigger = word?.closes == PlanWord.Closing.none ? 0.40 : 0.60
+                    let trigger = word?.closes == PlanWord.Closing.none ? planStyle.insideTrigger : planStyle.sentenceTrigger
                     // A quiet stretch that holds a kept word (a whispered "uh" the plan could not cut cleanly) is not a pause
                     // between words: the plan's word times say something is said in it.
                     let end = timeline.originalTime(at + length - 0.011) ?? original
@@ -272,7 +299,10 @@ final class VideoAcceptanceTests: XCTestCase {
                     let gapFrom = before.map { plan.words[$0].out } ?? 0
                     let gapTo = before.flatMap { $0 + 1 < plan.words.count ? plan.words[$0 + 1].in : nil } ?? plan.sourceDuration
                     let gapSound = RoughCut.LoudCount(envelope: originalEnvelope, from: gapFrom, to: gapTo).seconds(gapFrom, gapTo)
-                    if holdsWord && length > trigger + 0.02 {
+                    if let held = plan.held, original >= held.start - 0.05, original <= held.end + 0.05, length > trigger + 0.02 {
+                        // The held moment (v2 part M9d) keeps its pauses as recorded, by design.
+                        inHeld += 1
+                    } else if holdsWord && length > trigger + 0.02 {
                         quietWords.append(String(format: "%@ %.2f s", Format.timecode(at), length))
                     } else if length > trigger + 0.02 && gapSound > RoughCut.soundAllowed {
                         insideSound.append(String(format: "%@ %.2f s (the gap holds %.1f s of sound)", Format.timecode(at), length, gapSound))
@@ -286,7 +316,8 @@ final class VideoAcceptanceTests: XCTestCase {
         }
         verdict("\(slug) check 2: no pause in the made sound longer than the trigger except protected ones", tooLong.isEmpty,
                 String(format: "gain %.1f dB, floor %.1f dBFS; ", gain, floor)
-                + "\(silences) silences over 0.40 s, \(protectedKept) protected kept, \(tooLong.count) over the trigger" + (tooLong.isEmpty ? "" : ": " + tooLong.prefix(12).joined(separator: "; "))
+                + String(format: "triggers %.2f and %.2f s (%@); ", planStyle.insideTrigger, planStyle.sentenceTrigger, plan.style)
+                + "\(silences) silences over \(String(format: "%.2f", shortestTrigger)) s, \(protectedKept) protected kept, \(inHeld) in the held moment (kept as recorded), \(tooLong.count) over the trigger" + (tooLong.isEmpty ? "" : ": " + tooLong.prefix(12).joined(separator: "; "))
                 + (quietWords.isEmpty ? "" : "; \(quietWords.count) quiet stretches over it hold a kept word (" + quietWords.prefix(6).joined(separator: ", ") + ")")
                 + (insideSound.isEmpty ? "" : "; \(insideSound.count) inside sound Parakeet wrote no words for, kept (" + insideSound.prefix(8).joined(separator: ", ") + ")"))
 
@@ -345,7 +376,7 @@ final class VideoAcceptanceTests: XCTestCase {
                 for w in tokens(words.words[i].text) {
                     if isFiller(w) { keptFillers += 1 } else {
                         keptWords.append(w)
-                        keptTimes.append(timeline.editTime(max(span.in, words.words[i].start)) ?? 0)
+                        keptTimes.append(timeline.editTime(max(span.in, words.words[i].start), span: span.id) ?? 0)
                     }
                 }
             }
@@ -365,7 +396,7 @@ final class VideoAcceptanceTests: XCTestCase {
         for span in plan.spans {
             guard let a = PlanWord.index(of: span.from), let b = PlanWord.index(of: span.to) else { continue }
             for i in a...b where ["um", "uh"].contains(words.words[i].norm) {
-                if let t = plan.words.first(where: { $0.id == words.words[i].id }), let e = timeline.editTime(max(t.in, span.in)) { keptFillerTimes.append(e) }
+                if let t = plan.words.first(where: { $0.id == words.words[i].id }), let e = timeline.editTime(max(t.in, span.in), span: span.id) { keptFillerTimes.append(e) }
             }
         }
         var still: [String] = []

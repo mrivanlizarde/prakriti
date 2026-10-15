@@ -160,7 +160,7 @@ enum WelcomeContent {
                 WelcomeRow("finds", symbol: "tray.and.arrow.down", headline: "It finds your recordings.",
                            "Anything saved in a folder you choose is found on its own."),
                 WelcomeRow("edit", symbol: "wand.and.sparkles", headline: "It makes the edit.",
-                           "Pauses, filler words and retakes come out. Captions, titles, zooms and transitions go in.",
+                           "Pauses, filler words and retakes come out. Zooms, titles, key phrases and chapters go in, as you direct.",
                            requires: [.video, .style]),
                 WelcomeRow("podcast", symbol: "shippingbox", headline: "It makes the podcast episode.",
                            "The sound is leveled and checked, and the words become a transcript with captions.",

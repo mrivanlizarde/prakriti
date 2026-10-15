@@ -32,8 +32,11 @@ struct EditPlan: Codable, Equatable, Sendable {
     var checks: [CheckMoment] = []
     /// Punch-ins, text and labels (M9). Empty in M8a.
     var visual: [Visual] = []
-    /// Chapters (M9d). Empty in M8a.
+    /// Chapters (v2 part M9d): from the parts of the talk, on the video's own clock. Empty without beats.
     var chapters: [Chapter] = []
+    /// The held moment (v2 part M9d, research 2.3): one stretch of the main point kept uncut and still, on the original's clock.
+    /// Nil when there is none.
+    var held: TimeRange?
     var people = People()
     /// The beats chosen under the direction (v2 part M9c), or nil when no beats were needed.
     var beatChoice: BeatChoice?
@@ -77,8 +80,12 @@ struct EditPlan: Codable, Equatable, Sendable {
         var overBudget = false
     }
 
-    /// A stretch kept: from one word to another, on the original's clock, with its exact words.
+    /// A stretch kept: from one word to another, on the original's clock, with its exact words. A span whose role is `hook`
+    /// (v2 part M9d) is the opening line: played first, out of the talk's order, and again in its place in the talk.
     struct Span: Codable, Equatable, Sendable {
+        static let main = "main"
+        static let hook = "hook"
+
         var id: String
         var source: String
         var from: String
@@ -87,6 +94,8 @@ struct EditPlan: Codable, Equatable, Sendable {
         var out: Double
         var role = "main"
         var text: String
+
+        var isHook: Bool { role == Self.hook }
     }
 
     /// A stretch taken out. `from` and `to` are times on the original's clock; `words`, when there are any, is the
@@ -130,19 +139,29 @@ struct EditPlan: Codable, Equatable, Sendable {
         var box: [Double]?
         var align: String?
         var size: Double?
+        /// The words a key phrase or term card shows (v2 part M9d): the first and last word's ids, so the text is checked against
+        /// the transcript word for word.
+        var words: [String]?
 
         static let punchIn = "punchIn"
         static let pushIn = "pushIn"
         static let hold = "hold"
         static let title = "title"
         static let lowerThird = "lowerThird"
+        /// The speaker's own words on screen, 2 to 6 (v2 part M9d); `from` and `to` name its first and last word in `lines`.
+        static let keyPhrase = "keyPhrase"
+        /// A term the talk explains, spelled from the word list (v2 part M9d).
+        static let term = "term"
 
         var isText: Bool { OverlayKind(rawValue: kind) != nil }
     }
 
+    /// A chapter (v2 part M9d): its title (a few plain words for the part of the talk), the first word it starts at, and where it
+    /// starts on the video's own clock (0 for the first).
     struct Chapter: Codable, Equatable, Sendable {
         var title: String
         var at: String
+        var seconds: Double?
     }
 
     /// Who was applied, and what it cut: the people decisions are applied on top of the plan and cannot be overridden by
@@ -250,7 +269,8 @@ struct EditPlan: Codable, Equatable, Sendable {
 
     // MARK: Reading it
 
-    var keptSeconds: Double { spans.reduce(0) { $0 + $1.out - $1.in } }
+    /// The talk's kept time, the opening line not counted twice.
+    var keptSeconds: Double { mainSpans.reduce(0) { $0 + $1.out - $1.in } }
 
     /// What the plan does to the picture, in one sentence (v2 part M9a), or nil when it does nothing: "Picture, Clear: 39
     /// punch-ins and 4 slow push-ins; the last frame is held 4.8 s, so the speaking ends 5 s before the end."
@@ -270,10 +290,29 @@ struct EditPlan: Codable, Equatable, Sendable {
     /// and 1 name". Never a name itself: the line can reach a notice-like place.
     var textSummary: String? {
         let titles = visual.filter { $0.kind == Visual.title }.count, names = visual.filter { $0.kind == Visual.lowerThird }.count
+        let phrases = visual.filter { $0.kind == Visual.keyPhrase }.count, terms = visual.filter { $0.kind == Visual.term }.count
         var parts: [String] = []
-        if titles > 0 { parts.append("the title for 2 s at the start") }
+        if titles > 0 { parts.append(hook == nil ? "the title for 2 s at the start" : "the title for 2 s after the opening line") }
         if names > 0 { parts.append(Format.count(names, "name") + " under the teacher") }
-        return parts.isEmpty ? nil : "On screen: " + parts.joined(separator: " and ")
+        if phrases > 0 { parts.append(Format.count(phrases, "key phrase")) }
+        if terms > 0 { parts.append(Format.count(terms, "term")) }
+        return parts.isEmpty ? nil : "On screen: " + Self.joined(parts)
+    }
+
+    /// "a", "a and b", "a, b and c".
+    static func joined(_ parts: [String]) -> String {
+        parts.count <= 2 ? parts.joined(separator: " and ") : parts.dropLast().joined(separator: ", ") + " and " + parts[parts.count - 1]
+    }
+
+    /// The opening line's spans (v2 part M9d), played first; empty when the video opens on the talk.
+    var hookSpans: [Span] { spans.filter(\.isHook) }
+    /// The talk's own spans, in its order.
+    var mainSpans: [Span] { spans.filter { !$0.isHook } }
+    /// The opening line, from its first word to its last, or nil.
+    var hook: (from: String, to: String, seconds: Double)? {
+        let h = hookSpans
+        guard let first = h.first, let last = h.last else { return nil }
+        return (first.from, last.to, h.reduce(0) { $0 + $1.out - $1.in })
     }
 
     /// How long the last frame is held after the last span (v2 part M9a), 0 when it is not.

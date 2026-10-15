@@ -89,6 +89,11 @@ Outputs under Direction, in Ivan's own words, with presets, a pace and a length;
 chooses whole parts of the talk (beats, scored once by the model and kept beside the plan), and the plan shows in plain lines before the
 video is made. On the whole 13 Sep talk, "Under 10 minutes" with a motivating and enlightening focus kept 9 of 13 parts in 9:52, and a
 pace change after that planned in 1.2 s with no model asked.
+**Then part M9d, hook, chapters, versions** (the last section, "v2 part M9d", Thu 15 Oct), the last of M9: every video opens on the
+talk's strongest line, shows a few key phrases and terms in the speaker's own words away from every face, holds one uncut minute of the
+main point, and carries chapters; every video made is kept as a version to play or use again, Approve names the one it covers, and
+Direction has its own inspector tab. On the whole 13 Sep talk: 7.08 changes a minute with every text counted, 66 of 66 text frames
+inside title safe and clear of faces; the Energetic versions of 13 Sep and 6 Sep pass every M8 check.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -5961,3 +5966,139 @@ direction, so nothing was planned or made again by the install.
   or enlightening. Under 10 minutes."), click Plan Again, read the lines under Edit plan, then Make Video. The first plan with a length
   or focus reads the talk's parts with the model set for Planning the edit (Anthropic on your Mac: a few cents and about a minute).
 - [ ] **Say what is off** in the Energetic and focused plans of 13 Sep (PLAN M9 "Needs Ivan"): the numbers tune from your answer.
+
+---
+
+## v2 part M9d: hook, chapters, versions. Thu 15 Oct 2026
+
+The part after M9c (`docs/v2/PLAN.md`, M9, part M9d; REQUEST items 4 and 7) and the last of M9. Built on `main` Thu 15 Oct 09:55 to
+16:30. No Swift package added, nothing downloaded. **One SwiftData field added**, `Recording.versionsJSON` (optional, nil by
+default, an addition SwiftData migrates by itself); `make migrate-check` run. Under Ivan's decision of Mon 12 Oct every participant
+counts as released, and this run's rules: frames of Gabriel's talks measured only (listed for Ivan below), cloud providers tested only
+on the synthetic transcript, so every model call in these checks went to Qwen3.8-27B in LM Studio on this Mac and nothing was sent
+anywhere. Full-length runs on both talks, as PLAN asks of the last part of a group.
+
+### What was built
+
+- **The parts of the talk, for every video** (`Pipeline.prepareDirection(picture:)`, `PipelineRunner.askForBeats`, Plan the Edit
+  too): a plan with a picture asks the "Planning the edit" model for the beats once per transcript (on Ivan's Mac the Claude API; a
+  few cents), kept in `beats.json`; wanted, never needed: with no model or no answer the plan is made without them and its lines
+  say why. The request (`promptVersion` 2) adds a **key phrase** per part, 2 to 6 words, kept only when found word for word inside
+  the key line (`BeatCheck`); its answer room grows with the talk (`Planner.beatsTokens`, finding 3).
+- **The opening line** (`Edit/Hook.swift`): up to three lines the model marked (then the main point's), best first; whole sentences,
+  else whole clauses, else the key line, within the style's length (Clear 5 to 15 s, Energetic 3 to 8, Story 10 to 20, Calm none),
+  never in the talk's first 30 s, never one Ivan's copy rules flag; built only from the talk's own kept spans, cut at quiet frames,
+  as `role: hook` spans at the start of the plan (the words also stay in their place). The title follows it; the talk's first span
+  keeps half a sentence's pause before its first word (finding 4). `EditTimeline` marks its pieces (`hook`, `hookFrames`,
+  `editTime(_:span:)`), captions say it first, chapters and the ending find the talk's own place.
+- **Key phrases and term cards** (`TextPlan`, `PlanStep.keyPhrases`, `terms`, `Lexicon.terms`): one line on the side away from the
+  faces, the moment the words are said, strongest part first, at most one per 60 to 90 s (Clear; Energetic 20 to 40), drawn word by
+  word (70 ms apart, each rising 16 px and fading in over 300 ms; `OverlayKind.keyPhrase`, `OverlayTable.wordLayers`); terms only from
+  the word list, where first said, once each (`OverlayKind.term`). Text over a picture brighter than 170 of 255 is placed again
+  (`Edit/TextLight.swift`, finding 5).
+- **The held moment** (`HeldMoment`, `RoughCut.Input.held`): 30 to 60 s of whole sentences of the main point kept as recorded, one
+  still wide shot with nothing over it (`VisualPlan.Input.held`); not in Energetic.
+- **Chapters** (`Edit/Chapters.swift`): one per kept part on the video's own clock, the first at 0:00, each at least 30 s, three or
+  more, titled with the part's few words (copy rules applied); `Description.txt` uses them first (`VideoDescription.make(planChapters:)`).
+- **Every visual change counted** (`VisualPlan.Count`: cuts, framing, and each text coming in), and the punch-ins aim that many lower
+  (`VisualPlan.Input.textChanges`). The plan's lines add the opening line, the texts, the held moment and the chapters.
+- **PlanValidation**: the opening line first, in order, inside the talk's kept time, 3 to 20 s (rule 4); key phrases and terms show
+  exactly the words they name (rule 4); chapters on the video's clock (rule 6); the held moment inside one span; zooms checked on the
+  video's clock in whole frames (finding 2).
+- **Versions** (`EditVersion`, `EditVersions`, `Recording.versionsJSON`, `App/VersionActions.swift`): every video made is copied (APFS
+  clones) into `<outputs>/<recording>/Versions/Version N/` with its plan and hidden faces, five kept, outside the names a make replaces
+  or Approve copies. **Play** plays one in the Viewer from its own folder (`ViewerModel.versionPlaying`); **Use This Version** puts one
+  back. Approve covers the version in use and names it in its question and in `APPROVAL.md` ("Video version").
+- **The Direction tab** (`Views/Inspector/DirectionTab.swift`, the wand, Command-Option-3): the direction (moved from Outputs), the
+  plan in lines with Plan Again and Make Again, and Versions with Play and Use This Version. **The marks lane** under Timeline-lite
+  (`TimelineMark`: magnifying glass, Aa, quotation mark, bookmark; Quick Help names each).
+- **Settings, House Style:** Open on the strongest line, Key phrases (Off, Subtle, Bold) and Terms, decoded field by field.
+- **Help** (capability `style` on): 08 (the Direction tab, what the house style adds, Versions), 00, 05, 06, 09, 10; two hidden
+  `style` lines of 02 and the old hidden "Edited video" block of 05 removed because nothing builds them (notes in
+  `docs/v2/help-notes/`); the welcome's "It makes the edit" row, rewritten to what is built.
+- **Tests:** `HookTests` (9) and `VersionTests` (1) in `make test`; `HookAcceptanceTests` (`make accept-hook`); `make accept-video`
+  takes `TEST_RUNNER_PRAKRITI_VIDEO_DIRECTION`; `BeatsCache` and `BeatsWarmTests`; every earlier acceptance that makes a video sets
+  `askForBeats = false`. START_HERE: the M9d paragraph, the commands, the file map, Mac warnings 177 to 185.
+
+### Found by measuring (each fixed, each with its measurement)
+
+1. **No opening line fit on the 13 Sep talk.** Parakeet's sentences there run past 15 s (the teacher joins thoughts with commas) and
+   the marked key lines alone were 3.2, 4.7 and 5.9 s. Whole clauses were added between the two: 5.71 s, "you know, the work that we do
+   gets to be something that is uplifting, not just for ourselves, but the people that we care about." (2:32). The 5.9 s line was
+   refused by the copy rules ("300 bucks a month").
+2. **The plan was refused: "Two zooms overlap at 0:55.1 (punchIn in span k9, frames 1015 to 1512 and pushIn in span k10, frames 1512
+   to 2056)".** Seconds divided by a frame's length landed a hair past 1512. Whole frames now (warning 178).
+3. **The 6 Sep beats were cut off at 16,383 tokens (14,339 thinking), and at temperature 0 with a seed every retry is the same
+   answer.** The room now grows with the talk: 34,600 for 565 sentences; then 26 beats in 35 min 6 s, one try.
+4. **0.55 s of silence at 0:07 of the 6 Sep Energetic video** (M8 check 2 FAIL): the opening line's tail plus the half second the
+   video's start keeps. Both now keep half a sentence's pause; the next run: 0 over the trigger (warning 185).
+5. **A term card over the 13 Sep floor (247 of 255) could hardly be seen**, and the M9b measure (brightness up by 60) did not find
+   it. Text is placed again over anything brighter than 170 (it moved to 14:11, 33 of 255); the acceptance measures near the planned
+   box, by brightness moved either way (warning 184).
+6. **Both test hosts ended together, with no crash report,** while Qwen held about 35 GB for the 6 Sep beats and `accept-hook` was
+   rendering (10:29:53). Probably memory; long model runs now go alone (warning 183).
+7. **The model chained the 13 Sep talk's close back to the welcome** (the close needs the practice, the practice the schedule, and so
+   on), so "Under 10 minutes" kept 12:29 (`make accept-direction`, M9c's check). A close now stands on its own and nothing depends on
+   housekeeping (`BeatCheck.loosen`, warning 186): 7:58. Then under PLAN's 8:30 floor, because the one part left that fit was 3:34
+   long; under 85% of the length a long part now comes in for shorter, weaker ones (`Selection.floor`, warning 187): **8:53**.
+
+### Checks run, with results (PLAN M9, the checks part M9d runs: 3 Clear in full, 4 every text moment, 5 Energetic, 6, 7, 8)
+
+Real media: the whole 13 Sep talk (Clear and Energetic, `accept-hook`), the whole 13 Sep and 6 Sep talks (Energetic, `accept-video`),
+the 13 Sep excerpt and the fixtures in the regression set. Beats: 13 Sep 12 beats by Qwen3.8-27B in 14 min 23 s, 6 Sep 26 beats in
+35 min 6 s, both one try, from `~/Prakriti/Dev/Beats`. Originals unchanged (13 Sep 730,464,600 bytes, same date; 6 Sep unchanged).
+
+| # | Check | Result |
+|---|---|---|
+| 3 | `make accept-hook` on the whole 13 Sep talk, Clear in full: every visual change and every text | **PASS** (`screens/mac/v2-m9d/acceptance-hook.txt`). **106 changes in 14.98 min, 7.08 a minute** (97 cuts and changes of framing, 9 texts coming in); **11 in the first 30 s**; largest punch-in **1.120** of 34 (and 4 push-ins), 1080p source; **8 of 8 key phrases and terms equal the transcript's words** for their range (case and spacing aside), the opening line's 3 spans word for word, the title and the name are Ivan's own; the opening line 5.71 s from 2:32, the title after it at 0:06; 11 chapters, the first at 0:00, each 33 s or more, Description.txt's Chapters line PASS; the held moment 40.7 s from 8:26, one shot at 1.00, 0 cuts inside; speech ends 5.018 s before the last frame; MP4 903.436 s = plan 903.436 s; PlanValidation clean; 0 model requests (cached beats), 0 cloud calls |
+| 4 | Frames at every text moment: inside title safe, not over a face (Vision) | **PASS, by measurement.** 10 texts (the title, the name, 6 key phrases, 2 terms), every 0.5 s of each: **66 of 66 frames drawn, 66 of 66 inside title safe, 66 of 66 clear of every face** (84 faces found; nearest 0.039 of the frame). The picture under each: 33 to 110 of 255. Frames for Ivan in `screens/mac/v2-m9d/for-ivan/m9d-13-Sep-*.png` (not looked at, D1) |
+| 5 | M8 checks 2 and 3 on the Energetic version ("More energetic. Faster, more frequent cuts.") | **PASS on both talks** (`acceptance-video-direction.txt`). 13 Sep: H.264 High 1920x1080 30000/1001 BT.709, 15.99 Mbps, AAC-LC 48 kHz stereo 320 kbps, moov before mdat, no edit list on the picture, **-14.0 LUFS, -1.5 dBTP**, tail decodes, Ready checklist 18 PASS, 2 MISSING (Title, Description; writing off), 0 FAIL; 878.010 s = spans + hold; sync 0.00 ms, frames +0 (44 to 46 dB); joins 0 of 153 over; pauses 0 over Energetic's 0.25 / 0.35 s triggers; Parakeet **2,859 of 2,879 (99.3%)**; 7 of 7 fillers gone. 6 Sep: same format lines, **-13.9 LUFS, -1.4 dBTP**, 18 PASS, 2 MISSING, 0 FAIL; 2,993.324 s = spans (opening line 6.77 s) + hold; joins 0 of 493 over; pauses 0 over the trigger (14 protected, 3 inside sound Parakeet missed, kept); Parakeet **9,957 of 10,042 (99.2%)**; 2 of 2 fillers gone; 8.78 s a minute to make. The first run failed one line (finding 4) |
+| 6 | Two versions; Play switches the Viewer; Approve names version 2 | **PASS.** Version 1 (Clear, 15:03) and version 2 (Energetic, 14:38), version 2 in use; Play 1: the player's item 903.44 s with version 1's plan; Play 2: 878.01 s with version 2's; Play 1 again: 903.44 s; Approve (development Approved folder) asked "Version 2, made Thu 15 Oct 2026 at 12:20 pm. Energetic, “More energetic. Faster, more frequent cuts.”" and `APPROVAL.md` holds the same under "Video version". `VersionTests`: Use This Version puts version 1's video and plan back, the receipt names it, five kept, the oldest folder goes |
+| 7 | Snapshots of the Direction tab (empty, chips, plan shown, versions) and the House Style pane, looked at | **PASS** (`screens/mac/v2-m9d/`). `25-direction-empty`, `24-direction` (chips), `25-direction-plan` (the plan's lines with the opening line, key phrases, held moment and chapters; the marks lane under the strip: bookmarks, the quotation mark, Aa, magnifying glasses), `25-direction-versions` (two versions, Play, In use, Use This Version, the note), light and dark, with `-inspector-end`; `07-inspector-direction`; `10-settings-03-houseStyle` light and dark with `-end` (Open on the strongest line, Key phrases Subtle, Terms, each with its line; the switches draw off in a bitmap, R8, as before); Help 08 `help-07-editorial-direction` p1 to end. 17 pt, readable in both. **Found by looking:** the version line read "cuts.”." after a quoted direction; `EditVersion.sentence` closes it once |
+| 8 | Regression set; `make accept-models`; `make migrate-check` | **PASS.** `make build`: no warnings. **`make test`: 417 tests, 0 failures, 28 skipped by design** (1,376 s; 210 screens, 1,148 pictures; the first full run counted 210 screens against 208, the Direction tab in the loop over every tab, and the count was corrected). `make accept`: 13 Sep -16.8 LUFS, -1.7 dBFS, 2,948 words to 15:47 of 15:48; silent-60s refused, nothing made; the clip a test; 6 Sep -16.7 LUFS, -1.4 dBFS, TXGAP's stretches 72 and 59 words. `make accept-edits`: **38.82 s shorter (expected 38.82)**, 0 of 73 runs from the cut heard, 189 of 201 after it, the class refused. **`make accept-models`: passed**, Qwen3.8-27B wrote the 13 Sep package in 28 min 45 s (4 titles, 3 chapters, 7 quotes word for word, 3 captions), Claude client calls 0. **`make migrate-check`**: recordings 13/13, folders 2/2, output settings 40/40, Activity lines 1,394/1,394, approved 2, opened with this build's `versionsJSON`. Also run again, each passing every line: `make accept-direction` (after findings 7: Energetic 13.88 a minute, median shot 3.04 s, 0 requests; Focus and under 10 minutes **8:53**, kept 2.00 against dropped 1.20, dependencies held; pace only 0 requests in 1.4 s; "Show the students" unchanged; beats 14 min 48 s, and asked again they were the same 12 beats), `make accept-text`, `make accept-people-video`, `make accept-viewer-video`, `make accept-style STYLE_ONLY="13 Sep excerpt"`, and the plan half of `make accept-video` (`EditPlanAcceptanceTests`; its first run in the Energetic run stopped on an ffprobe of the 6 Sep original timing out after 60 s, and passed alone) |
+
+**Em dashes:** 0 in every line this part added (grep for U+2014 and U+2013 over the diff, the new files and the Help articles).
+
+### Decisions, each with its reason
+
+1. **Every plan with a picture asks for the parts of the talk; M9c's "no direction asks no model" is gone.** Reason: the house style
+   (research 2.3) is the opening line, key phrases and chapters; they all come from the parts. On Ivan's Mac that is one request to the
+   Claude API per transcript (a few cents), kept beside the plan; no answer, no stall.
+2. **The opening line is whole clauses when a whole sentence is too long.** Reason: finding 1; a clause from comma to comma is still
+   the speaker's complete thought, and the key line alone was too short to open on.
+3. **Term cards show only the word list's terms, spelled as the list spells them, and no definition.** Reason: research 2.3 says
+   "spelled from the Yoga Marga word list" and the definition "only if spoken"; finding the spoken definition is not built, and any
+   other spelling would be invented. The list holds four terms (pranayama, Samkhya, asana, ahimsa).
+4. **The held moment is the first 30 to 60 s of whole sentences of the main point.** Reason: research 2.3 places it "where the model
+   marks the thesis"; kept exactly as recorded, it is the one uncut stretch.
+5. **Versions are APFS copies in the recording's folder, five kept; Approve covers the version in use.** Reason: design spec 3.5.3 and
+   3.7; copies cost no space until changed and survive every make, and approving exactly one named version keeps the receipt true.
+6. **A selection fills toward the length (85%) and a close stands alone.** Reason: finding 7; a direction that asks for about 10
+   minutes should get close to 10, and a model's chain of links must not decide the length.
+7. **Every earlier acceptance measures as before (`askForBeats = false`); the house style's additions are measured by `accept-hook`
+   and the Energetic run of `accept-video`.** Reason: those checks were written for their part's bars and must not wait 15 to 35
+   minutes on a model.
+8. **Check 5 runs on both whole talks.** Reason: PLAN's 14 Oct note, full-length runs at the last part of each group.
+
+### What does not work yet
+
+- The Energetic version of the 13 Sep talk has no opening line: none of the marked lines fits 3 to 8 s there. The Clear version and
+  the 6 Sep Energetic version have one.
+- The key phrases are the model's picks; on 13 Sep some are weak ("it all traces back to", "space where you can come"). Ivan's eye
+  decides whether Subtle should be fewer, or Off.
+- Make Again on several recordings with one direction (design spec 3.7), "Use as Default for New Recordings", and the Direction tab's
+  Shorts and Supporting Moments rows are not built (M11, M12).
+- Transitions stay hard cuts (Clear's own grammar); dissolves arrive with merged moments (M12).
+
+### Installed
+
+INSTALL_LINE
+
+### For Ivan
+
+- [ ] **Watch the Clear and Energetic versions of 13 Sep** (PLAN M9 "Needs Ivan"): open Sun 13 Sep, Direction tab, Versions, Play
+  each. Say what is off: the opening line, the key phrases (too many, too few, the wrong ones), the held moment, the pace.
+- [ ] **Look at the frames I could only measure** (D1): `screens/mac/v2-m9d/for-ivan/m9d-13-Sep-*.png`, the title, the name, six key
+  phrases and two terms on the 13 Sep talk. Say if the size and place look right.
+- [ ] **Nothing to switch on:** your next Make Video or Plan the Edit reads the parts of the talk with the Claude API once, then the
+  video opens on its strongest line, with key phrases, terms and chapters. Settings, House Style turns any of them off.

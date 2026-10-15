@@ -52,6 +52,8 @@ final class StyleAcceptanceTests: XCTestCase {
                              log: AppLog(directory: paths.logs), now: Date.init)
         _ = try PrakritiStore.seedIfEmpty(model.context, paths: paths, now: Date())
         model.runner.stableWait = .seconds(2)
+        // The parts of the talk are v2 part M9d's: this check measures what it always measured, with no model asked for them.
+        model.runner.askForBeats = false
         XCTAssertEqual(model.settings.houseStyle, .standard, "the House Style starts at its standard: Clear, Balanced, Standard punch-ins, room at the end")
         model.log.write("Acceptance test for v2 part M9a (house style and zooms) started.")
 

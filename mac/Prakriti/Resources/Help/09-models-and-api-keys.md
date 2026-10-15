@@ -22,10 +22,16 @@ These tasks use the model you choose:
 - **Tagging:** topics and terms for each recording.
 - **Summarizing:** a short summary, in the show notes.
 :::requires direction
-- **Planning the edit:** dividing a transcript into its parts, once, when a direction chooses among
-  them (a length, a focus, something to take out or keep whole), and reading any words of a direction
-  the common phrases do not cover. A recording with no direction never asks it anything. Until you
-  choose, it uses the same model as Writing.
+- **Planning the edit:** dividing a transcript into its parts, once, and reading any words of a
+  direction the common phrases do not cover. Until you choose, it uses the same model as Writing.
+:::
+:::unless style
+  A recording with no direction never asks it anything.
+:::
+:::requires style
+  Every video asks it for the parts once, for its opening line, key phrases, terms, held moment and
+  chapters; after that they are kept beside the plan. Prakriti checks every line it picks word for word
+  against the transcript. If it does not answer, the video is made without them.
 :::
 :::requires merge
 - **Finding related moments** in other recordings.

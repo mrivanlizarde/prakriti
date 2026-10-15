@@ -71,6 +71,17 @@ final class ViewerModel {
     /// The plan the made video was made from, and its timeline between the original's clock and the video's (v2 part M8c).
     /// Nil when the recording has no video the Viewer can play; `videoNote` then says why.
     private(set) var videoPlan: EditPlan?
+    /// A kept version the Viewer plays instead of the one in use (v2 part M9d, Play in the Direction tab), from its own folder.
+    struct VersionPlaying: Equatable {
+        var recordingID: UUID
+        var number: Int
+        var folder: String
+        var video: VideoRecord
+    }
+    /// Set by Play on a version; nil plays the version in use.
+    var versionPlaying: VersionPlaying? { didSet { if oldValue != versionPlaying { loadedKey = "" } } }
+    /// The version number on show on Video, when it is not the one in use.
+    var playingVersionNumber: Int? { versionPlaying.flatMap { $0.recordingID == recordingID ? $0.number : nil } }
     private(set) var videoTimeline: EditTimeline?
     private(set) var videoNote: String?
     /// The Video rendition is being put together (the composition is built off the main thread).
@@ -185,7 +196,9 @@ final class ViewerModel {
         videoTimeline = nil
         captions = []
         videoNote = nil
-        switch VideoPreview.source(folder: recording.outputFolder, video: recording.video) {
+        // A kept version (v2 part M9d) plays from its own folder; otherwise the video in use, from the recording's.
+        let version = versionPlaying.flatMap { $0.recordingID == recording.id ? $0 : nil }
+        switch VideoPreview.source(folder: version?.folder ?? recording.outputFolder, video: version?.video ?? recording.video) {
         case .success(let found):
             videoSource = (found.mp4, found.plan, found.hidden)
             videoPlan = found.plan
@@ -538,7 +551,8 @@ struct TimelineSpan: Identifiable, Equatable, Hashable, Sendable {
 
     /// The plan's spans over the whole original: what it keeps, and what it takes out with each reason.
     static func spans(plan: EditPlan) -> [TimelineSpan] {
-        var spans = plan.spans.map { TimelineSpan(kind: .kept, start: $0.in, end: $0.out, detail: $0.text) }
+        // The opening line repeats time the talk keeps in its place (v2 part M9d): it is a mark, not a span.
+        var spans = plan.mainSpans.map { TimelineSpan(kind: .kept, start: $0.in, end: $0.out, detail: $0.text) }
         spans += plan.removed.map { TimelineSpan(kind: .planned, start: $0.from, end: $0.to, reason: $0.kind, detail: $0.say) }
         return spans.sorted { $0.start < $1.start }
     }

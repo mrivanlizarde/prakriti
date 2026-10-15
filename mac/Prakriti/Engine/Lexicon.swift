@@ -39,6 +39,16 @@ enum Lexicon {
     /// Words the list knows are right as they are, shown on the Outputs screen and never changed.
     static let keptAsWritten = ["Yoga Mārga School", "yin", "asana", "ahimsa", "YTT", "YMCT", "Gabriel", "Serenity"]
 
+    /// The Sanskrit terms of the list, spelled as it spells them (v2 part M9d): what a term card may show. Names of the school
+    /// and of teachers are not terms, and nothing outside the list is ever shown as one (its spelling would be a guess).
+    static let terms = ["pranayama", "Samkhya", "asana", "ahimsa"]
+
+    /// The list's term for a word or phrase as the planning model or the transcript has it (case and accents aside), or nil.
+    static func term(_ said: String) -> String? {
+        let key = said.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil).trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+        return terms.first { $0.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil) == key }
+    }
+
     /// One fix: what was heard, what it now says, and where (seconds from the start of the original
     /// recording, when the text has times).
     struct Correction: Sendable, Hashable {

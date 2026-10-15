@@ -40,6 +40,10 @@ anything goes out. Start with the first article, or choose any article on the le
 - [Editorial direction](08-editorial-direction.md): presets, your own words, a pace and a length, and
   the plan before anything is made.
 :::
+:::requires style
+- The opening line, key phrases, terms, chapters and versions are in
+  [Editorial direction](08-editorial-direction.md) too.
+:::
 
 ## Outputs and Uploading
 

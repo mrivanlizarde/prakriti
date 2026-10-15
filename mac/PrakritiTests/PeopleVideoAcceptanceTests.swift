@@ -39,6 +39,8 @@ final class PeopleVideoAcceptanceTests: XCTestCase {
                              log: AppLog(directory: paths.logs), now: Date.init)
         _ = try PrakritiStore.seedIfEmpty(model.context, paths: paths, now: Date())
         model.runner.stableWait = .seconds(5)
+        // The parts of the talk are v2 part M9d's: this check measures what it always measured, with no model asked for them.
+        model.runner.askForBeats = false
         model.notifier.poster = nil
         model.log.write("Acceptance test for v2 part M8d (people in the video) started.")
         let out = SnapshotRenderer.milestoneFolder()

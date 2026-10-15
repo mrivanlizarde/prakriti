@@ -95,3 +95,8 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
 - New block `:::requires direction` under Finding and making, after "If the edit plan is not made": "If the plan does not follow
   your direction" (Read as, the common phrases, the planning model) and "If the video is longer than the length you asked for"
   (the main point, the close and their dependencies always stay; the plan says when they run over).
+
+## Status after v2 part M9d (Thu 15 Oct 2026)
+
+- New entry "If the video has no opening line, key phrases or chapters": the planning model did not answer, the switches in House
+  Style, the copy rules (money, prices, offers), and Calm opening on the talk.

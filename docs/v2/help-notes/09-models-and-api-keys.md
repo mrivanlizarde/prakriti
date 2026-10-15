@@ -131,3 +131,8 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
   direction chooses among parts, and the words of a direction no rule reads; a recording with no direction asks nothing; until
   Ivan chooses, it uses the Writing task's choice (`AppSettings`, so his 12 Oct move to Anthropic carries).
 - New line under "These always run on this Mac" (`direction`): the rules table, the choice of parts under a length, the plan.
+
+## Status after v2 part M9d (Thu 15 Oct 2026)
+
+- Planning the edit now reads the parts of the talk for every video (once, kept beside the plan), not only for a directed one; the
+  M9c sentence "A recording with no direction never asks it anything" is kept only under `unless style`.

@@ -78,3 +78,7 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
 
 - "Directing the Edit" moved from `style` to `direction` and now reads "presets, your own words, a pace and a length, and the plan
   before anything is made" (moments from other recordings are M12).
+
+## Status after v2 part M9d (Thu 15 Oct 2026)
+
+- The Directing the Edit entry gains one `style` line: the opening line, key phrases, terms, chapters and versions.

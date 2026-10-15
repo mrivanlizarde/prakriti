@@ -62,6 +62,11 @@ enum VisualPlan {
         var beatStarts: [Double] = []
         /// Where each beat's key line starts, on the original's clock (v2 part M9c): slow push-ins go there first.
         var keyLines: [Double] = []
+        /// The held moment (v2 part M9d), on the original's clock: one still, wide shot, no change of framing inside it.
+        var held: TimeRange?
+        /// How many texts the plan will bring in (v2 part M9d): each is a visual change too (research 2.3), so the picture aims at
+        /// that many fewer.
+        var textChanges = 0
     }
 
     /// One shot of the edited video: a stretch of one span with one framing.
@@ -129,6 +134,8 @@ enum VisualPlan {
                     guard source > piece.sourceFrame, source < piece.sourceFrame + piece.frames else { continue }
                     let edited = piece.editFrame + source - piece.sourceFrame
                     guard before.closes != .none || start - end >= splitPause || edited < opening else { continue }
+                    // Never inside the held moment (v2 part M9d): it stays one shot.
+                    if let held = input.held, (end + start) / 2 > held.start - 0.5 && (end + start) / 2 < held.end + 0.5 { continue }
                     frames.append(edited)
                 }
                 candidates[piece.id] = frames
@@ -165,6 +172,12 @@ enum VisualPlan {
         // Back to wide at every new beat (research 2.3, v2 part M9c): a shot that starts within 0.6 s before a beat's first word
         // or holds it in its first 2 s is wide. A beat that starts deep inside a long shot leaves that shot as it is.
         let beatStarts = input.beatStarts.sorted()
+        // The held moment (v2 part M9d): any shot that holds part of it stays wide.
+        func inHeld(_ shot: Shot) -> Bool {
+            guard let held = input.held else { return false }
+            let (a, b) = sourceSeconds(shot)
+            return b > held.start && a < held.end
+        }
         func atNewBeat(_ shot: Shot) -> Bool {
             guard !beatStarts.isEmpty else { return false }
             let (a, b) = sourceSeconds(shot)
@@ -176,7 +189,7 @@ enum VisualPlan {
         }
         func assigned() -> [Int] {
             assign(count: shots.count, levels: rotation.count, backToWideAfter: style.backToWideAfter,
-                   allowed: { i, level in level == 0 || (!atNewBeat(shots[i]) && framing(shots[i], scale: rotation[level]) != nil) },
+                   allowed: { i, level in level == 0 || (!atNewBeat(shots[i]) && !inHeld(shots[i]) && framing(shots[i], scale: rotation[level]) != nil) },
                    atCut: { shots[$0 + 1].atCut },
                    keepAtCut: { style.punchOnlyWhereCutsJump && !cutJumps($0) })
         }
@@ -196,7 +209,7 @@ enum VisualPlan {
         if !candidates.isEmpty {
             let minutes = Double(timeline.keptFrames) * fs / 60
             let mid = style.changesPerMinute.lowerBound + (style.changesPerMinute.upperBound - style.changesPerMinute.lowerBound) * style.changeAim
-            let target = Int((mid * minutes).rounded())
+            let target = max(0, Int((mid * minutes).rounded()) - input.textChanges)
             var triedOpening = Set<Int64>(), tried = Set<Int64>()
             for _ in 0..<8 {
                 let now = changes(levels)
@@ -261,7 +274,8 @@ enum VisualPlan {
             for i in order where i < shots.count - 1 && shots[i].scale == 1 && to > 1.001 {
                 let shot = shots[i]
                 let at = Double(shot.start) * fs
-                guard Double(shot.frames) * fs >= push.seconds + 1, placed.allSatisfy({ abs(at - $0) >= push.every }), let c = framing(shot, scale: to) else { continue }
+                guard Double(shot.frames) * fs >= push.seconds + 1, !inHeld(shot), placed.allSatisfy({ abs(at - $0) >= push.every }),
+                      let c = framing(shot, scale: to) else { continue }
                 items.append(EditPlan.Visual(span: shot.span, kind: EditPlan.Visual.pushIn, in: t(shot.sourceFrame), out: t(shot.sourceFrame + shot.frames),
                                              from: 1, to: (to * 1000).rounded() / 1000, seconds: push.seconds, center: [r(c.x), r(c.y)]))
                 placed.append(at)
@@ -269,7 +283,7 @@ enum VisualPlan {
         }
 
         // 5. The ending: speech ends `endingSeconds` before the last frame.
-        if style.endingSeconds > 0, let lastSpan = plan.spans.last(where: { s in timeline.pieces.contains { $0.id == s.id } }),
+        if style.endingSeconds > 0, let lastSpan = plan.mainSpans.last(where: { s in timeline.pieces.contains { $0.id == s.id } }),
            let lastWord = plan.words.first(where: { $0.id == lastSpan.to }), let spoken = timeline.editTime(min(lastWord.out, lastSpan.out)) {
             let room = timeline.duration - spoken
             let missing = style.endingSeconds - room
@@ -400,6 +414,8 @@ enum VisualPlan {
     /// the scales, the push-ins, and how long the picture runs after the last word.
     struct Count: Equatable, Sendable {
         var minutes: Double
+        /// Every visual change (research 2.3): cuts, changes of framing and, since v2 part M9d, each text coming in (one at the
+        /// same moment as a cut is one change).
         var changes: Int
         var changesFirst30: Int
         var medianShot: Double
@@ -408,6 +424,9 @@ enum VisualPlan {
         var largestScale: Double
         var holdSeconds: Double
         var afterLastWord: Double
+        /// Changes of picture alone (cuts and framing), and texts coming in, of `changes`.
+        var pictureChanges = 0
+        var textIns = 0
         var perMinute: Double { minutes > 0 ? Double(changes) / minutes : 0 }
     }
 
@@ -415,18 +434,26 @@ enum VisualPlan {
         let timeline = EditTimeline(plan: plan)
         let fs = plan.frameDuration.seconds
         let shots = shots(plan, timeline: timeline)
-        let changes = max(0, shots.count - 1)
-        let first30 = shots.filter { $0.start > 0 && Double($0.start) * fs < 30 }.count
+        // Texts coming in (v2 part M9d): each a change, unless it comes in within 0.2 s of a cut or change of framing.
+        let starts = Set(shots.map(\.start))
+        let near = Int64((0.2 / fs).rounded())
+        let texts = plan.visual.filter(\.isText).compactMap { item -> Int64? in
+            guard let a = item.in, let f = timeline.editFrame(span: item.span, original: a) else { return nil }
+            return starts.contains(where: { abs($0 - f) <= near }) ? nil : f
+        }
+        let changes = max(0, shots.count - 1) + texts.count
+        let first30 = shots.filter { $0.start > 0 && Double($0.start) * fs < 30 }.count + texts.filter { $0 > 0 && Double($0) * fs < 30 }.count
         let lengths = shots.map { Double($0.frames) * fs }.sorted()
         let pushes = plan.visual.filter { $0.kind == EditPlan.Visual.pushIn }
         let scales = plan.visual.compactMap { $0.kind == EditPlan.Visual.punchIn ? $0.scale : $0.to }
         var after = 0.0
-        if let lastSpan = plan.spans.last, let word = plan.words.first(where: { $0.id == lastSpan.to }), let spoken = timeline.editTime(min(word.out, lastSpan.out)) {
+        if let lastSpan = plan.mainSpans.last, let word = plan.words.first(where: { $0.id == lastSpan.to }), let spoken = timeline.editTime(min(word.out, lastSpan.out)) {
             after = timeline.duration - spoken
         }
         return Count(minutes: Double(timeline.keptFrames) * fs / 60, changes: changes, changesFirst30: first30,
                      medianShot: lengths.isEmpty ? 0 : lengths[lengths.count / 2], punchIns: plan.visual.filter { $0.kind == EditPlan.Visual.punchIn }.count,
-                     pushIns: pushes.count, largestScale: scales.max() ?? 1, holdSeconds: plan.holdSeconds, afterLastWord: after)
+                     pushIns: pushes.count, largestScale: scales.max() ?? 1, holdSeconds: plan.holdSeconds, afterLastWord: after,
+                     pictureChanges: max(0, shots.count - 1), textIns: texts.count)
     }
 }
 

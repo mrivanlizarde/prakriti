@@ -117,3 +117,12 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
 
 - New block `:::requires direction` after the Edit plan section: one paragraph pointing to Direction above Edit plan and to
   article 08. The "Edited video" block (`style`) stays hidden: key ideas as text on screen and transitions are M9d.
+
+## Status after v2 part M9d (Thu 15 Oct 2026)
+
+- The old hidden `style` block "Edited video" (zooms, key ideas as text, "few, simple transitions", "includes or blurs each
+  person", a text file with tags) was removed when `style` was switched on: the `renderedVideo`, `houseStyle` and `textOnScreen`
+  blocks describe the video as built, transitions are not built (hard cuts only), and tags are not written for the video.
+- The Direction pointer now names the Direction tab. A new `style` paragraph says a video's plan reads the parts of the talk and
+  that their chapters go in `Description.txt` (the Ready checklist's Chapters line passes with writing off).
+- "The title and names on screen": the title shows as the talk begins, after the opening line; key phrases and terms point to 08.

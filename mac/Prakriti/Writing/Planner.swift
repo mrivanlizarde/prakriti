@@ -61,6 +61,8 @@ struct Planner: Sendable {
         - "standsAlone": true when it makes sense without the beats before it.
         - "dependsOn": the ids of earlier beats it needs, numbered by you in order ("b1" is the first beat).
         - "keyLine": the beat's strongest line, 5 to 20 words copied exactly from its own sentences (same words, same order), or "".
+        - "keyPhrase": 2 to 6 words copied exactly from the key line (same words, same order) that say its point on their own, \
+        for the screen; or "".
         - "hookCandidate": true when that key line would open the video well on its own.
         - "terms": Sanskrit or yoga terms the beat explains, as said.
         - "thesis": true for the one beat that states the talk's main point; false for every other.
@@ -68,14 +70,22 @@ struct Planner: Sendable {
         Answer with one JSON object and nothing else, in exactly this shape:
         {"beats": [{"id": "b1", "first": "s1", "last": "s9", "summary": "", "scores": {"motivating": 0, "enlightening": 0, "practical": 0, \
         "story": 0, "humor": 0, "philosophy": 0, "technique": 0, "personal": 0}, "kind": "welcome", "standsAlone": true, "dependsOn": [], \
-        "keyLine": "", "hookCandidate": false, "terms": [], "thesis": false}]}
+        "keyLine": "", "keyPhrase": "", "hookCandidate": false, "terms": [], "thesis": false}]}
         """
 
     static func beatsRequest(_ words: [PlanWord], kind: RecordingKind, duration: Double) -> ModelRequest {
         let sentences = BeatSentence.from(words)
         var user = "\(Writer.kindLine(kind)). \(Format.timecode(duration)) long, \(sentences.count) sentences.\n\n"
         user += sentences.map { "\($0.id) [\(WritingText.stamp($0.start))] \($0.text)" }.joined(separator: "\n")
-        return ModelRequest(system: beatsSystem, user: user, shape: .planning, deterministic: true)
+        return ModelRequest(system: beatsSystem, user: user, shape: .planning, maxTokens: beatsTokens(sentences: sentences.count), deterministic: true)
+    }
+
+    /// The beats answer's room, thinking included (v2 part M9d): it grows with the talk. Measured 15 Oct: the 6 Sep talk's 565
+    /// sentences were cut off at 16,383 tokens (14,339 of them thinking), and at temperature 0 with a seed every try is the same
+    /// answer, so a fixed 16,384 could never pass for a long talk. 137 sentences (13 Sep) get 17,480; 565 get 34,600, still inside
+    /// the 65,536-token context with the 20,659 tokens read.
+    static func beatsTokens(sentences: Int) -> Int {
+        min(40_000, max(ModelSettings.maxTokens, 12_000 + 40 * sentences))
     }
 
     /// Asks for the beats, checks them, tries again on a cut-off, empty or unusable answer (up to the setup's tries).

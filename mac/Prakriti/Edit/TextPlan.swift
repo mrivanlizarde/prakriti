@@ -19,6 +19,12 @@ import Foundation
 //    through the punch-ins frame by frame (`Framing`), kept `faceRoom` away from the text's box, the box including the
 //    distance it slides in; a placement that would touch one at any moment is not used, and the next moment is tried.
 // 4. Text never overlaps text, and never runs into the held ending.
+// 5. **Key phrases** (v2 part M9d, research 2.3 and 2.7): the speaker's own words, 2 to 6, as the planning model picked them from
+//    each part of the talk and code found them word for word; one line on the empty side of the frame, beside the faces, at
+//    the moment they are said; at most one in the style's interval (Clear about one a minute and a half), strongest part first.
+// 6. **Term cards** (v2 part M9d): a term the talk explains, spelled as the Yoga Marga word list spells it, near the bottom on the
+//    side away from the teacher, once each, when it is first said in the video.
+// 7. Nothing over the opening line (the title follows it) or the held moment.
 
 enum TextPlan {
     /// A teacher to name on screen: the name Ivan gave, the line under it, and where their face is (times and boxes only).
@@ -38,8 +44,29 @@ enum TextPlan {
         var pictureWidth: Double = 0
         var showTitle = true
         var showNames = true
+        /// The speaker's own words to put on screen (v2 part M9d): each part's key phrase, best first, at most one per
+        /// `keyPhraseEvery.lowerBound` seconds of the video; and the terms the talk explains, once each.
+        var keyPhrases: [Moment] = []
+        var keyPhraseEvery: ClosedRange<Double>?
+        var terms: [Moment] = []
+        /// The held moment, on the original's clock: nothing is put over it.
+        var held: TimeRange?
 
-        var isEmpty: Bool { (title.isEmpty || !showTitle) && (teachers.isEmpty || !showNames) }
+        var isEmpty: Bool {
+            (title.isEmpty || !showTitle) && (teachers.isEmpty || !showNames) && (keyPhrases.isEmpty || keyPhraseEvery == nil) && terms.isEmpty
+        }
+    }
+
+    /// Words of the talk to show (v2 part M9d): from one word to another, when they are said (refined, on the original's clock),
+    /// the words as drawn, and how strong the part they come from is (key phrases are placed strongest first).
+    struct Moment: Equatable, Sendable {
+        var from: String
+        var to: String
+        var start: Double
+        var end: Double
+        var text: String
+        var rank = 0
+        var words = 1
     }
 
     /// How far a text's box stays from any face, as a fraction of the frame.
@@ -74,21 +101,27 @@ enum TextPlan {
                                    align: text.align.rawValue, size: kind == EditPlan.Visual.title ? text.lines.first?.size : nil)
         }
 
-        // 1. The title, for 2 s from the first frame.
+        // 1. The title, for 2 s from the first frame of the talk: after the opening line when there is one (v2 part M9d).
+        let opening = timeline.hookFrames
         let title = setup.title.trimmingCharacters(in: .whitespacesAndNewlines)
         if setup.showTitle && !title.isEmpty {
             let frames = Int64((OverlayKind.title.motion.total / fs).rounded())
-            if frames <= timeline.keptFrames, let (text, box) = placeTitle(title, start: 0, frames: frames, size: size, faces: faces),
-               let made = item(kind: EditPlan.Visual.title, start: 0, frames: frames, text: text, box: box) {
+            if opening + frames <= timeline.keptFrames, let (text, box) = placeTitle(title, start: opening, frames: frames, size: size, faces: faces),
+               let made = item(kind: EditPlan.Visual.title, start: opening, frames: frames, text: text, box: box) {
                 items.append(made)
-                taken.append((0, frames))
+                taken.append((opening, opening + frames))
             }
+        }
+        // Nothing else over the opening line or the held moment.
+        var blocked: [(Int64, Int64)] = opening > 0 ? [(Int64(0), opening)] : []
+        if let held = setup.held, let a = timeline.editTime(held.start), let b = timeline.editTime(held.end) {
+            blocked.append((Int64((a / fs).rounded()), Int64((b / fs).rounded())))
         }
 
         // 2. A lower third once for each teacher, at the first moment their face is seen after the title.
         if setup.showNames {
             let frames = Int64((OverlayKind.lowerThird.motion.total / fs).rounded())
-            let earliest = (taken.map(\.1).max() ?? 0) + Int64(((taken.isEmpty ? 1.0 : gapAfterTitle) / fs).rounded())
+            let earliest = max(opening, taken.map(\.1).max() ?? 0) + Int64(((taken.isEmpty ? 1.0 : gapAfterTitle) / fs).rounded())
             let step = max(1, Int64((0.5 / fs).rounded()))
             var named = Set<String>()
             for teacher in setup.teachers where !named.contains(teacher.name) && !teacher.name.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -98,7 +131,7 @@ enum TextPlan {
                 var start = earliest
                 while start <= last {
                     defer { start += step }
-                    guard !taken.contains(where: { $0.0 < start + frames && $0.1 > start }), let face = own.boxes(at: start).first else { continue }
+                    guard !(taken + blocked).contains(where: { $0.0 < start + frames && $0.1 > start }), let face = own.boxes(at: start).first else { continue }
                     // The empty side: away from the teacher's face.
                     let sides: [OverlayText.Align] = face.midX < 0.5 ? [.trailing, .leading] : [.leading, .trailing]
                     var placed: (OverlayText, CGRect)?
@@ -120,10 +153,88 @@ enum TextPlan {
                 }
             }
         }
+
+        // 5. Key phrases (v2 part M9d): strongest part first, each at the moment its words are said, at most one per interval.
+        if let every = setup.keyPhraseEvery {
+            var placedAt: [Int64] = []
+            let apart = Int64((every.lowerBound / fs).rounded())
+            for moment in setup.keyPhrases.sorted(by: { $0.rank > $1.rank || ($0.rank == $1.rank && $0.start < $1.start) }) {
+                guard let at = timeline.editTime(moment.start) else { continue }
+                let start = Int64((at / fs).rounded())
+                let frames = Int64((OverlayKind.keyPhraseSeconds(words: moment.words, spoken: moment.end - moment.start) / fs).rounded())
+                guard start + frames <= timeline.keptFrames, !placedAt.contains(where: { abs($0 - start) < apart }),
+                      !(taken + blocked).contains(where: { $0.0 < start + frames && $0.1 > start }),
+                      let (text, box) = placePhrase(moment.text, start: start, frames: frames, size: size, faces: faces),
+                      var made = item(kind: EditPlan.Visual.keyPhrase, start: start, frames: frames, text: text, box: box) else { continue }
+                made.size = text.lines.first?.size
+                made.words = [moment.from, moment.to]
+                items.append(made)
+                taken.append((start, start + frames))
+                placedAt.append(start)
+            }
+        }
+
+        // 6. Term cards (v2 part M9d): once each, when first said in the video, near the bottom away from the faces.
+        var shownTerms = Set<String>()
+        for moment in setup.terms.sorted(by: { $0.start < $1.start }) where !shownTerms.contains(moment.text.lowercased()) {
+            guard let at = timeline.editTime(moment.start) else { continue }
+            let start = Int64((at / fs).rounded())
+            let frames = Int64((OverlayKind.term.motion.total / fs).rounded())
+            guard start >= opening, start + frames <= timeline.keptFrames, !(taken + blocked).contains(where: { $0.0 < start + frames && $0.1 > start }) else { continue }
+            let text = OverlayLayout.term(moment.text, height: pictureHeight)
+            let seen = faces.boxes(at: start)
+            let middle = seen.isEmpty ? 0.5 : seen.map(\.midX).reduce(0, +) / CGFloat(seen.count)
+            let sides: [OverlayText.Align] = middle < 0.5 ? [.trailing, .leading] : [.leading, .trailing]
+            for side in sides {
+                var aligned = text
+                aligned.align = side
+                guard let box = lowerThirdBox(aligned, side: side, size: size),
+                      clear(box, slide: side, kind: .term, start: start, frames: frames, size: size, faces: faces),
+                      var made = item(kind: EditPlan.Visual.term, start: start, frames: frames, text: aligned, box: box) else { continue }
+                made.words = [moment.from, moment.to]
+                items.append(made)
+                taken.append((start, start + frames))
+                shownTerms.insert(moment.text.lowercased())
+                break
+            }
+        }
         return items
     }
 
     // MARK: Placing
+
+    /// A key phrase's text and box: one line in the column beside the faces with more room, at the middle height, else a little
+    /// higher or lower; nil when it fits nowhere clear of them.
+    static func placePhrase(_ phrase: String, start: Int64, frames: Int64, size: CGSize, faces: Faces) -> (OverlayText, CGRect)? {
+        let inner = OverlayLayout.inner
+        var seen: CGRect?
+        var f = start
+        while f < start + frames {
+            for box in faces.boxes(at: f) { seen = seen.map { $0.union(box) } ?? box }
+            f += checkEvery
+        }
+        var columns: [(CGFloat, CGFloat, OverlayText.Align)] = []
+        if let seen {
+            let left = (inner.minX, seen.minX - faceRoom, OverlayText.Align.leading)
+            let right = (seen.maxX + faceRoom, inner.maxX, OverlayText.Align.trailing)
+            columns = (left.1 - left.0 >= right.1 - right.0) ? [left, right] : [right, left]
+        } else {
+            columns = [(inner.minX, inner.minX + inner.width * 0.66, .leading)]
+        }
+        for (a, b, align) in columns where b - a > 0.12 {
+            guard var text = OverlayLayout.keyPhrase(phrase, maxWidth: Double(b - a) * size.width, height: size.height) else { continue }
+            text.align = align
+            let px = OverlayLayout.size(text)
+            let w = px.width / size.width, h = px.height / size.height
+            let x = align == .leading ? a : b - w
+            for middle in [0.5, 0.36, 0.64] as [CGFloat] {
+                let y = min(max(middle - h / 2, inner.minY), inner.maxY - h)
+                let box = CGRect(x: x, y: y, width: w, height: h)
+                if inner.contains(box), clear(box, slide: nil, kind: .keyPhrase, start: start, frames: frames, size: size, faces: faces) { return (text, box) }
+            }
+        }
+        return nil
+    }
 
     /// The title's text and box (fractions of the frame), or nil when it fits nowhere clear of the faces.
     static func placeTitle(_ title: String, start: Int64, frames: Int64, size: CGSize, faces: Faces) -> (OverlayText, CGRect)? {

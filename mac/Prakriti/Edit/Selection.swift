@@ -156,7 +156,30 @@ enum Selection {
             }
         }
         let knapsack = fill(repaired)
-        let kept = values(knapsack) >= values(greedy) ? knapsack : greedy
+        var kept = values(knapsack) >= values(greedy) ? knapsack : greedy
+        // Filling the length (v2 part M9d): a video asked to be "about 10 minutes" that comes out under 85% of it, because the
+        // parts left are long, takes in a long part in place of shorter, weaker ones when that reaches the length. Measured 15 Oct on
+        // the 13 Sep talk: the best value under 10 minutes was 7:58, and the 3:34 story fit in place of two short parts (9:13).
+        if total(kept) < floor * budget {
+            var best: Set<String>?
+            for id in candidates where !kept.contains(id) {
+                let add = closure(id).subtracting(kept)
+                var trial = kept.union(add)
+                // Give up the weakest parts nothing else kept needs, least value a second first, until it fits.
+                let removable = trial.filter { r in !base.contains(r) && !add.contains(r) }
+                    .sorted { values([$0]) / max(seconds($0), 0.5) < values([$1]) / max(seconds($1), 0.5) }
+                for r in removable where total(trial) > budget + 1e-9 {
+                    let rest = trial.subtracting([r])
+                    if rest.allSatisfy({ closure($0).isSubset(of: rest) }) { trial = rest }
+                }
+                guard total(trial) <= budget + 1e-9, total(trial) >= floor * budget, trial.allSatisfy({ closure($0).isSubset(of: trial) }) else { continue }
+                if best.map({ values(trial) > values($0) }) ?? true { best = trial }
+            }
+            if let best { kept = best }
+        }
         return outcome(kept, over: false)
     }
+
+    /// Below this share of the length asked for, a long part is taken in place of shorter ones when that reaches it.
+    static let floor = 0.85
 }

@@ -2,7 +2,7 @@
 id: editorial-direction
 title: Editorial direction
 summary: Steer one recording's edit with presets, your own words, a pace and a length, and see the plan before anything is made.
-keywords: [direction, edit, style, preset, energetic, calm, pace, cuts, zooms, punch-ins, motivating, enlightening, shorter, length, minutes, plan again, make video, chips, moment, another recording, merge, supporting]
+keywords: [direction, edit, style, preset, energetic, calm, pace, cuts, zooms, punch-ins, motivating, enlightening, shorter, length, minutes, plan again, make video, make again, chips, versions, version, use this version, play, opening line, hook, key phrases, terms, chapters, held moment, moment, another recording, merge, supporting]
 section: direction
 order: 1
 requires: direction
@@ -17,7 +17,8 @@ and make it.
 
 ## Where to find it
 
-Select a recording, then in the inspector's Outputs, under **Direction**:
+Select a recording, then click **Direction** in the inspector (the wand, the third of the five tabs, or
+Command-Option-3):
 
 - **Direction:** a field for your own words.
 - **Presets:** Energetic, Calm, Faster Cuts, Fewer Cuts, Motivating, Enlightening, Story First and
@@ -64,11 +65,12 @@ the plan, so after that a change of pace, length or focus is planned in seconds,
 model again.
 
 Prakriti then keeps the parts that best match your focus within the length, always keeps the talk's main
-point and its close, keeps any part another kept part depends on, and never changes their order.
+point and its close, keeps any part another kept part depends on, and never changes their order. When
+what fits comes out well short of the length, a longer part takes the place of shorter ones.
 
 ## See the plan, then make it
 
-Click **Plan Again**. Under Edit plan, the plan is shown in plain lines before anything is made. For
+Click **Plan Again**. Under **The plan**, the plan is shown in plain lines before anything is made. For
 "Focus on the parts that are motivating or enlightening. Under 10 minutes." on a 16-minute talk, for
 example:
 
@@ -81,11 +83,51 @@ example:
 "Faster" makes the pauses that stay shorter; it does not cut more of them, because every extra cut is a
 jump in the picture.
 
-If it is right, click **Make Video** there. While the video is made, the same lines show in the progress
-block, with Stop. If it is not right, change the direction and click Plan Again.
+If it is right, click **Make Again** there (**Make Video** the first time). While the video is made, the
+same lines show in the progress block, with Stop. If it is not right, change the direction and click
+Plan Again.
 
 The direction works with what was recorded. It can shorten, choose and emphasize, but never adds words
-nobody said or changes their order.
+nobody said. The one line it moves is the opening line, below, and that line is also left in its place.
+
+:::requires style
+## What the house style adds from the parts of the talk
+
+Every video is planned from the parts of the talk, not only a directed one. The first time, the model
+you choose for Planning the edit reads the transcript; after that the parts are kept beside the plan.
+From them, in the house style:
+
+- **The opening line.** The video opens on the talk's strongest line, then the title, then the talk
+  from its start. The line is whole sentences or whole clauses, 5 to 15 seconds in Clear (3 to 8 in Energetic, 10 to 20
+  in Story, none in Calm), the speaker's own words exactly as the talk keeps them. It is never from the
+  talk's first 30 seconds, and never a line that names money, a price or an offer.
+- **Key phrases.** 2 to 6 of the speaker's own words, on the side of the picture away from the
+  teacher and never over a face, the moment they are said. The words come in one after another. Clear
+  shows at most one every 60 to 90 seconds; Energetic one every 20 to 40.
+- **Terms.** A Sanskrit term the talk explains, spelled as the Yoga Marga word list spells it, once,
+  near the bottom of the picture. A term the list does not hold is never shown.
+- **The held moment.** About 30 to 60 seconds of the talk's main point are kept exactly as recorded,
+  every pause and every word, as one still, wide shot with nothing over it. Energetic has none.
+- **Chapters.** One for each part of the talk the video keeps, the first at 0:00, each at least 30
+  seconds, in `Description.txt` for YouTube.
+
+Turn any of them off in Settings, House Style: Open on the strongest line, Key phrases (Off, Subtle or
+Bold) and Terms. If the parts of the talk cannot be read (no model is set, or it does not answer), the
+video is made without them and the plan says why.
+
+## Versions
+
+Each time a video is made, it is kept as a version. Under **Versions**, newest first, each shows its
+number, what made it, when, and how long it is, for example "Version 2. Energetic, “More energetic.
+Faster, more frequent cuts.” Made Thu 15 Oct, 9:41 pm. 14:38 long."
+
+- **Play** plays that version in the viewer on Video, drawn the same way as its file.
+- **Use This Version** puts that version's video and plan back in the recording's folder. Nothing is
+  made again.
+- Approve covers the version in use, and says which one. The receipt names it too.
+
+Prakriti keeps the five newest versions. They are copies that take no extra space until one changes.
+:::
 
 **Tip:** To go back to the house style for a recording, click **Clear Direction**.
 
@@ -111,5 +153,6 @@ Prakriti only suggests moments from recordings of people who have agreed to be r
 ## Who does the work
 
 The model you choose for **Planning the edit** in Settings, Models reads the transcript to find its parts,
-and reads any of your words the common phrases do not cover. Everything else, choosing the parts, the
+and reads any of your words the common phrases do not cover. It also picks the strongest lines and the
+few words for the screen, which Prakriti then checks word for word against the transcript. Everything else, choosing the parts, the
 cuts, the punch-ins and the video itself, happens on this Mac.

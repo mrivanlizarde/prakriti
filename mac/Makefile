@@ -131,7 +131,7 @@ STYLE_ONLY ?=
 YES       ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: accept-direction accept-text accept-style accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: accept-hook accept-direction accept-text accept-style accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -220,6 +220,14 @@ accept-text:
 #                 provider. Writes acceptance-direction.txt to ../screens/mac/$(MILESTONE)/ (about 10 to 30 minutes, most of it the model)
 DIRECTION_SEED ?=
 KEEP_BEATS ?=
+# accept-hook   v2 part M9d's acceptance (PLAN M9 checks 3 for Clear in full, 4 at every text moment, and 6), on the REAL 13 Sep talk,
+#                 whole, in development with the video on: the parts of the talk from ~/Prakriti/Dev/Beats when they were made from this
+#                 transcript (else Qwen3.8-27B in LM Studio, about 15 minutes), every visual change and every text counted, every text
+#                 moment measured (title safe, clear of faces, numbers only), then version 2 with a direction, Play between versions
+#                 and Approve into the development Approved folder. Writes acceptance-hook.txt (about 30 minutes)
+accept-hook:
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=hook TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/HookAcceptanceTests
+
 accept-direction:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=direction TEST_RUNNER_PRAKRITI_DIRECTION_SEED=$(DIRECTION_SEED) TEST_RUNNER_PRAKRITI_DIRECTION_KEEP_BEATS=$(KEEP_BEATS) TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/DirectionAcceptanceTests
 

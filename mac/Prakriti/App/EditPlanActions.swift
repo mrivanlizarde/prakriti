@@ -93,6 +93,8 @@ extension AppModel {
         let job = output.deletingLastPathComponent().appending(path: ".planning " + output.lastPathComponent, directoryHint: .isDirectory)
         var options = runner.options(for: recording)
         options.planEdit = true
+        // The parts of the talk (v2 part M9d) are read for every plan, not only a directed one.
+        if options.planning == nil && runner.askForBeats { options.planning = runner.writingSetup() }
         let pipeline = Pipeline(tools: runner.tools, options: options, log: log)
         let capture = recording.capture, faces = recording.faces, voices = recording.voices, namesSaid = recording.namesSaid
         let label = "\(Format.dayLabel(recording.sessionDate)) (\(recording.fileName))"
@@ -143,11 +145,13 @@ extension AppModel {
     /// What Plan the Edit is doing, in one line, when it asks a model (v2 part M9c): the beats take minutes the first time.
     func planningLine(for recording: Recording) -> String? {
         let direction = recording.direction
-        guard !direction.isEmpty else { return nil }
         let reading = Direction.read(direction, house: settings.houseStyle)
         let provider = settings.provider[.planning] ?? .lmStudio
         var asks: [String] = []
-        if reading.fields.needsBeats, let folder = recording.outputFolder {
+        // Since v2 part M9d every plan of a recording with a picture reads the parts of the talk once (the opening line, key
+        // phrases, terms, chapters, the held moment).
+        let picture = recording.capture?.video != nil || recording.faces != nil
+        if reading.fields.needsBeats || (picture && runner.askForBeats), let folder = recording.outputFolder {
             let url = URL(fileURLWithPath: folder, isDirectory: true)
             let sha = (try? Data(contentsOf: url.appending(path: TranscriptFiles.asHeard))).map(PlanWords.sha256) ?? ""
             if BeatsFile.cached(in: url, transcriptSHA256: sha) == nil {

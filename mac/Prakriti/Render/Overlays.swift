@@ -21,11 +21,19 @@ import SwiftUI
 // anything is drawn: the box is what the plan checks against every face (`TextPlan`). The view draws exactly those lines in
 // exactly that box.
 
-/// The three kinds of text, as the plan names them.
+/// The kinds of text, as the plan names them.
 enum OverlayKind: String, Codable, CaseIterable, Sendable {
     case title
     case lowerThird
     case dateLabel
+    /// The speaker's own words, 2 to 6, on the empty side of the frame (v2 part M9d): each word rises 16 px and fades in over
+    /// 300 ms, 70 ms after the one before; held; out over 200 ms (research 2.7).
+    case keyPhrase
+    /// A term the talk explains, spelled from the word list (v2 part M9d): comes in like a lower third, 3 s.
+    case term
+
+    /// How far apart the words of a key phrase come in, in seconds (research 2.7).
+    static let wordStagger = 0.07
 
     /// How the text comes in, stays and goes (research 2.7), in seconds and in pixels of a 1080-line picture.
     struct Motion: Equatable, Sendable {
@@ -43,13 +51,24 @@ enum OverlayKind: String, Codable, CaseIterable, Sendable {
         case .lowerThird: Motion(fadeIn: 0.3, fadeOut: 0.25, total: 0.3 + 4 + 0.25, slide: 24)
         case .title: Motion(fadeIn: 0.3, fadeOut: 0.2, total: 2, rise: 16)
         case .dateLabel: Motion(fadeIn: 0.3, fadeOut: 0.2, total: 3)
+        case .keyPhrase: Motion(fadeIn: 0.3, fadeOut: 0.2, total: 2.5, rise: 16)
+        case .term: Motion(fadeIn: 0.3, fadeOut: 0.25, total: 0.3 + 3 + 0.25, slide: 24)
         }
+    }
+
+    /// How long a key phrase of `words` words said over `spoken` seconds stays (research 2.7: the words come in one after another,
+    /// then hold 1.5 to 3 s, then go): long enough to read, never longer than 3 s held.
+    static func keyPhraseSeconds(words: Int, spoken: Double) -> Double {
+        let coming = wordStagger * Double(max(0, words - 1)) + 0.3
+        let hold = min(3, max(1.5, spoken + 0.8))
+        return coming + hold + 0.2
     }
 
     /// How far into its life the text is shown, and how far it still has to move: alpha 0 to 1 and the offset in pixels of a
     /// 1080-line picture (x toward its side, y downward), at `t` seconds after it starts.
-    func state(at t: Double) -> (alpha: Double, dx: Double, dy: Double) {
-        let m = motion
+    func state(at t: Double, total: Double? = nil) -> (alpha: Double, dx: Double, dy: Double) {
+        var m = motion
+        if let total { m.total = total }
         guard t >= 0, t < m.total else { return (0, 0, 0) }
         if t < m.fadeIn {
             let e = OverlayKind.easeIn(t / m.fadeIn)
@@ -111,6 +130,41 @@ enum OverlayLayout {
         var lines = [OverlayLine(text: name, font: TypeFace.bold, size: nameSize)]
         if !role.isEmpty { lines.append(OverlayLine(text: role, font: TypeFace.regular, size: roleSize, opacity: 0.7)) }
         return OverlayText(kind: .lowerThird, lines: lines, align: .leading, height: height)
+    }
+
+    /// A key phrase's designed sizes, largest first (pixels of a 1080-line picture): one line, as large as fits its column.
+    static let keyPhraseSizes = [64.0, 56.0, 48.0]
+    static let termSize = 54.0
+
+    /// A key phrase on one line, bold, as large as fits `maxWidth` pixels; nil when even the smallest does not.
+    static func keyPhrase(_ text: String, maxWidth: Double, height: Double) -> OverlayText? {
+        let scale = height / 1080
+        for size in keyPhraseSizes {
+            guard let font = TypeFace.font(TypeFace.bold, size: size * scale) else { return nil }
+            if width(text, font: font) <= maxWidth {
+                return OverlayText(kind: .keyPhrase, lines: [OverlayLine(text: text, font: TypeFace.bold, size: size)], align: .leading, height: height)
+            }
+        }
+        return nil
+    }
+
+    /// A term card: the term alone, bold, one line.
+    static func term(_ text: String, height: Double) -> OverlayText {
+        OverlayText(kind: .term, lines: [OverlayLine(text: text, font: TypeFace.bold, size: termSize)], align: .leading, height: height)
+    }
+
+    /// Where each word of a one-line text ends, in pixels from the line's start: the middle of the space after it (the last at the
+    /// line's end). The compositor brings a key phrase in word by word between these edges.
+    static func wordEdges(_ line: OverlayLine, scale: Double) -> [Double] {
+        guard let font = TypeFace.font(line.font, size: line.size * scale) else { return [] }
+        let words = line.text.split(separator: " ").map(String.init)
+        var edges: [Double] = []
+        let space = width(" ", font: font)
+        for k in words.indices {
+            let prefix = words[0...k].joined(separator: " ")
+            edges.append(width(prefix, font: font) + (k < words.count - 1 ? space / 2 : 0))
+        }
+        return edges
     }
 
     /// The date label on a moment from another recording (design spec C6): "6 Sep 2026".
@@ -267,6 +321,8 @@ final class OverlayTable: @unchecked Sendable {
         var align: OverlayText.Align
         var image: CIImage
         var imageSize: CGSize
+        /// A key phrase's word edges in pixels from the line's start (v2 part M9d), empty for every other text.
+        var wordEdges: [Double] = []
     }
 
     let items: [Placed]
@@ -288,15 +344,51 @@ final class OverlayTable: @unchecked Sendable {
         let scale = renderSize.height / 1080
         for item in items where frame >= item.start && frame < item.start + item.frames {
             let t = Double(frame - item.start) * frameSeconds
-            let (alpha, dx, dy) = item.kind.state(at: t)
-            guard alpha > 0.001 else { continue }
+            let total = Double(item.frames) * frameSeconds
             let room = OverlayLayout.shadowRoom * scale
+            if item.kind == .keyPhrase, item.wordEdges.count > 1 {
+                out += wordLayers(item, t: t, total: total, scale: scale, room: room)
+                continue
+            }
+            let (alpha, dx, dy) = item.kind.state(at: t, total: total)
+            guard alpha > 0.001 else { continue }
             // Toward its side: a text on the left comes in from the left, one on the right from the right.
             let sideways = (item.align == .trailing ? dx : -dx) * scale
             let x = item.box.minX - room + sideways
             let yTop = item.box.minY - room + dy * scale
             let y = renderSize.height - yTop - item.imageSize.height
             var image = item.image.transformed(by: CGAffineTransform(translationX: x, y: y))
+            if alpha < 0.999 {
+                image = image.applyingFilter("CIColorMatrix", parameters: ["inputAVector": CIVector(x: 0, y: 0, z: 0, w: alpha)])
+            }
+            out.append(image)
+        }
+        return out
+    }
+
+    /// A key phrase word by word (research 2.7): word k comes in `wordStagger` x k after the first, rising 16 px and fading in over
+    /// 300 ms on the text-in ease; all go out together. Each word is its own slice of the one picture, cut at the middle of the
+    /// spaces, so the words are exactly the ones drawn for the whole line.
+    private func wordLayers(_ item: Placed, t: Double, total: Double, scale: Double, room: Double) -> [CIImage] {
+        var out: [CIImage] = []
+        let m = OverlayKind.keyPhrase.motion
+        let left = total - t
+        let outAlpha = left < m.fadeOut ? max(0, left / m.fadeOut) : 1
+        guard t >= 0, left > 0 else { return [] }
+        for (k, edge) in item.wordEdges.enumerated() {
+            let local = t - OverlayKind.wordStagger * Double(k)
+            guard local > 0 else { continue }
+            let e = local >= m.fadeIn ? 1 : OverlayKind.easeIn(local / m.fadeIn)
+            let alpha = e * outAlpha
+            guard alpha > 0.001 else { continue }
+            // The slice of the picture this word owns, in the picture's own pixels (Core Image: origin bottom left).
+            let x0 = k == 0 ? 0 : room + item.wordEdges[k - 1]
+            let x1 = k == item.wordEdges.count - 1 ? item.imageSize.width : room + edge
+            let slice = item.image.cropped(to: CGRect(x: x0, y: 0, width: max(0, x1 - x0), height: item.imageSize.height))
+            let x = item.box.minX - room
+            let yTop = item.box.minY - room + (1 - e) * m.rise * scale
+            let y = renderSize.height - yTop - item.imageSize.height
+            var image = slice.transformed(by: CGAffineTransform(translationX: x, y: y))
             if alpha < 0.999 {
                 image = image.applyingFilter("CIColorMatrix", parameters: ["inputAVector": CIVector(x: 0, y: 0, z: 0, w: alpha)])
             }
@@ -325,8 +417,9 @@ final class OverlayTable: @unchecked Sendable {
             guard let image, let box = item.box, box.count == 4 else { continue }
             let frames = Int64(((item.seconds ?? text.kind.motion.total) / timeline.frame.seconds).rounded())
             let rect = CGRect(x: box[0] * renderSize.width, y: box[1] * renderSize.height, width: box[2] * renderSize.width, height: box[3] * renderSize.height)
+            let edges = text.kind == .keyPhrase && text.lines.count == 1 ? OverlayLayout.wordEdges(text.lines[0], scale: text.scale) : []
             placed.append(Placed(kind: text.kind, start: start, frames: frames, box: rect, align: text.align,
-                                 image: CIImage(cgImage: image), imageSize: CGSize(width: image.width, height: image.height)))
+                                 image: CIImage(cgImage: image), imageSize: CGSize(width: image.width, height: image.height), wordEdges: edges))
         }
         return placed.isEmpty ? nil : OverlayTable(items: placed, renderSize: renderSize, frameSeconds: timeline.frame.seconds)
     }
@@ -347,6 +440,13 @@ extension EditPlan.Visual {
                                align: align, height: height)
         case .dateLabel:
             return OverlayText(kind: .dateLabel, lines: [OverlayLine(text: lines[0], font: TypeFace.medium, size: OverlayLayout.dateSize)], align: align, height: height)
+        case .keyPhrase:
+            return OverlayText(kind: .keyPhrase, lines: [OverlayLine(text: lines[0], font: TypeFace.bold, size: size ?? OverlayLayout.keyPhraseSizes[0])],
+                               align: align, height: height)
+        case .term:
+            var text = OverlayLayout.term(lines[0], height: height)
+            text.align = align
+            return text
         }
     }
 }

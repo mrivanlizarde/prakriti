@@ -187,6 +187,9 @@ struct PipelineOptions: Sendable {
     /// The recording's own output folder, where its last plan and its beats are (v2 part M9c): the beats are made once per
     /// transcript and the model's reading of the same words is never asked for twice.
     var planFolder: URL?
+    /// Whether a plan with a picture asks for the parts of the talk when no direction needs them (v2 part M9d): always in the app;
+    /// off in the earlier parts' acceptance checks (`PipelineRunner.askForBeats`), so they measure what they always measured.
+    var wantBeats = true
 
     /// Anyone left out or any name muted: the podcast changes, so the step that applies it is planned.
     var appliesChoices: Bool { people != nil && choices.changesPodcast && (makeEpisode || makePodcastReady) }
@@ -1510,7 +1513,10 @@ struct Pipeline: Sendable {
         // The direction (v2 part M9c): read by the rules, then by the model for what they could not read, then the beats when
         // the direction chooses among them (a length, a focus, something to leave out or keep whole).
         setup.direction = options.direction
-        let prepared = try await prepareDirection(original: file, transcript: setup.transcript, staging: staging, duration: duration, faces: faces, voices: voices)
+        // Since v2 part M9d every plan with a picture wants the parts of the talk too (key phrases, term cards, the opening line,
+        // chapters and the held moment), but only a direction needs them: without them the plan is made as before, and says why.
+        let prepared = try await prepareDirection(original: file, transcript: setup.transcript, staging: staging, duration: duration, faces: faces, voices: voices,
+                                                  picture: setup.frameRate != nil && setup.pictureHeight > 0)
         setup.reading = prepared.reading
         setup.beats = prepared.beats
         defer { try? FileManager.default.removeItem(at: setup.jobFolder) }
@@ -1531,7 +1537,7 @@ struct Pipeline: Sendable {
     /// from this very transcript. Otherwise the "Planning the edit" model is asked, under the privacy lock. Beats are written
     /// into `staging` whenever there are any, so a make or Plan Again keeps them. A direction that needs beats that cannot be
     /// made stops the plan (never a 15-minute video for "under 10 minutes").
-    func prepareDirection(original: URL, transcript: URL, staging: URL, duration: Double, faces: FacesFound?, voices: VoicesFound?)
+    func prepareDirection(original: URL, transcript: URL, staging: URL, duration: Double, faces: FacesFound?, voices: VoicesFound?, picture: Bool = false)
         async throws -> (reading: DirectionReading, beats: BeatsFile?) {
         let name = original.deletingPathExtension().lastPathComponent
         let fileName = original.lastPathComponent
@@ -1593,11 +1599,28 @@ struct Pipeline: Sendable {
                 throw PlanStep.Failure(reason: "The parts of the talk could not be read, so your direction's length and focus could not be applied. \(reason)")
             }
         }
+        // Wanted, not needed (v2 part M9d): the house style's key phrases, term cards, opening line, chapters and held moment come
+        // from the parts of the talk. Asked for once per transcript; when no model can give them the plan is made without them.
+        if picture && options.wantBeats && beats == nil, let planner, let c = asked() {
+            do {
+                beats = try await planner.beats(words: words.words, recording: name, transcriptSHA256: words.transcriptSHA256, kind: options.kind,
+                                                duration: duration, client: c)
+            } catch is CancellationError {
+                await done()
+                throw CancellationError()
+            } catch {
+                let reason = (error as? Planner.Failure)?.reason ?? (error as? ModelFailure)?.reason ?? error.localizedDescription
+                log?.write("\(fileName): the parts of the talk could not be read, so the video has no key phrases, opening line or chapters this time. \(reason)")
+                reading.said.append("The parts of the talk could not be read, so this plan has no key phrases, opening line or chapters. \(reason)")
+            }
+        }
         await done()
         if let beats {
             try? beats.encoded().write(to: staging.appending(path: BeatsFile.fileName), options: .atomic)
         }
-        return (reading, beats)
+        // Kept beside the plan either way, but used only when the direction needs them or the parts are wanted (v2 part M9d): a
+        // check with `wantBeats` off plans exactly as before, even when an earlier plan left beats in the folder.
+        return (reading, reading.fields.needsBeats || (picture && options.wantBeats) ? beats : nil)
     }
 
     /// The sightings of the face the punch-ins follow (v2 part M9a): the teacher's face row when Ivan named one and it is

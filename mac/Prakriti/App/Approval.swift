@@ -126,6 +126,8 @@ enum Approval {
         /// Who is in it (v2 part M6c): one line per person, and what the audio output check found. Empty when the
         /// people check never ran on it.
         var people: [String] = []
+        /// The version of the video approved (v2 part M9d): "Version 2, made Thu 15 Oct, 9:41 pm. Energetic." Nil without one.
+        var version: String?
     }
 
     /// Copies `files` from `source` into `destination` with a receipt, through a staging folder, so
@@ -179,6 +181,7 @@ enum Approval {
         let notes = receipt.notes.trimmingCharacters(in: .whitespacesAndNewlines)
         text += "## Notes\n\n\(notes.isEmpty ? "No notes written." : notes)\n\n"
         if let edits = receipt.editsSummary { text += "## Edits\n\n\(edits)\n\n" }
+        if let version = receipt.version { text += "## Video version\n\n\(version) Approval covers this version only.\n\n" }
         text += "## Files\n\n| File | Size | SHA-256 |\n|---|---|---|\n"
         for row in rows { text += "| \(row.name) | \(Format.number(Int(row.bytes))) bytes | `\(row.sha)` |\n" }
         if receipt.people.isEmpty {

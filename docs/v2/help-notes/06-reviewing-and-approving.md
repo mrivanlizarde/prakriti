@@ -64,3 +64,9 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
 
 - A `requires renderedVideo` paragraph after "Choose who is in the episode": Hide Face and Leave Out in the edited video, and that
   Video in the toolbar shows the faces hidden as the file does.
+
+## Status after v2 part M9d (Thu 15 Oct 2026)
+
+- New `style` paragraphs: the marks lane under the strip (magnifying glass, Aa, quotation mark, bookmark; Quick Help names each) and
+  Play on a version; under Approve, that approval covers the version in use, named in the question and in the receipt's "Video
+  version" section.

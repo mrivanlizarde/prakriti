@@ -19,6 +19,9 @@ final class PipelineRunner {
     @ObservationIgnored var makeClient: (@Sendable (ModelProvider, WritingSetup) -> any LanguageModelClient)?
     /// Tests only: the cloud client the privacy lock wraps (v2 part M5a), to count what reaches it.
     @ObservationIgnored var makeCloudClient: (@Sendable (ModelProvider, WritingSetup) -> any CloudModelClient)?
+    /// Whether a video's plan asks the planning model for the parts of the talk (v2 part M9d). Always on in the app. The acceptance
+    /// checks of earlier parts turn it off, so they measure what they always measured and never wait on a model.
+    @ObservationIgnored var askForBeats = true
 
     /// Recordings waiting their turn, and the one being worked on (by Recording.id), for the UI.
     private(set) var waitingIDs: [UUID] = []
@@ -307,8 +310,12 @@ final class PipelineRunner {
         // Ivan's direction for this recording (v2 part M9c), the model that plans with it, and the folder holding the last
         // plan and the beats, so neither is asked for twice.
         options.direction = recording.direction
-        // The model is set up (and a cloud key read) only for a recording with a direction: without one, planning asks no model.
-        if !options.direction.isEmpty { options.planning = writingSetup() }
+        // The model is set up (and a cloud key read) for a recording with a direction, and (v2 part M9d) for a video, whose key
+        // phrases, opening line and chapters come from the parts of the talk; otherwise planning asks no model.
+        options.wantBeats = askForBeats
+        if !options.direction.isEmpty || (askForBeats && (make.contains(.editedVideo) || recording.madeFiles.contains(EditPlan.fileName))) {
+            options.planning = writingSetup()
+        }
         options.planFolder = model.paths.outputs.appending(path: URL(fileURLWithPath: recording.filePath).deletingPathExtension().lastPathComponent,
                                                            directoryHint: .isDirectory)
         // Who is left out of the podcast and which names said aloud are muted (v2 part M6c).
@@ -798,6 +805,14 @@ final class PipelineRunner {
             // The edited video (v2 part M8b): this make's, or none, and why when it was asked for.
             recording.videoJSON = result.video?.json()
             recording.videoProblem = activeOptions.makeVideo ? result.videoProblem : nil
+            // Every video made is kept as a version (v2 part M9d), the one in use; a make without a video uses none.
+            if let video = result.video {
+                model.recordVersion(recording, video: video, plan: result.editPlan)
+            } else {
+                var versions = recording.versions
+                versions.current = nil
+                recording.versions = versions
+            }
             if let video = result.video {
                 model.record("\(label) (\(recording.fileName)): the video, \(video.fileName), \(Format.timecode(video.duration)), made in "
                              + "\(Format.length(video.renderSeconds)). Ready checklist: \(video.summary.lowercasedFirst).",

@@ -210,6 +210,9 @@ final class Recording {
     /// Ivan's direction for this recording (v2 part M9c): his words, presets, pace and length, and the chips he removed, as JSON
     /// (`RecordingDirection`). Nil until he sets one.
     var directionJSON: String?
+    /// Every video made of this recording that is still kept, and which one is in use (v2 part M9d, design spec 3.5.3 and 3.7): an
+    /// `EditVersions` as JSON. Nil until a video is made; an addition with a nil default, so the store migrates on its own.
+    var versionsJSON: String?
 
     var source: Source?
 
@@ -328,6 +331,12 @@ final class Recording {
 
     /// The edited video (v2 part M8b), or nil.
     var video: VideoRecord? { VideoRecord.decode(videoJSON) }
+
+    /// The videos made of this recording, kept as versions (v2 part M9d).
+    var versions: EditVersions {
+        get { EditVersions.decode(versionsJSON) }
+        set { versionsJSON = newValue.versions.isEmpty ? nil : newValue.json() }
+    }
 
     /// Ivan's direction for this recording (v2 part M9c); empty until he sets one.
     var direction: RecordingDirection {
@@ -559,4 +568,83 @@ final class LogEntry {
     }
 
     var level: LogLevel { LogLevel(rawValue: levelRaw) ?? .info }
+}
+
+
+/// One video made of a recording, kept as a version (v2 part M9d, design spec 3.5.3: "Version 3. Energetic, Faster Cuts. Made Sat 10
+/// Oct, 9:41 pm. 11:02 long."): what made it (the direction in a few words, its chips and the plan's lines), when, how long it is,
+/// its files, and the video's own record, so it can be played and used again. The files are copies (APFS clones, no extra space
+/// until one changes) in `<outputs>/<recording>/Versions/Version N/`: its Video folder, `edit-plan.json` and `video-hiding.json`.
+struct EditVersion: Codable, Equatable, Identifiable, Sendable {
+    var number: Int
+    var madeAt: Date
+    /// "Energetic, Faster Cuts", or "Clear, the house style" when no direction made it.
+    var made: String
+    var chips: [String] = []
+    var planLines: [String] = []
+    var duration: Double
+    var files: [String] = []
+    var video: VideoRecord
+
+    var id: Int { number }
+
+    /// "Version 3. Energetic, Faster Cuts. Made Thu 15 Oct, 9:41 pm. 11:02 long."
+    var line: String {
+        "Version \(number). \(EditVersion.sentence(made)) Made \(Format.dayAndTime(madeAt)). \(Format.timecode(duration)) long."
+    }
+
+    /// Words closed by a full stop, unless they already end on one (inside a closing quotation mark too).
+    static func sentence(_ words: String) -> String {
+        words.hasSuffix(".") || words.hasSuffix(".\u{201D}") || words.hasSuffix("?\u{201D}") || words.hasSuffix("!\u{201D}") ? words : words + "."
+    }
+
+    /// Its folder inside a recording's output folder.
+    static func folder(_ number: Int, in output: URL) -> URL {
+        output.appending(path: EditVersions.folderName, directoryHint: .isDirectory).appending(path: "Version \(number)", directoryHint: .isDirectory)
+    }
+}
+
+/// A recording's versions, newest last, and the one in use (its files are the ones in the recording's own folder).
+struct EditVersions: Codable, Equatable, Sendable {
+    static let folderName = "Versions"
+    /// Versions kept; the oldest beyond this go (their files with them), never the one in use.
+    static let kept = 5
+    /// The files of the recording's folder a version holds.
+    static let names: Set<String> = [VideoStep.folderName, EditPlan.fileName, HiddenFaces.fileName]
+
+    var current: Int?
+    var versions: [EditVersion] = []
+
+    var next: Int { (versions.map(\.number).max() ?? 0) + 1 }
+    var inUse: EditVersion? { versions.first { $0.number == current } }
+
+    func version(_ number: Int) -> EditVersion? { versions.first { $0.number == number } }
+
+    func json() -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        return (try? encoder.encode(self)).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
+    }
+
+    static func decode(_ json: String?) -> EditVersions {
+        guard let json, let data = json.data(using: .utf8) else { return EditVersions() }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return (try? decoder.decode(EditVersions.self, from: data)) ?? EditVersions()
+    }
+
+    /// What made a plan, in a few words: its style, the presets beyond the style, and Ivan's own words in quotes.
+    static func made(by plan: EditPlan?) -> String {
+        guard let plan else { return "The house style" }
+        let style = StyleName(rawValue: plan.style)?.title ?? plan.style
+        guard let direction = plan.direction else { return "\(style), the house style" }
+        var parts = [style]
+        for preset in direction.presets ?? [] where preset != .energetic && preset != .calm && preset != .storyFirst { parts.append(preset.title) }
+        let prompt = direction.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !prompt.isEmpty { parts.append("\u{201C}" + (prompt.count > 60 ? String(prompt.prefix(57)) + "..." : prompt) + "\u{201D}") }
+        if let pace = direction.pace, pace != .balanced { parts.append(pace.title) }
+        if let length = direction.length, length != .everything { parts.append(length.title) }
+        return parts.joined(separator: ", ")
+    }
 }

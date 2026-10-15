@@ -91,8 +91,19 @@ enum LengthChoice: String, Codable, CaseIterable, Identifiable, Sendable {
 }
 
 /// Words on screen (research 3.2's `text`).
-enum TextLevel: String, Codable, CaseIterable, Sendable {
+enum TextLevel: String, Codable, CaseIterable, Identifiable, Sendable {
     case off, subtle, bold
+
+    var id: String { rawValue }
+
+    /// The House Style pane's words (v2 part M9d).
+    var title: String {
+        switch self {
+        case .off: "Off"
+        case .subtle: "Subtle"
+        case .bold: "Bold"
+        }
+    }
 }
 
 /// The only fields a direction can set (research 3.2). `pace` and `cutDensity` are steps from -2 to 2 (positive is faster, more
@@ -251,8 +262,6 @@ enum Direction {
     static let peopleSentence = "People are chosen under People."
     static let publishingSentence = "Nothing is posted from here: publishing is always yours to do."
     static let captionsNotBuilt = "Captions on the picture are not made yet; the captions file is beside the video."
-    static let textNotBuilt = "Key phrases on screen are not made yet, so Text changes only the title and the teacher's name: Off takes both away."
-    static let hookNotBuilt = "Opening on the strongest line is not made yet."
 
     /// The presets, the pace and length controls, the rules, then the model's reading (when it read these very words), with
     /// the removed chips cleared. Pure and instant.
@@ -274,8 +283,6 @@ enum Direction {
         for id in direction.removed { fields = clear(id, in: fields) }
         reading.fields = fields
         if fields.captionsBurned == true { reading.said.append(captionsNotBuilt) }
-        if fields.text == .subtle || fields.text == .bold { reading.said.append(textNotBuilt) }
-        if fields.hook == true { reading.said.append(hookNotBuilt) }
         reading.chips = chips(fields, house: house, pace: direction.pace)
         return reading
     }
@@ -301,17 +308,25 @@ enum Direction {
         return f
     }
 
-    /// The House Style with a direction's style, punch-ins, teaching, words on screen and pace laid over it.
+    /// The House Style with a direction's style, punch-ins, teaching, words on screen, the opening line and pace laid over it.
     static func house(_ house: HouseStyle, fields: DirectionFields, pace: Pace?) -> HouseStyle {
         var h = house
         if let s = fields.style { h.style = s }
         if let p = fields.punchIns { h.punchIns = p }
         if let t = fields.teaching { h.teaching = t }
         if let pace { h.pace = pace }
-        if fields.text == .off {
+        // Words on screen (v2 part M9d): Off takes every text away; Subtle and Bold set how often key phrases come.
+        switch fields.text {
+        case .off?:
             h.titleOnScreen = false
             h.namesOnScreen = false
+            h.keyPhrases = .off
+            h.termCards = false
+        case .subtle?: h.keyPhrases = .subtle
+        case .bold?: h.keyPhrases = .bold
+        case nil: break
         }
+        if let hook = fields.hook { h.openingLine = hook }
         return h
     }
 
@@ -349,7 +364,7 @@ enum Direction {
         if let p = fields.punchIns { chips.append(DirectionChip(id: "punchIns", text: "Punch-ins: \(p.title)")) }
         if fields.teaching == true { chips.append(DirectionChip(id: "teaching", text: "Teaching: demonstrations whole and wide")) }
         if let t = fields.text {
-            chips.append(DirectionChip(id: "text", text: t == .off ? "Text on screen: off" : (t == .subtle ? "Text on screen: fewer words" : "Text on screen: more words")))
+            chips.append(DirectionChip(id: "text", text: t == .off ? "Text on screen: off" : (t == .subtle ? "Key phrases: now and then" : "Key phrases: more often")))
         }
         if let c = fields.captionsBurned { chips.append(DirectionChip(id: "captions", text: c ? "Captions on the picture" : "No captions on the picture")) }
         if let t = fields.targetSeconds { chips.append(DirectionChip(id: "length", text: "Length: " + lengthWords(t))) }

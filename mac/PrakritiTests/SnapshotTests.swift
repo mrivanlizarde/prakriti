@@ -693,7 +693,7 @@ final class SnapshotTests: XCTestCase {
         try draw("24-direction") { model in
             try directed.encoded().write(to: planURL)
             _ = try openPlan(model) { r in r.direction = energetic }
-            model.inspectorTab = .outputs
+            model.inspectorTab = .direction
         }
         try draw("24-direction-people") { model in
             var asked = directed
@@ -704,10 +704,66 @@ final class SnapshotTests: XCTestCase {
                                "Keeps the story at 1:47.", "Ends at 9:52."]
             try asked.encoded().write(to: planURL)
             _ = try openPlan(model) { r in r.direction = words }
-            model.inspectorTab = .outputs
+            model.inspectorTab = .direction
+        }
+        // The Direction tab (v2 part M9d): empty (no direction, the sample plan, no version yet); the plan shown in plain lines with
+        // the opening line, key phrases, the held moment and chapters; and two versions, the second in use, each with Play (made-up
+        // records of no one; the stand-in files are the test pattern, made here and taken away after).
+        try draw("25-direction-empty") { model in
+            try plan.encoded().write(to: planURL)
+            _ = try openPlan(model)
+            model.inspectorTab = .direction
+        }
+        var shown = plan
+        shown.planLines = ["Cuts pauses longer than 0.4 s inside a sentence and 0.6 s between sentences, down to 0.18 s and 0.35 s.",
+                           "Punch-ins about every 20 s, and 4 slow push-ins.", "Opens on a line from 8:39 (9 s), then the title and the talk from its start.",
+                           "On screen: 8 key phrases in the speaker's own words and 2 terms from the word list.",
+                           "Holds one still shot for 41 s from 8:26, the main point, uncut.", "9 chapters for YouTube, the first at 0:00.", "Ends at 15:06."]
+        // The marks lane under the strip (v2 part M9d): made-up punch-ins, texts, an opening line and chapters on the sample plan.
+        let main = shown.spans
+        for (n, span) in main.enumerated() where n % 3 == 1 {
+            shown.visual.append(EditPlan.Visual(span: span.id, kind: n % 2 == 0 ? EditPlan.Visual.keyPhrase : EditPlan.Visual.punchIn, in: span.in, out: span.out,
+                                                scale: 1.12, center: [0.5, 0.45]))
+        }
+        if main.count > 8 {
+            shown.chapters = [EditPlan.Chapter(title: "Welcome", at: main[0].from, seconds: 0), EditPlan.Chapter(title: "The lineage", at: main[4].from, seconds: 60),
+                              EditPlan.Chapter(title: "The practice", at: main[8].from, seconds: 120)]
+            shown.spans.insert(EditPlan.Span(id: "h1", source: main[6].source, from: main[6].from, to: main[6].to, in: main[6].in, out: main[6].out,
+                                             role: EditPlan.Span.hook, text: main[6].text), at: 0)
+        }
+        try draw("25-direction-plan") { model in
+            try shown.encoded().write(to: planURL)
+            _ = try openPlan(model)
+            model.inspectorTab = .direction
+        }
+        let versionsFolder = media.outputs.appending(path: EditVersions.folderName, directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: versionsFolder) }
+        try draw("25-direction-versions") { model in
+            try directed.encoded().write(to: planURL)
+            var versions = EditVersions()
+            for (n, made, chips, length) in [(1, "Clear, the house style", [String](), 906.0), (2, "Energetic, \u{201C}More energetic. Faster, more frequent cuts.\u{201D}",
+                                                                                         ["Style: Energetic", "Pace: faster (pauses between sentences kept to 0.17 s)", "Cuts: more frequent"], 878.0)] {
+                let folder = EditVersion.folder(n, in: media.outputs)
+                try FileManager.default.createDirectory(at: folder.appending(path: VideoStep.folderName), withIntermediateDirectories: true)
+                var record = SnapshotTests.sampleVideoRecord()
+                record.madeAt = Fixtures.now.addingTimeInterval(Double(n - 2) * 3_600)
+                record.duration = length
+                try Data().write(to: folder.appending(path: VideoStep.folderName).appending(path: record.fileName))
+                try directed.encoded().write(to: folder.appending(path: EditPlan.fileName))
+                versions.versions.append(EditVersion(number: n, madeAt: record.madeAt, made: made, chips: chips, duration: length,
+                                                     files: [VideoStep.folderName, EditPlan.fileName], video: record))
+            }
+            versions.current = 2
+            _ = try openPlan(model) { r in
+                r.direction = energetic
+                r.versions = versions
+                r.videoJSON = versions.version(2)?.video.json()
+                if !r.madeFiles.contains(VideoStep.folderName) { r.madeFiles += [VideoStep.folderName] }
+            }
+            model.inspectorTab = .direction
         }
         try? FileManager.default.removeItem(at: planURL)
-        let viewerCount = 23 * 2 // v2 part M8d: 22-video-hidden; v2 part M9c: 24-direction and 24-direction-people
+        let viewerCount = 26 * 2 // v2 part M8d: 22-video-hidden; v2 part M9c: 24-direction and 24-direction-people; v2 part M9d: 25-direction-*
 
         if only == "recording" {
             print("Snapshots written to \(outputFolder.path): \(written.count) Viewer pictures")
@@ -717,7 +773,7 @@ final class SnapshotTests: XCTestCase {
 
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + 2 + 3 * 2 + viewerCount + 2 + 6 * 2 + 4 * 2 + 2 + 2 * 2 + galleryCount + 2 + 2 + 2) // v2 part TXGAP: the Checks tab with missing words (2); v2 part M9a: the House Style pane (2) and its Calm variant (2)
+        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + 2 + 3 * 2 + viewerCount + 2 + 6 * 2 + 4 * 2 + 2 + 2 * 2 + galleryCount + 2 + 2 + 2 + 2) // v2 part TXGAP: the Checks tab with missing words (2); v2 part M9a: the House Style pane (2) and its Calm variant (2); v2 part M9d: the Direction tab in the loop over every tab (2)
     }
 
     /// v2 part M2a: the Help window, open at every article this build shows, in light and dark, with a

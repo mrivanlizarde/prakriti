@@ -890,6 +890,34 @@ did. Help 08 is visible (`direction` capability), with 00, 05, 09 and 10; the we
 Measured on the whole 13 Sep talk: "Focus on the parts that are motivating or enlightening. Under 10 minutes." kept 9 of 13 beats
 in a 9:52 video; the beats took Qwen3.8-27B 15 min 2 s, and asked again on the same words gave the same 13 beats (the seed holds).
 
+**v2 part M9d, hook, chapters, versions, Thu 15 Oct (see BUILD-LOG "v2 part M9d"):** the rest of the house style, and versions.
+Every plan with a picture now reads **the parts of the talk** (the beats, `promptVersion` 2: each part also gives a 2 to 6 word
+key phrase, found word for word inside its key line by `BeatCheck`), from the "Planning the edit" model (the Claude API on Ivan's
+Mac), once per transcript, kept in `beats.json`; wanted, never needed: with no model or no answer the plan is made without them
+and says why (`Pipeline.prepareDirection(picture:)`, `PipelineRunner.askForBeats`). From them, all code: **the opening line**
+(`Edit/Hook.swift`: up to three lines the model marked, then the main point's; whole sentences, else whole clauses, else the key
+line, within the style's length (Clear 5 to 15 s, Energetic 3 to 8, Story 10 to 20, Calm none), never in the first 30 s, never one
+Ivan's copy rules flag; made of the talk's own kept spans cut at quiet frames, as `role: hook` spans first in the plan, the words
+also left in place; `EditTimeline.editTime` skips them, `editTime(_:span:)` finds them; the title comes after it), **key phrases**
+(`TextPlan`: one line on the side away from the faces, the moment the words are said, at most one per 60 to 90 s in Clear, 20 to
+40 in Energetic, strongest part first; drawn word by word, 70 ms apart, each rising 16 px, `OverlayKind.keyPhrase`), **term cards**
+(only the word list's own terms, `Lexicon.terms`, where first said, once each, `OverlayKind.term`), **the held moment**
+(`HeldMoment`: 30 to 60 s of whole sentences of the main point, kept as recorded through `RoughCut.Input.held`, one still wide shot
+with nothing over it; not in Energetic), and **chapters** (`Edit/Chapters.swift`: one per kept part on the video's clock, the
+first at 0:00, at least 30 s each, three or more, into `Description.txt` before the writer's). Text over a picture brighter than
+170 of 255 is placed again (`Edit/TextLight.swift`). Every text coming in counts as a visual change (`VisualPlan.Count.textIns`),
+and the punch-ins aim that many lower. **Versions** (`App/VersionActions.swift`, `EditVersion` and `Recording.versionsJSON`, a
+stored addition): every video made is copied (APFS clones) into `<outputs>/<recording>/Versions/Version N/` (its Video folder,
+plan and hidden faces; outside `Pipeline.madeNames`, so a make never removes it and Approve never copies it), five kept; **Play**
+plays one in the Viewer from its own folder (`ViewerModel.versionPlaying`), **Use This Version** puts one back in the recording's
+folder; Approve covers the version in use and names it in its question and the receipt (`Approval.Receipt.version`). **The
+Direction tab** (`Views/Inspector/DirectionTab.swift`, the wand, Command-Option-3): the direction (moved from Outputs), the plan
+in lines with Plan Again and Make Again, and Versions. **The marks lane** under Timeline-lite (`TimelineMark`: punch-in, text,
+opening line, chapter). Settings, House Style gains Open on the strongest line, Key phrases (Off, Subtle, Bold) and Terms. Help 08
+(Direction tab, what the house style adds, Versions), 00, 02, 05, 06, 09, 10; the welcome's edit row (`style` capability). `make
+accept-hook`; `TEST_RUNNER_PRAKRITI_VIDEO_DIRECTION="More energetic. Faster, more frequent cuts." make accept-video` measures the
+Energetic version by M8's checks 2 and 3.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -1084,6 +1112,12 @@ cd ~/Code/prakriti/mac && make accept-people MILESTONE=v2-m6a
 cd ~/Code/prakriti/mac && make accept-video MILESTONE=v2-m8b
 ```
 ```bash
+cd ~/Code/prakriti/mac && make accept-hook MILESTONE=v2-m9d
+```
+```bash
+cd ~/Code/prakriti/mac && TEST_RUNNER_PRAKRITI_VIDEO_DIRECTION="More energetic. Faster, more frequent cuts." make accept-video MILESTONE=v2-m9d
+```
+```bash
 cd ~/Code/prakriti/mac && make migrate-check
 ```
 ```bash
@@ -1119,7 +1153,18 @@ from cuts and punch changes, every punch-in at most 1.15 on the 1080p source, th
 frame, the file as long as the spans plus the hold) and measures three punch-ins and a push-in in the MP4 (Vision's pupils within
 the upper third plus or minus 5%, and 30 dB or more against the original framed by Core Graphics); it writes
 `acceptance-style.txt` and the measured frames to `for-ivan/` (numbers only). On the excerpt the rate and the first 30 s are
-written as measured, not gated: its own cuts are already 6.95 a minute, so 10 changes in its first 30 s would put it over 8. `make accept-text` (v2 part M9b, about 2 minutes) draws the typeface contact sheet (`typeface.png`, every candidate's `CTFont` asked for every glyph of the IAST string; needs the three candidates in `~/Prakriti/Dev/Fonts`), then makes the 13 Sep excerpt in development with a test title and a teacher named and measures every text moment of the MP4 every 0.5 s: the text's pixels against the same frame drawn without text (`CompositionBuilder.build(drawText: false)`), inside title safe and clear of every face Vision finds; it writes `acceptance-text.txt` and the frames to `for-ivan/` (numbers only). `make accept-direction` (v2 part M9c, about 20 to 35 minutes, most of it the model) makes the **whole real 13 Sep talk** in development (no video, no writing) and plans it by Plan the Edit with a direction each time, every plan read back and counted: no direction (no model asked), "More energetic. Faster, more frequent cuts." (the chips, 12 to 15 changes a minute, the median shot 3 to 4 s, read by the rules alone), "Focus on the parts that are motivating or enlightening. Under 10 minutes." (the beats by Qwen3.8-27B in LM Studio, timed; 8:30 to 10:00; kept beats score higher; dependencies held; PlanValidation clean), the same at Brisk (0 LM Studio requests, planned in under 10 s), "Show the students." (nothing changes), then the beats asked for again to see whether the seed holds (`DIRECTION_SEED=skip` leaves it out). Needs LM Studio's server; nothing goes to a cloud provider (the planning task is set to LM Studio and the cloud factory refuses). Writes `acceptance-direction.txt`. `make accept-viewer-video` (v2 part M8c, about 3 minutes) makes a 5-minute excerpt of the **real 13 Sep talk**
+written as measured, not gated: its own cuts are already 6.95 a minute, so 10 changes in its first 30 s would put it over 8. `make accept-text` (v2 part M9b, about 2 minutes) draws the typeface contact sheet (`typeface.png`, every candidate's `CTFont` asked for every glyph of the IAST string; needs the three candidates in `~/Prakriti/Dev/Fonts`), then makes the 13 Sep excerpt in development with a test title and a teacher named and measures every text moment of the MP4 every 0.5 s: the text's pixels against the same frame drawn without text (`CompositionBuilder.build(drawText: false)`), inside title safe and clear of every face Vision finds; it writes `acceptance-text.txt` and the frames to `for-ivan/` (numbers only). `make accept-direction` (v2 part M9c, about 20 to 35 minutes, most of it the model) makes the **whole real 13 Sep talk** in development (no video, no writing) and plans it by Plan the Edit with a direction each time, every plan read back and counted: no direction (no model asked), "More energetic. Faster, more frequent cuts." (the chips, 12 to 15 changes a minute, the median shot 3 to 4 s, read by the rules alone), "Focus on the parts that are motivating or enlightening. Under 10 minutes." (the beats by Qwen3.8-27B in LM Studio, timed; 8:30 to 10:00; kept beats score higher; dependencies held; PlanValidation clean), the same at Brisk (0 LM Studio requests, planned in under 10 s), "Show the students." (nothing changes), then the beats asked for again to see whether the seed holds (`DIRECTION_SEED=skip` leaves it out). Needs LM Studio's server; nothing goes to a cloud provider (the planning task is set to LM Studio and the cloud factory refuses). Writes `acceptance-direction.txt`. `make accept-hook` (v2 part M9d, about 30 minutes) makes the **whole real 13 Sep talk** in development with the video on, a test
+title and Gabriel named as teaching, the House Style at its standard, and its beats from `~/Prakriti/Dev/Beats` when they were
+made from this very transcript (else Qwen3.8-27B is asked and the file kept there: `BeatsCache`); it counts every visual change
+(cuts, framing, texts coming in), checks every text against the transcript's words, the opening line, chapters, the held moment
+and the ending, measures every text moment of the MP4 every 0.5 s near its planned box (inside title safe, clear of every face
+Vision finds, how bright the picture under it is; numbers only, frames to `for-ivan/`), then makes version 2 with a direction,
+plays versions 1 and 2 in the Viewer and approves into the development Approved folder; it writes `acceptance-hook.txt`. With
+`TEST_RUNNER_PRAKRITI_VIDEO_DIRECTION` set, `make accept-video` makes each talk with that direction and its beats (from the cache
+when they match) and writes `acceptance-video-direction.txt`; without it, it measures as M8b did (no beats). Every earlier
+acceptance that makes a video sets `runner.askForBeats = false`, so it measures what it always measured and never waits on a model.
+`BeatsWarmTests` (`TEST_RUNNER_PRAKRITI_ACCEPTANCE=beats`, `TEST_RUNNER_PRAKRITI_BEATS_ONLY=09-06`) fills the cache from the
+development transcripts; run it alone (warning 183). `make accept-viewer-video` (v2 part M8c, about 3 minutes) makes a 5-minute excerpt of the **real 13 Sep talk**
 (`~/Prakriti/Dev/Excerpts/2026-09-13 excerpt 2m to 7m.mp4`, cut once with `-c copy` from 2:00) with the video on, opens it in
 the Viewer on Video and compares six frames of the MP4 with the Viewer's own player item by PSNR (38 dB or better; numbers only),
 then writes the test-pattern video `make look-video` plays (`~/Prakriti/Dev/Fixtures/viewer-video-sample`). `make look-video`
@@ -1321,6 +1366,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | Progress and Activity (v2 part M4a) | `mac/Prakriti/Progress/`: `JobProgress.swift` (`ProgressTracker`, the pure arithmetic: weights, the percent that never goes back, the time left only from a measured rate, the stall line; `ProgressSnapshot` with its status line; `TimeLeft`; `JobProgress`, published at most twice a second), `ProgressMeter.swift` (what the pipeline and ffmpeg report, read twice a second; `ProcessControl`, Pause by SIGSTOP and SIGCONT), `StageTimings.swift` (`StageTiming`, a SwiftData model, the last 10 runs of each stage, seeded once from the store; `firstGuess`, measured 12 Oct). `Engine/Subprocess.swift` (`onStdoutLine`, `control`), `Engine/Pipeline.swift` (`meter`, `passes`, ffmpeg's `-progress pipe:1` in `tool`), `App/PipelineRunner.swift` (`currentJob`, `pause`, `resume`, `stop`, `makeNext`, `queueFraction`, `queueTimeLeft`, `showSample`), `App/StatusSummary.swift` (`noteStatusLine`, `--debug-status-log`); views: `Views/Activity/ActivityWindow.swift` (the window, Now, Finished, Log, `ActivityButton`), `Views/ProgressViews.swift` (`ProgressRing`, `ProgressBlock`, `ProgressButtons`), the card's `StatusCapsule`, the list's Status column, `StatusBlock` in `OutputsTab`, `ViewerBanner`, `Views/MenuBar.swift`; `Fixtures.showProgress` (the sample talk being made, for snapshots and captures); tests `ProgressTests` (in `make test`) and `ProgressAcceptanceTests` (`make accept-progress`) |
 | The edited video (v2 parts M8b and M8c) | `mac/Prakriti/Render/`: `VideoPreview.swift` (M8c: the Viewer's Video, built from the plan the video was made from, `VideoSampleFolder`), `EditTimeline.swift` (the plan in frames and samples), `CompositionBuilder.swift`, `Instructions.swift` (`RenderInstruction`), `Compositor.swift`, `VideoAudio.swift` (decode, join with crossfades, master), `VideoWriter.swift`, `Mp4Boxes.swift` (moov, edit lists), `Captions.swift`, `VideoDescription.swift` (`Description.txt`), `ReadyChecklist.swift`, `OutputGate.swift` (the not-checked refusal, the people output checks since M8d, and the only move), `VideoStep.swift` (`VideoRecord`, make and check); since M8d `VideoHiding.swift` (`HiddenFaces`, `video-hiding.json`) and `People/PictureOutputCheck.swift`; the pipeline's `.renderVideo` and `.checkVideo` steps and `PipelineOptions.makeVideo`; `Recording.videoJSON` and `videoProblem`; `App/VideoActions.swift` (Make Video); `Views/Inspector/VideoSection.swift`; since M8c `App/VideoEditActions.swift` (Restore, Remove, Take Out Again, Keep, Delete, Undo, `Recording.planRestores`, `restoresPending`, Watch Video), the Video rendition in `Views/Viewer/ViewerModel.swift`, `CaptionsOverlay` and `PictureToggle` in `Views/Viewer/PeopleOverlay.swift`, `Captions.cues(srt:)`; tests `RenderTests`, `ViewerVideoTests` (in `make test`), `VideoAcceptanceTests` (`make accept-video`), `ViewerVideoAcceptanceTests` (`make accept-viewer-video`), `PeopleInVideoTests` (in `make test`), `PeopleVideoAcceptanceTests` (`make accept-people-video`) and `capture-window.swift --video` (`make look-video`) |
 | House style and zooms (v2 part M9a) | `mac/Prakriti/Edit/Style.swift` (`StyleName`, `Pace`, `PunchLevel`, `Length`, `HouseStyle`, `Style` with research 2.3 and 2.4's numbers, `maxScale`), `Edit/VisualPlan.swift` (`FaceSpot`, `VisualPlan.make`, `assign`, `center`, `shots`, `count`; `Framing`), the plan's `visual` items and `holdSeconds` (`EditPlan.Visual`), PlanValidation rule 7, `EditTimeline.holdFrames`, the hold in `CompositionBuilder`, `VideoWriter` and `VideoAudio.join`, `Compositor.frame`, `RenderInstruction.crop`, `Pipeline.subject`, `PipelineOptions.house`, `AppSettings.houseStyle`, `Views/Settings/HouseStylePane.swift`; tests `StyleTests` (in `make test`) and `StyleAcceptanceTests` (`make accept-style`) |
+| Hook, chapters, versions (v2 part M9d) | `mac/Prakriti/Edit/Hook.swift` (`Hook`, `HeldMoment`), `Edit/Chapters.swift`, `Edit/TextLight.swift`, key phrases and terms in `Edit/TextPlan.swift` (`Moment`, `placePhrase`) and `PlanStep.keyPhrases`, `terms`, `Lexicon.terms`, `Beat.keyPhrase`, `OverlayKind.keyPhrase` and `.term` with `OverlayLayout.wordEdges` and `OverlayTable.wordLayers`, `EditPlan.Span.hook`, `hookSpans`, `mainSpans`, `held`, `Chapter.seconds`, `EditTimeline.Piece.hook`, `editTime(_:span:)`, `hookFrames`, `RoughCut.Input.held`, `VisualPlan.Input.held` and `textChanges`, `Count.textIns`, `PlanValidation` (opening line, chapters on the video's clock, key phrases and terms word for word, zooms on the video's clock), `HouseStyle.keyPhrases`, `termCards`, `openingLine`, `Style.opening`, `keyPhraseEvery`, `held`, `termCards`, `VideoDescription.make(planChapters:)`; versions in `Model/Models.swift` (`EditVersion`, `EditVersions`, `Recording.versionsJSON`) and `App/VersionActions.swift`, `ViewerModel.versionPlaying`, `Approval.Receipt.version`; `Views/Inspector/DirectionTab.swift`, `InspectorTab.direction`, `TimelineMark` in `Views/Viewer/TimelineLite.swift`; tests in `HookTests` and `VersionTests` (in `make test`), `HookAcceptanceTests` (`make accept-hook`), `BeatsCache` and `BeatsWarmTests` |
 | Beats and direction (v2 part M9c) | `mac/Prakriti/Edit/Beats.swift` (`BeatTag`, `BeatKind`, `Beat`, `BeatsFile` and `beats.json`, `BeatSentence`, `BeatCheck`), `Edit/Direction.swift` (`DirectionPreset`, `LengthChoice`, `TextLevel`, `DirectionFields` and its vocabulary, `DirectionChip`, `RecordingDirection`, `DirectionReading`, `Direction.read`, `house`, `style`, `chips`, `DirectionModelCheck`), `Edit/DirectionRules.swift` (the rules table, `tagPatterns`, the people and publishing patterns), `Edit/Selection.swift` (the knapsack), `Writing/Planner.swift` (the beats and the direction's own words through the "Planning the edit" model under the lock), `PlanStep` (selection, `RemovedKind.beat`, `planLines`), `Pipeline.prepareDirection`, `PipelineOptions.direction`, `planning`, `planFolder`, `EditPlan.Direction`, `BeatChoice`, `planLines`, `Basis.direction`, `Style.changeAim`, `VisualPlan.Input.beatStarts` and `keyLines`, `ModelRequest.deterministic` and `Shape.planning`, `Recording.directionJSON`, `AppModel.setDirection` and `planningLine`, `Views/Inspector/DirectionSection.swift` (with `FlowLayout`), the plan's lines in `EditPlanSection` and `ProgressBlock`; tests in `StyleTests` (in `make test`) and `DirectionAcceptanceTests` (`make accept-direction`) |
 | Text and graphics (v2 part M9b) | `mac/Prakriti/Render/TypeFace.swift` (Alegreya Sans, `register`, `prepared`, `missing`), `Render/Overlays.swift` (`OverlayKind` and its motion, `OverlayLayout`, `OverlayView`, `OverlayCache`, `OverlayTable`, `EditTimeline.editFrame(span:original:)`), `Edit/TextPlan.swift` (the title and lower thirds, `Faces`), `Resources/Fonts/` (three weights and `OFL.txt`), the text fields of `EditPlan.Visual`, rule 7's text half, `Compositor.overlay`, `RenderInstruction.textLayers`, `Pipeline.textSetup`, `PipelineOptions.planTitle`, `PeopleSetup.teachers`, `HouseStyle.titleOnScreen` and `namesOnScreen`, the pane's Text on Screen; tests `TextTests` (in `make test`) and `TextAcceptanceTests` (`make accept-text`) |
 | Faces (v2 part M6a) | `mac/Prakriti/People/`: `FaceScan.swift` (the reader, Vision at two frames a second, the change-of-picture measure), `Tracks.swift` (`FaceBox` and the Vision conversion, `FaceTracker`, `FaceGrouping`, `FacesFound` with its lines), `PeopleFile.swift` (`PeopleFolders`, the people file, `FaceStep` with its job folder), `FaceCrops.swift` (the People tab's live crops, memory only); the pipeline's `.faces` step and `PipelineOptions.people`; `Recording.facesJSON`; `App/FaceActions.swift` (`applyFaces`, Look for Faces); `Views/Inspector/PeopleTab.swift` (`PeopleTab`, `FaceRow`, `PeopleLine`); the job cleanup in `AppModel.launch`; `--debug-face-scan` in `App/DebugSwitches.swift`; tests `PeopleTests` (in `make test`), `PeopleAcceptanceTests` and `scripts/people-crash-check.sh` (`make accept-people`) |
@@ -2300,6 +2346,47 @@ top and its end. Reading the code is not verification, and neither is a passing 
     the Direction section the full `make test` stopped at 23-viewer-video-restored with SwiftUI's "precondition failure:
     exhausted data space" (twice, the same place); the same pictures drew fine alone. With the pools, all 202 screens (1,103
     pictures) drew in one run.
+
+177. **The opening line is made only of the talk's own kept spans, cut down to it, and every moment of the original is found in the
+    talk's own piece (`EditTimeline.editTime` skips the opening line's pieces; `editTime(_:span:)` asks for one).** Reason: the
+    opening line repeats time the talk keeps; looked up by time alone, a caption, a chapter or the ending would land in the
+    opening line instead of its place, and a hook built from the original's time would bring back fillers, Ivan's cuts or someone
+    left out (PlanValidation rule 4 refuses any hook span outside a kept span).
+178. **Zooms are checked for overlap on the video's clock, in whole frames.** Reason: found 15 Oct on the 13 Sep plan: on the
+    original's clock the opening line's zooms share time with the talk's, and seconds divided by a frame's length landed a hair
+    past a whole number, so a punch-in ending at frame 1512 and a push-in starting there read as overlapping and the plan was
+    refused ("k9 ... 1015 to 1512 and k10 ... 1512 to 2056").
+179. **The parts of the talk are wanted for every video, never required: no model, no answer, the plan is made without them and
+    says why.** Only a direction that chooses among parts (a length, a focus) needs them. Reason: a make must never stall on a
+    model (the watcher), and the plan stays true to what was asked. Earlier parts' acceptances set `runner.askForBeats = false`.
+180. **The held moment rides on `RoughCut.Input.held`, never on Ivan's restores.** Reason: the plan's basis records his restores
+    to tell him a plan is behind; a held moment written there would read as a restore he never made, forever "not in the plan yet".
+181. **Versions are copies in `Versions/`, outside `Pipeline.madeNames`, and Use This Version puts the version's own plan back
+    beside its video.** Reason: a make replaces only made names, so the versions survive it; Approve copies only made names, so it
+    never copies five videos; and the Viewer plays only the plan its video was made from (warning 153).
+182. **Every line a model picks for the screen passes Ivan's copy rules (`CopyRules`): the opening line and key phrases too.**
+    Reason: on the 13 Sep talk the model marked as an opening line "I started as uh someone that was living on his buddy's couch
+    for 300 bucks a month in 2018."; burned text cannot be taken back after upload.
+183. **Never run a Qwen warm-up (or any long LM Studio call) beside a video acceptance.** Reason: 15 Oct, 10:29:53, both test hosts
+    (the 6 Sep beats and `accept-hook` rendering) were ended together with no crash report while the model held about 35 GB; the
+    likely cause is memory, so run them one after the other.
+184. **White text is never left over a picture brighter than 170 of 255 (`TextLight`); the acceptance measures text near its
+    planned box, by brightness moved either way.** Reason: measured 15 Oct, a term card over the 13 Sep floor (247 of 255) was
+    nearly invisible and the rise-only measure did not find it; measured over the whole frame, the encoder's changes on a moving
+    teacher read as text over a face.
+
+185. **With an opening line, the talk's start is a join: its first span keeps half a sentence's pause before its first word, and the
+    opening line half a pause after its last (`Hook.Input.pause`).** Reason: measured 15 Oct on the 6 Sep Energetic video, the
+    opening line's tail plus the half second of room the video's start keeps made 0.55 s of silence at 0:07, over Energetic's
+    0.35 s trigger (M8 check 2).
+
+186. **A closing beat depends on nothing, and no beat depends on housekeeping (`BeatCheck.loosen`, also on cached beats).** Reason:
+    measured 15 Oct, with the M9d request Qwen chained the 13 Sep close to the practice, the schedule and back to the welcome, so
+    "Under 10 minutes" had to keep 12:18 (the selection keeps every dependency of a kept beat, and the close is always kept).
+
+187. **A selection under 85% of the length asked for takes a long part in place of shorter, weaker ones when that reaches the length
+    (`Selection.floor`).** Reason: measured 15 Oct on the 13 Sep talk with the M9d beats, the best value under 10 minutes was a
+    7:58 video, under PLAN M9 check 3's 8:30 floor, because the one part left that fit was 3:34 long.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

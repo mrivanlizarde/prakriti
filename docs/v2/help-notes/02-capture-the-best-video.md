@@ -100,3 +100,10 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
   punch-ins: true of M9a. "Prakriti can zoom in up to twice as close and still deliver a sharp 1080p video" stays `style`:
   it is not true of this build, which makes the video at the source's own size, so a 4K source is also capped at 1.15.
   Whoever adds a 1080p output from a 4K source makes it true (research 2.6) and moves it.
+
+## Status after v2 part M9d (Thu 15 Oct 2026)
+
+- Two hidden `style` lines were removed when `style` was switched on, because nothing builds them: "Prakriti can zoom in up to
+  twice as close and still deliver a sharp 1080p video" (the video is made at the source's size, so 1.15 is the cap on any source,
+  M9a decision 7) and "press the OBS chapter marker key ... Prakriti reads the markers" (no part reads OBS markers). Bring either
+  back only with the feature.

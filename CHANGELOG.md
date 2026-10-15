@@ -5,6 +5,42 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-15, Thu: v2 part M9d, hook, chapters, versions
+
+- **Every video now opens on the talk's strongest line, then the title, then the talk from its start.** Why: research 2.3's
+  grammar (a tease, then the title). The model only proposes; code checks the words, keeps whole sentences or whole clauses, and
+  builds the line only from time the talk itself keeps, so a filler, Ivan's cut or someone left out can never come back through it.
+  Clauses were added after measuring: Parakeet's sentences on the 13 Sep talk run past 15 s, and the key lines alone under 5 s.
+- **Key phrases and term cards: the speaker's own words, 2 to 6, and the word list's own terms, on the side away from the
+  teacher.** Why: REQUEST item 4's "text animation", held to research 2.7 (calm, one line, words in one after another) and to
+  help/08's promise that text on screen is always the speaker's words. Terms only from `Lexicon.terms`, because any other
+  spelling would be a guess.
+- **One held moment of the main point, 30 to 60 s, uncut and still, and chapters from the parts of the talk.** Why: research
+  2.3's deliberate pause, and YouTube chapters that exist even with writing off (the Ready checklist's Chapters line now passes).
+- **Every plan with a picture reads the parts of the talk once, but never waits on them.** Why: the house style needs them;
+  a make must never stall on a model, so with no answer the plan says why and carries on.
+- **Every line a model picks for the screen passes Ivan's copy rules.** Why: the model offered "living on his buddy's couch for
+  300 bucks a month" as the opening line; burned text cannot be fixed after upload.
+- **White text is placed again when the picture under it is brighter than 170 of 255.** Why: a term card landed on the 13 Sep
+  floor at 247 of 255 and could hardly be read; the face rule alone could not see that.
+- **Versions: every video kept, Play and Use This Version, and Approve names the version it covers.** Why: REQUEST item 7
+  ("adjust the editorialization") means comparing tries; design spec 3.5.3 asks that approval cover exactly one version. Copies
+  are APFS clones outside the files a make replaces or Approve copies, so they cost no space and survive every make.
+- **Direction has its own inspector tab, and Timeline-lite a marks lane.** Why: design spec 3.5.3 and 3.4.3; the direction,
+  the plan and the versions belong together, and the strip now shows what the edit adds as well as what it takes out.
+- **The beats answer's room grows with the talk.** Why: the 6 Sep talk's beats were cut off at 16,384 tokens, and at temperature 0
+  with a seed every retry is the same answer.
+- **After the opening line the talk starts on a sentence's pause, not the half second the video's start keeps.** Why: the 6 Sep
+  Energetic video had 0.55 s of silence at 0:07, over its 0.35 s trigger.
+- **A close stands on its own, and nothing depends on housekeeping.** Why: the model chained the 13 Sep close back through the
+  schedule to the welcome, so "Under 10 minutes" could only make 12:29.
+- **A length is filled: under 85% of it, a long part comes in for shorter, weaker ones.** Why: "Under 10 minutes" made 7:58 on
+  the 13 Sep talk with the new beats, short of PLAN's 8:30 floor.
+- **Zoom overlap is checked on the video's clock in whole frames.** Why: the opening line repeats the talk's time, and a punch-in
+  ending at frame 1512 read as overlapping a push-in starting there; the plan was refused.
+
+---
+
 ## 2026-10-15, Thu: v2 part M9c, beats and direction
 
 - **Each recording can be steered in Ivan's own words, with presets, a pace and a length, under Direction in the inspector.**
