@@ -5530,6 +5530,13 @@ shows the not-checked refusal line: true of the sample data, not of a real recor
   has not been run (never a class, as told).
 - `make test` was run whole once with the one snapshot count failure; after the fix only `make snapshots` was run again (passed).
 
+### Installed
+
+**Installed** at 18:56:47 on Wed 14 Oct with `make install`: old pid 25098 quit, new pid **42191** from `~/Applications/Prakriti.app`,
+signed, only the installed copy registered. Live log: "Studio Recordings: listed 13 recordings", "Drop folder: listed 0
+recordings", **"18:56:47 Checked 2 folders. Nothing new."**, "Caught up on changes made while Prakriti was closed: 0 events." The
+next sweep, **"19:01:46 Checked 2 folders. Nothing new."**, pid 42191 still running.
+
 ### For Ivan
 
 - [ ] **Look at one frame** (D1 kept me to numbers): `screens/mac/v2-m8d/for-ivan/m8d-two-people-mixed-video-corner-hidden.png`, a
