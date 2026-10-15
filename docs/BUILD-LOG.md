@@ -5778,6 +5778,14 @@ known Liquid Glass limit of R8, as in M9a), `help-07-outputs-light-p8` and `-dar
 - The date label is drawn and tested but placed by nothing until M12b.
 - The House Style pane has no sample player (design spec 3.13), as in M9a.
 
+### Installed
+
+**Installed** at 01:21:24 on Thu 15 Oct with `make install` (commit 238e37b): old pid 66145 quit, new pid **82496** from
+`~/Applications/Prakriti.app`, signed, only the installed copy registered, `Contents/Resources/Fonts` holds the three faces and
+`OFL.txt`. Live log: "Finished launching. Mode: live.", "Studio Recordings: listed 13 recordings", "Drop folder: listed 0
+recordings", **"01:21:24 Checked 2 folders. Nothing new."**, "Caught up on changes made while Prakriti was closed: 0 events." The
+next sweep, **"01:26:24 Checked 2 folders. Nothing new."**, pid 82496 still running. No video was made again by the install.
+
 ### For Ivan
 
 - [ ] **Look at the typeface choice** (`screens/mac/v2-m9b/typeface.png`): Alegreya Sans, Yoga Marga's own, is chosen; Noto Sans is the
