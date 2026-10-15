@@ -5666,6 +5666,14 @@ say so. The Help block first sat between the edited video and "To watch it"; it 
 - 25 of 105 changes on 13 Sep keep the same scale: cuts where no face can be framed on either side. The research's "never the same scale
   twice" holds wherever a face allows.
 
+### Installed
+
+**Installed** at 22:38:54 on Wed 14 Oct with `make install` (commit 8ab5a8e): old pid 42191 quit, new pid **66145** from
+`~/Applications/Prakriti.app`, signed, only the installed copy registered. Live log: "Finished launching. Mode: live.", "Studio
+Recordings: listed 13 recordings", "Drop folder: listed 0 recordings", **"22:38:54 Checked 2 folders. Nothing new."**, "Caught up on
+changes made while Prakriti was closed: 0 events." The next sweep, **"22:43:54 Checked 2 folders. Nothing new."**, pid 66145 still
+running. The live House Style starts at its standard (Clear); no video was made again by the install.
+
 ### For Ivan
 
 - [ ] **Look at the frames I could only measure** (D1 kept me to numbers): `screens/mac/v2-m9a/for-ivan/m9a-13-Sep-punch-in-1.png`, `-2`,
