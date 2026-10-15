@@ -118,3 +118,9 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
 ## Notes from part M8c (Wed 14 Oct 2026)
 
 - "Cutting, zooming and making the video" moved from `requires video` to `requires style`: zooms are M9.
+
+## Notes from part M9a (Wed 14 Oct 2026)
+
+- "Cutting, zooming and making the video" (`style`) became "Choosing where the picture punches in and pushes in" under
+  `houseStyle`: the visual plan is code on this Mac (`VisualPlan`), no model. "Planning the edit from your direction" stays
+  `style` (M9c asks a model for beats).

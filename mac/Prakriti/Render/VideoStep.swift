@@ -212,7 +212,8 @@ enum VideoStep {
         var picture: PictureCheck?
         if hiddenFaces > 0 {
             do {
-                picture = try await PictureOutputCheck.run(mp4: made.mp4, timeline: made.timeline, hidden: made.hidden, tracks: setup.faceTracks, now: now,
+                picture = try await PictureOutputCheck.run(mp4: made.mp4, timeline: made.timeline, hidden: made.hidden, tracks: setup.faceTracks,
+                                                           framing: Framing(plan: setup.plan, timeline: made.timeline), now: now,
                                                            control: setup.control, progress: { progress(0.1 + 0.4 * $0) })
                 if let picture {
                     setup.log?(String(format: "faces seen again: %d frames, %d faces, %d someone included, %d not accounted for (%.1f s)",

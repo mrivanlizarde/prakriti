@@ -5,6 +5,29 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-14, Wed: v2 part M9a, house style and zooms
+
+- **Every edited video is now planned in a style Ivan picks in Settings, House Style: Clear (the standard), Calm, Energetic or
+  Story, with Pace, Punch-ins, Teaching and Room at the end.** Why: REQUEST item 4 ("zoom in / out effects, use MKBHD as the
+  template") and item 7 (adjust the editorialization). The numbers are research-edit-engine.md 2.3 and 2.4's, in one file
+  (`Style`), so the rough cut, the picture and the tests read the same figures; Clear's pauses are M8a's measured ones, so a
+  Clear video's cuts did not move.
+- **The picture punches in on the teacher's face at alternating scales and pushes in slowly on long shots, about 7 changes a
+  minute, 10 in the first 30 seconds.** Why: MKBHD's grammar disguises jump cuts as a second camera and front-loads the pace
+  (research 2.1). Each punch-in keeps the eyes on the upper third and never passes 1.15 on a 1080p recording, because past
+  that the picture softens (research 2.6).
+- **A shot whose face moves through it stays wide, and the scales are chosen for all shots together.** Why: measured on the 13
+  Sep talk, a still punch-in on a moving face put the eyes 6% off the third mid-shot; and choosing shot by shot let one face-less
+  shot cancel the changes around it (9 changes in the first 30 s instead of 11).
+- **The speaking ends 5 seconds before the last frame, the last frame held without sound.** Why: room for YouTube's end screen
+  (research 2.3). The composition's reader gives a held frame only once, so the writer writes it at every frame time; without
+  that the file had a 2.9 s hole.
+- **Faces are hidden before the picture is framed, and the picture output check puts a face found in a punched-in frame back on
+  the original's picture.** Why: a punch-in must never be able to show a face the hiding missed, and the check compares with the
+  people check's boxes, which are on the original's picture.
+- **A plan records the House Style it was made with.** Why: so the window can say the plan is behind after a change; a plan
+  from before this part is never called behind, so nothing is made again on its own.
+
 ## 2026-10-14, Wed: v2 part M8d, people in the video
 
 - **The edited video hides the face of everyone set to Hide Face or Leave Out in every frame, and cuts the speech of everyone

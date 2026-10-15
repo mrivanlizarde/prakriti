@@ -76,7 +76,11 @@ its plan, and Restore, Remove, Delete and Undo on its spans, each waiting for Ma
 (the last section, "v2 part M8d", Wed 14 Oct): the edited video hides the face of everyone set to Hide Face or Leave Out in every
 frame and cuts the speech of everyone left out, and a video is kept only after its faces are found again and its sound is
 listened to again; on two-people-mixed the corner face is hidden on 625 frames and the second voice is gone, and with hiding
-switched off the gate stops the video at 0:19.
+switched off the gate stops the video at 0:19. **Then part M9a, house style and zooms** (the last section, "v2 part M9a", Wed 14 Oct):
+Settings, House Style chooses Clear, Calm, Energetic or Story, Pace, Punch-ins, Teaching and the room at the end; every edited video
+punches in on the teacher's face at alternating scales (1.12 with Clear, never past 1.15 on a 1080p recording), pushes in slowly on
+long shots, and ends 5 s after the last word on a held frame. On the whole 13 Sep talk: 7.07 changes a minute, 11 in the first 30 s,
+the eyes measured at 0.315 to 0.332 of the height, and every M8 check still passing.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -5544,3 +5548,128 @@ next sweep, **"19:01:46 Checked 2 folders. Nothing new."**, pid 42191 still runn
 - [ ] To try it on a real recording: in People set someone to Hide Face for Video, then Make Video Again; watch it with Video in the
   toolbar.
 - [ ] Nothing else new: the earlier lists stand (M8 check 9's listening, notifications).
+
+## v2 part M9a: house style and zooms. Wed 14 Oct 2026
+
+The part after M8d (`docs/v2/PLAN.md`, M9, part M9a; REQUEST items 4 and 7). Built on `main` 19:45 to 22:40. No package added,
+nothing downloaded, no model asked anything. **No SwiftData field added** (the House Style is a preference, `AppSettings.houseStyle`;
+the picture lives in `edit-plan.json`); `make migrate-check` run anyway. Under Ivan's decision of Mon 12 Oct every participant counts
+as released; nothing in this part sends anything anywhere.
+
+### What was built
+
+- **`Edit/Style.swift`:** the four styles as research-edit-engine.md 2.3 and 2.4's numbers (`Style.base`): Clear (pauses 0.18 / 0.40
+  and 0.35 / 0.60 s, protected 4 s, 6 to 8 changes a minute, 10 in the first 30 s, punch-ins 1.00 / 1.12, push-in 1.05 over 4 s
+  once in 90 s, 5 s at the end), Calm, Energetic, Story; **Pace** (0.8, 1.0, 1.25: pauses and shots divided, changes multiplied),
+  **Punch-ins** (Off, Subtle = Calm's, Standard = the style's own, Punchy = Energetic's), **Teaching**, **Length** (a number for
+  M9c, Highlights = 180 s), `HouseStyle` (the pane's settings, JSON in the preferences) and `Style.maxScale` (research 2.6:
+  `min(scale, 1.15 x sourceHeight / outputHeight)`). Clear's rough-cut numbers are `RoughCutPreset.clear` exactly (a test).
+- **`Edit/VisualPlan.swift`:** `VisualPlan.make` writes the plan's `visual` items, by code, in `PlanStep`: shots start at every cut
+  and, toward the style's rate, between two sentences or at a 0.25 s pause (any word gap in the first 30 s), never under the
+  style's shortest shot (Clear 2 s, 1.5 s in the first 30 s); the punch-in scales for all shots together (`assign`, dynamic
+  programming: most boundaries changing, the rotation's order, at most 3 tight in a row, the last shot wide); each punch-in
+  centred on the teacher's face (`Pipeline.subject`: the teacher's face row, else the included row seen most) with the eyes on
+  the upper third (`eyeInBox` 0.27, measured), inside the frame, wide if the face moves through the shot; slow push-ins on long
+  wide shots; a `hold` so the speaking ends 5 s before the last frame. `Framing` gives each edited frame's part of the picture,
+  eased for a push-in (Bezier 0.42, 0, 0.58, 1). `VisualPlan.count` and `shots` measure a plan (PLAN check 3).
+- **The plan:** `EditPlan.Visual` gains `in`, `out`, `scale`, `from`, `to`, `seconds`, `center` (all optional, so older plans read);
+  `holdSeconds`; `pictureSummary` (the inspector's line under the plan: "Picture, Clear: 39 punch-ins and 4 slow push-ins; the last
+  frame is held 4.8 s, so the speaking ends 5 s before the end."); `Basis.house` (the House Style signature) and "Your newest
+  House Style settings are not in the plan yet." (a plan from before M9a is never called behind); `modifiers.pace` and `teaching`
+  filled; `PlanValidation` rule 7 (items inside their span, scale 1 to 2, never past the frame, no overlap, the hold after the last
+  span and at most 10 s).
+- **Render:** `RenderInstruction.crop` reads the `Framing` by the edited frame; `Compositor.draw` hides faces on the whole picture,
+  then frames it (`Compositor.frame`: crop and Lanczos back to the picture's size, edges extended); `CompositionBuilder` inserts the
+  last kept frame once and stretches it over the hold, with its own instruction; `VideoWriter` writes the held frame at every frame
+  time of the hold (the reader gives it once, Mac warning 161); `VideoAudio.join` fades the last 100 ms into silence and writes the
+  hold silent; `EditTimeline.holdFrames`, `keptFrames`, `holdSourceFrame`, and `originalTime` maps the hold to the last kept frame.
+  `PictureOutputCheck.run` puts a face found in a punched-in frame back on the original's picture (`Framing.toSource`).
+- **Settings, House Style** (`Views/Settings/HouseStylePane.swift`, design spec 3.13, symbol `paintpalette`, between Outputs and
+  Models): Style (four, each with a line), the style's numbers in one sentence, Pace, Punch-ins (each with what it does in numbers),
+  Teaching, Room at the end. The pane's text and Help never describe anything not built.
+- **Wiring:** `PipelineOptions.house` (from `PipelineRunner.options`, so a make and Plan the Edit use the same), `PlanStep.Setup.house`,
+  `subject`, `pictureHeight`.
+- **Help:** capability `houseStyle` on. Help 05 "Punch-ins and the ending" (with Show Me to the pane), 09 ("Choosing where the picture
+  punches in and pushes in"), 10 ("If the video looks soft after a punch-in", "If a punch-in cuts off a raised arm or a pose"), 02
+  (the punch-ins move into the recorded room); `HelpPlace` reads `settings/houseStyle` and `settings/house-style`. Notes appended to
+  `docs/v2/help-notes/02`, `05`, `09`, `10`. Article 08 (Editorial direction) stays hidden: it is `style` (M9c, M9d).
+- **Tests:** `StyleTests` (10, in `make test`), `StyleAcceptanceTests` (`make accept-style`), `VideoAcceptanceTests` and
+  `PeopleVideoAcceptanceTests` measure through the framing and count the hold, `HelpTests`, `WelcomeTests`, `LibraryTests`,
+  `SnapshotTests` (the pane and its Calm variant). START_HERE: the M9a paragraph, `make accept-style`, the file map, Mac warnings
+  159 to 163.
+
+### Found by measuring (each fixed, each with its measurement)
+
+1. **The composition's reader gives a held frame once.** 62 one-frame inserts of the same frame came out of
+   `AVAssetReaderVideoCompositionOutput` as 1 frame (705 kept + 1, of 765), and with the stretched segment the next frame came 2.9 s
+   later: the excerpt's MP4 had a hole the Ready checklist's Frame timing line caught (1 gap of 88,088 units). The writer now writes the
+   held frame at every frame time; the hole is gone (Mac warning 161).
+2. **A still punch-in on a moving face misses the eye line.** On the 13 Sep plan, punch-ins centred on the median of the face put the
+   eyes at 0.395 of the height mid-shot at 4:48 (check 4 allows 0.283 to 0.383); the shots' eyes moved 0.04 to 0.10 of the frame. A
+   shot whose eyes move over 6% (or middle over 10%) now stays wide: the frames measured sit at 0.315 to 0.349 (Mac warning 162).
+3. **Choosing the scales shot by shot lost changes.** With the steadiness rule, a back-to-front alternation let one shot that could
+   not be framed turn the split beside it into no change: 9 changes in the 13 Sep talk's first 30 s, under the 10 required. Chosen
+   together (`assign`), 11 (Mac warning 163).
+4. **The excerpt cannot hold both of Clear's rate bars.** Its own 33 cuts are 6.95 a minute over 4.75 minutes; 10 changes in its first
+   30 s need about 7 more, which puts it at 8.2 to 8.4 a minute. The whole talk holds both (7.07 and 11). On the excerpt both are
+   written as measured, not gated (decision 4).
+
+### Checks run, with results (PLAN M9, the checks part M9a runs: 3 with Clear's punch-in scales and its changes counted from cuts and
+punch changes only, 4 on the eye line, 5 on Clear, 8)
+
+Real media: the 13 Sep talk in full, its 5-minute excerpt (`~/Prakriti/Dev/Excerpts/`), the 6 Sep talk (plan measures and `make
+accept`), `two-people-mixed.mp4`; synthetic plans and the test pattern. No frame of Gabriel's talks was looked at (D1, as told): every
+frame check on them is a number, and the frames measured are written for Ivan. Originals unchanged (730,464,600 bytes, same date).
+
+| # | Check | Result |
+|---|---|---|
+| 3 | `make accept-style` on the 13 Sep talk, Clear: visual changes a minute 6 to 8 (cuts and punch changes), 10 or more in the first 30 s, every punch-in at most 1.15 on the 1080p source | **PASS** (`screens/mac/v2-m9a/acceptance-style.txt`). Whole talk: **105 changes in 14.84 min, 7.07 a minute** (95 cuts, 6.40 a minute before any punch-in, 10 changes inside a span); **11 in the first 30 s**; source 1080p, **largest scale 1.120** of 39 punch-ins and 4 push-ins (1.05); the scales alternate (25 of 105 changes keep the scale: cuts with no face to frame on either side), longest tight run 3, last shot wide; **speech ends 5.018 s before the last frame** (hold 4.838 s); the MP4 895.428 s = the plan's 895.428 s; median shot 5.3 s. Made in 249 s (the video step 145.0 s for 14:55). Excerpt (measured, not the bar, finding 4): 8.21 a minute, 9 in the first 30 s, largest 1.120 of 17 punch-ins, speech ends 5.005 s before the end. Synthetic 10-minute plan (`StyleTests`): 7.01 a minute, 10 in the first 30 s, 34 punch-ins, 6 push-ins, never the same scale twice, 5.00 s after the last word; Energetic on a 4K source rotates 1.00, 1.15, 1.25 at 13.51 a minute; on 1080p never past 1.15 |
+| 4 | The eye line within the upper third, plus or minus 5%, in punch-ins (measured with Vision); the PNGs looked at | **PASS, by measurement.** Whole talk, three punch-ins and a push-in at its end: Vision's pupils at **0.332, 0.315, 0.331 and 0.318** of the height (bar 0.283 to 0.383); each frame **44.2 to 44.8 dB** against the original's frame framed independently by Core Graphics. Excerpt: 0.340, 0.339, 0.326, 0.349; 44.5 to 44.7 dB. Text boxes are M9b. **Looked at (test pattern, no face of anyone):** `m9a-punch-in-test-pattern-original-with-framing.png` (the whole picture with the planned framing outlined and its upper third dashed) and `m9a-punch-in-test-pattern-made.png` (the made frame: exactly that part, sharp, edge to edge, no black border); the made punch-ins against Core Graphics' framing 34.4 to 34.7 dB (7.8 dB against the whole picture). The frames of the talk are for Ivan (below) |
+| 5 | The M8 checks 2 and 3 on Clear | **PASS** (`TEST_RUNNER_PRAKRITI_VIDEO_ONLY="13 Sep" make accept-video`, `acceptance-video-m8b.txt`, the whole 13 Sep talk, Clear with punch-ins, push-ins and the hold): H.264 High, 1920 by 1080, 30000/1001, BT.709; 15.99 Mbps; AAC-LC 48 kHz stereo 320.0 kbps; ftyp moov mdat, no edit list on the picture; **-14.0 LUFS, -1.4 dBTP**; the last 5 s decode; Ready checklist 17 PASS, 3 MISSING (writing off), 0 FAIL; picture 895.428 s = sound 895.428 s = kept 890.590 s + hold 4.838 s; joins 0 of 95 over (worst 0.82); 0 clicks; 0 pauses over the trigger; Parakeet **2,865 of 2,879 kept words (99.5%)**; 6 of 6 fillers gone; six frames matched to the original's frame +0 through the framing (45.0 dB); sound in sync (0.00 ms); 9.15 s a minute to make (M8d: 9.17). The plan half (`acceptance-video.txt`): 191 of 191 cut points 20 dB under on 13 Sep, 732 of 733 on 6 Sep (the stutter join, as before), PlanValidation clean with rule 7 |
+| 8 | Regression set; `make migrate-check` | **PASS.** `make build`: No warnings. **`make test`: 384 tests, 0 failures, 24 skipped by design** (1,357 s; the first run failed 6: HelpTests and LibraryTests on the Show Me link, `settings/housestyle` read in lower case, and WelcomeTests' capability list; fixed and the whole suite run again). `make accept`: 13 Sep -16.8 LUFS (-16.82), -1.7 dBFS, 2,948 words to 15:47 of 15:48; silent-60s at -91 dB, nothing made; the 30 s clip a test; 6 Sep -16.7 LUFS (-16.72), -1.4 dBFS, 10,060 words, 72 and 59 words in TXGAP's two stretches. `make accept-edits`: **38.82 s shorter (expected 38.82)**, 0 of 73 runs from the cut heard, 189 of 201 after it, the class refused. `make migrate-check` on a copy of the live store: 13 recordings, 2 folders, 40 output settings, 1,239 Activity lines before and after, 2 approved |
+| Also | M8's video checks again through the new compositor | `make accept-people-video`: **22 of 22 PASS** after two of its measures learned the framing and the hold (the length now kept spans plus the hold, 72.105 = 67.267 + 4.838 s; the corner's place seen through the framing): picture check 361 faces all included, sound check passed, 0 of 59 `say` runs, 0 faces in the corner, variance down 84.7 to 88.6%, hiding off stopped at 0:19. `make accept-viewer-video`: six frames **45.7 to 46.2 dB**, 35 instructions (one for the hold) |
+
+**Snapshots looked at** (`screens/mac/v2-m9a/`): `10-settings-03-houseStyle-light` and `-dark` (four styles with their lines, the
+numbers sentence, Pace, Punch-ins, Teaching, Room at the end, the footer), `10-settings-house-style-calm-dark-end` (Calm, Brisk,
+Subtle, Teaching on: "Calm at Brisk pace: pauses inside a sentence over 0.56 s become 0.24 s ...", the Subtle line without a
+push-in), Help 05 light p4 and p6, dark p7 ("Punch-ins and the ending", Show Me). All at 17 pt, readable in light and dark. **Found by
+looking:** the first wording said Clear punches in "at most cuts"; measured it is about every other change, and the pane and Help now
+say so. The Help block first sat between the edited video and "To watch it"; it now follows it.
+
+**Em dashes:** 0 in every line this part added (grep for U+2014 and U+2013 over the diff and the new files).
+
+### Decisions, each with its reason
+
+1. **Punch-ins: Off, Subtle, Standard, Punchy** (research 2.5 names three; Standard, the style's own, is added and is the default).
+   Reason: without it Clear's own 1.12 would be no choice in the pane.
+2. **The House Style is one setting for every recording until the Direction tab (M9d).** Reason: M9a builds the pane only; per-recording
+   direction is M9c and M9d. A change applies at the next plan; nothing is made again on its own (PLAN rule 2.1.7).
+3. **Teaching in M9a means: changes only at cuts, no push-in, wide where no face is seen.** Reason: demonstrations are beats, which are
+   M9c; this is the part of "whole and wide" code can do from faces alone.
+4. **On the excerpt, Clear's rate and first-30-s counts are measured, not gated; the whole 13 Sep talk is the gate.** Reason: PLAN check
+   3 names the 13 Sep talk, and the excerpt's own cuts make the two bars contradict each other there (finding 4). The whole talk was
+   run, not only the excerpt.
+5. **Push-ins are placed by length** (the longest wide shots with a steady face, once per interval) until the beats of M9c mark key
+   lines. Snap zooms (Energetic) are kept as numbers only: a punchline is a beat.
+6. **The hold is a held frame, not more of the recording.** Reason: both talks end within 1 s of the last word (no picture to keep), and
+   the tail of a recording is where the teacher walks to stop the camera.
+7. **The video is made at the source's size, so the 1.15 cap holds on 4K too.** Reason: research 2.6's 2.0 for a 4K source assumes a
+   1080p output, which is not built; Help 02's "twice as close" line stays hidden.
+
+### What does not work yet
+
+- Text on screen, lower thirds, title card (M9b); beats, direction, selection under a length, the plan before rendering (M9c); key
+  phrases, the hook, chapters, versions, the Direction tab and the marks lane (M9d). Length is a number only.
+- The excerpt's own video still fails two Ready checklist lines, Frame timing (2 frames 2 apart) and Key frames (17), both from its
+  `-c copy` tail (M8c recorded the first); the whole talks pass every line.
+- The House Style pane has no sample player (design spec 3.13 asks for one; nothing here can play a style before a plan exists).
+- 25 of 105 changes on 13 Sep keep the same scale: cuts where no face can be framed on either side. The research's "never the same scale
+  twice" holds wherever a face allows.
+
+### For Ivan
+
+- [ ] **Look at the frames I could only measure** (D1 kept me to numbers): `screens/mac/v2-m9a/for-ivan/m9a-13-Sep-punch-in-1.png`, `-2`,
+  `-3` and `m9a-13-Sep-push-in-4.png` (the whole talk), and the four `m9a-13-Sep-excerpt-*` beside them. Say if 1.12 looks right, too
+  close or too soft.
+- [ ] **Watch the 13 Sep video with Clear** (PLAN M9 "Needs Ivan"): open Sun 13 Sep, click Make Video under Edited video (Make Again if it already has one), then choose Video in the toolbar. Say what
+  is off; that tunes the numbers. Settings, House Style is where to try Calm, Brisk or Punch-ins Off.

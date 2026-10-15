@@ -150,9 +150,10 @@ final class PeopleVideoAcceptanceTests: XCTestCase {
                 + (failing.isEmpty ? "" : ": " + failing.map(\.text).joined(separator: "; ")))
         report.append("Ready checklist:")
         report += record.checklist.map { "    " + $0.text }
-        verdict("The length is the sum of the kept spans within one frame",
-                abs((measured.videoDuration ?? 0) - plan.keptSeconds) <= plan.frameDuration.seconds + 0.0005,
-                String(format: "picture %.3f s, kept spans %.3f s", measured.videoDuration ?? 0, plan.keptSeconds))
+        // Since part M9a the video ends on the held last frame (speech ends 5 s before the end): the kept spans plus the hold.
+        verdict("The length is the sum of the kept spans (plus the held ending, M9a) within one frame",
+                abs((measured.videoDuration ?? 0) - plan.keptSeconds - plan.holdSeconds) <= plan.frameDuration.seconds + 0.0005,
+                String(format: "picture %.3f s, kept spans %.3f s + held ending %.3f s", measured.videoDuration ?? 0, plan.keptSeconds, plan.holdSeconds))
 
         // Check 6: the MP4 transcribed again; the second voice's five-word runs.
         let sayText = try String(contentsOf: fixtures.appending(path: "second-voice.txt"), encoding: .utf8)
@@ -185,6 +186,15 @@ final class PeopleVideoAcceptanceTests: XCTestCase {
             return FaceBox(x: near[1], y: near[2], width: near[3], height: near[4])
         }
         let preview = try await CompositionBuilder.build(plan: plan, original: mixed, hidden: hidden)
+        // Since part M9a a frame may be punched in: the corner's place in the made frame is the original's place seen through
+        // the framing, and a face found there is put back on the original's picture before it is compared.
+        let framing = Framing(plan: plan, timeline: timeline)
+        func throughFraming(_ box: FaceBox, _ rect: CGRect?) -> FaceBox {
+            guard let r = rect else { return box }
+            let x0 = max(0, (box.x - r.minX) / r.width), y0 = max(0, (box.y - r.minY) / r.height)
+            let x1 = min(1, (box.x + box.width - r.minX) / r.width), y1 = min(1, (box.y + box.height - r.minY) / r.height)
+            return FaceBox(x: x0, y: y0, width: max(0, x1 - x0), height: max(0, y1 - y0))
+        }
         var faceLines: [String] = [], facesInCorner = 0, worstFall = 1.0, worstPreview = 99.0
         var probeTimes: [Double] = []
         var probed: Set<Int64> = []
@@ -198,10 +208,11 @@ final class PeopleVideoAcceptanceTests: XCTestCase {
             probeTimes.append(edited)
             let madeImage = try await generatorMade.image(at: timeline.time(frame)).image
             let originalImage = try await generatorOriginal.image(at: CMTime(seconds: original, preferredTimescale: 30000)).image
-            let found = try await DetectFaceRectanglesRequest(.revision4).perform(on: madeImage).map { FaceGeometry.fromVision($0.boundingBox.cgRect) }
+            let crop = framing.rect(atEditFrame: frame)
+            let found = try await DetectFaceRectanglesRequest(.revision4).perform(on: madeImage).map { Framing.toSource(FaceGeometry.fromVision($0.boundingBox.cgRect), through: crop) }
             let inCorner = found.filter { FaceGeometry.padded(corner, by: FaceHide.pad).contains(x: $0.centerX, y: $0.centerY) }
             facesInCorner += inCorner.count
-            let was = variance(originalImage, in: corner), now = variance(madeImage, in: corner)
+            let was = variance(originalImage, in: corner), now = variance(madeImage, in: throughFraming(corner, crop))
             let fall = 1 - now / max(was, 0.001)
             worstFall = min(worstFall, fall)
             let madePicture = try await RenderTests.frame(AVURLAsset(url: mp4), at: timeline.time(frame))

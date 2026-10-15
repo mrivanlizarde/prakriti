@@ -111,8 +111,8 @@ enum PictureOutputCheck {
 
     /// Looks at the made video `mp4` five frames a second. `timeline` maps its clock to the original's; `hidden` holds the
     /// regions the video hid; `tracks` are the people check's.
-    static func run(mp4: URL, timeline: EditTimeline, hidden: HiddenFaces, tracks: [Track], now: Date, control: ProcessControl? = nil,
-                    progress: @escaping @Sendable (Double) -> Void = { _ in }) async throws -> PictureCheck {
+    static func run(mp4: URL, timeline: EditTimeline, hidden: HiddenFaces, tracks: [Track], framing: Framing = Framing(), now: Date,
+                    control: ProcessControl? = nil, progress: @escaping @Sendable (Double) -> Void = { _ in }) async throws -> PictureCheck {
         let started = ContinuousClock.now
         var check = PictureCheck(checkedAt: now)
         let table = hidden.table()
@@ -150,7 +150,10 @@ enum PictureOutputCheck {
                 _ = try? await detect.perform(on: image)
                 warmed = true
             }
-            let faces = try await detect.perform(on: image).map { FaceGeometry.fromVision($0.boundingBox.cgRect) }
+            // A face found in a punched-in frame is put back on the original's picture (v2 part M9a), where the people
+            // check's boxes and the hidden regions are.
+            let crop = framing.rect(atEditFrame: Int64((time / timeline.frame.seconds).rounded()))
+            let faces = try await detect.perform(on: image).map { Framing.toSource(FaceGeometry.fromVision($0.boundingBox.cgRect), through: crop) }
             check.frames += 1
             let sourceFrame = Int64((original / timeline.frame.seconds).rounded())
             let regions = table.regions(atSourceFrame: sourceFrame)

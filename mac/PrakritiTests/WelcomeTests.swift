@@ -16,7 +16,7 @@ final class WelcomeTests: XCTestCase {
     /// The capabilities in the order the plan builds them (docs/v2/PLAN.md section 1), each part adding
     /// its own: every stage of the build must show a whole welcome.
     static let buildOrder: [Capability] = [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .people,
-                                           .gallery, .recognition, .video, .style, .timelines, .shorts, .thumbnails, .merge]
+                                           .gallery, .recognition, .video, .houseStyle, .style, .timelines, .shorts, .thumbnails, .merge]
 
     private func freshModel(mode: AppMode = .development) -> AppModel {
         AppModel(container: AppModel.inMemoryContainer(), paths: AppPaths(mode: mode), settings: .ephemeral(),
@@ -96,8 +96,8 @@ final class WelcomeTests: XCTestCase {
     }
 
     func testOnlyWhatIsBuiltIsVisibleInThePanels() {
-        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan, .renderedVideo, .video],
-                       "v2 part M2b adds the welcome to Help, M3b the Viewer, M4a progress, M4b the capture check, M5b the cloud providers, M6a faces, M6b voices, M6c choices, M6d hiding, M7a the People gallery, M7b recognition, M8a the edit plan, M8b the rendered MP4, M8c the video in the Viewer")
+        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan, .renderedVideo, .video, .houseStyle],
+                       "v2 part M2b adds the welcome to Help, M3b the Viewer, M4a progress, M4b the capture check, M5b the cloud providers, M6a faces, M6b voices, M6c choices, M6d hiding, M7a the People gallery, M7b recognition, M8a the edit plan, M8b the rendered MP4, M8c the video in the Viewer, M9a the House Style")
         XCTAssertEqual(unbuiltNamesFound(in: visibleText(built, capabilities: Capabilities.built), built: Capabilities.built), [])
         // At M2b, panel 1 lists finding recordings, the podcast and "nothing is posted without you".
         XCTAssertEqual(built.map(\.id), ["welcome", "record", "outputs", "privacy", "start"])

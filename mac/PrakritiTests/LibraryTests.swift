@@ -266,7 +266,9 @@ final class LibraryTests: XCTestCase {
         XCTAssertEqual(HelpPlace(path: "models"), .settings(.models))
         XCTAssertEqual(HelpPlace(path: "settings"), .settings(.general))
         XCTAssertNil(HelpPlace(path: "nowhere"))
-        XCTAssertEqual(HelpPlace.known.count, 4 + 1 + 5 + 1 + 1, "the People gallery since v2 part M7a")
+        XCTAssertEqual(HelpPlace(path: "settings/houseStyle"), .settings(.houseStyle))
+        XCTAssertEqual(HelpPlace(path: "settings/house-style"), .settings(.houseStyle))
+        XCTAssertEqual(HelpPlace.known.count, 4 + 1 + 6 + 1 + 1, "the People gallery since v2 part M7a; the House Style pane since M9a")
 
         let model = Fixtures.model()
         model.go(to: .settings(.models))

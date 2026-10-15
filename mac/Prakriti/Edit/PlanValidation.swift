@@ -11,6 +11,8 @@ import Foundation
 // 4. Key phrases and hook lines are word for word (none exist until M9; a span with a role but no text fails).
 // 5. The people Ivan left out stay out: no kept time overlaps a stretch cut for them, and his own trim and cuts likewise.
 // 6. Chapters, when there are any: three or more, the first at the first kept word, each at least 10 s long.
+// 7. The picture (v2 part M9a): every punch-in and push-in lies inside its span, at a scale from 1 to 2 that never runs past
+//    the frame, no two overlap, and a held ending (at most 10 s) follows the last span.
 
 enum PlanValidation {
     struct Problem: Error, Equatable, Sendable {
@@ -119,6 +121,39 @@ enum PlanValidation {
             let times = plan.chapters.compactMap { PlanWord.index(of: $0.at).map(start) }
             for (a, b) in zip(times, times.dropFirst()) where b - a < 10 {
                 problems.append(Problem(rule: 6, line: "A chapter at \(TimeText.string(a)) is under 10 s long."))
+            }
+        }
+        // Rule 7.
+        var framed: [(Double, Double)] = []
+        for item in plan.visual {
+            guard let span = plan.spans.first(where: { $0.id == item.span }) else {
+                problems.append(Problem(rule: 7, line: "A \(item.kind) names span \(item.span), which the plan does not keep."))
+                continue
+            }
+            switch item.kind {
+            case EditPlan.Visual.punchIn, EditPlan.Visual.pushIn:
+                let scale = item.kind == EditPlan.Visual.punchIn ? item.scale : item.to
+                guard let a = item.in, let b = item.out, let scale, let c = item.center, c.count == 2 else {
+                    problems.append(Problem(rule: 7, line: "A \(item.kind) in span \(span.id) is missing its times, scale or middle."))
+                    continue
+                }
+                if a < span.in - 1e-6 || b > span.out + 1e-6 || b <= a {
+                    problems.append(Problem(rule: 7, line: "A \(item.kind) at \(TimeText.string(a)) runs outside span \(span.id)."))
+                }
+                let half = 0.5 / max(scale, 1)
+                if scale < 1 || scale > 2 || c[0] < half - 1e-3 || c[0] > 1 - half + 1e-3 || c[1] < half - 1e-3 || c[1] > 1 - half + 1e-3 {
+                    problems.append(Problem(rule: 7, line: "A \(item.kind) at \(TimeText.string(a)) frames past the edge of the picture."))
+                }
+                if framed.contains(where: { $0.0 < b - 1e-6 && $0.1 > a + 1e-6 }) {
+                    problems.append(Problem(rule: 7, line: "Two zooms overlap at \(TimeText.string(a))."))
+                }
+                framed.append((a, b))
+            case EditPlan.Visual.hold:
+                if span.id != plan.spans.last?.id || (item.seconds ?? 0) <= 0 || (item.seconds ?? 0) > 10 {
+                    problems.append(Problem(rule: 7, line: "The held ending is not after the last span, or is not between 0 and 10 s."))
+                }
+            default:
+                problems.append(Problem(rule: 7, line: "The plan holds a picture item Prakriti does not make yet (\(item.kind))."))
             }
         }
         return problems

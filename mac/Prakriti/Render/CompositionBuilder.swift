@@ -62,15 +62,35 @@ enum CompositionBuilder {
                 throw Failure(reason: "Span \(piece.id) of the plan could not be put into the video: \(error.localizedDescription)")
             }
         }
+        // The held last frame (v2 part M9a): the last kept frame inserted once and stretched over the hold, so the player
+        // shows it still. A reader of the composition gives that frame once (measured 14 Oct: 62 one-frame inserts of the same
+        // frame came out as one frame too), so `VideoWriter` writes it again for every frame of the hold.
+        if timeline.holdFrames > 0, let shown = timeline.holdSourceFrame {
+            let at = timeline.time(timeline.keptFrames)
+            do {
+                try track.insertTimeRange(CMTimeRange(start: timeline.time(shown), duration: timeline.time(1)), of: source, at: at)
+                track.scaleTimeRange(CMTimeRange(start: at, duration: timeline.time(1)), toDuration: timeline.time(timeline.holdFrames))
+            } catch {
+                throw Failure(reason: "The held last frame could not be put into the video: \(error.localizedDescription)")
+            }
+        }
 
         let frameDuration = CMTime(value: plan.frameDuration.value, timescale: CMTimeScale(plan.frameDuration.timescale))
         // The faces hidden in the video (v2 part M8d): one table shared by every instruction, read by the original's frame.
         let table = hidden.flatMap { $0.isEmpty ? nil : $0.table() }
-        let instructions = timeline.pieces.map { piece in
+        // The punch-ins and push-ins (v2 part M9a), one table shared by every instruction, read by the edited frame.
+        let framing = Framing(plan: plan, timeline: timeline)
+        var instructions = timeline.pieces.map { piece in
             RenderInstruction(timeRange: CMTimeRange(start: timeline.time(piece.editFrame), duration: timeline.time(piece.frames)),
                               trackID: track.trackID, spanID: piece.id, sourceStart: timeline.seconds(piece.sourceFrame),
                               throughCoreImage: throughCoreImage, firstSourceFrame: piece.sourceFrame, frameDuration: frameDuration,
-                              hidden: table)
+                              hidden: table, framing: framing.isEmpty ? nil : framing)
+        }
+        if timeline.holdFrames > 0, let shown = timeline.holdSourceFrame, let last = timeline.pieces.last {
+            instructions.append(RenderInstruction(timeRange: CMTimeRange(start: timeline.time(timeline.keptFrames), duration: timeline.time(timeline.holdFrames)),
+                                                  trackID: track.trackID, spanID: last.id, sourceStart: timeline.seconds(shown),
+                                                  throughCoreImage: throughCoreImage, firstSourceFrame: shown, frameDuration: frameDuration,
+                                                  hidden: table, framing: nil, holds: true))
         }
         let configuration = AVVideoComposition.Configuration(
             colorPrimaries: AVVideoColorPrimaries_ITU_R_709_2, colorTransferFunction: AVVideoTransferFunction_ITU_R_709_2,

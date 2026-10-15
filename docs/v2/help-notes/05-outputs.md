@@ -96,3 +96,11 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
   again (faces, five frames a second) and listened to again before it is kept, with the gate's own sentence.
 - The `requires style` section still mentions blurring each person: M9 must drop that line when it switches `style` on, since the
   `renderedVideo` paragraph now describes it.
+
+## Notes from part M9a (Wed 14 Oct 2026)
+
+- New block `:::requires houseStyle`, "Punch-ins and the ending", after the Edited video block: every number in it is
+  `Style.base(.clear)` and `Style.maxScale` (1.12, 1.15 on 1080p, 1.05 over 4 s once in 90 s, about 7 changes a minute and 10 in
+  the first 30 s, 5 s at the end), measured on the 13 Sep talk by `make accept-style`. Keywords added: punch-in, push-in, zoom,
+  House Style, end screen. The `style` block's "Edited video" section (key ideas as text, transitions) stays hidden: text is M9b
+  and transitions M9c/M9d; reconcile it with the `renderedVideo` and `houseStyle` blocks before `style` is switched on.

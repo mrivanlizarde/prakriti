@@ -26,7 +26,14 @@ enum PlanStep {
         var restored: [TimeRange] = []
         var people = EditPlan.People()
         var signature = ""
-        var preset = RoughCutPreset.clear
+        /// The House Style (v2 part M9a): the style's pause numbers for the rough cut and its punch-ins, push-ins and ending
+        /// for the picture.
+        var house = HouseStyle.standard
+        /// The face the punch-ins follow (the teacher's, else the included face seen most), from the people check; empty
+        /// keeps every shot wide.
+        var subject: [FaceSpot] = []
+        /// The source picture's height in pixels (0 for sound alone: no picture to frame).
+        var pictureHeight: Double = 0
     }
 
     struct Outcome: Sendable {
@@ -52,14 +59,23 @@ enum PlanStep {
             throw Failure(reason: "The sound could not be read, so the edit could not be planned.")
         }
         let frame = setup.frameRate.map { FrameDuration(rate: $0) } ?? .audioOnly
+        let style = Style.make(setup.house)
         let input = RoughCut.Input(words: words, envelope: envelope, duration: setup.duration, frame: frame, edits: setup.edits,
-                                   leftOut: setup.people.cuts, restored: setup.restored, preset: setup.preset)
+                                   leftOut: setup.people.cuts, restored: setup.restored, preset: style.roughCut)
         let cut = RoughCut.make(input)
         guard !cut.kept.isEmpty else {
             throw Failure(reason: "Nothing would be left after the trim, the cuts and the people left out, so no plan was made.")
         }
         let name = setup.original.deletingPathExtension().lastPathComponent
-        let plan = EditPlan.from(cut, words: words, input: input, recording: name, people: setup.people, signature: setup.signature, madeAt: now)
+        var plan = EditPlan.from(cut, words: words, input: input, recording: name, people: setup.people, signature: setup.signature, madeAt: now)
+        plan.basis.house = setup.house.signature
+        plan.modifiers.teaching = setup.house.teaching
+        plan.modifiers.pace = setup.house.pace.rawValue
+        // The picture (v2 part M9a): punch-ins, push-ins and the held ending, only for a recording with a picture.
+        if setup.frameRate != nil && setup.pictureHeight > 0 {
+            plan.visual = VisualPlan.make(.init(plan: plan, words: words.words, style: style, subject: setup.subject,
+                                                sourceHeight: setup.pictureHeight, outputHeight: setup.pictureHeight))
+        }
         let problems = PlanValidation.check(plan, words: words)
         if let first = problems.first {
             throw Failure(reason: "The plan did not pass its own check (rule \(first.rule): \(first.line)), so it was not saved.")

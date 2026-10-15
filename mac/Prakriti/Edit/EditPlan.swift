@@ -82,9 +82,25 @@ struct EditPlan: Codable, Equatable, Sendable {
         var say: String
     }
 
+    /// What the picture does over a stretch of a span (v2 part M9a, research 3.4 "visual"): a punch-in (`scale` about
+    /// `center`, held for the stretch), a slow push-in (from `from` to `to` over `seconds`, eased, ending about `center`), or
+    /// the held last frame at the end (`hold`, `seconds` long). `in` and `out` are on the original's clock, inside the span;
+    /// `center` is the middle of the framed part of the picture, from its top left, as fractions of the frame. Every frame no
+    /// item covers is the whole picture (1.00). Text, lower thirds and the rest arrive in M9b to M9d.
     struct Visual: Codable, Equatable, Sendable {
         var span: String
         var kind: String
+        var `in`: Double?
+        var out: Double?
+        var scale: Double?
+        var from: Double?
+        var to: Double?
+        var seconds: Double?
+        var center: [Double]?
+
+        static let punchIn = "punchIn"
+        static let pushIn = "pushIn"
+        static let hold = "hold"
     }
 
     struct Chapter: Codable, Equatable, Sendable {
@@ -121,6 +137,8 @@ struct EditPlan: Codable, Equatable, Sendable {
         var peopleSignature: String
         /// The stretches Ivan restored from the Viewer (v2 part M8c). Nil in a plan made before M8c, read as none.
         var restored: [TimeRange]?
+        /// The House Style the plan was made with (`HouseStyle.signature`, v2 part M9a). Nil in a plan made before M9a.
+        var house: String?
     }
 
     // MARK: Made from a rough cut
@@ -191,6 +209,22 @@ struct EditPlan: Codable, Equatable, Sendable {
     // MARK: Reading it
 
     var keptSeconds: Double { spans.reduce(0) { $0 + $1.out - $1.in } }
+
+    /// What the plan does to the picture, in one sentence (v2 part M9a), or nil when it does nothing: "Picture, Clear: 39
+    /// punch-ins and 4 slow push-ins; the last frame is held 4.8 s, so the speaking ends 5 s before the end."
+    var pictureSummary: String? {
+        guard !visual.isEmpty else { return nil }
+        let punches = visual.filter { $0.kind == Visual.punchIn }.count, pushes = visual.filter { $0.kind == Visual.pushIn }.count
+        var parts: [String] = []
+        if punches > 0 { parts.append(Format.count(punches, "punch-in")) }
+        if pushes > 0 { parts.append(Format.count(pushes, "slow push-in")) }
+        var line = "Picture, \(StyleName(rawValue: style)?.title ?? style): " + (parts.isEmpty ? "the whole picture throughout" : parts.joined(separator: " and "))
+        if holdSeconds > 0 { line += String(format: "; the last frame is held %.1f s, so the speaking ends 5 s before the end", holdSeconds) }
+        return line + "."
+    }
+
+    /// How long the last frame is held after the last span (v2 part M9a), 0 when it is not.
+    var holdSeconds: Double { visual.first { $0.kind == Visual.hold }?.seconds ?? 0 }
 
     func count(_ kind: RemovedKind) -> Int { removed.filter { $0.kind == kind }.count }
 

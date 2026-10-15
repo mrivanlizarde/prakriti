@@ -23,6 +23,9 @@ struct EditTimeline: Equatable, Sendable {
 
     var frame: FrameDuration
     var pieces: [Piece]
+    /// Frames the last kept frame is held after the last piece (v2 part M9a: speech ends 5 s before the last frame, the
+    /// plan's `hold`). The sound is silent there. 0 when nothing is held.
+    var holdFrames: Int64 = 0
 
     static let sampleRate = 48_000
 
@@ -41,15 +44,23 @@ struct EditTimeline: Equatable, Sendable {
             at += last - first
         }
         self.pieces = pieces
+        if !pieces.isEmpty, plan.holdSeconds > 0 {
+            holdFrames = Int64((plan.holdSeconds / plan.frameDuration.seconds).rounded())
+        }
     }
 
-    init(frame: FrameDuration, pieces: [Piece]) {
+    init(frame: FrameDuration, pieces: [Piece], holdFrames: Int64 = 0) {
         self.frame = frame
         self.pieces = pieces
+        self.holdFrames = holdFrames
     }
 
-    var totalFrames: Int64 { pieces.reduce(0) { $0 + $1.frames } }
+    /// Frames of the pieces alone, without the hold.
+    var keptFrames: Int64 { pieces.reduce(0) { $0 + $1.frames } }
+    var totalFrames: Int64 { keptFrames + holdFrames }
     var duration: Double { seconds(totalFrames) }
+    /// The original's frame the hold shows: the last kept frame.
+    var holdSourceFrame: Int64? { pieces.last.map { $0.sourceFrame + $0.frames - 1 } }
 
     func seconds(_ frames: Int64) -> Double { Double(frames * frame.value) / Double(frame.timescale) }
 
@@ -94,6 +105,11 @@ struct EditTimeline: Equatable, Sendable {
         let f = edited / frame.seconds
         for piece in pieces where f >= Double(piece.editFrame) - 1e-6 && f < Double(piece.editFrame + piece.frames) - 1e-6 {
             return (f - Double(piece.editFrame) + Double(piece.sourceFrame)) * frame.seconds
+        }
+        // The held last frame (v2 part M9a): every moment of the hold shows the last kept frame.
+        if let last = pieces.last, holdFrames > 0, f >= Double(last.editFrame + last.frames) - 1e-6,
+           f <= Double(totalFrames) + 1e-6, let shown = holdSourceFrame {
+            return Double(shown) * frame.seconds
         }
         if let last = pieces.last, abs(f - Double(last.editFrame + last.frames)) <= 1e-6 {
             return Double(last.sourceFrame + last.frames) * frame.seconds

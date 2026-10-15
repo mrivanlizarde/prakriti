@@ -28,6 +28,7 @@ final class AppSettings {
         static let followPlayback = "followPlayback"
         static let viewerTipSeen = "viewerTipSeen"
         static let quickHelpOn = "quickHelpOn"
+        static let houseStyle = "houseStyle"
     }
 
     /// Stops finding and processing recordings until turned back on.
@@ -74,6 +75,8 @@ final class AppSettings {
     var viewerTipSeen: Bool { didSet { defaults.set(viewerTipSeen, forKey: Key.viewerTipSeen) } }
     /// Help > Show Quick Help; off until turned on.
     var quickHelpOn: Bool { didSet { defaults.set(quickHelpOn, forKey: Key.quickHelpOn) } }
+    /// Settings, House Style (v2 part M9a): the style, pace, punch-ins and the room at the end every video is planned with.
+    var houseStyle: HouseStyle { didSet { defaults.set(houseStyle.json(), forKey: Key.houseStyle) } }
 
     nonisolated static let defaultLMStudioAddress = "http://localhost:1235/v1"
     nonisolated static let defaultLMStudioModel = "qwen/qwen3.8-27b"
@@ -112,6 +115,7 @@ final class AppSettings {
         followPlayback = defaults.object(forKey: Key.followPlayback) as? Bool ?? true
         viewerTipSeen = defaults.bool(forKey: Key.viewerTipSeen)
         quickHelpOn = defaults.bool(forKey: Key.quickHelpOn)
+        houseStyle = HouseStyle.decode(defaults.string(forKey: Key.houseStyle))
     }
 
     /// Each mode keeps its own preferences. Reason: from the switch-over a development copy can run

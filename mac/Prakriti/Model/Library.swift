@@ -75,7 +75,7 @@ enum SidebarItem: Hashable, Sendable {
 
 /// The panes of the Settings window (design spec 3.13), as built in part M3a.
 enum SettingsPane: String, CaseIterable, Identifiable, Hashable, Sendable {
-    case general, outputs, models, privacy, advanced
+    case general, outputs, houseStyle, models, privacy, advanced
 
     var id: String { rawValue }
 
@@ -83,6 +83,7 @@ enum SettingsPane: String, CaseIterable, Identifiable, Hashable, Sendable {
         switch self {
         case .general: "General"
         case .outputs: "Outputs"
+        case .houseStyle: "House Style"
         case .models: "Models"
         case .privacy: "Privacy"
         case .advanced: "Advanced"
@@ -93,6 +94,7 @@ enum SettingsPane: String, CaseIterable, Identifiable, Hashable, Sendable {
         switch self {
         case .general: "gearshape"
         case .outputs: "shippingbox"
+        case .houseStyle: "paintpalette"
         case .models: "sparkles"
         case .privacy: "hand.raised"
         case .advanced: "gearshape.2"

@@ -184,15 +184,18 @@ final class VideoAcceptanceTests: XCTestCase {
                                                                                "-of", "csv=p=0", mp4.path], timeout: .seconds(60)).stdout
         let audioDuration = Double(audioProbe.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
         let frame = plan.frameDuration.seconds
-        verdict("\(slug) check 2: output length equals the sum of kept spans within one frame",
-                abs(videoDuration - plan.keptSeconds) <= frame + 0.0005 && abs(audioDuration - plan.keptSeconds) <= frame + 0.0005,
-                String(format: "picture %.3f s, sound %.3f s, kept spans %.3f s (one frame %.4f s)", videoDuration, audioDuration, plan.keptSeconds, frame))
+        // Since part M9a the video ends on the held last frame (speech ends 5 s before the end): the kept spans plus the hold.
+        let expectedLength = plan.keptSeconds + plan.holdSeconds
+        verdict("\(slug) check 2: output length equals the sum of kept spans (plus the held ending, M9a) within one frame",
+                abs(videoDuration - expectedLength) <= frame + 0.0005 && abs(audioDuration - expectedLength) <= frame + 0.0005,
+                String(format: "picture %.3f s, sound %.3f s, kept spans %.3f s + held ending %.3f s (one frame %.4f s)", videoDuration, audioDuration,
+                       plan.keptSeconds, plan.holdSeconds, frame))
 
         // The made sound and the original's, mono 48 kHz, decoded here.
         let madeSound = try await PlanMeasure.decode(mp4, scratch: scratch)
         let originalSound = try await PlanMeasure.decode(file, scratch: scratch)
         let sync = soundSync(made: madeSound, original: originalSound, timeline: timeline)
-        let pictures = try await pictureSync(mp4: mp4, original: file, timeline: timeline)
+        let pictures = try await pictureSync(mp4: mp4, original: file, timeline: timeline, framing: Framing(plan: plan, timeline: timeline))
         verdict("\(slug) check 2: video and audio cut on the same frame", sync.worst <= 0.001 && pictures.allSatisfy { $0.best == 0 },
                 String(format: "sound: %d joins cross-correlated against the original, the largest lag %.2f ms (median %.2f ms); picture: ", sync.count, sync.worst * 1000, sync.median * 1000)
                 + pictures.map { String(format: "edited %.2f s matches the original's frame %+d (%.1f dB; next best %.1f dB)", $0.at, $0.best, $0.psnr, $0.second) }.joined(separator: ", "))
@@ -437,7 +440,9 @@ final class VideoAcceptanceTests: XCTestCase {
 
     /// Six frames of the MP4 compared with the original's frames around the moment the plan maps them to: the best match must
     /// be that very frame. By pixel difference only (D1): no frame of the talk is drawn or kept.
-    private func pictureSync(mp4: URL, original: URL, timeline: EditTimeline) async throws -> [PictureMatch] {
+    /// Each chosen frame of the MP4 against the original's frames around the plan's moment; a punched-in frame (v2 part M9a)
+    /// against the original's frame framed the same way by Core Graphics (`StyleTests.cropped`), not by the compositor.
+    private func pictureSync(mp4: URL, original: URL, timeline: EditTimeline, framing: Framing) async throws -> [PictureMatch] {
         let made = AVURLAsset(url: mp4), source = AVURLAsset(url: original)
         var out: [PictureMatch] = []
         let count = timeline.pieces.count
@@ -450,7 +455,14 @@ final class VideoAcceptanceTests: XCTestCase {
             for d in -2...2 {
                 let f = piece.sourceFrame + offset + Int64(d)
                 guard f >= 0 else { continue }
-                scores.append((d, RenderTests.psnr(picture, try await RenderTests.frame(source, at: timeline.time(f)))))
+                let at = timeline.time(f)
+                let expected: RenderTests.Picture
+                if let rect = framing.rect(atEditFrame: piece.editFrame + offset) {
+                    expected = StyleTests.picture(StyleTests.cropped(try await StyleTests.image(source, at: at), to: rect))
+                } else {
+                    expected = try await RenderTests.frame(source, at: at)
+                }
+                scores.append((d, RenderTests.psnr(picture, expected)))
             }
             let sorted = scores.sorted { $0.1 > $1.1 }
             out.append(PictureMatch(at: timeline.seconds(piece.editFrame + offset), best: sorted[0].0, psnr: sorted[0].1, second: sorted.count > 1 ? sorted[1].1 : 0))

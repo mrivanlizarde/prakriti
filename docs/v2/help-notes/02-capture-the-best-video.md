@@ -93,3 +93,10 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
   (left minus right -91 dB). Hybrid MOV is accepted (a fragmented MOV passes the watcher, readiness, the capture
   check and AVFoundation in `CaptureCheckTests`). Older recordings show Check Capture. Not built: the speaker's
   place in the frame, light on the face and steadiness (design spec 3.5.4 lists them; they need the face work of M6).
+
+## Notes from part M9a (Wed 14 Oct 2026)
+
+- "Prakriti makes the zooms you see ... by moving in on the recorded picture" moved from `style` to `houseStyle` and says
+  punch-ins: true of M9a. "Prakriti can zoom in up to twice as close and still deliver a sharp 1080p video" stays `style`:
+  it is not true of this build, which makes the video at the source's own size, so a 4K source is also capped at 1.15.
+  Whoever adds a 1080p output from a 4K source makes it true (research 2.6) and moves it.

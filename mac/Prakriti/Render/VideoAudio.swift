@@ -77,7 +77,8 @@ enum VideoAudio {
             try? fm.removeItem(at: joined)
         }
         _ = try await tool(decodeArguments(original: original, raw: raw, mutes: mutes))
-        let written = try join(raw: raw, pieces: timeline.audioPieces, into: joined)
+        let held = timeline.totalSamples - timeline.sample(atFrame: timeline.keptFrames)
+        let written = try join(raw: raw, pieces: timeline.audioPieces, holdSamples: held, into: joined)
         try? fm.removeItem(at: raw)
         guard written == timeline.totalSamples else {
             throw Failure(reason: "The sound for the video came out \(written) samples long instead of \(timeline.totalSamples).")
@@ -92,8 +93,12 @@ enum VideoAudio {
 
     /// Step 2: the pieces joined from interleaved stereo floats into `output`, streamed a piece at a time. Returns the
     /// number of sample frames written.
+    /// The fade into the silence of a held last frame (v2 part M9a): 100 ms, a quarter cosine, so the room tone does not
+    /// stop with a click.
+    static let holdFade = 4_800
+
     @discardableResult
-    static func join(raw: URL, pieces: [EditTimeline.AudioPiece], into output: URL) throws -> Int64 {
+    static func join(raw: URL, pieces: [EditTimeline.AudioPiece], holdSamples: Int64 = 0, into output: URL) throws -> Int64 {
         let source = try SampleSource(raw)
         FileManager.default.createFile(atPath: output.path, contents: nil)
         let out = try FileHandle(forWritingTo: output)
@@ -114,13 +119,24 @@ enum VideoAudio {
             let bodyStart = piece.sourceSample + Int64(lead)
             let bodyLength = piece.samples - Int64(lead) - Int64(tail)
             if bodyLength > 0 {
+                // Before a held last frame the piece's last 100 ms fade to silence (v2 part M9a).
+                let fading = index == pieces.count - 1 && holdSamples > 0 ? min(Int64(holdFade), bodyLength) : 0
                 var at = bodyStart
-                var left = bodyLength
+                var left = bodyLength - fading
                 while left > 0 {
                     let count = Int(min(left, 48_000 * 10))
                     wrote(try source.read(from: at, count: count))
                     at += Int64(count)
                     left -= Int64(count)
+                }
+                if fading > 0 {
+                    var frames = try source.read(from: at, count: Int(fading))
+                    let n = Int(fading)
+                    for i in 0..<n {
+                        let g = Float(cos(Double.pi / 2 * Double(i + 1) / Double(n)))
+                        for ch in 0..<channels { frames[i * channels + ch] *= g }
+                    }
+                    wrote(frames)
                 }
                 written += bodyLength
             }
@@ -136,6 +152,14 @@ enum VideoAudio {
                 written += Int64(2 * tail)
             }
         }
+        // The held last frame's silence (v2 part M9a).
+        var silent = holdSamples
+        while silent > 0 {
+            let count = Int(min(silent, 48_000 * 10))
+            out.write(Data(floatsAsBytes: [Float](repeating: 0, count: count * channels)))
+            silent -= Int64(count)
+        }
+        written += holdSamples
         return written
     }
 

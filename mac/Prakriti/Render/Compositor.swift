@@ -9,8 +9,9 @@ import Foundation
 // A frame with nothing to draw over it is handed on unchanged, which is exact: the picture is the original's own pixels
 // until the encoder. From part M8d a frame where someone is hidden goes through Core Image on Metal (`draw`, one context for
 // the compositor's life) with each region hidden by `FaceHide`; the regions are looked up by the original's frame in
-// `HiddenFaces`, worked out before the video is drawn (`VideoHiding`), so the file and the Viewer hide the same. Zooms and
-// text (M9) will draw here too. `RenderTests` runs both paths.
+// `HiddenFaces`, worked out before the video is drawn (`VideoHiding`), so the file and the Viewer hide the same. From part
+// M9a a punch-in or push-in frames the picture here too (`Framing`, read by the edited frame, `frame(_:crop:)`); text (M9b)
+// will draw here as well. `RenderTests` and `StyleTests` run every path.
 //
 // The SDK's macOS 27 names only (Mac warning 4, PLAN 2.2): `sourceReadOnlyPixelBuffer(byTrackID:)` and
 // `renderContext.makeMutablePixelBuffer()`, never `sourceFrame(byTrackID:)` or `newPixelBuffer()`.
@@ -40,23 +41,26 @@ final class Compositor: NSObject, AVVideoCompositing, @unchecked Sendable {
         // The faces hidden in this frame (v2 part M8d), looked up by the original's frame. A frame with nothing to hide is
         // handed on untouched, exactly the original's pixels.
         let regions = instruction.regions(at: request.compositionTime)
-        if regions.isEmpty && !instruction.throughCoreImage {
+        // The punch-in or push-in at this frame (v2 part M9a), nil for the whole picture.
+        let crop = instruction.crop(at: request.compositionTime)
+        if regions.isEmpty && crop == nil && !instruction.throughCoreImage {
             request.finish(withComposedPixelBuffer: source)
             return
         }
         do {
-            request.finish(withComposedPixelBuffer: try draw(source, hiding: regions, into: request.renderContext))
+            request.finish(withComposedPixelBuffer: try draw(source, hiding: regions, crop: crop, into: request.renderContext))
         } catch {
             request.finish(with: error)
         }
     }
 
     /// The frame through Core Image into a new buffer from the render context's pool, with `hiding`'s regions hidden by
-    /// `FaceHide` (the same function as the card picture's).
-    func draw(_ source: CVReadOnlyPixelBuffer, hiding: [FaceBox] = [], into renderContext: AVVideoCompositionRenderContext) throws -> CVReadOnlyPixelBuffer {
+    /// `FaceHide` (the same function as the card picture's), then framed by `crop` (v2 part M9a): the faces are hidden on
+    /// the whole picture first, so a punch-in never shows a face the hiding did not cover.
+    func draw(_ source: CVReadOnlyPixelBuffer, hiding: [FaceBox] = [], crop: CGRect? = nil, into renderContext: AVVideoCompositionRenderContext) throws -> CVReadOnlyPixelBuffer {
         let output = try renderContext.makeMutablePixelBuffer()
         let frame = source.withUnsafeBuffer { CIImage(cvPixelBuffer: $0) }
-        let image = FaceHide.apply(frame, regions: hiding)
+        let image = Self.frame(FaceHide.apply(frame, regions: hiding), crop: crop)
         output.withUnsafeBuffer { buffer in
             // The source's colour tags (BT.709 matrix, primaries and transfer) go on the new buffer first: Core Image reads
             // them to turn its working colour back into the same YCbCr. Without them it wrote another matrix (measured 13 Oct
@@ -66,6 +70,23 @@ final class Compositor: NSObject, AVVideoCompositing, @unchecked Sendable {
             context.render(image, to: buffer)
         }
         return CVReadOnlyPixelBuffer(output)
+    }
+
+    /// `image` framed by `crop` (from the top left, fractions of the picture), scaled back to the picture's own size with
+    /// Lanczos (Core Image's sharpest resampling). The edge pixels are extended first, so the scale never pulls in black
+    /// from outside the picture. Nil or the whole picture returns `image` unchanged.
+    static func frame(_ image: CIImage, crop: CGRect?) -> CIImage {
+        guard let crop, crop.width < 0.9999 || crop.height < 0.9999 else { return image }
+        let extent = image.extent
+        let w = extent.width, h = extent.height
+        // Core Image's origin is the bottom left.
+        let rect = CGRect(x: extent.minX + crop.minX * w, y: extent.minY + (1 - crop.maxY) * h, width: crop.width * w, height: crop.height * h)
+        let scale = w / rect.width
+        let moved = image.clampedToExtent().cropped(to: rect.insetBy(dx: -8, dy: -8))
+            .transformed(by: CGAffineTransform(translationX: -rect.minX, y: -rect.minY))
+        let scaled = moved.applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: scale, kCIInputAspectRatioKey: (h / rect.height) / scale])
+        return scaled.cropped(to: CGRect(x: 0, y: 0, width: w, height: h))
+            .transformed(by: CGAffineTransform(translationX: extent.minX, y: extent.minY))
     }
 
     enum Failure: Error {

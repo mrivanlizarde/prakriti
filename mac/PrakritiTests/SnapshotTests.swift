@@ -283,6 +283,11 @@ final class SnapshotTests: XCTestCase {
                                                  appleIntelligenceUnavailable: "Apple Intelligence is turned off in System Settings, so Apple's on-device model cannot be used.")
                 try renderer.renderSettings(model: small, pane: .models, appearance: appearance, name: "10-settings-models-16gb-\(scheme)")
                 written.append("10-settings-models-16gb-\(scheme)")
+                // v2 part M9a: the House Style pane with another style chosen (Calm, Brisk, Punch-ins Subtle, Teaching on).
+                let calm = Fixtures.model()
+                calm.settings.houseStyle = HouseStyle(style: .calm, pace: .brisk, punchIns: .subtle, teaching: true, endingRoom: true)
+                try renderer.renderSettings(model: calm, pane: .houseStyle, appearance: appearance, name: "10-settings-house-style-calm-\(scheme)")
+                written.append("10-settings-house-style-calm-\(scheme)")
                 // v2 part M6b, part LOCK: People You Name, Gabriel with a signed release on file and Serenity marked no release.
                 let named = Fixtures.model()
                 _ = named.addPerson(named: "Gabriel")
@@ -387,7 +392,8 @@ final class SnapshotTests: XCTestCase {
             // v2 part M6a: the People tab joins the inspector's tabs (2), and six People and filter pictures (12).
             // v2 part M6b: four voices and names pictures (8) and Settings, Privacy with named people (2).
             // v2 part M6c: two choices pictures (4). v2 part TXGAP: the Checks tab with missing words (2).
-            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2 + 2 + 2 + 3 * 2 + 2 + 6 * 2 + 4 * 2 + 2 + 2 * 2 + 2)
+            // v2 part M9a: the House Style pane (2) and its Calm variant (2).
+            XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 5 * 2 + 5 * 2 + 2 + 2 + 3 * 2 + 2 + 6 * 2 + 4 * 2 + 2 + 2 * 2 + 2 + 2 + 2)
             return
         }
 
@@ -680,7 +686,7 @@ final class SnapshotTests: XCTestCase {
 
         let files = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path).filter { $0.hasSuffix(".png") }
         print("Snapshots written to \(outputFolder.path): \(written.count) screens, \(files.count) pictures")
-        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + 2 + 3 * 2 + viewerCount + 2 + 6 * 2 + 4 * 2 + 2 + 2 * 2 + galleryCount + 2) // v2 part TXGAP: the Checks tab with missing words (2)
+        XCTAssertEqual(written.count, 4 * 2 * 2 + 2 + 2 + 3 * 2 + 3 * 2 + 2 + 2 + 4 * 2 + 2 * 3 + 2 * 2 + 5 * 2 + 2 * 2 + 6 * 2 + 5 * 2 + 2 + 3 * 2 + viewerCount + 2 + 6 * 2 + 4 * 2 + 2 + 2 * 2 + galleryCount + 2 + 2 + 2) // v2 part TXGAP: the Checks tab with missing words (2); v2 part M9a: the House Style pane (2) and its Calm variant (2)
     }
 
     /// v2 part M2a: the Help window, open at every article this build shows, in light and dark, with a

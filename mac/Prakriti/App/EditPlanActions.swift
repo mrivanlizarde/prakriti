@@ -34,6 +34,11 @@ extension AppModel {
         if !EditPlan.sameRestores(plan.basis.restored ?? [], recording.planRestores) {
             return "What you restored is not in the plan yet."
         }
+        // The House Style it was made with (v2 part M9a). A plan made before M9a records none and is not called behind:
+        // no new work starts on its own (PLAN rule 2.1.7).
+        if let house = plan.basis.house, house != settings.houseStyle.signature {
+            return "Your newest House Style settings are not in the plan yet."
+        }
         return nil
     }
 

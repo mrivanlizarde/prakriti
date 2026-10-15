@@ -144,6 +144,9 @@ struct PipelineOptions: Sendable {
     var edits = EpisodeEdits()
     /// Stretches the plan took out that Ivan restored in the Viewer (v2 part M8c): the next plan keeps each as recorded.
     var planRestores: [TimeRange] = []
+    /// The House Style the edit is planned with (v2 part M9a, Settings, House Style): the style's pauses, punch-ins,
+    /// push-ins and the room at the end. The standard is Clear.
+    var house = HouseStyle.standard
 
     /// Titles, show notes and chapters (milestone 6): who writes them, or nil when they are not made.
     /// They are written from the transcript, so they are made only with it.
@@ -1479,10 +1482,16 @@ struct Pipeline: Sendable {
         }
         var frameRate = capture?.video?.frameRate
         if capture == nil { frameRate = await PlanStep.frameRate(of: file, ffprobe: tools.ffprobe) }
-        let setup = PlanStep.Setup(original: file, transcript: staging.appending(path: TranscriptFiles.asHeard),
+        var setup = PlanStep.Setup(original: file, transcript: staging.appending(path: TranscriptFiles.asHeard),
                                    jobFolder: staging.appending(path: ".planning", directoryHint: .isDirectory), duration: duration,
                                    frameRate: frameRate, edits: options.edits, restored: options.planRestores, people: people,
-                                   signature: people.applied)
+                                   signature: people.applied, house: options.house)
+        // The face the punch-ins follow (v2 part M9a), from this make's people check: never a guess.
+        if let people = options.people, let file = people.folders.read(people.recordingID) {
+            setup.pictureHeight = Double(file.frameHeight)
+            setup.subject = Self.subject(file, faces: faces, names: people.names(for: voices).resolved(faces: faces, voices: voices),
+                                         teacher: people.names.teacher, choices: options.choices)
+        }
         defer { try? FileManager.default.removeItem(at: setup.jobFolder) }
         let ffmpeg = tools.ffmpeg
         let outcome = try await PlanStep.run(setup, now: Date()) { arguments in
@@ -1494,6 +1503,20 @@ struct Pipeline: Sendable {
             throw PlanStep.Failure(reason: "The plan was made but could not be saved.")
         }
         return outcome
+    }
+
+    /// The sightings of the face the punch-ins follow (v2 part M9a): the teacher's face row when Ivan named one and it is
+    /// in the video, else the included face row seen most (the people check lists rows most seen first). Times and boxes
+    /// only, read from the people file.
+    static func subject(_ file: PeopleFile, faces: FacesFound?, names: (faces: [Int: UUID], voices: [Int: UUID]), teacher: UUID?,
+                        choices: PeopleChoices) -> [FaceSpot] {
+        let rows = (faces?.people.map(\.id) ?? file.people.map(\.id))
+        let included = rows.filter { choices.choice(PersonKey.face($0, names: names), for: .video) == .include }
+        let row = included.first { teacher != nil && names.faces[$0] == teacher } ?? included.first
+        guard let row else { return [] }
+        return file.tracks.filter { $0.person == row }.flatMap { track in
+            track.boxes.compactMap { b in b.count >= 5 ? FaceSpot(time: b[0], box: FaceBox(x: b[1], y: b[2], width: b[3], height: b[4])) : nil }
+        }.sorted { $0.time < $1.time }
     }
 
     /// The levels of the original's first audio track for `EdgeLevels.reach` seconds either side of each cut's edges.

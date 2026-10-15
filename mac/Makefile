@@ -127,10 +127,11 @@ APP       = $(DERIVED)/Build/Products/Debug/Prakriti.app
 MILESTONE ?= latest
 MODE      ?= development
 ONLY      ?=
+STYLE_ONLY ?=
 YES       ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: accept-style accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -187,6 +188,17 @@ accept-viewer-video:
 accept-people-video:
 	./scripts/make-fixtures.sh --if-missing
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=people-video TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/PeopleVideoAcceptanceTests
+
+# accept-style  v2 part M9a's acceptance (PLAN M9 checks 3 and 4 for Clear): the 5-minute excerpt of the REAL 13 Sep talk, then
+#                 the whole talk, made in development with the edited video on and the House Style at its standard (Clear); the
+#                 plan counted (visual changes a minute and in the first 30 s from cuts and punch changes, every punch-in at most
+#                 1.15 on the 1080p source, the scales alternating, back to wide, speech ending 5 s before the last frame), then
+#                 three punch-ins and a push-in measured in the MP4 by Vision's pupils (the eye line within the upper third, plus
+#                 or minus 5%) and by PSNR against the original framed by Core Graphics. Numbers only; the frames are written to
+#                 for-ivan/ and not looked at (D1). STYLE_ONLY="13 Sep excerpt" runs the excerpt alone. Writes
+#                 acceptance-style.txt to ../screens/mac/$(MILESTONE)/ (about 10 minutes)
+accept-style:
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=style TEST_RUNNER_PRAKRITI_STYLE_ONLY="$(STYLE_ONLY)" TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/StyleAcceptanceTests
 
 # look-video  v2 part M8c's real window (PLAN M8 check 7): a development copy on sample data opens the test-pattern video that
 #                 accept-viewer-video wrote, on Video with the Captions overlay on and --debug-playback-log, Space is sent, and

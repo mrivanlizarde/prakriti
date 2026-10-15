@@ -4,7 +4,8 @@ import SwiftUI
 
 /// The Settings window (Command-comma, v2 part M3a, design spec 3.13): a standard Settings scene, one
 /// pane at a time, about 760 pt wide. General (open at login, the menu bar, notifications, Pause All, the
-/// welcome), Outputs (v1's Outputs screen as it was), Models (ModelsPane.swift, v2 part M5b), Privacy
+/// welcome), Outputs (v1's Outputs screen as it was), House Style (HouseStylePane.swift, v2 part M9a), Models
+/// (ModelsPane.swift, v2 part M5b), Privacy
 /// (the rules that keep recordings and people safe), Advanced (where files live). Which outputs each
 /// folder makes stays on the folder (START_HERE, Mac warning 28): select it under Sources.
 struct SettingsWindow: View {
@@ -29,6 +30,7 @@ struct SettingsWindow: View {
         case .general: 620
         case .outputs, .models: 700
         case .privacy: 700
+        case .houseStyle: 760
         case .advanced: 460
         }
     }
@@ -45,6 +47,7 @@ struct SettingsPaneView: View {
             switch pane {
             case .general: GeneralPane()
             case .outputs: OutputsView()
+            case .houseStyle: HouseStylePane()
             case .models: ModelsPane()
             case .privacy: PrivacyPane()
             case .advanced: AdvancedPane()

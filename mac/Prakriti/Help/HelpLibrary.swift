@@ -40,7 +40,10 @@ enum HelpPlace: Equatable, Hashable, Sendable {
             self = .sources
         case "settings":
             if parts.count == 1 { self = .settings(.general); return }
-            guard parts.count == 2, let pane = SettingsPane(rawValue: parts[1]) else { return nil }
+            // The path is read in lower case, so a pane named in two words ("houseStyle", v2 part M9a) is matched without
+            // case or a hyphen: settings/housestyle, settings/house-style.
+            guard parts.count == 2,
+                  let pane = SettingsPane.allCases.first(where: { $0.rawValue.lowercased() == parts[1].replacingOccurrences(of: "-", with: "") }) else { return nil }
             self = .settings(pane)
         case "activity":
             guard parts.count == 1 else { return nil }

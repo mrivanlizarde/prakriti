@@ -294,6 +294,7 @@ final class PipelineRunner {
         }
         options.edits = recording.edits
         options.planRestores = recording.planRestores
+        options.house = model.settings.houseStyle
         // Faces are looked for in every make (v2 part M6a): a check, like the capture check, that keeps boxes and
         // times only. It runs only when a make runs, so an upgrade never starts it on its own (PLAN rule 2.1.7).
         // Voices are listened for right after, and Ivan's names and the people named in Settings travel with the make,

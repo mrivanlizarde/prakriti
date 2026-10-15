@@ -4,7 +4,7 @@ title: If something isn't working
 summary: What to check when a recording is not found, has no sound, sends no notice, or a model does not answer, and where the log is.
 section: troubleshooting
 order: 1
-keywords: [troubleshooting, problem, edit plan, Plan the Edit, video does not play, watch video, not found, silent, no sound, capture check, audio tracks, both channels, Check Capture, notifications, stopped, quit, flicker, bands, sync, LM Studio, API key, Claude API, Anthropic, OpenAI, model list, cut, disk space, encoding overloaded, log, show log]
+keywords: [troubleshooting, problem, edit plan, Plan the Edit, soft picture, punch-in, Teaching, video does not play, watch video, not found, silent, no sound, capture check, audio tracks, both channels, Check Capture, notifications, stopped, quit, flicker, bands, sync, LM Studio, API key, Claude API, Anthropic, OpenAI, model list, cut, disk space, encoding overloaded, log, show log]
 related: [capture-the-best-video, set-up-obs-for-prakriti, sources-and-watching, models-and-api-keys]
 ---
 
@@ -160,12 +160,18 @@ Open the recording and click the cut in the strip under the player, then click R
 
 ## Picture and sound
 
-:::requires style
-### If the video looks soft after a zoom
+:::requires houseStyle
+### If the video looks soft after a punch-in
 
-The recording was made in 1080p, so a zoom enlarges the picture. Record in 4K. See
-[Capture the best video](02-capture-the-best-video.md). Until then, choose the Calm preset or write
-"Fewer zooms" under Direction.
+A punch-in enlarges the recorded picture. On a 1080p recording Prakriti never goes past 1.15, but the
+picture is still a little softer there. Record in 4K. See
+[Capture the best video](02-capture-the-best-video.md). Until then, in Settings, House Style, choose
+Punch-ins Subtle or Off, then click Plan the Edit or Make Again.
+
+### If a punch-in cuts off a raised arm or a pose
+
+In Settings, House Style, turn on Teaching: the picture then changes only at cuts and never pushes in
+slowly, and stays whole wherever no face is seen. Then click Make Again.
 :::
 
 ### If the picture flickers or shows moving bands

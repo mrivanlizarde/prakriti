@@ -812,6 +812,27 @@ choose otherwise." Measured on two-people-mixed: the corner face hidden on 625 f
 variance down 85% or more, the second voice's 59 five-word runs all gone, and with hiding switched off by a test switch the
 gate stops the video at 0:19 with nothing kept. `make accept-people-video`.
 
+**v2 part M9a, house style and zooms, Wed 14 Oct (see BUILD-LOG "v2 part M9a"):** every edited video is planned in the style
+chosen in **Settings, House Style** (`Views/Settings/HouseStylePane.swift`, stored as `AppSettings.houseStyle`): **Clear** (the
+standard), **Calm**, **Energetic** or **Story** with research-edit-engine.md 2.3 and 2.4's numbers (`Edit/Style.swift`; Clear's
+pauses are M8a's exactly), **Pace** (Relaxed, Balanced, Brisk: 0.8, 1.0, 1.25), **Punch-ins** (Off, Subtle = Calm's, Standard =
+the style's own, Punchy = Energetic's), **Teaching** and **Room at the end**. Planning the edit (`PlanStep`) now also writes the
+plan's `visual` items (`Edit/VisualPlan.swift`): shots start at every cut and, to reach the style's rate (Clear: 7 changes a
+minute, 10 in the first 30 s), between two sentences or at a pause (any word gap in the first 30 s); the punch-in scales are
+chosen for all shots together (`VisualPlan.assign`, dynamic programming: never the same scale twice in a row where a face
+allows, back to wide within 3 tight shots, the last shot wide), each centred on the teacher's face (`Pipeline.subject`: the
+teacher's face row, else the included row seen most) with the eyes on the upper third, never past the frame and never past
+1.15 on a 1080p source (`Style.maxScale`); a shot whose face moves (eyes over 6% of the frame, middle over 10%) stays wide;
+slow push-ins (Clear: 1.05 over 4 s, eased, at most once in 90 s) on long wide shots; and a `hold` so the speaking ends 5 s
+before the last frame. `Framing` turns the items into the part of the picture each edited frame shows; the `Compositor` hides
+faces first, then frames (`Compositor.frame`, Lanczos), for the file and the Viewer alike; `CompositionBuilder` stretches the
+last kept frame over the hold and `VideoWriter` writes it again at every frame time of it; `VideoAudio` fades the last 100 ms
+into silence there; the picture output check puts a face found in a punched-in frame back on the original's picture. The
+plan's basis records the House Style (`EditPlan.Basis.house`), so a changed House Style says "Your newest House Style is not
+in the plan yet."; a plan made before M9a is never called behind. Help 02, 05, 09 and 10 (`houseStyle` capability).
+`make accept-style`. Measured on the whole 13 Sep talk: 7.07 changes a minute, 11 in the first 30 s, 39 punch-ins at 1.12 and
+4 push-ins, speech ending 5.02 s before the last frame, and the eyes 0.315 to 0.332 of the height in the frames measured.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -1035,7 +1056,13 @@ the video on, everyone included, then with Gabriel teaching and everyone else se
 output checks passed; it measures the MP4 as check 3 asks, transcribes it again (0 of the `say` paragraph's five-word runs), measures
 the corner's place in the made frames (no face, variance down 80% or more) and the Viewer's composition against the file (38 dB),
 then makes it again with hiding switched off by a test switch (`VideoStep.Setup.hidingOffForTest`) and needs the gate to stop it
-with the time. It writes `acceptance-people-video.txt` and one frame to `for-ivan/` (numbers only, never looked at). `make accept-viewer-video` (v2 part M8c, about 3 minutes) makes a 5-minute excerpt of the **real 13 Sep talk**
+with the time. It writes `acceptance-people-video.txt` and one frame to `for-ivan/` (numbers only, never looked at). `make accept-style` (v2 part M9a, about 6 minutes) makes the 13 Sep excerpt, then the whole **real 13 Sep talk**, in
+development with the video on and the House Style at its standard (Clear), counts the plan (changes a minute and in the first 30 s
+from cuts and punch changes, every punch-in at most 1.15 on the 1080p source, the alternation, speech ending 5 s before the last
+frame, the file as long as the spans plus the hold) and measures three punch-ins and a push-in in the MP4 (Vision's pupils within
+the upper third plus or minus 5%, and 30 dB or more against the original framed by Core Graphics); it writes
+`acceptance-style.txt` and the measured frames to `for-ivan/` (numbers only). On the excerpt the rate and the first 30 s are
+written as measured, not gated: its own cuts are already 6.95 a minute, so 10 changes in its first 30 s would put it over 8. `make accept-viewer-video` (v2 part M8c, about 3 minutes) makes a 5-minute excerpt of the **real 13 Sep talk**
 (`~/Prakriti/Dev/Excerpts/2026-09-13 excerpt 2m to 7m.mp4`, cut once with `-c copy` from 2:00) with the video on, opens it in
 the Viewer on Video and compares six frames of the MP4 with the Viewer's own player item by PSNR (38 dB or better; numbers only),
 then writes the test-pattern video `make look-video` plays (`~/Prakriti/Dev/Fixtures/viewer-video-sample`). `make look-video`
@@ -1236,6 +1263,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | The capture check (v2 part M4b) | `mac/Prakriti/Engine/CaptureCheck.swift` (`CaptureReport`, `CaptureFinding`, reading ffprobe and the per-track ffmpeg call, the findings and their tips, `run`), the pipeline's `.capture` step, `Recording.captureJSON`, `Views/Inspector/CaptureSection.swift` (the Checks tab's Capture section), `App/CaptureActions.swift` (Check Capture for older recordings); tests `CaptureCheckTests` (in `make test`) and `CaptureAcceptanceTests` (`make accept-capture`) |
 | Progress and Activity (v2 part M4a) | `mac/Prakriti/Progress/`: `JobProgress.swift` (`ProgressTracker`, the pure arithmetic: weights, the percent that never goes back, the time left only from a measured rate, the stall line; `ProgressSnapshot` with its status line; `TimeLeft`; `JobProgress`, published at most twice a second), `ProgressMeter.swift` (what the pipeline and ffmpeg report, read twice a second; `ProcessControl`, Pause by SIGSTOP and SIGCONT), `StageTimings.swift` (`StageTiming`, a SwiftData model, the last 10 runs of each stage, seeded once from the store; `firstGuess`, measured 12 Oct). `Engine/Subprocess.swift` (`onStdoutLine`, `control`), `Engine/Pipeline.swift` (`meter`, `passes`, ffmpeg's `-progress pipe:1` in `tool`), `App/PipelineRunner.swift` (`currentJob`, `pause`, `resume`, `stop`, `makeNext`, `queueFraction`, `queueTimeLeft`, `showSample`), `App/StatusSummary.swift` (`noteStatusLine`, `--debug-status-log`); views: `Views/Activity/ActivityWindow.swift` (the window, Now, Finished, Log, `ActivityButton`), `Views/ProgressViews.swift` (`ProgressRing`, `ProgressBlock`, `ProgressButtons`), the card's `StatusCapsule`, the list's Status column, `StatusBlock` in `OutputsTab`, `ViewerBanner`, `Views/MenuBar.swift`; `Fixtures.showProgress` (the sample talk being made, for snapshots and captures); tests `ProgressTests` (in `make test`) and `ProgressAcceptanceTests` (`make accept-progress`) |
 | The edited video (v2 parts M8b and M8c) | `mac/Prakriti/Render/`: `VideoPreview.swift` (M8c: the Viewer's Video, built from the plan the video was made from, `VideoSampleFolder`), `EditTimeline.swift` (the plan in frames and samples), `CompositionBuilder.swift`, `Instructions.swift` (`RenderInstruction`), `Compositor.swift`, `VideoAudio.swift` (decode, join with crossfades, master), `VideoWriter.swift`, `Mp4Boxes.swift` (moov, edit lists), `Captions.swift`, `VideoDescription.swift` (`Description.txt`), `ReadyChecklist.swift`, `OutputGate.swift` (the not-checked refusal, the people output checks since M8d, and the only move), `VideoStep.swift` (`VideoRecord`, make and check); since M8d `VideoHiding.swift` (`HiddenFaces`, `video-hiding.json`) and `People/PictureOutputCheck.swift`; the pipeline's `.renderVideo` and `.checkVideo` steps and `PipelineOptions.makeVideo`; `Recording.videoJSON` and `videoProblem`; `App/VideoActions.swift` (Make Video); `Views/Inspector/VideoSection.swift`; since M8c `App/VideoEditActions.swift` (Restore, Remove, Take Out Again, Keep, Delete, Undo, `Recording.planRestores`, `restoresPending`, Watch Video), the Video rendition in `Views/Viewer/ViewerModel.swift`, `CaptionsOverlay` and `PictureToggle` in `Views/Viewer/PeopleOverlay.swift`, `Captions.cues(srt:)`; tests `RenderTests`, `ViewerVideoTests` (in `make test`), `VideoAcceptanceTests` (`make accept-video`), `ViewerVideoAcceptanceTests` (`make accept-viewer-video`), `PeopleInVideoTests` (in `make test`), `PeopleVideoAcceptanceTests` (`make accept-people-video`) and `capture-window.swift --video` (`make look-video`) |
+| House style and zooms (v2 part M9a) | `mac/Prakriti/Edit/Style.swift` (`StyleName`, `Pace`, `PunchLevel`, `Length`, `HouseStyle`, `Style` with research 2.3 and 2.4's numbers, `maxScale`), `Edit/VisualPlan.swift` (`FaceSpot`, `VisualPlan.make`, `assign`, `center`, `shots`, `count`; `Framing`), the plan's `visual` items and `holdSeconds` (`EditPlan.Visual`), PlanValidation rule 7, `EditTimeline.holdFrames`, the hold in `CompositionBuilder`, `VideoWriter` and `VideoAudio.join`, `Compositor.frame`, `RenderInstruction.crop`, `Pipeline.subject`, `PipelineOptions.house`, `AppSettings.houseStyle`, `Views/Settings/HouseStylePane.swift`; tests `StyleTests` (in `make test`) and `StyleAcceptanceTests` (`make accept-style`) |
 | Faces (v2 part M6a) | `mac/Prakriti/People/`: `FaceScan.swift` (the reader, Vision at two frames a second, the change-of-picture measure), `Tracks.swift` (`FaceBox` and the Vision conversion, `FaceTracker`, `FaceGrouping`, `FacesFound` with its lines), `PeopleFile.swift` (`PeopleFolders`, the people file, `FaceStep` with its job folder), `FaceCrops.swift` (the People tab's live crops, memory only); the pipeline's `.faces` step and `PipelineOptions.people`; `Recording.facesJSON`; `App/FaceActions.swift` (`applyFaces`, Look for Faces); `Views/Inspector/PeopleTab.swift` (`PeopleTab`, `FaceRow`, `PeopleLine`); the job cleanup in `AppModel.launch`; `--debug-face-scan` in `App/DebugSwitches.swift`; tests `PeopleTests` (in `make test`), `PeopleAcceptanceTests` and `scripts/people-crash-check.sh` (`make accept-people`) |
 | People files and job folders | `~/Library/Application Support/Prakriti/People/Recordings/<recording id>.json` and `.../Jobs/` (live); `.../Prakriti/Development/People/...` and `.../Development/Jobs/` (development) |
 | Swift packages | `swift-markdown` 0.9.0 (21 Sep 2026, with `swift-cmark` 0.9.0), pinned in `mac/project.yml` and `mac/Prakriti.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, both committed (v2 part M2a) |
@@ -2145,6 +2173,26 @@ top and its end. Reading the code is not verification, and neither is a passing 
     the inclusive end mapped the first frame after a cut to the frame before it, which the video never shows; the picture
     output check then read the wrong frame's hidden regions (found 14 Oct at the cut for the left-out voice on
     two-people-mixed).
+159. **The framing is the plan's: `Framing(plan:timeline:)` is the only source of what part of the picture a frame shows, for the
+    file, the Viewer and the picture output check.** Never frame in the compositor from anything else. Reason: preview equals
+    output (warning 154) and the picture output check must put a face found in a punched-in frame back on the original's
+    picture (`Framing.toSource`), or every face near a hidden person would be checked against the wrong place. Measured 14 Oct:
+    punch-ins in the 13 Sep MP4 44.2 to 44.8 dB against the original framed independently by Core Graphics; the Viewer's
+    composition against the file 45.0 to 48.8 dB on the test pattern.
+160. **Faces are hidden on the whole picture first, then the picture is framed (`Compositor.draw`).** Reason: hiding regions are on
+    the original's picture (`video-hiding.json`); framed first, a region would have to be moved and scaled, and a mistake there
+    shows a face. Hidden first, a punch-in can only enlarge what is already hidden.
+161. **A held frame is written by `VideoWriter` at every frame time; never trust the composition's reader for it.** Reason:
+    measured 14 Oct, an `AVAssetReaderVideoCompositionOutput` gives a frame that stays on screen across many frame times once
+    (62 one-frame inserts of the same frame came out as one frame), and once it gave the next frame 2.9 s later: the MP4 had a
+    hole the Ready checklist's Frame timing line caught. The Viewer's player holds the stretched frame by itself.
+162. **A punch-in is a still camera: a shot whose face moves (eyes over 6% of the frame, or its middle over 10%, 10th to 90th
+    sighting) stays wide.** Reason: measured 14 Oct on the 13 Sep plan, punch-ins centred on the median of a moving face put
+    the eyes at 0.395 of the height mid-shot, past check 4's 5%; with the rule the frames measured sit at 0.315 to 0.349.
+163. **Punch-in scales are chosen for all the shots together (`VisualPlan.assign`), never shot by shot.** Reason: a shot that
+    cannot be punched in on (no face, or a moving one) breaks a back-to-front alternation and turns the split beside it into
+    no change; chosen shot by shot, the 13 Sep plan lost changes in its first 30 s (9 of the 10 needed). Together, the most
+    boundaries change: 11.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

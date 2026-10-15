@@ -21,6 +21,11 @@ struct EditPlanSection: View {
                 Text(plan.summary)
                     .font(AppFont.body)
                     .fixedSize(horizontal: false, vertical: true)
+                if let picture = plan.pictureSummary {
+                    Text(picture)
+                        .font(AppFont.body)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 RowNote("Planned \(Format.dayAndTime(plan.madeAt)). The strip under the Original in the Viewer shows it.")
                 if let behind = model.planIsBehind(recording, plan: plan) {
                     Label {

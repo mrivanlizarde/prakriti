@@ -4,7 +4,7 @@ title: Outputs
 summary: What Prakriti makes from each recording, what is in each file, and where the files go.
 section: outputs
 order: 1
-keywords: [outputs, edit plan, rough cut, edited video, MP4, YouTube, Make Video, Watch Video, ready checklist, description, pauses, filler words, podcast episode, podcast-ready, MP3, loudness, LUFS, transcript, captions, SRT, VTT, report, show notes, chapters, titles, episode text, upload checklist, artwork, show name, word list, intro, outro, mono, stereo]
+keywords: [outputs, edit plan, rough cut, edited video, MP4, YouTube, Make Video, Watch Video, punch-in, push-in, zoom, House Style, end screen, ready checklist, description, pauses, filler words, podcast episode, podcast-ready, MP3, loudness, LUFS, transcript, captions, SRT, VTT, report, show notes, chapters, titles, episode text, upload checklist, artwork, show name, word list, intro, outro, mono, stereo]
 related: [sources-and-watching, reviewing-and-approving, models-and-api-keys]
 ---
 
@@ -185,6 +185,29 @@ To watch it, open the recording and choose **Video** in the toolbar, or click **
 Edited video. The viewer draws each frame the same way the file was made, from the same edit plan, and
 plays the video's own sound, so what you watch is what you would upload. See
 [Review and approve](06-reviewing-and-approving.md).
+:::
+
+:::requires houseStyle
+### Punch-ins and the ending
+
+The video is edited in the style chosen in Settings, House Style.
+[Show Me](prakriti://show/settings/houseStyle)
+
+- **Punch-ins.** About every other change of picture, at a cut or between two sentences, the picture
+  moves a little closer on the teacher's face; at the next change it goes back to the whole picture, so
+  a cut reads as a second camera. With Clear it moves to 1.12 times the picture, with the eyes a third of the way down.
+  On a 1080p recording no punch-in goes past 1.15, so the picture stays sharp. Where no face is seen, or
+  the face moves through the shot, the whole picture stays.
+- **Slow push-ins.** Now and then a long shot of the whole picture moves in slowly, with Clear to 1.05
+  over 4 seconds, at most once every 90 seconds.
+- **About 7 changes of picture a minute** with Clear, and 10 in the first 30 seconds.
+- **Room at the end.** The speaking ends 5 seconds before the last frame, so YouTube's end screen covers
+  no words. The last frame is held, without sound.
+
+Each style has its own numbers, for the pauses too (those under Edit plan are Clear's): Calm changes
+less and only gently, Energetic more often and closer, Story in between. Pace makes any style quicker or slower, and Teaching keeps demonstrations whole and
+wide. A change in House Style is used the next time the edit is planned: click Plan the Edit or Make
+Again. Videos already made stay as they are.
 :::
 
 :::requires style

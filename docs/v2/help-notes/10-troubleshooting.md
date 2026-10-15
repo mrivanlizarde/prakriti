@@ -77,3 +77,10 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
   cannot account for at ...") and the sound output check's ("... sounds like ..., whom you chose to leave out.").
 - "If the video does not play in the viewer" gains the sentence `VideoPreview.source` says when `video-hiding.json` is missing or
   from another make.
+
+## Notes from part M9a (Wed 14 Oct 2026)
+
+- "If the video looks soft after a zoom" (`style`, which pointed at a Calm preset and Direction, neither built) is now "If the
+  video looks soft after a punch-in" under `houseStyle`, pointing at Settings, House Style, Punch-ins Subtle or Off. Added "If a
+  punch-in cuts off a raised arm or a pose": Teaching, as built in M9a (changes only at cuts, no push-in, wide where no face).
+  Keywords added: soft picture, punch-in, Teaching.

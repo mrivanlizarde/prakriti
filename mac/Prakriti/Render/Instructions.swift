@@ -27,9 +27,15 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol, 
     let frameDuration: CMTime
     /// The faces hidden in the video (v2 part M8d), shared by every instruction; nil when nobody is hidden.
     let hidden: HiddenFaces.Table?
+    /// The punch-ins and push-ins (v2 part M9a), shared by every instruction and read by the edited frame; nil when the
+    /// whole picture is shown throughout.
+    let framing: Framing?
+    /// The held last frame (v2 part M9a): every moment of it shows `firstSourceFrame`.
+    let holds: Bool
 
     init(timeRange: CMTimeRange, trackID: CMPersistentTrackID, spanID: String, sourceStart: Double, throughCoreImage: Bool = false,
-         firstSourceFrame: Int64 = 0, frameDuration: CMTime = CMTime(value: 1001, timescale: 30000), hidden: HiddenFaces.Table? = nil) {
+         firstSourceFrame: Int64 = 0, frameDuration: CMTime = CMTime(value: 1001, timescale: 30000), hidden: HiddenFaces.Table? = nil,
+         framing: Framing? = nil, holds: Bool = false) {
         self.timeRange = timeRange
         self.trackID = trackID
         self.spanID = spanID
@@ -38,13 +44,22 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol, 
         self.firstSourceFrame = firstSourceFrame
         self.frameDuration = frameDuration
         self.hidden = hidden
+        self.framing = framing
+        self.holds = holds
         requiredSourceTrackIDs = [NSNumber(value: trackID)]
     }
 
     /// The original's frame shown at a moment of the edited clock inside this instruction.
     func sourceFrame(at compositionTime: CMTime) -> Int64 {
+        if holds { return firstSourceFrame }
         let offset = CMTimeSubtract(compositionTime, timeRange.start).seconds / frameDuration.seconds
         return firstSourceFrame + Int64(max(0, offset).rounded())
+    }
+
+    /// The part of the picture shown at a moment of the edited clock (v2 part M9a), or nil for the whole picture.
+    func crop(at compositionTime: CMTime) -> CGRect? {
+        guard let framing, !holds else { return nil }
+        return framing.rect(atEditFrame: Int64((compositionTime.seconds / frameDuration.seconds).rounded()))
     }
 
     /// The regions to hide in the frame at `compositionTime` (none when nobody is hidden).

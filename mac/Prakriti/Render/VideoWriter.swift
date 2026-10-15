@@ -123,14 +123,39 @@ enum VideoWriter {
         let total = max(1, Int(built.timeline.totalFrames))
 
         // Picture and sound are fed side by side: the writer interleaves them and waits on whichever is behind.
+        let timeline = built.timeline
         async let pictureCount: Int = {
             var count = 0
+            var last: CVReadOnlyPixelBuffer?
+            var lastFrame: Int64 = -1
             while let sample = try await frames.next() {
                 try Task.checkCancellation()
                 guard case let .pixelBuffer(buffer) = sample.content else { continue }
+                let index = Int64((sample.presentationTimeStamp.seconds / timeline.frame.seconds).rounded())
+                // Inside the hold the reader may skip frame times (measured 14 Oct: one frame at the hold's start, the next
+                // 2.9 s later): each skipped one is the held frame again.
+                if let held = last, timeline.holdFrames > 0, lastFrame >= timeline.keptFrames - 1, index > lastFrame + 1 {
+                    for skipped in (lastFrame + 1)..<index {
+                        try await pictureIn.append(held, with: timeline.time(skipped))
+                        count += 1
+                    }
+                }
                 try await pictureIn.append(buffer, with: sample.presentationTimeStamp)
+                last = buffer
+                lastFrame = index
                 count += 1
                 if count % 30 == 0 { progress(min(1, Double(count) / Double(total))) }
+            }
+            // The held last frame (v2 part M9a): the reader gives a frame held over many frame times once, so it is written
+            // again at every frame time after the last one it gave, to the end of the hold.
+            if let last, timeline.holdFrames > 0 {
+                var next = lastFrame + 1
+                while next < timeline.totalFrames {
+                    try Task.checkCancellation()
+                    try await pictureIn.append(last, with: timeline.time(next))
+                    next += 1
+                    count += 1
+                }
             }
             pictureIn.finish()
             return count

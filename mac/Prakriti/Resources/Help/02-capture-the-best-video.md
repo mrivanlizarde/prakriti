@@ -53,9 +53,9 @@ faces look patchy. Set the camera's white balance by hand so it does not drift d
   top line and leave a little space above the head.
 - **Leave room around the person.** For a talk, frame from about the waist up. For movement on a mat,
   frame the whole mat with a little space around it.
-:::requires style
-  Prakriti makes the zooms you see in a finished video by moving in on the recorded picture, so the
-  room around the person is what it zooms into.
+:::requires houseStyle
+  Prakriti makes the punch-ins you see in a finished video by moving in on the recorded picture, so the
+  room around the person is what it moves into.
 :::
 - **Keep the camera still.** Use a tripod or a fixed mount, and do not move it during a session.
 - **Look into the lens** when you speak to the people who will watch.
