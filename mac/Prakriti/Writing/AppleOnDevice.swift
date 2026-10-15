@@ -69,7 +69,7 @@ struct AppleOnDeviceClient: LanguageModelClient {
             case .summary:
                 let response = try await session.respond(to: request.user, generating: GeneratedSummary.self)
                 text = String(decoding: ModelHTTP.json(["summary": response.content.summary]), as: UTF8.self)
-            case .writing, .check:
+            case .writing, .check, .planning:
                 text = try await session.respond(to: request.user).content
             }
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)

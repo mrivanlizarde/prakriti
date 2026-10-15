@@ -124,3 +124,10 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
 - "Cutting, zooming and making the video" (`style`) became "Choosing where the picture punches in and pushes in" under
   `houseStyle`: the visual plan is code on this Mac (`VisualPlan`), no model. "Planning the edit from your direction" stays
   `style` (M9c asks a model for beats).
+
+## Status after v2 part M9c (Thu 15 Oct 2026)
+
+- "Planning the edit" moved from `style` to `direction` and says what it does as built: the beats once per transcript when a
+  direction chooses among parts, and the words of a direction no rule reads; a recording with no direction asks nothing; until
+  Ivan chooses, it uses the Writing task's choice (`AppSettings`, so his 12 Oct move to Anthropic carries).
+- New line under "These always run on this Mac" (`direction`): the rules table, the choice of parts under a length, the plan.

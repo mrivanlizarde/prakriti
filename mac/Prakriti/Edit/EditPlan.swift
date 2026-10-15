@@ -35,6 +35,11 @@ struct EditPlan: Codable, Equatable, Sendable {
     /// Chapters (M9d). Empty in M8a.
     var chapters: [Chapter] = []
     var people = People()
+    /// The beats chosen under the direction (v2 part M9c), or nil when no beats were needed.
+    var beatChoice: BeatChoice?
+    /// The plan in plain lines, shown before anything is made (v2 part M9c): "Cuts pauses longer than 0.4 s.", "Punch-ins
+    /// about every 8 s.", "Keeps the story at 12:40.", "Ends at 11:48." Nil in a plan made before M9c.
+    var planLines: [String]?
     // Added in M8a (see above).
     var madeAt: Date
     var sourceDuration: Double
@@ -48,9 +53,28 @@ struct EditPlan: Codable, Equatable, Sendable {
         var targetSeconds: Double?
     }
 
+    /// Ivan's direction as it made this plan (v2 part M9c): his words, the chips read back, and the whole reading (the
+    /// fields, what the rules could not read, the model's reading of it, what was said back), so the next plan reuses the
+    /// model's reading of the same words and the app shows what made this plan.
     struct Direction: Codable, Equatable, Sendable {
         var prompt: String
         var chips: [String] = []
+        var presets: [DirectionPreset]?
+        var pace: Pace?
+        var length: LengthChoice?
+        var reading: DirectionReading?
+    }
+
+    /// The beats the direction chose from (v2 part M9c): who annotated them, which were kept and which left out, and the
+    /// length aimed at.
+    struct BeatChoice: Codable, Equatable, Sendable {
+        var by: String
+        var beats: Int
+        var kept: [String]
+        var dropped: [String]
+        var targetSeconds: Double?
+        /// The beats that must be kept are longer than the length asked for.
+        var overBudget = false
     }
 
     /// A stretch kept: from one word to another, on the original's clock, with its exact words.
@@ -152,6 +176,9 @@ struct EditPlan: Codable, Equatable, Sendable {
         var restored: [TimeRange]?
         /// The House Style the plan was made with (`HouseStyle.signature`, v2 part M9a). Nil in a plan made before M9a.
         var house: String?
+        /// The direction it was made with (`RecordingDirection.signature`, v2 part M9c); empty for none. Nil in a plan made
+        /// before M9c, read as none.
+        var direction: String?
     }
 
     // MARK: Made from a rough cut
@@ -206,6 +233,8 @@ struct EditPlan: Codable, Equatable, Sendable {
             return "Someone you chose to leave out, \(length)."
         case .cut:
             return "Your cut, \(length)."
+        case .beat:
+            return "A part your direction leaves out, \(length)."
         case .trimmed:
             if r.words == nil && r.from < 0.001 { return "Silence before the first word, \(length)." }
             if r.words == nil { return "Silence after the last word, \(length)." }
@@ -262,6 +291,9 @@ struct EditPlan: Codable, Equatable, Sendable {
         if count(.restart) > 0 { parts.append(Format.count(count(.restart), "restart")) }
         if count(.person) > 0 { parts.append(Format.count(count(.person), "stretch", "stretches") + " of someone left out") }
         if count(.cut) > 0 { parts.append(Format.count(count(.cut), "cut") + " of yours") }
+        // Parts left out side by side are one cut, so the parts are counted from the choice, not from the cuts.
+        let leftOutParts = beatChoice?.dropped.count ?? count(.beat)
+        if leftOutParts > 0 { parts.append(Format.count(leftOutParts, "part") + " your direction leaves out") }
         var line = "Keeps \(Format.timecode(keptSeconds)) of \(Format.timecode(sourceDuration))."
         if !parts.isEmpty { line += " Taken out: " + parts.joined(separator: ", ") + "." }
         if !checks.isEmpty { line += " " + Format.count(checks.count, "moment") + " to check." }

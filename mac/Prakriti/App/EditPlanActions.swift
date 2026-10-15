@@ -39,6 +39,10 @@ extension AppModel {
         if let house = plan.basis.house, house != settings.houseStyle.signature {
             return "Your newest House Style settings are not in the plan yet."
         }
+        // The direction it was made with (v2 part M9c). A plan made before M9c records none, read as no direction.
+        if (plan.basis.direction ?? "") != recording.direction.signature {
+            return "Your newest direction is not in the plan yet."
+        }
         // The title on screen (v2 part M9b) is the recording's title as it was when the plan was made.
         if let shown = plan.visual.first(where: { $0.kind == EditPlan.Visual.title })?.lines?.joined(separator: " "),
            shown != recording.title.split(whereSeparator: \.isWhitespace).joined(separator: " ") {
@@ -84,6 +88,7 @@ extension AppModel {
             return
         }
         planning.insert(id)
+        planningLines[id] = planningLine(for: recording)
         let output = URL(fileURLWithPath: folder, isDirectory: true)
         let job = output.deletingLastPathComponent().appending(path: ".planning " + output.lastPathComponent, directoryHint: .isDirectory)
         var options = runner.options(for: recording)
@@ -93,7 +98,10 @@ extension AppModel {
         let label = "\(Format.dayLabel(recording.sessionDate)) (\(recording.fileName))"
         record("\(label): planning the edit.")
         Task { @MainActor in
-            defer { planning.remove(id) }
+            defer {
+                planning.remove(id)
+                planningLines[id] = nil
+            }
             do {
                 let outcome = try await Task.detached {
                     let fm = FileManager.default
@@ -103,25 +111,61 @@ extension AppModel {
                     try fm.copyItem(at: output.appending(path: TranscriptFiles.asHeard), to: job.appending(path: TranscriptFiles.asHeard))
                     let outcome = try await pipeline.planTheEdit(file: file, staging: job, duration: duration, capture: capture, namesSaid: namesSaid,
                                                                  faces: faces, voices: voices)
-                    let destination = output.appending(path: EditPlan.fileName)
-                    if fm.fileExists(atPath: destination.path) {
-                        _ = try fm.replaceItemAt(destination, withItemAt: job.appending(path: EditPlan.fileName))
-                    } else {
-                        try fm.moveItem(at: job.appending(path: EditPlan.fileName), to: destination)
+                    // The plan, and the beats it was chosen from when there are any (v2 part M9c).
+                    for name in [EditPlan.fileName, BeatsFile.fileName] where fm.fileExists(atPath: job.appending(path: name).path) {
+                        let destination = output.appending(path: name)
+                        if fm.fileExists(atPath: destination.path) {
+                            _ = try fm.replaceItemAt(destination, withItemAt: job.appending(path: name))
+                        } else {
+                            try fm.moveItem(at: job.appending(path: name), to: destination)
+                        }
                     }
                     return outcome
                 }.value
                 guard let current = fetchRecording(id) else { return }
                 if !current.madeFiles.contains(EditPlan.fileName) { current.madeFiles = (current.madeFiles + [EditPlan.fileName]).sorted() }
+                if FileManager.default.fileExists(atPath: output.appending(path: BeatsFile.fileName).path), !current.madeFiles.contains(BeatsFile.fileName) {
+                    current.madeFiles = (current.madeFiles + [BeatsFile.fileName]).sorted()
+                }
                 try? context.save()
                 forgetEditPlan(current)
-                record("\(label): the edit plan. " + outcome.plan.summary + String(format: " Planned in %.1f s.", outcome.seconds))
+                record("\(label): the edit plan. " + outcome.stepLine + String(format: " Planned in %.1f s.", outcome.seconds))
             } catch {
                 let reason = (error as? PlanStep.Failure)?.reason ?? (error as? PipelineFailure)?.reason ?? error.localizedDescription
                 planProblems[id] = reason
                 record("\(label): the edit plan was not made. \(reason)", level: .attention)
             }
         }
+    }
+}
+
+extension AppModel {
+    /// What Plan the Edit is doing, in one line, when it asks a model (v2 part M9c): the beats take minutes the first time.
+    func planningLine(for recording: Recording) -> String? {
+        let direction = recording.direction
+        guard !direction.isEmpty else { return nil }
+        let reading = Direction.read(direction, house: settings.houseStyle)
+        let provider = settings.provider[.planning] ?? .lmStudio
+        var asks: [String] = []
+        if reading.fields.needsBeats, let folder = recording.outputFolder {
+            let url = URL(fileURLWithPath: folder, isDirectory: true)
+            let sha = (try? Data(contentsOf: url.appending(path: TranscriptFiles.asHeard))).map(PlanWords.sha256) ?? ""
+            if BeatsFile.cached(in: url, transcriptSHA256: sha) == nil {
+                asks.append("reading the parts of the talk with \(provider.title) first, which takes a few minutes the first time")
+            }
+        }
+        if !reading.unread.isEmpty, (editPlan(for: recording)?.direction?.reading?.modelReadFor ?? "") != reading.unread.joined(separator: " ") {
+            asks.append("asking \(provider.title) to read your own words")
+        }
+        return asks.isEmpty ? nil : "Planning the edit: " + asks.joined(separator: ", and ") + "."
+    }
+
+    /// Saves a change to the recording's direction (v2 part M9c). Nothing is planned or made until Ivan asks.
+    func setDirection(_ direction: RecordingDirection, for recording: Recording) {
+        guard recording.direction != direction else { return }
+        recording.direction = direction
+        recording.updatedAt = now()
+        try? context.save()
     }
 }
 

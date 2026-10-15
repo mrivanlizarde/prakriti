@@ -16,7 +16,7 @@ final class WelcomeTests: XCTestCase {
     /// The capabilities in the order the plan builds them (docs/v2/PLAN.md section 1), each part adding
     /// its own: every stage of the build must show a whole welcome.
     static let buildOrder: [Capability] = [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .people,
-                                           .gallery, .recognition, .video, .houseStyle, .style, .timelines, .shorts, .thumbnails, .merge]
+                                           .gallery, .recognition, .video, .houseStyle, .direction, .style, .timelines, .shorts, .thumbnails, .merge]
 
     private func freshModel(mode: AppMode = .development) -> AppModel {
         AppModel(container: AppModel.inMemoryContainer(), paths: AppPaths(mode: mode), settings: .ephemeral(),
@@ -96,13 +96,13 @@ final class WelcomeTests: XCTestCase {
     }
 
     func testOnlyWhatIsBuiltIsVisibleInThePanels() {
-        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen],
-                       "v2 part M2b adds the welcome to Help, M3b the Viewer, M4a progress, M4b the capture check, M5b the cloud providers, M6a faces, M6b voices, M6c choices, M6d hiding, M7a the People gallery, M7b recognition, M8a the edit plan, M8b the rendered MP4, M8c the video in the Viewer, M9a the House Style, M9b the text on screen")
+        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction],
+                       "v2 part M2b adds the welcome to Help, M3b the Viewer, M4a progress, M4b the capture check, M5b the cloud providers, M6a faces, M6b voices, M6c choices, M6d hiding, M7a the People gallery, M7b recognition, M8a the edit plan, M8b the rendered MP4, M8c the video in the Viewer, M9a the House Style, M9b the text on screen, M9c direction")
         XCTAssertEqual(unbuiltNamesFound(in: visibleText(built, capabilities: Capabilities.built), built: Capabilities.built), [])
         // At M2b, panel 1 lists finding recordings, the podcast and "nothing is posted without you".
         XCTAssertEqual(built.map(\.id), ["welcome", "record", "outputs", "privacy", "start"])
         XCTAssertEqual(built[0].rows.map(\.id), ["finds", "podcast", "yours"])
-        XCTAssertEqual(built.map(\.rows.count), [3, 6, 4, 4, 4], "M5b adds Choose where models write to Get Started; M6c the People step to How Outputs Work; M7a the People row to Privacy")
+        XCTAssertEqual(built.map(\.rows.count), [3, 6, 5, 4, 4], "M5b adds Choose where models write to Get Started; M6c the People step to How Outputs Work; M7a the People row to Privacy; M9c the Direction step")
         XCTAssertEqual(built[4].rows.map(\.id), ["folder", "notifications", "models", "help"])
         // M4a built `progress`, so step 1 of How Outputs Work reads its v2 sentence; M4b built `captureCheck`, so the
         // recording settings row names Hybrid MOV; M8c built `video`, so step 2 says to watch the edit in the Viewer. No other v2
@@ -148,8 +148,9 @@ final class WelcomeTests: XCTestCase {
 
     func testTheLineCountsTheRowsItShows() {
         XCTAssertEqual(built[1].line, "Prakriti does its best work with a clean recording. These six things make the biggest difference.")
-        XCTAssertEqual(built[2].line, "From a raw recording to finished files, in four steps.", "M6c adds choosing who is in the episode")
-        XCTAssertEqual(built[2].rows.map { built[2].symbol(for: $0) }, ["1.circle", "2.circle", "3.circle", "4.circle"], "steps are numbered as shown")
+        XCTAssertEqual(built[2].line, "From a raw recording to finished files, in five steps.", "M6c adds choosing who is in the episode, M9c the Direction step")
+        XCTAssertEqual(built[2].rows.map { built[2].symbol(for: $0) }, ["1.circle", "2.circle", "3.circle", "4.circle", "5.circle"], "steps are numbered as shown")
+        XCTAssertEqual(built[2].rows.map(\.id).contains("direction"), true)
         XCTAssertEqual(WelcomeContent.numberWord(6), "six")
     }
 

@@ -411,4 +411,417 @@ final class StyleTests: XCTestCase {
         CGImageDestinationAddImage(destination, image, nil)
         guard CGImageDestinationFinalize(destination) else { throw CocoaError(.fileWriteUnknown) }
     }
+
+    // MARK: Direction (v2 part M9c): the rules table, the model's reading, the People sentence, the knapsack, the beats
+
+    /// Every row of the rules table, by a phrase it must read, and what it must set (PLAN M9 check 1).
+    func testEveryRulesTablePhraseMapsToItsFields() {
+        let cases: [(String, (DirectionFields) -> Bool)] = [
+            ("Under 10 minutes.", { $0.targetSeconds == 600 }),
+            ("less than twelve minutes", { $0.targetSeconds == 720 }),
+            ("about 3 minutes", { $0.targetSeconds == 180 }),
+            ("a 5-minute version", { $0.targetSeconds == 300 }),
+            ("under 45 seconds", { $0.targetSeconds == 45 }),
+            ("just the highlights", { $0.targetSeconds == 180 }),
+            ("more frequent cuts", { $0.cutDensity == 1 }),
+            ("faster cuts", { $0.cutDensity == 1 && $0.pace == 0 }),
+            ("fewer cuts", { $0.cutDensity == -1 }),
+            ("no zooms", { $0.punchIns == .off }),
+            ("more zooms", { $0.punchIns == .punchy }),
+            ("softer zooms", { $0.punchIns == .subtle && $0.style == nil }),
+            ("no text on screen", { $0.text == .off }),
+            ("fewer words on screen", { $0.text == .subtle }),
+            ("more text", { $0.text == .bold }),
+            ("add captions", { $0.captionsBurned == true }),
+            ("no captions", { $0.captionsBurned == false }),
+            ("start with the strongest line", { $0.hook == true }),
+            ("no teaser", { $0.hook == false }),
+            ("More energetic.", { $0.style == .energetic }),
+            ("calmer", { $0.style == .calm }),
+            ("like a documentary", { $0.style == .story }),
+            ("back to the house style", { $0.style == .clear }),
+            ("Faster.", { $0.pace == 1 }),
+            ("tighter", { $0.pace == 1 }),
+            ("let it breathe", { $0.pace == -1 }),
+            ("slower", { $0.pace == -1 }),
+            ("Take out the story about the car.", { $0.avoidTopics == ["car"] }),
+            ("Keep the breathing practice whole", { $0.keepWhole == ["breathing practice"] }),
+            ("Focus on the parts that are motivating or enlightening.", { $0.focus == ["motivating": 1.5, "enlightening": 1.5] && $0.focusTopics.isEmpty }),
+            ("practical tips", { $0.focus["practical"] == 1.5 }),
+            ("something funny", { $0.focus["humor"] == 1.5 }),
+            ("the philosophy", { $0.focus["philosophy"] == 1.5 }),
+            ("technique", { $0.focus["technique"] == 1.5 }),
+            ("personal", { $0.focus["personal"] == 1.5 }),
+            ("the stories", { $0.focus["story"] == 1.5 }),
+            ("focus on the first retreat", { $0.focusTopics == ["first retreat"] }),
+        ]
+        for (phrase, expected) in cases {
+            let read = DirectionRules.read(phrase)
+            XCTAssertTrue(expected(read.fields), "\"\(phrase)\" read as \(read.fields)")
+            XCTAssertTrue(read.unread.isEmpty, "\"\(phrase)\" is read by the rules, so no model is asked: unread \(read.unread)")
+        }
+        // The example directions from research 3.2 and Help 08, whole.
+        let energetic = DirectionRules.read("More energetic. Faster, more frequent cuts.")
+        XCTAssertEqual(energetic.fields.style, .energetic)
+        XCTAssertEqual(energetic.fields.pace, 1)
+        XCTAssertEqual(energetic.fields.cutDensity, 1)
+        XCTAssertTrue(energetic.unread.isEmpty)
+        let focus = DirectionRules.read("Focus on the parts that are motivating or enlightening. Under 10 minutes.")
+        XCTAssertEqual(focus.fields.targetSeconds, 600)
+        XCTAssertEqual(Set(focus.fields.focus.keys), ["motivating", "enlightening"])
+        XCTAssertTrue(focus.unread.isEmpty)
+        // What no rule reads goes to the model, whole clause by whole clause.
+        let other = DirectionRules.read("Make it feel like a sunrise over the ocean.")
+        XCTAssertEqual(other.unread, ["Make it feel like a sunrise over the ocean"])
+        XCTAssertTrue(other.fields.isEmpty)
+        // Presets are fixed fields; opposites switch each other off.
+        var direction = RecordingDirection()
+        direction.toggle(.energetic)
+        direction.toggle(.calm)
+        XCTAssertEqual(direction.presets, [.calm], "Calm switches Energetic off")
+        direction.toggle(.fasterCuts)
+        direction.toggle(.fewerCuts)
+        XCTAssertEqual(direction.presets, [.calm, .fewerCuts])
+        XCTAssertEqual(Direction.read(direction, house: .standard).fields.cutDensity, -1)
+    }
+
+    /// The chips read back what a direction set, and removing one clears exactly that (PLAN M9 check 3's chips).
+    func testTheChipsReadBackAndCanBeRemoved() {
+        var direction = RecordingDirection(prompt: "More energetic. Faster, more frequent cuts.")
+        let reading = Direction.read(direction, house: .standard)
+        let texts = reading.chips.map(\.text)
+        print("Chips:", texts)
+        XCTAssertTrue(texts.contains("Style: Energetic"))
+        XCTAssertTrue(texts.contains { $0.hasPrefix("Pace: faster") }, "\(texts)")
+        XCTAssertTrue(texts.contains("Cuts: more frequent"))
+        XCTAssertEqual(texts.first { $0.hasPrefix("Pace") }, "Pace: faster (pauses between sentences kept to 0.17 s)")
+        direction.removed = ["style"]
+        let without = Direction.read(direction, house: .standard)
+        XCTAssertNil(without.fields.style)
+        XCTAssertFalse(without.chips.contains { $0.id == "style" })
+        XCTAssertEqual(without.fields.pace, 1, "only the removed chip is cleared")
+        // The style a direction makes: Energetic's own numbers, pauses 0.85 times as long a pace step, the changes aimed high in
+        // its own range and never outside it.
+        let style = Direction.style(.standard, fields: reading.fields, pace: nil)
+        XCTAssertEqual(style.name, .energetic)
+        XCTAssertEqual(style.insideTarget, 0.10 * 0.85, accuracy: 1e-9)
+        XCTAssertEqual(style.sentenceTarget, 0.20 * 0.85, accuracy: 1e-9)
+        XCTAssertEqual(style.insideTrigger, 0.25, accuracy: 1e-9, "a pace step never changes which pauses are cut")
+        XCTAssertEqual(style.changesPerMinute, 12...15)
+        XCTAssertEqual(style.changeAim, 0.9, accuracy: 1e-9)
+        XCTAssertEqual(Direction.style(.standard, fields: DirectionFields(), pace: nil), Style.make(.standard), "no direction is the House Style exactly")
+        // Not-built fields are said, never promised.
+        let captions = Direction.read(RecordingDirection(prompt: "Add captions."), house: .standard)
+        XCTAssertTrue(captions.said.contains(Direction.captionsNotBuilt))
+        // A Text Off direction takes the title and the name away.
+        let off = Direction.house(.standard, fields: DirectionRules.read("no text on screen").fields, pace: nil)
+        XCTAssertFalse(off.titleOnScreen)
+        XCTAssertFalse(off.namesOnScreen)
+    }
+
+    /// "Show the students" changes nothing and returns the People sentence; so does anything about faces, consent or publishing.
+    func testWhoAppearsIsNeverADirection() {
+        for phrase in ["Show the students.", "Blur the student in the back", "include everyone", "Remove the person on the left", "consent"] {
+            let read = DirectionRules.read(phrase)
+            XCTAssertTrue(read.fields.isEmpty, "\"\(phrase)\" changes nothing: \(read.fields)")
+            XCTAssertEqual(read.said, [Direction.peopleSentence], "\"\(phrase)\"")
+            XCTAssertTrue(read.unread.isEmpty, "\"\(phrase)\" is never sent to a model")
+            XCTAssertTrue(Direction.read(RecordingDirection(prompt: phrase), house: .standard).chips.isEmpty)
+        }
+        let publish = DirectionRules.read("Then publish it to YouTube.")
+        XCTAssertTrue(publish.fields.isEmpty)
+        XCTAssertEqual(publish.said, [Direction.publishingSentence])
+        // The rest of a direction still counts.
+        let mixed = DirectionRules.read("Calmer, but show the students.")
+        XCTAssertEqual(mixed.fields.style, .calm)
+        XCTAssertEqual(mixed.said, [Direction.peopleSentence])
+    }
+
+    /// The model's reading may only use the vocabulary: one field outside it and the whole reading is refused.
+    func testTheModelsReadingIsRefusedOutsideTheVocabulary() throws {
+        let good = try DirectionModelCheck.check(#"{"style": "calm", "pace": -1, "focus": {"story": 2, "the first retreat": 1}, "avoid": ["humor", "the car"], "targetSeconds": 720}"#)
+        XCTAssertEqual(good.style, .calm)
+        XCTAssertEqual(good.pace, -1)
+        XCTAssertEqual(good.focus, ["story": 2])
+        XCTAssertEqual(good.focusTopics, ["the first retreat"])
+        XCTAssertEqual(good.avoid, ["humor"])
+        XCTAssertEqual(good.avoidTopics, ["the car"])
+        XCTAssertEqual(good.targetSeconds, 720)
+        XCTAssertTrue(try DirectionModelCheck.check("{}").isEmpty)
+        for refused in [#"{"style": "calm", "people": {"student 1": "include"}}"#, #"{"blur": true}"#, #"{"publish": "youtube"}"#,
+                        #"{"style": "loud"}"#, #"{"pace": 5}"#, #"{"pace": 0.5}"#, #"{"focus": {"motivating": 9}}"#, #"{"targetSeconds": 3}"#, "not json"] {
+            XCTAssertThrowsError(try DirectionModelCheck.check(refused), "refused: \(refused)")
+        }
+        // A refused reading changes nothing: the direction reads as its rules alone.
+        let alone = Direction.read(RecordingDirection(prompt: "calmer, with a sunrise feeling"), house: .standard)
+        XCTAssertEqual(alone.fields.style, .calm)
+        XCTAssertNil(alone.byModel)
+        // A reading given for other words is not used.
+        let stale = Direction.read(RecordingDirection(prompt: "with a sunrise feeling"), house: .standard,
+                                   model: (DirectionFields(style: .story), "scripted", "something else"))
+        XCTAssertNil(stale.fields.style)
+        let fresh = Direction.read(RecordingDirection(prompt: "with a sunrise feeling"), house: .standard,
+                                   model: (DirectionFields(style: .story), "scripted", "with a sunrise feeling"))
+        XCTAssertEqual(fresh.fields.style, .story)
+        XCTAssertEqual(fresh.modelBy, "scripted")
+    }
+
+    /// Synthetic beats for the knapsack: ids b1..., each `seconds` long, with scores and links.
+    static func beat(_ n: Int, _ seconds: Double, at start: Double, scores: [BeatTag: Int] = [:], kind: BeatKind = .teaching,
+                     depends: [Int] = [], thesis: Bool = false) -> Beat {
+        Beat(id: "b\(n)", firstSentence: "s\(n)", lastSentence: "s\(n)", from: "w\(n)", to: "w\(n)", start: start, end: start + seconds,
+             summary: "part \(n)", scores: Dictionary(uniqueKeysWithValues: BeatTag.allCases.map { ($0.rawValue, scores[$0] ?? 0) }), kind: kind,
+             standsAlone: depends.isEmpty, dependsOn: depends.map { "b\($0)" }, keyLine: nil, hookCandidate: false, terms: [], thesis: thesis)
+    }
+
+    /// The knapsack keeps the length, honours every dependency, keeps the thesis and the close, never reorders, and puts the
+    /// focused tags first (PLAN M9 check 1), on hand-made beats and then on 300 random sets.
+    func testTheKnapsackHonoursDependenciesAndTheLength() {
+        let beats = [
+            Self.beat(1, 40, at: 0, kind: .welcome),
+            Self.beat(2, 60, at: 40, scores: [.practical: 1]),
+            Self.beat(3, 90, at: 100, scores: [.enlightening: 3, .philosophy: 2], thesis: true),
+            Self.beat(4, 80, at: 190, scores: [.motivating: 3], depends: [3]),
+            Self.beat(5, 120, at: 270, scores: [.story: 3, .personal: 2]),
+            Self.beat(6, 70, at: 390, scores: [.motivating: 2, .enlightening: 1], depends: [5]),
+            { var b = Self.beat(7, 50, at: 460, scores: [.humor: 2]); b.terms = ["kapalabhati"]; return b }(),
+            Self.beat(8, 30, at: 510, scores: [.motivating: 1], kind: .closing),
+        ]
+        var fields = DirectionFields()
+        fields.focus = ["motivating": 1.5, "enlightening": 1.5]
+        let budget = 300.0
+        let out = Selection.choose(.init(beats: beats, keptSeconds: [:], budget: budget, fields: fields))
+        print("Knapsack, focus motivating and enlightening under 300 s:", out)
+        XCTAssertLessThanOrEqual(out.keptSeconds, budget)
+        XCTAssertTrue(out.kept.contains("b3"), "the thesis")
+        XCTAssertTrue(out.kept.contains("b8"), "the close")
+        XCTAssertTrue(out.kept.contains("b4"), "the most motivating part fits and is kept")
+        XCTAssertEqual(out.kept, out.kept.sorted { Int($0.dropFirst())! < Int($1.dropFirst())! }, "order kept")
+        if out.kept.contains("b6") { XCTAssertTrue(out.kept.contains("b5"), "b6 depends on b5") }
+        let byID = Dictionary(uniqueKeysWithValues: beats.map { ($0.id, $0) })
+        func focusMean(_ ids: [String]) -> Double {
+            ids.isEmpty ? 0 : ids.map { Double(byID[$0]!.score(.motivating) + byID[$0]!.score(.enlightening)) }.reduce(0, +) / Double(ids.count)
+        }
+        XCTAssertGreaterThan(focusMean(out.kept), focusMean(out.dropped))
+        // Avoid and keep whole.
+        var avoid = DirectionFields()
+        avoid.avoidTopics = ["kapalabhati"]
+        avoid.targetSeconds = 1_000
+        XCTAssertFalse(Selection.choose(.init(beats: beats, keptSeconds: [:], budget: 1_000, fields: avoid)).kept.contains("b7"))
+        var whole = fields
+        whole.keepWhole = ["part 5"]
+        let kept = Selection.choose(.init(beats: beats, keptSeconds: [:], budget: 400, fields: whole))
+        XCTAssertTrue(kept.kept.contains("b5"))
+        // No length: everything but housekeeping and what scored nothing.
+        let none = Selection.choose(.init(beats: beats, keptSeconds: [:], budget: nil, fields: fields))
+        XCTAssertFalse(none.kept.contains("b1"), "the welcome scored nothing")
+        XCTAssertTrue(none.kept.contains("b3") && none.kept.contains("b8"))
+        // Too short for what must stay: the must-keeps only, said as over the length.
+        let tight = Selection.choose(.init(beats: beats, keptSeconds: [:], budget: 60, fields: fields))
+        XCTAssertEqual(Set(tight.kept), ["b3", "b8"])
+        XCTAssertTrue(tight.overBudget)
+
+        // 300 random sets: the length and every dependency, always.
+        var seed: UInt64 = 1309
+        func next() -> UInt64 { seed = seed &* 6364136223846793005 &+ 1442695040888963407; return seed >> 33 }
+        for trial in 0..<300 {
+            let n = 4 + Int(next() % 30)
+            var start = 0.0
+            var made: [Beat] = []
+            for i in 1...n {
+                let length = 20 + Double(next() % 160)
+                var scores: [BeatTag: Int] = [:]
+                for tag in BeatTag.allCases { scores[tag] = Int(next() % 4) }
+                let depends = i > 1 && next() % 3 == 0 ? [1 + Int(next() % UInt64(i - 1))] : []
+                made.append(Self.beat(i, length, at: start, scores: scores, kind: i == n ? .closing : .teaching, depends: depends, thesis: i == 1 + n / 2))
+                start += length
+            }
+            let total = made.reduce(0) { $0 + $1.seconds }
+            let target = (0.2 + Double(next() % 70) / 100) * total
+            let result = Selection.choose(.init(beats: made, keptSeconds: [:], budget: target, fields: fields))
+            let keptSet = Set(result.kept)
+            if !result.overBudget { XCTAssertLessThanOrEqual(result.keptSeconds, target + 1e-6, "trial \(trial)") }
+            for b in made where keptSet.contains(b.id) {
+                for d in b.dependsOn { XCTAssertTrue(keptSet.contains(d), "trial \(trial): \(b.id) needs \(d)") }
+            }
+            XCTAssertTrue(keptSet.contains("b\(n)") && keptSet.contains("b\(1 + n / 2)"), "trial \(trial): thesis and close")
+        }
+    }
+
+    /// The beats as the model answers them: a gap joins the beat before, an overlap is refused, a key line is found word for
+    /// word or left out, a link forward is dropped, scores are held to 0 to 3, exactly one thesis.
+    func testTheBeatsAreCheckedAgainstTheWords() throws {
+        let data = try Data(contentsOf: URL(fileURLWithPath: NSHomeDirectory()).appending(path: "Prakriti/Dev/Fixtures/synthetic-transcript.json"))
+        let words = try XCTUnwrap(PlanWords.from(json: data)).words
+        let sentences = BeatSentence.from(words)
+        XCTAssertGreaterThan(sentences.count, 20)
+        let line = sentences[3].text.split(separator: " ").prefix(6).joined(separator: " ")
+        let answer = """
+            {"beats": [{"id": "b1", "first": "s1", "last": "s3", "summary": "Why we come back", "scores": {"motivating": 2, "enlightening": 4.0}, "kind": "welcome",
+              "dependsOn": ["b2"], "keyLine": "words nobody said here", "thesis": false},
+             {"id": "b2", "first": "s4", "last": "s10", "summary": "The practice lives in ordinary days", "scores": {"enlightening": 3}, "kind": "teaching",
+              "dependsOn": ["b1"], "keyLine": "\(line.lowercased())", "hookCandidate": true, "thesis": true, "terms": ["abhyasa"]},
+             {"id": "b3", "first": "s12", "last": "s\(sentences.count)", "summary": "Close", "scores": {}, "kind": "ending", "thesis": true}]}
+            """
+        let checked = try BeatCheck.check(answer, words: words)
+        print("Beat check notes:", checked.notes)
+        XCTAssertEqual(checked.beats.map(\.id), ["b1", "b2", "b3"])
+        XCTAssertEqual(checked.beats[1].lastSentence, "s11", "the sentence no beat held joins the beat before")
+        XCTAssertNil(checked.beats[0].keyLine, "a key line not found word for word is left out")
+        XCTAssertEqual(checked.beats[1].keyLine.map { PlanWords.comparable($0.text) }, PlanWords.comparable(line), "found word for word, case aside")
+        XCTAssertEqual(checked.beats[0].dependsOn, [], "a link forward is dropped")
+        XCTAssertEqual(checked.beats[1].dependsOn, ["b1"])
+        XCTAssertEqual(checked.beats[0].score(.enlightening), 3, "held to 3")
+        XCTAssertEqual(checked.beats[2].kind, .teaching, "an unknown kind reads as teaching")
+        XCTAssertEqual(checked.beats.filter(\.thesis).map(\.id), ["b2"], "exactly one thesis")
+        XCTAssertEqual(checked.beats.first?.from, "w0")
+        XCTAssertEqual(checked.beats.last?.to, words.last?.id)
+        XCTAssertThrowsError(try BeatCheck.check(#"{"beats": [{"first": "s1", "last": "s5"}, {"first": "s4", "last": "s9"}]}"#, words: words), "an overlap is refused")
+        XCTAssertThrowsError(try BeatCheck.check(#"{"beats": [{"first": "s1", "last": "s9999"}]}"#, words: words), "a sentence that does not exist")
+        XCTAssertThrowsError(try BeatCheck.check("Here are the beats.", words: words))
+    }
+
+    /// The beats request asks LM Studio for temperature 0 and the fixed seed; writing keeps its own sampling.
+    func testThePlanningRequestIsDeterministic() {
+        let client = LMStudioClient(address: "http://localhost:1235/v1", model: "qwen/qwen3.8-27b")
+        let words = [PlanWord(index: 0, text: "Hello.", norm: "hello", start: 0, end: 0.5, sentence: 0, closes: .sentence)]
+        let beats = client.body(for: Planner.beatsRequest(words, kind: .talk, duration: 1))
+        XCTAssertEqual(beats["temperature"] as? Double, 0)
+        XCTAssertEqual(beats["seed"] as? Int, ModelSettings.seed)
+        let writing = client.body(for: ModelRequest(system: "s", user: "u", shape: .writing))
+        XCTAssertEqual(writing["temperature"] as? Double, ModelSettings.temperature)
+        XCTAssertNil(writing["seed"])
+        XCTAssertEqual(AnthropicClient.effort(for: .planning), "medium")
+    }
+
+    /// The beats change the picture (v2 part M9c): wide at every new beat, and a push-in on a key line first.
+    func testTheBeatsSendThePictureBackToWideAndPushInOnAKeyLine() {
+        let made = Self.syntheticPlan()
+        var plan = made.plan
+        let starts = [62.2, 151.0, 300.2, 420.6]
+        // A key line in the middle of a long wide shot that the plan without key lines did not push in on.
+        var plain = plan
+        plain.visual = VisualPlan.make(.init(plan: plain, words: made.words, style: Style.make(.standard), subject: Self.face(), sourceHeight: 1080, outputHeight: 1080,
+                                             beatStarts: starts))
+        let plainTimeline = EditTimeline(plan: plain)
+        let fs0 = plain.frameDuration.seconds
+        let pushedBefore = plain.visual.filter { $0.kind == EditPlan.Visual.pushIn }.compactMap(\.in)
+        let candidate = VisualPlan.shots(plain, timeline: plainTimeline).dropLast().first { shot in
+            let a = Double(shot.sourceFrame) * fs0
+            return shot.scale == 1 && Double(shot.frames) * fs0 >= 6 && !pushedBefore.contains { abs($0 - a) < 0.5 } && a > 120
+        }
+        let shot = try? XCTUnwrap(candidate, "a long wide shot with no push-in")
+        let keyLine = shot.map { Double($0.sourceFrame) * fs0 + Double($0.frames) * fs0 / 2 } ?? 200.2
+        plan.visual = VisualPlan.make(.init(plan: plan, words: made.words, style: Style.make(.standard), subject: Self.face(), sourceHeight: 1080, outputHeight: 1080,
+                                            beatStarts: starts, keyLines: [keyLine]))
+        let timeline = EditTimeline(plan: plan)
+        let fs = plan.frameDuration.seconds
+        for shot in VisualPlan.shots(plan, timeline: timeline) {
+            let a = Double(shot.sourceFrame) * fs, b = a + Double(shot.frames) * fs
+            if starts.contains(where: { $0 >= a - 0.6 && $0 < min(b, a + 2) }) {
+                XCTAssertEqual(shot.scale, 1, "wide at a new beat (\(a) s)")
+            }
+        }
+        let pushes = plan.visual.filter { $0.kind == EditPlan.Visual.pushIn }
+        XCTAssertTrue(pushes.contains { ($0.in ?? 0) <= keyLine && ($0.out ?? 0) > keyLine }, "a push-in holds the key line at \(keyLine): \(pushes.map { ($0.in ?? 0, $0.out ?? 0) })")
+    }
+
+    /// A plan with a direction, on the test pattern and the ums fixture: the rules read it, the beats come from a scripted planning
+    /// model once, a part the direction leaves out is cut and said, the plan's lines are there, and planning again with only the
+    /// pace changed asks the model nothing (PLAN M9 check 3's pace-only half, measured in StyleAcceptanceTests on the real talk).
+    func testADirectedPlanChoosesBeatsAndAsksTheModelOnce() async throws {
+        let scratch = FileManager.default.temporaryDirectory.appending(path: "direction-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: scratch) }
+        let original = try await RenderTests.syntheticOriginal(in: scratch)
+        let folder = scratch.appending(path: "pattern", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: RenderTests.transcript, to: folder.appending(path: TranscriptFiles.asHeard))
+        let words = try XCTUnwrap(PlanWords.from(json: Data(contentsOf: RenderTests.transcript))).words
+        let sentences = BeatSentence.from(words)
+        XCTAssertGreaterThanOrEqual(sentences.count, 3)
+        let last = sentences.count
+        let answer = """
+            {"beats": [{"first": "s1", "last": "s1", "summary": "Getting set up", "scores": {}, "kind": "housekeeping"},
+             {"first": "s2", "last": "s\(last - 1)", "summary": "The main point", "scores": {"motivating": 3, "enlightening": 2}, "kind": "teaching", "thesis": true},
+             {"first": "s\(last)", "last": "s\(last)", "summary": "The close", "scores": {"motivating": 1}, "kind": "closing"}]}
+            """
+        let scripted = ScriptedClient(.lmStudio, replies: [.success(answer)])
+        var setup = WritingSetup()
+        setup.providers = [.planning: .lmStudio]
+        setup.makeClient = { _, _ in scripted }
+        var options = PipelineOptions()
+        options.direction = RecordingDirection(prompt: "Focus on the motivating parts.")
+        options.planning = setup
+        options.planFolder = folder
+        func plan(_ options: PipelineOptions) async throws -> EditPlan {
+            let staging = scratch.appending(path: ".planning \(UUID().uuidString)", directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+            try FileManager.default.copyItem(at: RenderTests.transcript, to: staging.appending(path: TranscriptFiles.asHeard))
+            let outcome = try await Pipeline(options: options, log: nil).planTheEdit(file: original, staging: staging, duration: 30, capture: nil, namesSaid: nil,
+                                                                                       faces: nil, voices: nil)
+            // As Plan the Edit does: the plan and the beats into the recording's folder.
+            for name in [EditPlan.fileName, BeatsFile.fileName] where FileManager.default.fileExists(atPath: staging.appending(path: name).path) {
+                try? FileManager.default.removeItem(at: folder.appending(path: name))
+                try FileManager.default.moveItem(at: staging.appending(path: name), to: folder.appending(path: name))
+            }
+            return outcome.plan
+        }
+        let first = try await plan(options)
+        XCTAssertEqual(scripted.requests.count, 1, "the beats are asked for once")
+        XCTAssertEqual(scripted.requests.first?.deterministic, true)
+        XCTAssertEqual(first.beatChoice?.dropped, ["b1"], "the housekeeping part is left out")
+        XCTAssertEqual(first.count(.beat), 1)
+        XCTAssertTrue(first.removed.contains { $0.kind == .beat && $0.say.contains("Getting set up") }, "\(first.removed.map(\.say))")
+        XCTAssertFalse(first.spans.contains { PlanWord.index(of: $0.from)! <= sentences[0].last }, "no word of the part left out is kept")
+        XCTAssertEqual(first.direction?.chips, ["Focus: motivating"])
+        XCTAssertEqual(first.basis.direction, options.direction.signature)
+        let lines = try XCTUnwrap(first.planLines)
+        print("Plan lines:", lines)
+        XCTAssertTrue(lines.contains { $0.hasPrefix("Keeps 2 of 3 parts of the talk") }, "\(lines)")
+        XCTAssertTrue(lines.last?.hasPrefix("Ends at ") == true)
+        XCTAssertNotNil(BeatsFile.cached(in: folder, transcriptSHA256: first.transcriptSHA256))
+        // A pace-only change: the beats are read from beats.json, nothing is asked.
+        options.direction.pace = .brisk
+        let started = Date()
+        let second = try await plan(options)
+        XCTAssertEqual(scripted.requests.count, 1, "a pace-only change asks the model nothing")
+        XCTAssertLessThan(Date().timeIntervalSince(started), 10)
+        XCTAssertEqual(second.beatChoice?.dropped, ["b1"])
+        XCTAssertEqual(second.modifiers.pace, Pace.brisk.rawValue)
+        // Words no rule reads are read by the model once, then reused from the last plan.
+        let reader = ScriptedClient(.lmStudio, replies: [.success(#"{"style": "story"}"#)])
+        options.planning?.makeClient = { _, _ in reader }
+        options.direction.prompt = "Focus on the motivating parts. Make it feel like a sunrise."
+        let third = try await plan(options)
+        XCTAssertEqual(reader.requests.count, 1)
+        XCTAssertEqual(third.style, "story")
+        XCTAssertEqual(third.direction?.reading?.modelReadFor, "Make it feel like a sunrise")
+        _ = try await plan(options)
+        XCTAssertEqual(reader.requests.count, 1, "the same words are never read twice")
+        // People in a direction change nothing.
+        options.direction = RecordingDirection(prompt: "Show the students.")
+        let people = try await plan(options)
+        XCTAssertEqual(people.direction?.reading?.said, [Direction.peopleSentence])
+        XCTAssertNil(people.beatChoice)
+    }
+
+    /// The planning task under the privacy lock: a cloud choice is planned by LM Studio when someone is left out.
+    @MainActor
+    func testPlanningFollowsThePrivacyLock() {
+        var setup = WritingSetup()
+        setup.providers = [.planning: .claudeAPI]
+        var free = LockSubject(people: PeopleFacts(checked: true))
+        free.people.leftOut = 0
+        XCTAssertEqual(Planner(setup: setup, log: nil, subject: free, fileName: "x").route.provider, .claudeAPI)
+        var locked = free
+        locked.people.leftOut = 1
+        let route = Planner(setup: setup, log: nil, subject: locked, fileName: "x").route
+        XCTAssertEqual(route.provider, .lmStudio)
+        XCTAssertNotNil(route.lockLine)
+        // Never chosen before, planning follows the writing's choice.
+        let settings = AppSettings.ephemeral()
+        XCTAssertEqual(settings.provider[.planning], settings.provider[.writing])
+        XCTAssertTrue(ModelTask.planning.isBuilt)
+    }
+
 }

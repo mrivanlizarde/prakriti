@@ -89,3 +89,9 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
 
 - New block `:::requires textOnScreen`, "If the title or the teacher's name is not on the video": the three reasons the plan
   leaves text out (no title in Info, no included teacher named, no moment clear of every face) and the two switches.
+
+## Status after v2 part M9c (Thu 15 Oct 2026)
+
+- New block `:::requires direction` under Finding and making, after "If the edit plan is not made": "If the plan does not follow
+  your direction" (Read as, the common phrases, the planning model) and "If the video is longer than the length you asked for"
+  (the main point, the close and their dependencies always stay; the plan says when they run over).

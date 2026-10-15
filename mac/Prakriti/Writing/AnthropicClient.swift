@@ -38,6 +38,8 @@ struct AnthropicClient: CloudModelClient {
     static func effort(for shape: ModelRequest.Shape) -> String {
         switch shape {
         case .writing: "high"
+        // The beats and a direction's reading (v2 part M9c): structured, and checked word for word in Swift.
+        case .planning: "medium"
         case .tags, .summary, .check: "low"
         }
     }

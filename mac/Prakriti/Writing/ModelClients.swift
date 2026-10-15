@@ -18,13 +18,17 @@ import Foundation
 /// family's template mishandles past assistant turns, and some runtimes reject other roles).
 struct ModelRequest: Sendable, Equatable {
     /// What the reply must hold. Apple on-device uses it to choose its guided-generation type.
-    enum Shape: String, Sendable { case writing, tags, summary, check }
+    /// `planning` (v2 part M9c): the beats of a recording and a direction's reading, both answered as JSON.
+    enum Shape: String, Sendable { case writing, tags, summary, check, planning }
 
     var system: String
     var user: String
     var shape: Shape
     /// LOCAL-MODEL.md rule 2: at least 16,384, because the model's thinking counts against it.
     var maxTokens: Int = ModelSettings.maxTokens
+    /// Asked for the same answer every time (v2 part M9c, PLAN M9: the beats): LM Studio and Ollama sample at temperature 0
+    /// with a fixed seed (`ModelSettings.seed`). The cloud providers take no seed; the beats file keeps their answer instead.
+    var deterministic = false
 }
 
 struct ModelReply: Sendable, Equatable {
@@ -91,6 +95,8 @@ enum ModelSettings {
     static let topP = 0.8
     static let topK = 20
     static let presencePenalty = 1.5
+    /// The seed for a deterministic request (v2 part M9c), recorded in the beats file.
+    static let seed = 1309
     /// Characters per token, counted low on purpose so a size check errs on the side of "too long".
     static let charactersPerToken = 3.0
 
@@ -309,7 +315,7 @@ actor LMStudioClient: LanguageModelClient {
 
     /// The request body, with every LOCAL-MODEL.md setting. Kept apart so a test can pin it.
     nonisolated func body(for request: ModelRequest) -> [String: Any] {
-        [
+        var body: [String: Any] = [
             "model": model,
             "messages": [["role": "system", "content": request.system], ["role": "user", "content": request.user]],
             "max_tokens": max(request.maxTokens, ModelSettings.maxTokens),
@@ -320,6 +326,12 @@ actor LMStudioClient: LanguageModelClient {
             "reasoning_effort": ModelSettings.reasoningEffort,
             "stream": false,
         ]
+        // The beats (v2 part M9c): the same answer for the same transcript, as far as LM Studio honours it.
+        if request.deterministic {
+            body["temperature"] = 0.0
+            body["seed"] = ModelSettings.seed
+        }
+        return body
     }
 
     func complete(_ request: ModelRequest) async throws -> ModelReply {
@@ -417,12 +429,18 @@ struct OllamaClient: LanguageModelClient {
         guard let url = URL(string: address + "/api/chat"), url.scheme != nil else {
             throw ModelFailure(kind: .notSetUp, reason: "The Ollama address on the Models screen is not a web address.")
         }
+        var options: [String: Any] = ["num_ctx": Self.context, "num_predict": request.maxTokens, "temperature": ModelSettings.temperature,
+                                      "top_p": ModelSettings.topP, "top_k": ModelSettings.topK, "presence_penalty": ModelSettings.presencePenalty]
+        // The beats (v2 part M9c): the same answer for the same transcript.
+        if request.deterministic {
+            options["temperature"] = 0.0
+            options["seed"] = ModelSettings.seed
+        }
         let body: [String: Any] = [
             "model": model,
             "messages": [["role": "system", "content": request.system], ["role": "user", "content": request.user]],
             "stream": false,
-            "options": ["num_ctx": Self.context, "num_predict": request.maxTokens, "temperature": ModelSettings.temperature,
-                        "top_p": ModelSettings.topP, "top_k": ModelSettings.topK, "presence_penalty": ModelSettings.presencePenalty],
+            "options": options,
         ]
         let started = ContinuousClock.now
         let (status, data) = try await ModelHTTP.send(ModelHTTP.post(url, body: body), session: session, service: "Ollama")

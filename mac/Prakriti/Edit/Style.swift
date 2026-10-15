@@ -209,6 +209,9 @@ struct Style: Equatable, Sendable {
     var snapZoom: SnapZoom?
     /// Back to wide after this many tight shots in a row (research 2.3).
     var backToWideAfter = 3
+    /// Where in `changesPerMinute` the picture's changes aim, from 0 (its bottom) to 1 (its top): the middle by default; a
+    /// direction's pace and cuts move it (v2 part M9c, `Direction.style`), never outside the style's own range.
+    var changeAim = 0.5
     /// Speech ends this long before the last frame, the picture held wide (0: no room at the end).
     var endingSeconds: Double
 

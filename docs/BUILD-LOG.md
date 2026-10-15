@@ -83,6 +83,12 @@ long shots, and ends 5 s after the last word on a held frame. On the whole 13 Se
 the eyes measured at 0.315 to 0.332 of the height, and every M8 check still passing. **Then part M9b, text and graphics** (the last section, "v2 part M9b", Thu 15 Oct): the
 video opens with the recording's title from Info for 2 s and names each included teacher once in a lower third, in Alegreya Sans,
 never over a face and always inside title safe; measured on the 13 Sep excerpt, the nearest face 0.105 of the frame from the title.
+**Then part M9c, beats and direction** (the last section, "v2 part M9c", Thu 15 Oct): each recording can be steered in the inspector's
+Outputs under Direction, in Ivan's own words, with presets, a pace and a length; the common phrases are read on this Mac, the rest by the
+"Planning the edit" model inside a fixed vocabulary, and everything read is shown back as chips he can remove. A length or a focus
+chooses whole parts of the talk (beats, scored once by the model and kept beside the plan), and the plan shows in plain lines before the
+video is made. On the whole 13 Sep talk, "Under 10 minutes" with a motivating and enlightening focus kept 9 of 13 parts in 9:52, and a
+pace change after that planned in 1.2 s with no model asked.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -5796,3 +5802,157 @@ next sweep, **"01:26:24 Checked 2 folders. Nothing new."**, pid 82496 still runn
 - [ ] **To see it on a real video:** give a recording a title in Info, pick Gabriel under Who Is Teaching, then Make Again with the
   Edited video on.
 
+
+---
+
+## v2 part M9c: beats and direction. Thu 15 Oct 2026
+
+The part after M9b (`docs/v2/PLAN.md`, M9, part M9c; REQUEST item 7, "a way to prompt or adjust the editorialization"). Built on
+`main` Thu 15 Oct 02:00 to 07:07. No Swift package added, nothing downloaded. **One SwiftData field added**,
+`Recording.directionJSON` (optional, nil by default, an addition SwiftData migrates by itself); `make migrate-check` run. Under Ivan's
+decision of Mon 12 Oct every participant counts as released, and the task's rules for this run: frames of Gabriel's talks are
+measured only, and cloud providers are tested only on the synthetic transcript, so every model call in the checks here went to
+Qwen3.8-27B in LM Studio on this Mac and nothing was sent anywhere.
+
+### What was built
+
+- **Direction for one recording** (`Views/Inspector/DirectionSection.swift`, in the inspector's Outputs above Edit plan until the
+  Direction tab of M9d): a field for Ivan's own words (a system text field, four lines and growing, with the design spec's example as
+  its prompt), the eight preset capsules of design spec 3.5.3 (Energetic, Calm, Faster Cuts, Fewer Cuts, Motivating, Enlightening,
+  Story First, Teaching Only; Energetic and Calm, Faster and Fewer Cuts switch each other off), Pace (as in House Style, Relaxed,
+  Balanced, Brisk), Length (Everything that matters, About 20, 10 or 3 minutes), **Read as** (every field the direction set as a chip
+  with an x that takes it back out), the sentences said back (the People sentence, what is not built yet, what the planning model
+  will read), Plan Again and Clear Direction. Stored per recording as `Recording.directionJSON` (`RecordingDirection`, decoded field by
+  field). A changed direction says "Your newest direction is not in the plan yet." (`EditPlan.Basis.direction`).
+- **The vocabulary and the rules table** (`Edit/Direction.swift`, `Edit/DirectionRules.swift`): research 3.2's fields only
+  (`DirectionFields`: style, pace and cut steps from -2 to 2, punch-ins, text, captions, length, focus tags and topics, avoid, keep
+  whole, hook, and Teaching Only). Presets first, then Pace and Length, then the rules (length phrases, more or fewer cuts, zooms, words
+  on screen, captions, the hook, styles, pace, "take out the story about", "keep ... whole", the eight focus tags, "focus on"), read as
+  he types with no model. Clauses about people, faces, blurring, consent or publishing change nothing and are answered with "People are
+  chosen under People." (or the publishing sentence). A clause no rule reads is "unread".
+- **The model for the rest** (`Writing/Planner.swift`): the unread clauses go to the "Planning the edit" task's model under the
+  privacy lock exactly as the writing does (a cloud provider only through `LockedCloudClient`; LM Studio when the lock holds). Its JSON
+  is checked by `DirectionModelCheck`: one key outside the vocabulary, or a value out of range, refuses the whole reading. The reading is
+  kept in the plan with the words it was for, so the same words are never asked about twice.
+- **Beats** (`Edit/Beats.swift`, `Planner.beats`): when a direction chooses among parts (a length, a focus, something to take out or
+  keep whole), the planning model reads the transcript's sentences ("s1 [0:00] ...") and answers with beats: first and last sentence,
+  a summary (never a name or a private matter, Mac warning 51's rule), 0 to 3 for eight tags, kind, standsAlone, dependsOn, a key line,
+  hookCandidate, terms and the one thesis. `BeatCheck` keeps them only after checking: sentences exist and do not overlap (a sentence no
+  beat holds joins the beat before), scores held to 0 to 3, a key line found word for word in the beat's own words (else left out and
+  counted; the word ids are code's), links only to earlier beats, exactly one thesis. Kept in `beats.json` with the transcript's SHA-256,
+  the model, temperature 0 and seed 1309 (`ModelRequest.deterministic`, LM Studio and Ollama), the time and the notes; read from there
+  whenever the transcript and the request are the same (`BeatsFile.cached`, `promptVersion`). `Pipeline.prepareDirection` writes the
+  beats it used into every staging folder so a make or Plan Again keeps them.
+- **The selection** (`Edit/Selection.swift`): a knapsack over the beats under the length (value: scores times the focus weights, 1.5
+  for a focused tag, 0.25 for the rest, 1 each with no focus, 0 for a tag to avoid, plus 0.002 a second so time is filled), solved
+  exactly on the beats alone in half-second steps, repaired for dependencies and filled greedily, against a greedy pass over each beat
+  with what it needs; the better kept. Always kept: the thesis, the closing beat, anything kept whole, and every dependency of a kept
+  beat; never reordered; housekeeping and beats scored 0 everywhere never fill a length. With no length it keeps everything but
+  housekeeping, what scored nothing and what was asked out. The length budget leaves room for the 5 s ending; if the cut runs over, the
+  budget comes down by the overshoot and the beats are chosen again (up to four rounds).
+- **The plan** (`PlanStep`): a direction's style, punch-ins, Teaching and pace lie over the House Style (`Direction.house`,
+  `Direction.style`); a pace step makes kept pauses 0.85 times as long (never which pauses are cut, decision 3); pace and cut steps
+  move where the picture's changes aim inside the style's own range (`Style.changeAim`, 0.1 to 0.9, the middle by default). Parts left
+  out are forced cuts like Ivan's (`RoughCut.Input.dropped`, `RemovedKind.beat`, from the middle of the pause before to the middle of
+  the pause after; said "A part your direction leaves out, 1 min 15 s: "...""; on the strip, changed only by the direction:
+  `SpanEdit.direction`). With beats, the picture goes back to wide at each new beat and a slow push-in goes to a key line first
+  (`VisualPlan.Input.beatStarts`, `keyLines`). The plan records the direction, its chips and its reading (`EditPlan.Direction`), the
+  beats chosen (`EditPlan.BeatChoice`) and its own lines (`EditPlan.planLines`).
+- **The plan before rendering:** the lines ("Cuts pauses longer than 0.4 s inside a sentence and 0.6 s between sentences, down to
+  0.18 s and 0.35 s." "Punch-ins about every 20 s, and 3 slow push-ins." "Keeps 9 of 13 parts of the talk; leaves out 4 (5:29 of the
+  recording)." "Keeps the story at 1:47." "Ends at 9:52.") show under Edit plan with **Make Video**, and in the progress block under
+  "The plan" while the video is made, beside Stop (`ProgressBlock`, from the planning step's line). While Plan the Edit asks a model,
+  the section says so ("Planning the edit: reading the parts of the talk with LM Studio first, which takes a few minutes the first
+  time.").
+- **Settings, Models:** "Planning the edit" is built and enabled; never chosen, it follows the Writing task's choice (so Ivan's 12 Oct
+  move to Anthropic carries). A recording with no direction asks no model at all and, with no beats, plans exactly as M9b did
+  (measured below: the Clear plan of the whole 13 Sep talk is M9a's, 105 changes, 7.07 a minute, 39 punch-ins). Once a recording
+  has beats, its picture also goes back to wide at each new beat with or without a direction (the same plan then: 38 punch-ins).
+- **Help:** capability `direction` on. Help 08 (Editorial direction) visible and rewritten to the build; 00 (Directing the Edit),
+  05 (a pointer under Edit plan), 09 (Planning the edit, and what runs on this Mac), 10 (two new entries); the welcome's Direction step
+  ("then choose Plan Again"). Notes appended to `docs/v2/help-notes/00`, `05`, `08`, `09`, `10`.
+- **Tests:** `StyleTests` gains nine (the rules table phrase by phrase, the chips, "show the students", the model's reading refused
+  outside the vocabulary, the knapsack on hand-made beats and 300 random sets, the beat check on synthetic-transcript.json, the
+  deterministic request, wide at beats and a push-in on a key line, a directed plan on the test pattern with a scripted planning model
+  asked once); `DirectionAcceptanceTests` (`make accept-direction`); `HelpTests`, `WelcomeTests`, `StoreMigrationTests`, `SnapshotTests`
+  (24-direction and 24-direction-people, light and dark, and each picture in its own autorelease pool). START_HERE: the M9c paragraph,
+  `make accept-direction`, the file map, Mac warnings 169 to 176.
+
+### Found by measuring (each fixed, each with its measurement)
+
+1. **"Faster" that cut more pauses broke Energetic's median shot.** First run, the whole 13 Sep talk, "More energetic. Faster, more
+   frequent cuts." with the pace step scaling the triggers too: 159 pauses cut, 14.45 changes a minute, **median shot 2.94 s** (bar 3 to
+   4). A pace step now shortens the kept pauses only: 145 pauses, 13.88 a minute, **median 3.04 s** (Mac warning 169).
+2. **A rule's own action called the tag check, which called the rules again.** `DirectionRules.mentions` probed the rules' actions to
+   find the tag words; the "take out the story about" action calls `mentions`, so the recursion crashed the test runner, and the app
+   would have crashed on the first such direction typed. The tag words are now one table (`tagPatterns`) both read (Mac warning 173).
+   The crash first showed as "Executed 14 tests, with 0 failures" for a suite of 20 (Mac warning 174).
+3. **The full snapshot run ran out of SwiftUI's attribute space.** Twice, `make test` stopped at 23-viewer-video-restored with
+   "precondition failure: exhausted data space" once every inspector held the Direction section; the same pictures drew alone. Each
+   picture now draws in its own autorelease pool, and all 202 screens (1,103 pictures) drew in one run (Mac warning 176).
+4. **Three buttons under Edit plan did not fit** ("Show in the..." in 24-direction, light and dark, found by looking): the row now wraps.
+5. **The summary counted cuts, the lines counted parts** ("2 parts your direction leaves out" beside "leaves out 4"): parts side by
+   side are one cut, so the summary now counts the choice's parts.
+
+### Checks run, with results (PLAN M9, the checks part M9c runs: 1, 3 for Energetic, Focus and length, and pace-only, 8 with `make accept-models`)
+
+Real media: the whole 13 Sep talk (made in development, planned many times); the 13 Sep and 6 Sep talks in `make accept` and
+`make accept-edits`; `synthetic-transcript.json` and the ums fixture on the test pattern for the unit tests. No frame of Gabriel's talks
+was written or looked at in this part (the checks here read plans, not pictures). Originals unchanged (730,464,600 bytes, same date).
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `make test` with `StyleTests`: every rules-table phrase maps to its fields; the model's reading is refused when it names a field outside the vocabulary; "show the students" changes nothing and returns the People sentence; the knapsack honours dependencies and the length on synthetic beats | **PASS.** `StyleTests` 20 of 20 (each case's own line read, warning 174): 37 phrases, one per rule, each to its fields and none sent to a model, and both research examples whole; 9 model readings refused (a "people" key, "blur", "publish", a style, pace 5, pace 0.5, a weight of 9, 3 seconds, prose) and a good one read; "Show the students.", "Blur the student in the back", "include everyone", "Remove the person on the left", "consent" each: no field, the People sentence, nothing unread; the knapsack on 8 hand-made beats under 300 s kept 250 s (thesis, close, the most motivating part; focus mean kept above dropped) and on **300 random sets** never over the length and never a kept beat without what it needs, thesis and close always kept; the beat check on synthetic-transcript.json; a directed plan on the test pattern asks a scripted model once, then 0 times for a pace change, a cached reading 0 times |
+| 3 | `make accept-direction` on the **whole 13 Sep talk**, beats by Qwen3.8-27B in LM Studio, timed (PLAN names `accept-style`; decision 8) | **PASS, every check** (`screens/mac/v2-m9c/acceptance-direction.txt`, 06:50 to 07:07). **Energetic** ("More energetic. Faster, more frequent cuts."): chips "Style: Energetic", "Pace: faster (pauses between sentences kept to 0.17 s)", "Cuts: more frequent"; **13.88 visual changes a minute** (202 in 14.55 min); **median shot 3.04 s**; 0 model requests; largest punch-in 1.150. **Focus and length** ("Focus on the parts that are motivating or enlightening. Under 10 minutes."): the beats took Qwen **15 min 0 s** in one try (137 sentences, about 6,500 tokens read): 13 beats, 5 key lines not word for word and left out; **video 9:52** (592.43 s; kept 9:48 plus the 4.84 s hold); 9 of 13 beats kept, mean motivating plus enlightening **1.89 kept against 1.00 dropped**; every dependency held, thesis (8:26) and close kept; PlanValidation clean. **Pace only** (the same at Brisk): **0 LM Studio requests**, planned in **1.2 s**, 9:48. Also: no direction asks nothing (Clear as M9a: 105 changes, 7.07 a minute); "Show the students." changes nothing (spans equal to Clear's, the People sentence); 0 cloud calls; original unchanged. **The seed holds:** in the first run the beats were asked for again straight from the planner (899 s) and came back the same 13 beats, the same boundaries and scores; the final run's beats, made fresh, are the same again (`acceptance-direction-first-run.txt` beside it, which also holds finding 1's 2.94 s) |
+| 8 | Regression set; `make accept-models`; `make migrate-check` | **PASS.** `make build`: no warnings. **`make test`: 404 tests, 0 failures, 26 skipped by design** (1,386 s; every case's line read: 378 passed, 26 skipped, 404 started; snapshots 202 screens, 1,103 pictures). `make accept`: 13 Sep -16.8 LUFS (-16.82), -1.7 dBFS, 2,948 words to 15:47 of 15:48; silent-60s at -91 dB, nothing made; the 30 s clip a test; 6 Sep -16.7 LUFS (-16.72), -1.4 dBFS, 10,060 words, 72 and 59 words in TXGAP's stretches; originals unchanged. `make accept-edits`: **38.82 s shorter (expected 38.82)**, 0 of 73 runs from the cut heard, 189 of 201 after it, the class refused. `make accept-models` (writing on LM Studio): **passed**, Qwen3.8-27B wrote the 13 Sep package in 1 hr in 2 tries (the first cut off at 16,383 tokens, 16,018 of them thinking, and tried again as LOCAL-MODEL rule 2 says): 4 titles, 3 chapters at cue times, 6 quotes word for word, 3 social captions; Apple on-device tags; Claude client calls 0. `make migrate-check` on a copy of the live store: recordings 13/13, folders 2/2, output settings 40/40, Activity lines 1,337/1,337, approved 2; "part M9c: 0 recordings with a direction; the store had the column before: false" |
+| Also | The video checks through the changed planner | `make accept-style STYLE_ONLY="13 Sep excerpt"`: every check passed (largest scale 1.120 of 17 punch-ins, the eyes 4 of 4 within the third, 4 of 4 frames 30 dB or more, speech ending 5.005 s before the end); the excerpt's own Ready checklist still fails Key frames and Frame timing from its `-c copy` tail, as recorded since M8c |
+
+**Snapshots looked at** (`screens/mac/v2-m9c/`): `24-direction-light-inspector-p2` and `-p3` (the field with Ivan's words, the eight
+capsules in three rows, Pace and Length, Read as with three chips and their x, Plan Again and Clear Direction; under Edit plan the
+plan's three lines), `24-direction-people-dark-inspector-p2` (two chips, "When you plan, LM Studio reads the words no rule reads:
+"Make it feel like a sunrise".", the People sentence with its symbol), `10-settings-04-models-light` (Planning the edit enabled with its
+line; Choosing moments still greyed), Help 08 `help-07-editorial-direction-light`, `-dark-p2` and `-light-end` (where to find it, the
+examples, Read as, the parts of the talk, the plan's real lines, the Faster sentence, Clear Direction). All 17 pt, readable in light and
+dark. **Found by looking:** finding 4 above.
+
+**Em dashes:** 0 in every line this part added (grep for U+2014 and U+2013 over the diff and the new files).
+
+### Decisions, each with its reason
+
+1. **Direction lives in the Outputs tab, above Edit plan, until M9d.** Reason: PLAN gives the Direction tab to M9d with versions; the
+   field, chips and plan are this part's, and Ivan can use them now. M9d moves the section into its tab.
+2. **Beats are made only when a direction needs them** (a length, a focus, something to take out or keep whole). Reason: research
+   3.3's default selection drops housekeeping, which would change every existing video and spend a model call on every recording;
+   with no direction nothing is asked, and a recording that never had beats plans as in M9b.
+3. **A pace step shortens the pauses that stay; it never cuts more of them** (finding 1). Reason: each extra cut is a jump in the
+   picture; on the 13 Sep talk it pushed Energetic's median shot under its own bar.
+4. **A direction moves the picture's rate only inside the chosen style's range.** Reason: the style's range is the house grammar
+   (research 2.4); "faster" on Clear stays a Clear video, and Energetic is its own choice.
+5. **"Planning the edit", never chosen, follows the Writing task.** Reason: Ivan moved writing to the Claude API on 12 Oct; the
+   checks here set it to LM Studio on purpose (no cloud test on a real talk in this run).
+6. **Not built, said not promised:** captions on the picture, more or fewer key phrases, and the opening line are read as chips, and a
+   line under them says they are not made yet (key phrases and the hook are M9d; burned captions on long-form are not planned).
+7. **The plan's Make Video goes ahead on the plan shown; nothing waits for a click inside a make.** Reason: automatic makes (the
+   watcher) must never stall; Ivan sees the lines under Edit plan before he clicks, and in the progress block while it makes.
+8. **Check 3 runs as `make accept-direction` on the whole 13 Sep talk, plan only.** Reason: every bar of check 3 is measured from the
+   plan (changes, median shot, length, scores, requests); the video of an Energetic version is M9d's check 5. PLAN's routine excerpts
+   could not hold "under 10 minutes".
+
+### What does not work yet
+
+- The Direction tab, versions (Make Again keeps one plan), Use This Version, key phrases, term cards, the hook, chapters and the marks
+  lane (M9d). Make Again on several recordings with one direction (design spec 3.7) is not built.
+- Qwen paraphrases key lines: 5 of 13 on the 13 Sep talk were not word for word and were left out (counted in `beats.json`).
+- The beats take Qwen3.8-27B about 15 minutes for a 16-minute talk; on the Claude API they would take about a minute (not measured on a
+  real talk in this run, by the run's rules).
+
+### Installed
+
+Not yet at this commit: `make install` follows it, and the next commit records it.
+
+### For Ivan
+
+- [ ] **Try a direction:** select a recording, open Outputs, write under Direction (for example "Focus on the parts that are motivating
+  or enlightening. Under 10 minutes."), click Plan Again, read the lines under Edit plan, then Make Video. The first plan with a length
+  or focus reads the talk's parts with the model set for Planning the edit (Anthropic on your Mac: a few cents and about a minute).
+- [ ] **Say what is off** in the Energetic and focused plans of 13 Sep (PLAN M9 "Needs Ivan"): the numbers tune from your answer.

@@ -519,6 +519,7 @@ struct TimelineSpan: Identifiable, Equatable, Hashable, Sendable {
         case .filler, .stutter: "ellipsis.bubble"
         case .restart: "arrow.uturn.backward"
         case .person: "person.fill.questionmark"
+        case .beat: "text.badge.minus"
         case .cut, .trimmed, nil: isRemoved ? "scissors" : "checkmark.circle"
         }
     }

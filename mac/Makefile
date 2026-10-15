@@ -131,7 +131,7 @@ STYLE_ONLY ?=
 YES       ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: accept-text accept-style accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: accept-direction accept-text accept-style accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -209,6 +209,19 @@ accept-style:
 #                 are not looked at (about 3 minutes)
 accept-text:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=text TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/TextAcceptanceTests
+
+# accept-direction  v2 part M9c's acceptance (PLAN M9 check 3 for Energetic, Focus and length, and pace-only): the WHOLE REAL 13 Sep
+#                 talk made in development (transcript, faces, voices; no video, no writing), then Plan the Edit with a direction each
+#                 time, every plan read back and counted: "More energetic. Faster, more frequent cuts." (chips, 12 to 15 changes a minute,
+#                 median shot 3 to 4 s, no model asked), "Focus on the parts that are motivating or enlightening. Under 10 minutes." (the
+#                 beats by Qwen3.8-27B in LM Studio, timed; 8:30 to 10:00; kept beats score higher), the same at Brisk (0 LM Studio
+#                 requests, planned in under 10 s), "Show the students." (nothing changes), then the beats asked for again to see whether
+#                 LM Studio honours the seed (DIRECTION_SEED=skip leaves it out; KEEP_BEATS=1 keeps an earlier run's beats.json). Needs LM Studio's server. Nothing goes to a cloud
+#                 provider. Writes acceptance-direction.txt to ../screens/mac/$(MILESTONE)/ (about 10 to 30 minutes, most of it the model)
+DIRECTION_SEED ?=
+KEEP_BEATS ?=
+accept-direction:
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=direction TEST_RUNNER_PRAKRITI_DIRECTION_SEED=$(DIRECTION_SEED) TEST_RUNNER_PRAKRITI_DIRECTION_KEEP_BEATS=$(KEEP_BEATS) TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/DirectionAcceptanceTests
 
 # look-video  v2 part M8c's real window (PLAN M8 check 7): a development copy on sample data opens the test-pattern video that
 #                 accept-viewer-video wrote, on Video with the Captions overlay on and --debug-playback-log, Space is sent, and

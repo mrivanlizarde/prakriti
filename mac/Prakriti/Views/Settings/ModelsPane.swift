@@ -11,7 +11,7 @@ struct ModelsPane: View {
         @Bindable var settings = model.settings
         Form {
             Section {
-                PageIntro(text: "Models write the titles, show notes, chapters, tags and summaries. Transcribing, checking the sound and making the episode always happen on this Mac, and no recording ever leaves it. A cloud model reads only the words of a transcript.")
+                PageIntro(text: "Models write the titles, show notes, chapters, tags and summaries, and read the parts of a talk when a direction asks. Transcribing, checking the sound and making the episode always happen on this Mac, and no recording ever leaves it. A cloud model reads only the words of a transcript.")
             }
 
             Section {

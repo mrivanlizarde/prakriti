@@ -115,7 +115,8 @@ struct FrameDuration: Codable, Equatable, Sendable, CustomStringConvertible {
 
 /// Why time was taken out. The order is the order of precedence when one stretch holds several.
 enum RemovedKind: String, Codable, CaseIterable, Sendable {
-    case person, cut, trimmed, restart, stutter, filler, pause
+    /// `beat` (v2 part M9c): a part of the talk the direction's selection leaves out.
+    case person, cut, beat, trimmed, restart, stutter, filler, pause
 
     var rank: Int { Self.allCases.firstIndex(of: self) ?? 0 }
 }
@@ -174,6 +175,8 @@ struct RoughCut: Sendable {
         /// as recorded. They never override the forced time above (research 3.4 rule 5): a restore cannot bring back Ivan's
         /// own cut or a person he left out.
         var restored: [TimeRange] = []
+        /// Parts of the talk the direction's selection leaves out (v2 part M9c, `Selection`): taken out like Ivan's cuts.
+        var dropped: [TimeRange] = []
         var preset = RoughCutPreset.clear
 
         /// Whether the stretch from `a` to `b` touches a restored one (by more than a millisecond).
@@ -262,6 +265,7 @@ struct RoughCut: Sendable {
         if let end = input.edits.end, end < input.duration { forced.append((TimeRange(start: end, end: input.duration), .trimmed)) }
         for c in EpisodeEdits.merged(input.edits.cuts) { forced.append((c, .cut)) }
         for c in input.leftOut where c.end > c.start { forced.append((c, .person)) }
+        for c in EpisodeEdits.merged(input.dropped) where c.end > c.start { forced.append((c, .beat)) }
         var forcedWord = [RemovedKind?](repeating: nil, count: words.count)
         for i in words.indices {
             for f in forced where cut.refinedEnd[i] > f.range.start + 0.001 && cut.refinedStart[i] < f.range.end - 0.001 {

@@ -128,6 +128,11 @@ The plan is saved as `edit-plan.json` in the recording's folder, and the strip u
 viewer shows it. Once a recording has a plan, Make Again plans it again with your newest changes; Plan
 Again does that alone, without making anything else.
 :::
+:::requires direction
+To steer one recording's plan (a style, a pace, a length, what to focus on), use Direction, just above
+Edit plan. The plan then shows in plain lines before anything is made. See
+[Editorial direction](08-editorial-direction.md).
+:::
 :::unless renderedVideo
 Nothing else is made from the plan yet.
 :::

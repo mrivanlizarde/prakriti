@@ -179,6 +179,14 @@ struct PipelineOptions: Sendable {
     var video = VideoFacts()
     /// The recording's title as Ivan set it in Info, for the title on screen (v2 part M9b). Empty: no title on screen.
     var planTitle = ""
+    /// Ivan's direction for this recording (v2 part M9c): presets, his words, pace and length. Empty: the House Style alone.
+    var direction = RecordingDirection()
+    /// Who plans the edit when a model is needed (v2 part M9c): the "Planning the edit" task's provider from Settings, Models,
+    /// under the privacy lock. Nil: no model is asked, and a direction that needs one says so.
+    var planning: WritingSetup?
+    /// The recording's own output folder, where its last plan and its beats are (v2 part M9c): the beats are made once per
+    /// transcript and the model's reading of the same words is never asked for twice.
+    var planFolder: URL?
 
     /// Anyone left out or any name muted: the podcast changes, so the step that applies it is planned.
     var appliesChoices: Bool { people != nil && choices.changesPodcast && (makeEpisode || makePodcastReady) }
@@ -1499,6 +1507,12 @@ struct Pipeline: Sendable {
             setup.text = Self.textSetup(file, faces: faces, names: people.names(for: voices).resolved(faces: faces, voices: voices), people: people,
                                         choices: options.choices, title: options.planTitle)
         }
+        // The direction (v2 part M9c): read by the rules, then by the model for what they could not read, then the beats when
+        // the direction chooses among them (a length, a focus, something to leave out or keep whole).
+        setup.direction = options.direction
+        let prepared = try await prepareDirection(original: file, transcript: setup.transcript, staging: staging, duration: duration, faces: faces, voices: voices)
+        setup.reading = prepared.reading
+        setup.beats = prepared.beats
         defer { try? FileManager.default.removeItem(at: setup.jobFolder) }
         let ffmpeg = tools.ffmpeg
         let outcome = try await PlanStep.run(setup, now: Date()) { arguments in
@@ -1510,6 +1524,80 @@ struct Pipeline: Sendable {
             throw PlanStep.Failure(reason: "The plan was made but could not be saved.")
         }
         return outcome
+    }
+
+    /// The direction read for this plan, and the beats it needs (v2 part M9c). The model's reading of words the rules could not
+    /// read is taken from the last plan when it was for the very same words; the beats from `beats.json` when they were made
+    /// from this very transcript. Otherwise the "Planning the edit" model is asked, under the privacy lock. Beats are written
+    /// into `staging` whenever there are any, so a make or Plan Again keeps them. A direction that needs beats that cannot be
+    /// made stops the plan (never a 15-minute video for "under 10 minutes").
+    func prepareDirection(original: URL, transcript: URL, staging: URL, duration: Double, faces: FacesFound?, voices: VoicesFound?)
+        async throws -> (reading: DirectionReading, beats: BeatsFile?) {
+        let name = original.deletingPathExtension().lastPathComponent
+        let fileName = original.lastPathComponent
+        var reading = Direction.read(options.direction, house: options.house)
+        guard let data = try? Data(contentsOf: transcript), let words = PlanWords.from(json: data) else { return (reading, nil) }
+        let cached = options.planFolder.flatMap { BeatsFile.cached(in: $0, transcriptSHA256: words.transcriptSHA256) }
+            ?? BeatsFile.cached(in: staging, transcriptSHA256: words.transcriptSHA256)
+        var subject = LockSubject()
+        if let people = options.people {
+            subject.people = PeopleFacts.from(faces: faces, voices: voices, names: people.names(for: voices), people: people.people, choices: options.choices)
+        } else {
+            subject.people.leftOut = PeopleFacts.from(faces: nil, voices: nil, names: .none, people: [], choices: options.choices).leftOut
+        }
+        let planner = options.planning.map { Planner(setup: $0, log: log, subject: subject, fileName: fileName) }
+        var client: (any LanguageModelClient)?
+        func asked() -> (any LanguageModelClient)? {
+            if client == nil { client = planner?.client() }
+            return client
+        }
+        // The model is given back before this returns, so a model loaded for planning is never unloaded under the writing step.
+        func done() async {
+            if let c = client, let planner { await planner.release(c) }
+            client = nil
+        }
+        let unread = reading.unread.joined(separator: " ")
+        if !reading.unread.isEmpty {
+            let previous = options.planFolder.flatMap { EditPlan.read(folder: $0.path) }?.direction?.reading
+            if let previous, previous.modelReadFor == unread, let fields = previous.byModel {
+                reading = Direction.read(options.direction, house: options.house, model: (fields, previous.modelBy ?? "", unread))
+            } else if let planner, let c = asked() {
+                do {
+                    let answer = try await planner.direction(reading.unread, client: c)
+                    reading = Direction.read(options.direction, house: options.house, model: (answer.fields, answer.by, unread))
+                } catch is CancellationError {
+                    await done()
+                    throw CancellationError()
+                } catch {
+                    let reason = (error as? Planner.Failure)?.reason ?? (error as? ModelFailure)?.reason ?? error.localizedDescription
+                    reading.said.append("Prakriti could not read \u{201C}\(unread)\u{201D}: \(reason)")
+                }
+            } else {
+                reading.said.append("Prakriti could not read \u{201C}\(unread)\u{201D}: no model is set for planning the edit.")
+            }
+        }
+        var beats = cached
+        if reading.fields.needsBeats && beats == nil {
+            guard let planner, let c = asked() else {
+                throw PlanStep.Failure(reason: "Your direction chooses among the parts of the talk, and no model is set for planning the edit in Settings, Models.")
+            }
+            do {
+                beats = try await planner.beats(words: words.words, recording: name, transcriptSHA256: words.transcriptSHA256, kind: options.kind,
+                                                duration: duration, client: c)
+            } catch is CancellationError {
+                await done()
+                throw CancellationError()
+            } catch {
+                await done()
+                let reason = (error as? Planner.Failure)?.reason ?? (error as? ModelFailure)?.reason ?? error.localizedDescription
+                throw PlanStep.Failure(reason: "The parts of the talk could not be read, so your direction's length and focus could not be applied. \(reason)")
+            }
+        }
+        await done()
+        if let beats {
+            try? beats.encoded().write(to: staging.appending(path: BeatsFile.fileName), options: .atomic)
+        }
+        return (reading, beats)
     }
 
     /// The sightings of the face the punch-ins follow (v2 part M9a): the teacher's face row when Ivan named one and it is
@@ -1715,7 +1803,7 @@ struct Pipeline: Sendable {
     /// Every file a make can leave. Only these are ever replaced or removed from a recording's
     /// folder; anything else Ivan keeps there is left alone.
     static let madeNames: Set<String> = Set(["episode.mp3", "REPORT.md", "speech.wav", TranscriptFiles.asHeard, PodcastPackage.folderName, EditPlan.fileName,
-                                                   VideoStep.folderName, HiddenFaces.fileName]
+                                                   VideoStep.folderName, HiddenFaces.fileName, BeatsFile.fileName]
                                             + TranscriptFormat.allCases.map(TranscriptFiles.fileName))
         .union(WrittenPackage.fileNames)
 

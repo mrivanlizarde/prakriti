@@ -34,11 +34,11 @@ anything goes out. Start with the first article, or choose any article on the le
 - [Privacy and students](07-people-and-privacy.md): what stays on this Mac, which recordings only
   models on this Mac read, and good practice in a class.
 
-:::requires style
+:::requires direction
 ## Directing the Edit
 
-- [Editorial direction](08-editorial-direction.md): presets, your own words, and moments from other
-  recordings.
+- [Editorial direction](08-editorial-direction.md): presets, your own words, a pace and a length, and
+  the plan before anything is made.
 :::
 
 ## Outputs and Uploading

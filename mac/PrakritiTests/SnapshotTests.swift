@@ -28,9 +28,14 @@ final class SnapshotTests: XCTestCase {
 
         func draw(_ name: String, empty: Bool = false, _ change: (AppModel) throws -> Void) throws {
             for (scheme, appearance) in appearances {
-                let model = Fixtures.model(empty: empty)
-                try change(model)
-                try renderer.render(model: model, appearance: appearance, name: "\(name)-\(scheme)")
+                // Each picture in its own autorelease pool (v2 part M9c): the windows and hosting views of a picture are let go
+                // when it is written. Without it they lived until the end of this one long test, and on 15 Oct the run stopped
+                // at 23-viewer-video-restored with SwiftUI's "precondition failure: exhausted data space" (Mac warning 176).
+                try autoreleasepool {
+                    let model = Fixtures.model(empty: empty)
+                    try change(model)
+                    try renderer.render(model: model, appearance: appearance, name: "\(name)-\(scheme)")
+                }
                 written.append("\(name)-\(scheme)")
             }
         }
@@ -675,8 +680,34 @@ final class SnapshotTests: XCTestCase {
             XCTAssertEqual(model.spanEdit(filler, in: r), .restored)
             model.inspectorTab = .outputs
         }
+        // Direction (v2 part M9c) in the inspector's Outputs: Ivan's words read as chips, with the plan made from them in plain lines
+        // under Edit plan; then a direction that asks about the students (the People sentence, nothing changed) and words no rule
+        // reads (to be read by the planning model). The plans are the sample plan with a made-up direction and made-up lines.
+        var directed = plan
+        let energetic = RecordingDirection(prompt: "More energetic. Faster, more frequent cuts.")
+        let energeticReading = Direction.read(energetic, house: .standard)
+        directed.direction = EditPlan.Direction(prompt: energetic.prompt, chips: energeticReading.chips.map(\.text), reading: energeticReading)
+        directed.basis.direction = energetic.signature
+        directed.planLines = ["Cuts pauses longer than 0.25 s inside a sentence and 0.35 s between sentences, down to 0.09 s and 0.17 s.",
+                              "Punch-ins about every 11 s.", "Ends at 14:38."]
+        try draw("24-direction") { model in
+            try directed.encoded().write(to: planURL)
+            _ = try openPlan(model) { r in r.direction = energetic }
+            model.inspectorTab = .outputs
+        }
+        try draw("24-direction-people") { model in
+            var asked = directed
+            let words = RecordingDirection(prompt: "Focus on the parts that are motivating or enlightening. Under 10 minutes. Show the students. Make it feel like a sunrise.")
+            asked.basis.direction = "an older direction"
+            asked.planLines = ["Cuts pauses longer than 0.4 s inside a sentence and 0.6 s between sentences, down to 0.18 s and 0.35 s.",
+                               "Punch-ins about every 20 s, and 3 slow push-ins.", "Keeps 9 of 13 parts of the talk; leaves out 4 (5:29 of the recording).",
+                               "Keeps the story at 1:47.", "Ends at 9:52."]
+            try asked.encoded().write(to: planURL)
+            _ = try openPlan(model) { r in r.direction = words }
+            model.inspectorTab = .outputs
+        }
         try? FileManager.default.removeItem(at: planURL)
-        let viewerCount = 21 * 2 // v2 part M8d: 22-video-hidden
+        let viewerCount = 23 * 2 // v2 part M8d: 22-video-hidden; v2 part M9c: 24-direction and 24-direction-people
 
         if only == "recording" {
             print("Snapshots written to \(outputFolder.path): \(written.count) Viewer pictures")

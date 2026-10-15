@@ -112,3 +112,8 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
   0.25 out), never over a face, inside the middle 90% (title safe), Alegreya Sans. Every number is `OverlayKind.motion` and
   `OverlayLayout`, measured on the test pattern by `TextTests` and on the 13 Sep excerpt by `make accept-text`. Help 10 gains
   "If the title or the teacher's name is not on the video". Key phrases and term cards stay in the hidden `style` block (M9d).
+
+## Status after v2 part M9c (Thu 15 Oct 2026)
+
+- New block `:::requires direction` after the Edit plan section: one paragraph pointing to Direction above Edit plan and to
+  article 08. The "Edited video" block (`style`) stays hidden: key ideas as text on screen and transitions are M9d.

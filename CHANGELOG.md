@@ -5,6 +5,30 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-15, Thu: v2 part M9c, beats and direction
+
+- **Each recording can be steered in Ivan's own words, with presets, a pace and a length, under Direction in the inspector.**
+  Why: REQUEST item 7 ("more energetic", "faster cuts", "focus on motivating"). It sits in the Outputs tab above the plan until
+  the Direction tab of M9d, so the part ships something usable without building M9d's versions.
+- **The common phrases are read by a rules table on this Mac, as he types; a model reads only what the rules cannot, and only
+  inside a fixed vocabulary.** Why: research 3.2: instant, predictable, offline for the usual words, and a model answer that names
+  anything else (who appears, publishing) is refused whole, so a direction can never change who is in a video.
+- **Every field read is shown back as a chip he can remove before anything is planned.** Why: the HIG rule the design spec cites
+  for generative features: acknowledge what was understood and keep the person in control.
+- **A length or a focus is met by choosing whole parts of the talk (beats) in code, scored once by the planning model and kept
+  beside the plan.** Why: research 3.1, annotate once and choose in code: the local model took 15 minutes for the 13 Sep talk, so
+  a change of pace, length or focus must not ask it again (measured 1.2 s, 0 requests). The selection keeps the main point, the
+  close and every part another needs, and never reorders, because a cut talk must still make sense.
+- **The plan shows in plain lines before the video is made, with Make Video, and again in the progress block with Stop.** Why:
+  a render takes minutes; seeing "Keeps 9 of 13 parts ... Ends at 9:52." first lets Ivan correct a misread direction for free.
+- **"Faster" makes kept pauses shorter but does not cut more of them.** Why: measured on the whole 13 Sep talk, cutting more
+  pauses pushed Energetic's median shot to 2.94 s, under its 3 to 4 s; more jump cuts are not more pace.
+- **The beats are asked for at temperature 0 with a fixed seed, and the seed holds:** the same 13 beats twice from Qwen on the
+  13 Sep talk. Why: PLAN M9 asked whether LM Studio honours it; the beats file keeps runs the same either way.
+- **Planning the edit in Settings, Models now works and, never chosen, follows the Writing choice.** Why: Ivan moved writing to
+  the Claude API on 12 Oct; the same model reading the talk for the plan is what he would expect. A recording with no direction
+  asks no model at all, so nothing changes for the recordings already there.
+
 ## 2026-10-15, Thu: v2 part M9b, text and graphics
 
 - **The edited video opens with the recording's title for 2 seconds and names the teacher once with a lower third.** Why: REQUEST

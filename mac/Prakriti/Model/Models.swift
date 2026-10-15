@@ -207,6 +207,9 @@ final class Recording {
     /// pauses, filler words, words said twice and false starts, on the original's clock. The next plan keeps each as recorded.
     /// An addition with an empty default, so the store migrates on its own. Ivan's own trim and cuts stay in `cuts`.
     var planRestores: [TimeRange] = []
+    /// Ivan's direction for this recording (v2 part M9c): his words, presets, pace and length, and the chips he removed, as JSON
+    /// (`RecordingDirection`). Nil until he sets one.
+    var directionJSON: String?
 
     var source: Source?
 
@@ -325,6 +328,12 @@ final class Recording {
 
     /// The edited video (v2 part M8b), or nil.
     var video: VideoRecord? { VideoRecord.decode(videoJSON) }
+
+    /// Ivan's direction for this recording (v2 part M9c); empty until he sets one.
+    var direction: RecordingDirection {
+        get { RecordingDirection.decode(directionJSON) }
+        set { directionJSON = newValue.json() }
+    }
 
     /// What the capture check measured, or nil.
     var capture: CaptureReport? { CaptureReport.decode(captureJSON) }

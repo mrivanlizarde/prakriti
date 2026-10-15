@@ -97,6 +97,15 @@ struct ProgressBlock: View {
                     Image(systemName: "hourglass").font(AppFont.body).foregroundStyle(.orange)
                 }
             }
+            if let plan = planLines {
+                // The plan before rendering (v2 part M9c, design spec 3.5.3): once the edit is planned, what it does, in plain
+                // lines, while the video is made, with Stop below.
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("The plan").font(AppFont.headline)
+                    Text(plan).font(AppFont.body).fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+            }
             if let line = snapshot.logLine {
                 Text(line)
                     .font(AppFont.path)
@@ -108,6 +117,13 @@ struct ProgressBlock: View {
             ProgressButtons(recording: recording, snapshot: snapshot)
         }
         .accessibilityElement(children: .contain)
+    }
+
+    /// The plan's lines, once this make has planned the edit and is making the rest.
+    private var planLines: String? {
+        guard !snapshot.finished, let stage = snapshot.stage, stage != .planEdit,
+              let step = recording.latestRun?.steps.first(where: { $0.name == PipelineStep.planEdit.title && $0.state == .done }) else { return nil }
+        return step.detail
     }
 }
 

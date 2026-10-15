@@ -58,6 +58,10 @@ enum VisualPlan {
         /// The source picture's height and the video's, in pixels (the video is made at the source's size).
         var sourceHeight: Double
         var outputHeight: Double
+        /// Where each beat after the first starts, on the original's clock (v2 part M9c): the picture is wide there.
+        var beatStarts: [Double] = []
+        /// Where each beat's key line starts, on the original's clock (v2 part M9c): slow push-ins go there first.
+        var keyLines: [Double] = []
     }
 
     /// One shot of the edited video: a stretch of one span with one framing.
@@ -158,13 +162,21 @@ enum VisualPlan {
             let (a, b) = sourceSeconds(shot)
             return center(for: spots(a, b), scale: scale)
         }
+        // Back to wide at every new beat (research 2.3, v2 part M9c): a shot that starts within 0.6 s before a beat's first word
+        // or holds it in its first 2 s is wide. A beat that starts deep inside a long shot leaves that shot as it is.
+        let beatStarts = input.beatStarts.sorted()
+        func atNewBeat(_ shot: Shot) -> Bool {
+            guard !beatStarts.isEmpty else { return false }
+            let (a, b) = sourceSeconds(shot)
+            return beatStarts.contains { $0 >= a - 0.6 && $0 < min(b, a + 2.0) }
+        }
         func cutJumps(_ i: Int) -> Bool {
             let end = Double(shots[i].sourceFrame + shots[i].frames) * fs, start = Double(shots[i + 1].sourceFrame) * fs
             return jumps(spots(end - 1, end), spots(start, start + 1))
         }
         func assigned() -> [Int] {
             assign(count: shots.count, levels: rotation.count, backToWideAfter: style.backToWideAfter,
-                   allowed: { i, level in level == 0 || framing(shots[i], scale: rotation[level]) != nil },
+                   allowed: { i, level in level == 0 || (!atNewBeat(shots[i]) && framing(shots[i], scale: rotation[level]) != nil) },
                    atCut: { shots[$0 + 1].atCut },
                    keepAtCut: { style.punchOnlyWhereCutsJump && !cutJumps($0) })
         }
@@ -183,7 +195,7 @@ enum VisualPlan {
         //    only once the punch-ins are chosen again and it changes the framing, so this runs in rounds.
         if !candidates.isEmpty {
             let minutes = Double(timeline.keptFrames) * fs / 60
-            let mid = (style.changesPerMinute.lowerBound + style.changesPerMinute.upperBound) / 2
+            let mid = style.changesPerMinute.lowerBound + (style.changesPerMinute.upperBound - style.changesPerMinute.lowerBound) * style.changeAim
             let target = Int((mid * minutes).rounded())
             var triedOpening = Set<Int64>(), tried = Set<Int64>()
             for _ in 0..<8 {
@@ -235,15 +247,24 @@ enum VisualPlan {
         }
 
         // 4. Push-ins on wide shots with a face, long enough, at most once per interval.
+        //    With beats (v2 part M9c), the shots that hold a key line come first (research 2.3: "on a model-marked key line"),
+        //    then the rest by order, each still at most once per interval.
         if let push = style.pushIn {
             let to = Style.maxScale(push.to, sourceHeight: input.sourceHeight, outputHeight: input.outputHeight)
-            var last = -Double.infinity
-            for (i, shot) in shots.enumerated() where i < shots.count - 1 && shot.scale == 1 && to > 1.001 {
+            var placed: [Double] = []
+            let keyLines = input.keyLines
+            func holdsKeyLine(_ shot: Shot) -> Bool {
+                let (a, b) = sourceSeconds(shot)
+                return keyLines.contains { $0 >= a && $0 < b }
+            }
+            let order = shots.indices.filter { holdsKeyLine(shots[$0]) } + shots.indices.filter { !holdsKeyLine(shots[$0]) }
+            for i in order where i < shots.count - 1 && shots[i].scale == 1 && to > 1.001 {
+                let shot = shots[i]
                 let at = Double(shot.start) * fs
-                guard Double(shot.frames) * fs >= push.seconds + 1, at - last >= push.every, let c = framing(shot, scale: to) else { continue }
+                guard Double(shot.frames) * fs >= push.seconds + 1, placed.allSatisfy({ abs(at - $0) >= push.every }), let c = framing(shot, scale: to) else { continue }
                 items.append(EditPlan.Visual(span: shot.span, kind: EditPlan.Visual.pushIn, in: t(shot.sourceFrame), out: t(shot.sourceFrame + shot.frames),
                                              from: 1, to: (to * 1000).rounded() / 1000, seconds: push.seconds, center: [r(c.x), r(c.y)]))
-                last = at
+                placed.append(at)
             }
         }
 

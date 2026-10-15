@@ -59,7 +59,11 @@ enum Capability: String, CaseIterable, Sendable {
     /// Text on the edited video: the title for 2 s at the start and each included teacher's name once (lower third), in
     /// Alegreya Sans, never over a face; the House Style pane's Text on Screen (M9b). Key phrases and term cards are `style`.
     case textOnScreen
-    /// The house style, presets and the direction field (M9).
+    /// Direction for one recording (M9c): the direction field, presets, Pace and Length in the Outputs tab, the rules table and
+    /// the planning model, the chips, the parts of the talk (beats) and the choice among them under a length, and the plan in
+    /// plain lines before the video is made. The Direction tab, versions, key phrases, the hook and chapters are `style`.
+    case direction
+    /// The rest of M9 (M9d): key-phrase text, term cards, the hook, chapters, versions, the Direction tab and the marks lane.
     case style
     /// Timelines for Final Cut Pro and DaVinci Resolve (M10).
     case timelines
@@ -75,11 +79,11 @@ enum Capabilities {
     /// What this build does: Help (M2a), the welcome window (M2b), the Viewer (M3b), progress with the
     /// Activity window (M4a), the capture check (M4b), Anthropic and OpenAI (M5b), faces (M6a), voices and names
     /// (M6b), choices applied to audio (M6c), hiding in pictures (M6d), the People gallery (M7a), recognition (M7b), the
-    /// edit plan (M8a), the rendered MP4 (M8b), the video in the Viewer (M8c), the House Style with its zooms (M9a), and the title and
-    /// names on screen (M9b). Each
+    /// edit plan (M8a), the rendered MP4 (M8b), the video in the Viewer (M8c), the House Style with its zooms (M9a), the title and
+    /// names on screen (M9b), and direction for one recording (M9c). Each
     /// later part switches its own on.
     static let built: Set<Capability> = [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery,
-                                         .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen]
+                                         .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction]
 
     /// Every capability, for the test that every article and every block is visible once all are built.
     static let all = Set(Capability.allCases)

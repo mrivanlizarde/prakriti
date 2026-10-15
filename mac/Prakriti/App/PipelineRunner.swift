@@ -304,6 +304,13 @@ final class PipelineRunner {
                                      teachers: recording.teacherIDs)
         // The title on screen (v2 part M9b) is Ivan's own title for the recording, never a written one.
         options.planTitle = recording.title
+        // Ivan's direction for this recording (v2 part M9c), the model that plans with it, and the folder holding the last
+        // plan and the beats, so neither is asked for twice.
+        options.direction = recording.direction
+        // The model is set up (and a cloud key read) only for a recording with a direction: without one, planning asks no model.
+        if !options.direction.isEmpty { options.planning = writingSetup() }
+        options.planFolder = model.paths.outputs.appending(path: URL(fileURLWithPath: recording.filePath).deletingPathExtension().lastPathComponent,
+                                                           directoryHint: .isDirectory)
         // Who is left out of the podcast and which names said aloud are muted (v2 part M6c).
         options.choices = recording.choices
         options.kind = recording.kind

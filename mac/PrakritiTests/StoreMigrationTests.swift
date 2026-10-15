@@ -181,6 +181,11 @@ final class StoreMigrationTests: XCTestCase {
         if !before.has("ZRECORDING", "ZPLANRESTORES") {
             XCTAssertTrue(recordings.allSatisfy { $0.planRestores.isEmpty }, "an upgrade restores nothing")
         }
+        // Part M9c: a store from before it has no directionJSON column; every recording arrives with no direction.
+        if !before.has("ZRECORDING", "ZDIRECTIONJSON") {
+            XCTAssertTrue(recordings.allSatisfy { $0.directionJSON == nil && $0.direction.isEmpty }, "an upgrade sets no direction")
+        }
+        print("part M9c: \(recordings.filter { $0.directionJSON != nil }.count) recordings with a direction; the store had the column before: \(before.has("ZRECORDING", "ZDIRECTIONJSON"))")
         print("part M8c: \(recordings.filter { !$0.planRestores.isEmpty }.count) recordings with restores; the store had the column before: \(before.has("ZRECORDING", "ZPLANRESTORES"))")
         print("part TXGAP: \(recordings.filter { !$0.transcriptGaps.isEmpty }.count) recordings with missing words listed; the store had the column before: \(before.has("ZRECORDING", "ZTRANSCRIPTGAPS"))")
         print("part LOCK: \(people.filter(\.noRelease).count) of \(people.count) named people marked no release; the store had the column before: \(before.has("ZPERSON", "ZNORELEASE"))")

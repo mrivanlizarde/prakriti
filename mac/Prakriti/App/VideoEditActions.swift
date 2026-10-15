@@ -29,6 +29,8 @@ enum SpanEdit: Equatable {
     case restoredTrim
     /// Time cut for someone left out: changed only in People.
     case person
+    /// A part the direction's selection left out (v2 part M9c): changed only by the direction.
+    case direction
     /// Nothing to do (the recording cannot be changed now).
     case none
 }
@@ -78,6 +80,7 @@ extension AppModel {
         // The trim and cuts as they stand now, on the Original without a plan (v2 part M3b): Restore gives the time back.
         guard span.isPlanned else { return .restore }
         if span.reason == .person { return .person }
+        if span.reason == .beat { return .direction }
         if span.reason == .cut { return Self.overlaps(recording.edits.cuts, range) ? .restore : .restored }
         if Self.isIvansTrim(span) { return trimCovers(recording, range) ? .restore : .restoredTrim }
         return Self.overlaps(recording.planRestores, range) ? .restored : .restore
@@ -121,7 +124,7 @@ extension AppModel {
         case .removed:
             name = "Keep"
             problem = keep(range, in: recording)
-        case .restoredTrim, .person, .none:
+        case .restoredTrim, .person, .direction, .none:
             return nil
         }
         if let problem {

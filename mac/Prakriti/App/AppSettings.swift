@@ -99,6 +99,11 @@ final class AppSettings {
             let raw = defaults.string(forKey: Key.providerPrefix + task.rawValue) ?? ""
             provider[task] = ModelProvider(rawValue: raw) ?? .lmStudio
         }
+        // Planning the edit (v2 part M9c), never chosen before, follows the writing's choice: Ivan moved writing to Anthropic
+        // on 12 Oct, and the same model reading the talk for the plan is what he would expect.
+        if defaults.string(forKey: Key.providerPrefix + ModelTask.planning.rawValue) == nil {
+            provider[.planning] = provider[.writing] ?? .lmStudio
+        }
         self.provider = provider
         lmStudioAddress = defaults.string(forKey: Key.lmStudioAddress) ?? Self.defaultLMStudioAddress
         lmStudioModel = defaults.string(forKey: Key.lmStudioModel) ?? Self.defaultLMStudioModel

@@ -450,7 +450,7 @@ struct SelectedSpanStrip: View {
         case .restored: "Take Out Again"
         case .remove: "Remove"
         case .removed: "Keep"
-        case .restoredTrim, .person, .none: nil
+        case .restoredTrim, .person, .direction, .none: nil
         }
     }
 
@@ -460,7 +460,7 @@ struct SelectedSpanStrip: View {
         case .restored: "Lets the plan take this stretch out again, the next time it is made."
         case .remove: "Takes this stretch out of the video and the episode, the next time they are made. Delete does the same."
         case .removed: "Keeps this stretch in the video and the episode after all."
-        case .restoredTrim, .person, .none: ""
+        case .restoredTrim, .person, .direction, .none: ""
         }
     }
 
@@ -471,6 +471,7 @@ struct SelectedSpanStrip: View {
         case .removed: "Removed, \(TimeText.string(span.start)) to \(TimeText.string(span.end)). Not in the video yet: Make Again to see it."
         case .restoredTrim: "Your trim was moved. Not in the video yet: Make Again to see it."
         case .person: "Someone you chose to leave out. To bring them back, change their choice in the People tab."
+        case .direction: "A part your direction leaves out. To bring it back, change the direction, then Plan Again."
         case .restore, .remove, .none: nil
         }
     }

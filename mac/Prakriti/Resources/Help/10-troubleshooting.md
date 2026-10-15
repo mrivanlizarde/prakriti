@@ -65,6 +65,22 @@ Under Edit plan in the inspector's Outputs, Prakriti says why in one sentence.
 - **It says your newest trim, cuts or choices are not in the plan yet:** click Plan Again.
 :::
 
+:::requires direction
+### If the plan does not follow your direction
+
+Look under Direction, **Read as**: each thing Prakriti understood is listed there. If something is
+missing, write it with the common phrases (for example "under 10 minutes", "faster", "focus on the
+motivating parts"), or check that a model is chosen for Planning the edit in Settings, Models. If the
+plan says it could not read the parts of the talk, that model did not answer: open LM Studio, or check
+the key in Settings, Models, then click Plan Again.
+
+### If the video is longer than the length you asked for
+
+The talk's main point and its close are always kept, with any part they depend on. When those alone run
+longer than the length, the plan says so in its lines. Choose a longer length, or take out a part by
+name, for example "take out the story about the car".
+:::
+
 :::requires renderedVideo
 ### If the video is not made
 

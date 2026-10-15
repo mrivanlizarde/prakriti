@@ -21,8 +21,11 @@ These tasks use the model you choose:
 - **Writing:** titles, show notes and chapters, and the episode text of the podcast-ready episode.
 - **Tagging:** topics and terms for each recording.
 - **Summarizing:** a short summary, in the show notes.
-:::requires style
-- **Planning the edit** from your direction.
+:::requires direction
+- **Planning the edit:** dividing a transcript into its parts, once, when a direction chooses among
+  them (a length, a focus, something to take out or keep whole), and reading any words of a direction
+  the common phrases do not cover. A recording with no direction never asks it anything. Until you
+  choose, it uses the same model as Writing.
 :::
 :::requires merge
 - **Finding related moments** in other recordings.
@@ -47,6 +50,10 @@ These always run on this Mac, whatever you choose:
 :::
 :::requires houseStyle
 - Choosing where the picture punches in and pushes in.
+:::
+:::requires direction
+- Reading the common phrases of a direction, choosing the parts of a talk under a length, and planning
+  the edit from them.
 :::
 
 ## The choices

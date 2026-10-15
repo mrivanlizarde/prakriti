@@ -241,7 +241,9 @@ final class HelpTests: XCTestCase {
         ("Ready to post", false, .video), ("plays in the Viewer", false, .video),
         // The House Style pane and its punch-ins arrive with M9a; presets per recording and the direction field with M9c.
         ("House Style", true, .houseStyle), ("punch-in", false, .houseStyle), ("punch-ins", false, .houseStyle), ("zooms", false, .houseStyle),
-        ("house style", true, .style), ("preset", false, .style), ("presets", false, .style), ("Direction", true, .style),
+        ("house style", true, .direction), ("preset", false, .direction), ("presets", false, .direction), ("Direction", true, .direction),
+        // Key phrases, the hook, chapters, versions and the Direction tab arrive with M9d.
+        ("Direction tab", false, .style), ("key phrase", false, .style), ("Use This Version", false, .style),
         ("Final Cut Pro", false, .timelines), ("DaVinci", false, .timelines), ("FCPXML", false, .timelines),
         ("timeline", false, .timelines),
         ("shorts", false, .shorts), ("vertical short", false, .shorts),
@@ -278,10 +280,12 @@ final class HelpTests: XCTestCase {
     }
 
     func testOnlyWhatIsBuiltIsVisible() {
-        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen], "v2 parts M2a, M2b, M3b, M4a, M4b, M5b, M6a, M6b, M6c, M6d, M7a, M7b, M8a, M8b, M8c, M9a and M9b build Help, the welcome, the Viewer, progress, the capture check, the cloud providers, faces, voices, choices applied to audio, hiding in pictures, the People gallery, recognition, the edit plan, the rendered MP4, the video in the Viewer, the House Style and the text on screen; each later part adds its own capability")
+        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction], "v2 parts M2a, M2b, M3b, M4a, M4b, M5b, M6a, M6b, M6c, M6d, M7a, M7b, M8a, M8b, M8c, M9a, M9b and M9c build Help, the welcome, the Viewer, progress, the capture check, the cloud providers, faces, voices, choices applied to audio, hiding in pictures, the People gallery, recognition, the edit plan, the rendered MP4, the video in the Viewer, the House Style, the text on screen and direction; each later part adds its own capability")
         let library = built
         XCTAssertEqual(unbuiltNamesFound(in: library, built: library.capabilities), [])
-        XCTAssertNil(library.visibleArticle(id: "editorial-direction"), "editorial direction waits for the house style (M9)")
+        XCTAssertNotNil(library.visibleArticle(id: "editorial-direction"), "editorial direction is built (v2 part M9c)")
+        XCTAssertNil(HelpLibrary.bundled(capabilities: Capabilities.built.subtracting([.direction])).visibleArticle(id: "editorial-direction"),
+                     "without direction the article is hidden")
 
         // The check finds what it is meant to find: the same articles with every block shown name
         // features that are not built, and it must say so.
@@ -315,7 +319,9 @@ final class HelpTests: XCTestCase {
         XCTAssertNotNil(result?.sentence)
         XCTAssertTrue(result?.sentence?.contains("Keep Downloaded") ?? false, result?.sentence ?? "no sentence")
         // Hidden articles are never searched.
-        XCTAssertFalse(index.search("Calm").contains { $0.id == "editorial-direction" })
+        XCTAssertFalse(HelpSearchIndex(library: HelpLibrary.bundled(capabilities: Capabilities.built.subtracting([.direction]))).search("Calm")
+            .contains { $0.id == "editorial-direction" })
+        XCTAssertTrue(index.search("Calm").contains { $0.id == "editorial-direction" }, "built since v2 part M9c")
         XCTAssertTrue(HelpSearchIndex(library: everything).search("Calm").contains { $0.id == "editorial-direction" })
     }
 
@@ -327,7 +333,8 @@ final class HelpTests: XCTestCase {
         XCTAssertEqual(handler?.itemIDs(for: "privacy").first, "people-and-privacy")
         XCTAssertEqual(handler?.itemIDs(for: "OBS", limit: 1).count, 1, "the Help menu's limit is kept")
         XCTAssertEqual(handler?.localizedTitles(forItem: "troubleshooting" as NSString), ["If something isn't working"])
-        XCTAssertEqual(handler?.localizedTitles(forItem: "editorial-direction"), [], "a hidden article has no title to list")
+        XCTAssertEqual(handler?.localizedTitles(forItem: "no-such-article"), [], "an article that is not there has no title to list")
+        XCTAssertEqual(handler?.localizedTitles(forItem: "editorial-direction"), ["Editorial direction"], "built since v2 part M9c")
 
         var opened = 0
         model.openHelpWindow = { opened += 1 }
@@ -411,8 +418,8 @@ final class HelpTests: XCTestCase {
         // Nothing else is followed: no web page, no place (places are buttons), no hidden article.
         XCTAssertFalse(help.follow(try XCTUnwrap(URL(string: "https://example.com"))))
         XCTAssertFalse(help.follow(try XCTUnwrap(URL(string: "prakriti://show/sources"))))
-        XCTAssertFalse(help.follow(try XCTUnwrap(URL(string: "prakriti-help://editorial-direction"))))
-        XCTAssertFalse(help.open("editorial-direction"))
+        XCTAssertFalse(help.follow(try XCTUnwrap(URL(string: "prakriti-help://no-such-article"))))
+        XCTAssertFalse(help.open("no-such-article"))
         XCTAssertEqual(help.selection, "outputs")
 
         // Choosing an article ends a search.

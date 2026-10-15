@@ -3,6 +3,23 @@
 The team's notes for the in-app Help article `mac/Prakriti/Resources/Help/08-editorial-direction.md` ("Editorial direction").
 Moved out of the article in v2 part M2a so the app bundle holds user text only. Never shown in the app.
 
+## Status after v2 part M9c (Thu 15 Oct 2026)
+
+- **The article is visible** (`requires: direction`, the capability part M9c switches on) and rewritten to the build: Direction
+  sits in the inspector's Outputs above Edit plan until the Direction tab exists (M9d), with the field, the eight preset
+  capsules of design spec 3.5.3, Pace (as in House Style, Relaxed, Balanced, Brisk) and Length (the design spec's four), the
+  chips under "Read as" with an x each, Plan Again and Clear Direction; the plan's lines under Edit plan with Make Video; the
+  same lines in the progress block while the video is made.
+- **Removed from the old text because nothing builds them:** "Clean text on screen. Key ideas appear as short lines" (key
+  phrases are M9d), the five-preset list (Highlights is now Length, About 3 minutes; Teaching is the Teaching Only capsule),
+  "Use for This Folder" (not built; Settings, House Style is the default for every recording), and "reorder within a section"
+  (the selection never reorders; the hook of M9d is the only move).
+- **The example plan lines are real:** they are the lines the 13 Sep talk's plan printed for "Focus on the parts that are
+  motivating or enlightening. Under 10 minutes." in `make accept-direction` (15 Oct). The chip example is Energetic at a faster
+  pace ("pauses between sentences kept to 0.17 s"). A pace step shortens the kept pauses and never cuts more of them (Mac
+  warning 169), which the article says in one sentence.
+- "Bring in a moment from another recording" stays under `:::requires merge` (M12), unchanged.
+
 ## Status after v2 part M3a (Sun 11 Oct 2026)
 
 - Only a hidden line changed: "on the Models screen" became "in Settings, Models".

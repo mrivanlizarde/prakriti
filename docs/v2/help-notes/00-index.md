@@ -73,3 +73,8 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
    up to 3 minutes. (05)
 8. **Approving classes** becomes possible in v2 only if the build lifts v1's "talk, one teacher" rule;
    that is a policy change for Ivan and Serenity, not a default. (06)
+
+## Status after v2 part M9c (Thu 15 Oct 2026)
+
+- "Directing the Edit" moved from `style` to `direction` and now reads "presets, your own words, a pace and a length, and the plan
+  before anything is made" (moments from other recordings are M12).
