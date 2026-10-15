@@ -1679,3 +1679,7 @@ suite passes; make install.
   ~/Prakriti/Dev/Excerpts/. Full-length runs on both talks happen only on the LAST part of each milestone group
   (M8d, M9d, M10b, M11b, M12b) and at M13. Any check whose bar is a full-length count (joins, coverage, words)
   is scaled to the excerpt and says so.
+- **Thu 15 Oct, Sonny: the live app was found quit twice** (Wed 9:41, Thu 10:29), by test runs, with no relaunch for
+  hours. Rule for every remaining part: never quit, kill or relaunch ~/Applications/Prakriti.app except through
+  `make install`; tests drive only the Debug build. If a step must quit it, the same command reopens it
+  (`open ~/Applications/Prakriti.app`) and the BUILD-LOG says so. Verifiers fail any part that leaves it not running.
