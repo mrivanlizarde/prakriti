@@ -6092,7 +6092,12 @@ the 13 Sep excerpt and the fixtures in the regression set. Beats: 13 Sep 12 beat
 
 ### Installed
 
-INSTALL_LINE
+**Installed** at 16:28:48 on Thu 15 Oct with `make install` (commit db58686): old pid 96403 quit, new pid **97562** from
+`~/Applications/Prakriti.app`, signed, only the installed copy registered. Live log: "Finished launching. Mode: live.", "Studio
+Recordings: listed 13 recordings", "Drop folder: listed 0 recordings", **"16:28:48 Checked 2 folders. Nothing new."**, "Caught up on
+changes made while Prakriti was closed: 0 events." The next sweep, **"16:33:48 Checked 2 folders. Nothing new."**, pid 97562 still
+running. Nothing was planned or made again by the install: no recording has a video kept as a version yet, and the parts of the talk
+are read only at the next Make Video or Plan the Edit.
 
 ### For Ivan
 
