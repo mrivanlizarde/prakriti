@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreImage
 import Foundation
 
 // The compositor's instructions (v2 part M8b, research-edit-engine.md 4.2 item 3): one per kept span of the plan, laid end
@@ -32,10 +33,13 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol, 
     let framing: Framing?
     /// The held last frame (v2 part M9a): every moment of it shows `firstSourceFrame`.
     let holds: Bool
+    /// The text on screen (v2 part M9b), shared by every instruction and read by the edited frame; nil when there is none.
+    let overlays: OverlayTable?
 
     init(timeRange: CMTimeRange, trackID: CMPersistentTrackID, spanID: String, sourceStart: Double, throughCoreImage: Bool = false,
          firstSourceFrame: Int64 = 0, frameDuration: CMTime = CMTime(value: 1001, timescale: 30000), hidden: HiddenFaces.Table? = nil,
-         framing: Framing? = nil, holds: Bool = false) {
+         framing: Framing? = nil, holds: Bool = false, overlays: OverlayTable? = nil) {
+        self.overlays = overlays
         self.timeRange = timeRange
         self.trackID = trackID
         self.spanID = spanID
@@ -60,6 +64,12 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol, 
     func crop(at compositionTime: CMTime) -> CGRect? {
         guard let framing, !holds else { return nil }
         return framing.rect(atEditFrame: Int64((compositionTime.seconds / frameDuration.seconds).rounded()))
+    }
+
+    /// The text pictures to lay over the frame at `compositionTime`, moved and faded (v2 part M9b); empty when none shows.
+    func textLayers(at compositionTime: CMTime) -> [CIImage] {
+        guard let overlays else { return [] }
+        return overlays.layers(atEditFrame: Int64((compositionTime.seconds / frameDuration.seconds).rounded()))
     }
 
     /// The regions to hide in the frame at `compositionTime` (none when nobody is hidden).

@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 // The edit plan checked in Swift before it is saved and before anything is made from it (v2 part M8a,
@@ -12,7 +13,9 @@ import Foundation
 // 5. The people Ivan left out stay out: no kept time overlaps a stretch cut for them, and his own trim and cuts likewise.
 // 6. Chapters, when there are any: three or more, the first at the first kept word, each at least 10 s long.
 // 7. The picture (v2 part M9a): every punch-in and push-in lies inside its span, at a scale from 1 to 2 that never runs past
-//    the frame, no two overlap, and a held ending (at most 10 s) follows the last span.
+//    the frame, no two overlap, and a held ending (at most 10 s) follows the last span. Text (v2 part M9b): every title and
+//    lower third starts inside its span, has words, is shown for more than 0 and at most 10 s and ends before the held
+//    ending, sits inside title safe, and no two overlap in time.
 
 enum PlanValidation {
     struct Problem: Error, Equatable, Sendable {
@@ -125,6 +128,8 @@ enum PlanValidation {
         }
         // Rule 7.
         var framed: [(Double, Double)] = []
+        var texts: [(Int64, Int64)] = []
+        let timeline = EditTimeline(plan: plan)
         for item in plan.visual {
             guard let span = plan.spans.first(where: { $0.id == item.span }) else {
                 problems.append(Problem(rule: 7, line: "A \(item.kind) names span \(item.span), which the plan does not keep."))
@@ -152,6 +157,29 @@ enum PlanValidation {
                 if span.id != plan.spans.last?.id || (item.seconds ?? 0) <= 0 || (item.seconds ?? 0) > 10 {
                     problems.append(Problem(rule: 7, line: "The held ending is not after the last span, or is not between 0 and 10 s."))
                 }
+            case EditPlan.Visual.title, EditPlan.Visual.lowerThird:
+                let name = item.kind == EditPlan.Visual.title ? "title" : "name on screen"
+                guard let a = item.in, let seconds = item.seconds, let box = item.box, box.count == 4,
+                      let lines = item.lines, !lines.isEmpty, lines.allSatisfy({ !$0.trimmingCharacters(in: .whitespaces).isEmpty }) else {
+                    problems.append(Problem(rule: 7, line: "A \(name) in span \(span.id) is missing its time, length, box or words."))
+                    continue
+                }
+                guard let start = timeline.editFrame(span: span.id, original: a) else {
+                    problems.append(Problem(rule: 7, line: "A \(name) at \(TimeText.string(a)) starts outside span \(span.id)."))
+                    continue
+                }
+                let end = start + Int64((seconds / plan.frameDuration.seconds).rounded())
+                if seconds <= 0 || seconds > 10 || end > timeline.keptFrames {
+                    problems.append(Problem(rule: 7, line: "A \(name) at \(TimeText.string(a)) is not between 0 and 10 s, or runs into the end."))
+                }
+                let rect = CGRect(x: box[0], y: box[1], width: box[2], height: box[3])
+                if rect.width <= 0 || rect.height <= 0 || !OverlayLayout.titleSafe.insetBy(dx: -1e-3, dy: -1e-3).contains(rect) {
+                    problems.append(Problem(rule: 7, line: "A \(name) at \(TimeText.string(a)) sits outside the title-safe area."))
+                }
+                if texts.contains(where: { $0.0 < end && $0.1 > start }) {
+                    problems.append(Problem(rule: 7, line: "Two texts overlap at \(TimeText.string(a))."))
+                }
+                texts.append((start, end))
             default:
                 problems.append(Problem(rule: 7, line: "The plan holds a picture item Prakriti does not make yet (\(item.kind))."))
             }

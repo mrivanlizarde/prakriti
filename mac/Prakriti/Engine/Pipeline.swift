@@ -177,6 +177,8 @@ struct PipelineOptions: Sendable {
     var makeVideo = false
     /// The recording's title and notes as Ivan set them, and when it was recorded: the video's name and Description.txt.
     var video = VideoFacts()
+    /// The recording's title as Ivan set it in Info, for the title on screen (v2 part M9b). Empty: no title on screen.
+    var planTitle = ""
 
     /// Anyone left out or any name muted: the podcast changes, so the step that applies it is planned.
     var appliesChoices: Bool { people != nil && choices.changesPodcast && (makeEpisode || makePodcastReady) }
@@ -337,6 +339,8 @@ struct PeopleSetup: Sendable, Equatable {
     var microphones: [Int: UUID] = [:]
     /// The people named in Settings, Privacy, each with whether a signed release is on file.
     var people: [NamedPerson] = []
+    /// Those of them whose role is Teacher (v2 part M9b: a teacher named in a recording and Included gets a lower third).
+    var teachers: Set<UUID> = []
 
     /// The names once this make's voices are known: the folder's microphones fill any voice not named by hand.
     func names(for voices: VoicesFound?) -> PeopleNames {
@@ -1491,6 +1495,9 @@ struct Pipeline: Sendable {
             setup.pictureHeight = Double(file.frameHeight)
             setup.subject = Self.subject(file, faces: faces, names: people.names(for: voices).resolved(faces: faces, voices: voices),
                                          teacher: people.names.teacher, choices: options.choices)
+            // The title and the teachers' names on screen (v2 part M9b): Ivan's title, his names, every face seen.
+            setup.text = Self.textSetup(file, faces: faces, names: people.names(for: voices).resolved(faces: faces, voices: voices), people: people,
+                                        choices: options.choices, title: options.planTitle)
         }
         defer { try? FileManager.default.removeItem(at: setup.jobFolder) }
         let ffmpeg = tools.ffmpeg
@@ -1517,6 +1524,34 @@ struct Pipeline: Sendable {
         return file.tracks.filter { $0.person == row }.flatMap { track in
             track.boxes.compactMap { b in b.count >= 5 ? FaceSpot(time: b[0], box: FaceBox(x: b[1], y: b[2], width: b[3], height: b[4])) : nil }
         }.sorted { $0.time < $1.time }
+    }
+
+    /// What the text on screen is made from (v2 part M9b): the recording's title as Ivan set it, each teacher he named who is
+    /// Included in the video (Who Is Teaching, or anyone whose role is Teacher and whose face he named) with their face's
+    /// sightings, and every face the people check saw, so no text is placed over anyone. Times and boxes only.
+    static func textSetup(_ file: PeopleFile, faces: FacesFound?, names: (faces: [Int: UUID], voices: [Int: UUID]), people: PeopleSetup,
+                          choices: PeopleChoices, title: String) -> TextPlan.Setup {
+        func spots(_ tracks: [PeopleFile.Track]) -> [FaceSpot] {
+            tracks.flatMap { track in
+                track.boxes.compactMap { b in b.count >= 5 ? FaceSpot(time: b[0], box: FaceBox(x: b[1], y: b[2], width: b[3], height: b[4])) : nil }
+            }.sorted { $0.time < $1.time }
+        }
+        var setup = TextPlan.Setup(title: title, faces: spots(file.tracks), pictureWidth: Double(file.frameWidth))
+        let byID = Dictionary(people.people.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let rows = faces?.people.map(\.id) ?? file.people.map(\.id)
+        var done = Set<UUID>()
+        // The teacher Ivan picked first, then anyone whose role is Teacher, in the order their faces are seen most.
+        let order = rows.sorted { a, b in (names.faces[a] == people.names.teacher ? 0 : 1) < (names.faces[b] == people.names.teacher ? 0 : 1) }
+        for row in order {
+            guard let id = names.faces[row], !done.contains(id), let person = byID[id],
+                  id == people.names.teacher || people.teachers.contains(id),
+                  choices.choice(PersonKey.face(row, names: names), for: .video) == .include else { continue }
+            let own = spots(file.tracks.filter { $0.person == row })
+            guard !own.isEmpty else { continue }
+            setup.teachers.append(.init(name: person.name, role: PersonRole.teacher.title, spots: own))
+            done.insert(id)
+        }
+        return setup
     }
 
     /// The levels of the original's first audio track for `EdgeLevels.reach` seconds either side of each cut's edges.

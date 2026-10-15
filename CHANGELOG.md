@@ -5,6 +5,28 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-15, Thu: v2 part M9b, text and graphics
+
+- **The edited video opens with the recording's title for 2 seconds and names the teacher once with a lower third.** Why: REQUEST
+  item 4 asks for text on screen in MKBHD's grammar, whose videos open on a short title and name the speaker once (research 2.3).
+  The title is only ever Ivan's own title from Info, never a written one, because burned text is public and cannot be edited after
+  upload; the name only for a teacher he named who is Included.
+- **Text is never placed over a face, and always inside the middle 90% of the frame.** Why: PLAN M9 check 4, and the people
+  check already knows every face; a text that would touch one at any moment of its life waits for a clear moment or is left
+  out. Measured on the 13 Sep excerpt: the nearest face 0.105 of the frame from the title and 0.367 from the name.
+- **Alegreya Sans, Yoga Marga's own face, is bundled and burned; four rare IAST letters are drawn from their marks.** Why: the
+  plan asked for an open-licence face with full IAST coverage, chosen by rendering and looking; all four candidates drew the test
+  string, and the school's own face keeps the video and the thumbnails (section 11) in one voice. It lacks ṝ ḹ Ṝ Ḹ as single
+  glyphs, so they are written as letter plus combining marks, which it places correctly (looked at on the contact sheet).
+- **Each text is drawn once as a SwiftUI view and moved and faded by the same compositor for the file and the Viewer.** Why:
+  research 4.2 item 5; one drawing means the preview shows exactly the file's text, and drawing per frame would cost a render
+  per frame.
+- **Settings, House Style gains Text on Screen, and a House Style saved before it keeps every choice.** Why: Ivan can switch either
+  text off; and adding a field would otherwise have reset his saved style to the standard (a synthesized decoder drops the whole
+  value when a key is missing).
+- **The date label that moments from another recording will carry is built now and tested, not placed.** Why: PLAN part M9b
+  builds the renderer M12b uses, so M12b only places it.
+
 ## 2026-10-14, Wed: v2 part M9a, house style and zooms
 
 - **Every edited video is now planned in a style Ivan picks in Settings, House Style: Clear (the standard), Calm, Energetic or

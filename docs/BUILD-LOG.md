@@ -80,7 +80,9 @@ switched off the gate stops the video at 0:19. **Then part M9a, house style and 
 Settings, House Style chooses Clear, Calm, Energetic or Story, Pace, Punch-ins, Teaching and the room at the end; every edited video
 punches in on the teacher's face at alternating scales (1.12 with Clear, never past 1.15 on a 1080p recording), pushes in slowly on
 long shots, and ends 5 s after the last word on a held frame. On the whole 13 Sep talk: 7.07 changes a minute, 11 in the first 30 s,
-the eyes measured at 0.315 to 0.332 of the height, and every M8 check still passing.
+the eyes measured at 0.315 to 0.332 of the height, and every M8 check still passing. **Then part M9b, text and graphics** (the last section, "v2 part M9b", Thu 15 Oct): the
+video opens with the recording's title from Info for 2 s and names each included teacher once in a lower third, in Alegreya Sans,
+never over a face and always inside title safe; measured on the 13 Sep excerpt, the nearest face 0.105 of the frame from the title.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -5681,3 +5683,108 @@ running. The live House Style starts at its standard (Clear); no video was made 
   close or too soft.
 - [ ] **Watch the 13 Sep video with Clear** (PLAN M9 "Needs Ivan"): open Sun 13 Sep, click Make Video under Edited video (Make Again if it already has one), then choose Video in the toolbar. Say what
   is off; that tunes the numbers. Settings, House Style is where to try Calm, Brisk or Punch-ins Off.
+
+---
+
+## v2 part M9b: text and graphics. Thu 15 Oct 2026
+
+The part after M9a (`docs/v2/PLAN.md`, M9, part M9b; REQUEST item 4). Built on `main` Thu 15 Oct 00:00 to 01:30. No Swift package
+added, no model asked anything, **no SwiftData field added** (the two new switches live in the House Style preference, the text in
+`edit-plan.json`); `make migrate-check` run anyway. Under Ivan's decision of Mon 12 Oct every participant counts as released;
+nothing in this part sends anything anywhere. **Downloaded:** four font files and a licence from Google Fonts' own repository
+(`raw.githubusercontent.com/google/fonts/main/ofl/...`, Wed 14 Oct 23:59): Alegreya Sans Regular, Medium, Bold (bundled, about
+265 KB each) and `OFL.txt`; Noto Sans, Source Sans 3 and Inter variable fonts for the contact sheet only, kept in
+`~/Prakriti/Dev/Fonts` and never in the app. SHA-256 of the bundled faces: Regular 8fab6341..., Medium 4b89fe78..., Bold
+a3055a18..., OFL 0677891e....
+
+### What was built
+
+- **The typeface (check 2):** `Render/TypeFace.swift` registers Alegreya Sans (three weights, `Resources/Fonts/`, copied into the
+  app as one folder by project.yml) for the app's process only. Chosen from `screens/mac/v2-m9b/typeface.png`, the IAST test string
+  and every IAST letter in Noto Sans, Source Sans 3, Inter and Alegreya Sans. All four draw the test string. Noto Sans, Source Sans 3
+  and Inter draw every IAST letter as one glyph; **Alegreya Sans lacks four rare ones as one glyph (ṝ ḹ Ṝ Ḹ)**, so
+  `TypeFace.prepared` writes those as the letter and its combining marks, which the face places correctly (looked at, zoomed).
+- **The overlay engine:** `Render/Overlays.swift`. `OverlayKind` with research 2.7's motion (lower third: slide 24 px and fade in
+  over 300 ms on the ease (0.2, 0.8, 0.2, 1), hold 4 s, fade out 250 ms; title: rise 16 px and fade in 300 ms, out 200 ms, 2 s;
+  date label: 3 s). `OverlayLayout` lays each text out with Core Text (title 84 down to 56 px in at most three lines; name 54 px
+  bold, role 36 px regular at 70%; date 34 px; title safe the middle 90%). `OverlayView` is the SwiftUI design (white, soft shadow,
+  no box), drawn once by `ImageRenderer` on the main actor and kept (`OverlayCache`). `OverlayTable` places every text on the
+  edited clock; `CompositionBuilder.build` makes it and every `RenderInstruction` shares it; `Compositor.overlay` lays the
+  pictures over the frame after hiding and framing, for the file and the Viewer alike.
+- **The text plan:** `Edit/TextPlan.swift`, called by `PlanStep` after the punch-ins. The **title** (Ivan's title from Info, never a
+  written one; none without one) for 2 s from the first frame, in the column beside the faces with more room (below them when
+  neither side fits); a **lower third** once per teacher Ivan named who is Included in the video (Who Is Teaching, or a Person with
+  role Teacher: `PeopleSetup.teachers`, `Recording.teacherIDs`), "Name" and "Teacher", at the first moment after the title (plus
+  0.5 s) the teacher's face is seen, near the bottom on the side away from their face. Every face the people check saw, anyone's,
+  carried through each frame's punch-in (`TextPlan.Faces`), is kept 2.5% of the frame from the text's box (widened by its slide or
+  rise) for its whole life, checked every 6 frames; otherwise the next half second is tried, up to 4 minutes, then the text is left
+  out. `Pipeline.textSetup` reads the people file (times and boxes only). `EditPlan.Visual` gains `lines`, `box`, `align`, `size`
+  (optional, so older plans read); `pictureSummary` adds "On screen: the title for 2 s at the start and 1 name under the
+  teacher"; PlanValidation rule 7 checks text (inside its span, words present, 0 to 10 s, before the hold, inside title safe, no
+  overlap).
+- **The date label** M12b will place: `OverlayLayout.dateLabel` ("6 Sep 2026", top corner, 3 s), drawn and measured in `TextTests`;
+  the plan refuses a date label item until M12b.
+- **Settings, House Style:** a Text on Screen section: Title at the start, Teacher's name (both on), and the typeface line.
+  `HouseStyle` decodes field by field, so a House Style saved by M9a keeps every choice (a test reads M9a's JSON). The signature adds
+  both switches, so plans made by M9a now read "Your newest House Style settings are not in the plan yet." (true: they lack the
+  text); nothing is made again on its own. A plan whose title differs from Info says "Your newest title is not on screen in the
+  plan yet."
+- **Help:** capability `textOnScreen` on. Help 05 "The title and names on screen" (Show Me to the pane), Help 10 "If the title or
+  the teacher's name is not on the video". Notes appended to `docs/v2/help-notes/05` and `10`.
+- **Tests:** `TextTests` (8, in `make test`) and `TextAcceptanceTests` (`make accept-text`); `HelpTests` and `WelcomeTests` list the
+  new capability. START_HERE: the M9b paragraph, `make accept-text`, the file map, Mac warnings 164 to 168.
+
+### Checks run, with results (PLAN M9, the checks part M9b runs: 2, 4 for lower thirds and the title card, 8)
+
+Real media: the 13 Sep talk's 5-minute excerpt (`~/Prakriti/Dev/Excerpts/`, PLAN's routine excerpts), the 13 Sep and 6 Sep talks in
+`make accept` and `make accept-edits`, `two-people-mixed.mp4`; the test pattern for every picture looked at. No frame of Gabriel's
+talks was looked at (D1, as told): every frame check on them is a number, and the frames measured are listed for Ivan. Originals
+unchanged (730,464,600 bytes, same date).
+
+| # | Check | Result |
+|---|---|---|
+| 2 | The IAST test string in three candidates to `typeface.png`, looked at; the chosen face's `CTFont` has a glyph for every character | **PASS** (`acceptance-text.txt`). Contact sheet of four faces looked at (`screens/mac/v2-m9b/typeface.png`): every face draws "Prāṇāyāma, Īśvara praṇidhāna, Kṛṣṇamācārya" with its marks in place. Alegreya Sans Bold, Medium and Regular: **42 characters, 0 missing**; every IAST letter drawn, four (ṝ ḹ Ṝ Ḹ) from the letter and its combining marks, 0 missing (also in `TextTests` for all three weights) |
+| 4 | Frames rendered at every text moment: every text box inside title safe and not intersecting any face box (Vision); the PNGs looked at | **PASS.** 13 Sep excerpt with a test title in Info and Gabriel named as teaching (development store only): the plan holds the title ("The Lineage of", "Kṛṣṇamācārya") from frame 0 for 2.002 s and one lower third ("Gabriel Galindo", "Teacher") at 0:03 on the right. Measured every 0.5 s of each text's life in the MP4, the text's pixels against the same frame drawn by the compositor without text: **title 5 of 5 frames drawn, 5 of 5 inside title safe (x 0.683 to 0.938, y 0.425 to 0.584), 5 of 5 clear of every face Vision found (5 faces; nearest 0.105 of the frame)**; **lower third 10 of 10 drawn, 10 of 10 inside title safe (x 0.760 to 0.936, y 0.838 to 0.920), 10 of 10 clear (10 faces; nearest 0.367)**. **Looked at (test pattern, a made-up face box, no face of anyone):** `m9b-title-test-pattern.png` (the title in three lines on the right of the face box, inside the dashed title safe), `m9b-lower-third-test-pattern.png` (name and Teacher bottom left), `m9b-date-label-test-pattern.png` ("6 Sep 2026" top left). `TextTests` on the test pattern: the ink inside the planned box (title ink 0.632 to 0.934 across in a box of 0.629 to 0.935), inside title safe settled, coming in and going out, nothing two frames before or after each text, the Viewer's composition 44.4 to 48.3 dB against the file at text frames, and the preview drew no new picture (the cache) |
+| 8 | Regression set; `make migrate-check` | **PASS.** `make build`: no warnings. **`make test`: 393 tests, 25 skipped by design; first run 2 failures (HelpTests and WelcomeTests listing the built capabilities without `textOnScreen`), both fixed, those two suites run again (36 tests, 0 failures), then the whole suite again: 393 tests, 0 failures, 25 skipped by design (1,385 s).** `make accept`: 13 Sep -16.8 LUFS (-16.82), -1.7 dBFS, 2,948 words to 15:47 of 15:48; silent-60s refused, nothing made; the 30 s clip a test; 6 Sep -16.7 LUFS (-16.72), -1.4 dBFS, 10,060 words, 72 and 59 words in TXGAP's two stretches. `make accept-edits`: **38.82 s shorter (expected 38.82)**, 0 of 73 runs from the cut heard, 189 of 201 after it, the class refused. `make migrate-check` on a copy of the live store: recordings 13/13, folders 2/2, output settings 40/40, Activity lines 1,278/1,278, approved 2 |
+| Also | The video checks again through the compositor that now draws text | `make accept-people-video`: **22 of 22 PASS** (361 faces all included, 0 of 59 `say` runs, 0 faces in the corner, variance down 84.7%, Viewer 44.8 dB, hiding off stopped at 0:19). `make accept-viewer-video`: every check passed, six frames 45.7 to 46.2 dB. `make accept-style STYLE_ONLY="13 Sep excerpt"`: every check passed (largest scale 1.120, eyes 4 of 4 within the third, 4 of 4 frames 30 dB or more). The excerpt's Ready checklist still fails Key frames and Frame timing from its `-c copy` tail, as recorded in M8c and M9a; the whole talks pass every line |
+
+**Snapshots looked at** (`screens/mac/v2-m9b/`): `10-settings-03-houseStyle-light-end` and `-dark-end` (Text on Screen: Title at the
+start, Teacher's name, Typeface Alegreya Sans, each with its line, 17 pt, light and dark; the switches draw as off in the bitmap, the
+known Liquid Glass limit of R8, as in M9a), `help-07-outputs-light-p8` and `-dark-end` (the new Help block and the article's end).
+
+**Em dashes:** 0 in every line this part added (grep for U+2014 and U+2013 over the diff and the new files).
+
+### Decisions, each with its reason
+
+1. **Alegreya Sans, not Noto Sans.** Noto Sans is the only candidate with every IAST letter as one glyph, but Alegreya Sans is the
+   face Yoga Marga already uses (docs/v2/brand-yoga-marga.md; section 11 makes it the thumbnails' face), its OFL licence covers
+   video, and the four letters it lacks (ṝ ḹ and their capitals, almost never in a yoga talk) render correctly from their marks.
+   Ivan can overrule; switching is one constant in `TypeFace` plus the files.
+2. **The title is only Ivan's own title from Info.** Burned text is public and cannot be fixed after upload; a written title (the
+   writing step runs after the plan anyway) would be text Ivan never chose. No title, no title card.
+3. **Until the hook exists (M9d), the 2 s title sits over the talk's first 2 seconds**, beside the teacher, rather than as a
+   full-frame card inserted before it. Reason: an inserted card would shift every clock (sound, captions, chapters, hiding, the
+   checks) for something M9d reorders anyway; the overlay composes with the hook unchanged.
+4. **The role line is "Teacher".** No other role is stored, and a title such as "Founder" would be invented (never invent).
+5. **Both text switches start on.** Text appears only in videos made after a plan, and only with a title set or a teacher named;
+   nothing is made again on its own.
+6. **Text that cannot be placed clear of every face is left out, not shrunk over a face.** Check 4 and Serenity's standing rule
+   that nothing public is wrong; Help 10 says so.
+
+### What does not work yet
+
+- Key-phrase text, term cards, the hook, chapters, versions and the Direction tab (M9c, M9d). The title sits over the talk's opening
+  until the hook arrives.
+- The date label is drawn and tested but placed by nothing until M12b.
+- The House Style pane has no sample player (design spec 3.13), as in M9a.
+
+### For Ivan
+
+- [ ] **Look at the typeface choice** (`screens/mac/v2-m9b/typeface.png`): Alegreya Sans, Yoga Marga's own, is chosen; Noto Sans is the
+  alternative if you prefer a plainer face. Say which.
+- [ ] **Look at the frames I could only measure** (D1 kept me to numbers): `screens/mac/v2-m9b/for-ivan/m9b-13-Sep-excerpt-title-*.png`
+  and `m9b-13-Sep-excerpt-lower-third-*.png` (the test title "The Lineage of Kṛṣṇamācārya" and "Gabriel Galindo, Teacher" on the 13 Sep
+  excerpt). Say if the size and place look right.
+- [ ] **To see it on a real video:** give a recording a title in Info, pick Gabriel under Who Is Teaching, then Make Again with the
+  Edited video on.
+

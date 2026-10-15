@@ -56,6 +56,9 @@ enum Capability: String, CaseIterable, Sendable {
     /// the teacher's face, Pace, Teaching, and the room at the end (M9a). Presets chosen per recording, the direction field,
     /// text on screen and transitions are `style`.
     case houseStyle
+    /// Text on the edited video: the title for 2 s at the start and each included teacher's name once (lower third), in
+    /// Alegreya Sans, never over a face; the House Style pane's Text on Screen (M9b). Key phrases and term cards are `style`.
+    case textOnScreen
     /// The house style, presets and the direction field (M9).
     case style
     /// Timelines for Final Cut Pro and DaVinci Resolve (M10).
@@ -72,10 +75,11 @@ enum Capabilities {
     /// What this build does: Help (M2a), the welcome window (M2b), the Viewer (M3b), progress with the
     /// Activity window (M4a), the capture check (M4b), Anthropic and OpenAI (M5b), faces (M6a), voices and names
     /// (M6b), choices applied to audio (M6c), hiding in pictures (M6d), the People gallery (M7a), recognition (M7b), the
-    /// edit plan (M8a), the rendered MP4 (M8b), the video in the Viewer (M8c), and the House Style with its zooms (M9a). Each
+    /// edit plan (M8a), the rendered MP4 (M8b), the video in the Viewer (M8c), the House Style with its zooms (M9a), and the title and
+    /// names on screen (M9b). Each
     /// later part switches its own on.
     static let built: Set<Capability> = [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery,
-                                         .recognition, .editPlan, .renderedVideo, .video, .houseStyle]
+                                         .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen]
 
     /// Every capability, for the test that every article and every block is visible once all are built.
     static let all = Set(Capability.allCases)

@@ -86,7 +86,12 @@ struct EditPlan: Codable, Equatable, Sendable {
     /// `center`, held for the stretch), a slow push-in (from `from` to `to` over `seconds`, eased, ending about `center`), or
     /// the held last frame at the end (`hold`, `seconds` long). `in` and `out` are on the original's clock, inside the span;
     /// `center` is the middle of the framed part of the picture, from its top left, as fractions of the frame. Every frame no
-    /// item covers is the whole picture (1.00). Text, lower thirds and the rest arrive in M9b to M9d.
+    /// item covers is the whole picture (1.00).
+    ///
+    /// Text (v2 part M9b): the title at the start (`title`) and a teacher's name (`lowerThird`), each starting at `in` inside
+    /// `span` on the original's clock and shown for `seconds` of the edited video, its `lines` drawn in `box` (from the top
+    /// left, fractions of the frame: x, y, width, height, where the text sits once it has come in), lined up on `align`, the
+    /// title at `size` (pixels of a 1080-line picture). Key phrases, term cards and the rest arrive in M9d.
     struct Visual: Codable, Equatable, Sendable {
         var span: String
         var kind: String
@@ -97,10 +102,18 @@ struct EditPlan: Codable, Equatable, Sendable {
         var to: Double?
         var seconds: Double?
         var center: [Double]?
+        var lines: [String]?
+        var box: [Double]?
+        var align: String?
+        var size: Double?
 
         static let punchIn = "punchIn"
         static let pushIn = "pushIn"
         static let hold = "hold"
+        static let title = "title"
+        static let lowerThird = "lowerThird"
+
+        var isText: Bool { OverlayKind(rawValue: kind) != nil }
     }
 
     struct Chapter: Codable, Equatable, Sendable {
@@ -220,7 +233,18 @@ struct EditPlan: Codable, Equatable, Sendable {
         if pushes > 0 { parts.append(Format.count(pushes, "slow push-in")) }
         var line = "Picture, \(StyleName(rawValue: style)?.title ?? style): " + (parts.isEmpty ? "the whole picture throughout" : parts.joined(separator: " and "))
         if holdSeconds > 0 { line += String(format: "; the last frame is held %.1f s, so the speaking ends 5 s before the end", holdSeconds) }
+        if let text = textSummary { line += ". " + text }
         return line + "."
+    }
+
+    /// The text on screen in a few words (v2 part M9b), or nil when there is none: "On screen: the title for 2 s at the start
+    /// and 1 name". Never a name itself: the line can reach a notice-like place.
+    var textSummary: String? {
+        let titles = visual.filter { $0.kind == Visual.title }.count, names = visual.filter { $0.kind == Visual.lowerThird }.count
+        var parts: [String] = []
+        if titles > 0 { parts.append("the title for 2 s at the start") }
+        if names > 0 { parts.append(Format.count(names, "name") + " under the teacher") }
+        return parts.isEmpty ? nil : "On screen: " + parts.joined(separator: " and ")
     }
 
     /// How long the last frame is held after the last span (v2 part M9a), 0 when it is not.

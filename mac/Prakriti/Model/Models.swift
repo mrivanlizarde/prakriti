@@ -264,6 +264,11 @@ final class Recording {
         ((try? modelContext?.fetch(FetchDescriptor<Person>())) ?? []).map(\.named)
     }
 
+    /// The named people whose role is Teacher (v2 part M9b, for the lower third).
+    var teacherIDs: Set<UUID> {
+        Set(((try? modelContext?.fetch(FetchDescriptor<Person>())) ?? []).filter { $0.role == .teacher }.map(\.id))
+    }
+
     /// Ivan's names for this recording, with the folder's microphones applied (a voice heard on a track the folder
     /// names, and not named here by hand).
     var resolvedNames: PeopleNames {

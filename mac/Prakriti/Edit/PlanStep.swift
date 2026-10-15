@@ -34,6 +34,8 @@ enum PlanStep {
         var subject: [FaceSpot] = []
         /// The source picture's height in pixels (0 for sound alone: no picture to frame).
         var pictureHeight: Double = 0
+        /// The title and the teachers' names on screen (v2 part M9b): Ivan's title, the teachers he named and every face seen.
+        var text = TextPlan.Setup()
     }
 
     struct Outcome: Sendable {
@@ -75,6 +77,14 @@ enum PlanStep {
         if setup.frameRate != nil && setup.pictureHeight > 0 {
             plan.visual = VisualPlan.make(.init(plan: plan, words: words.words, style: style, subject: setup.subject,
                                                 sourceHeight: setup.pictureHeight, outputHeight: setup.pictureHeight))
+            // The text on screen (v2 part M9b), placed after the punch-ins so it is kept clear of every face as framed.
+            var text = setup.text
+            text.showTitle = text.showTitle && setup.house.titleOnScreen
+            text.showNames = text.showNames && setup.house.namesOnScreen
+            let items = TextPlan.make(plan: plan, setup: text, pictureHeight: setup.pictureHeight)
+            if !items.isEmpty {
+                plan.visual = (plan.visual + items).sorted { ($0.in ?? .infinity, $0.kind) < ($1.in ?? .infinity, $1.kind) }
+            }
         }
         let problems = PlanValidation.check(plan, words: words)
         if let first = problems.first {

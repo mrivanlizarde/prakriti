@@ -39,6 +39,11 @@ extension AppModel {
         if let house = plan.basis.house, house != settings.houseStyle.signature {
             return "Your newest House Style settings are not in the plan yet."
         }
+        // The title on screen (v2 part M9b) is the recording's title as it was when the plan was made.
+        if let shown = plan.visual.first(where: { $0.kind == EditPlan.Visual.title })?.lines?.joined(separator: " "),
+           shown != recording.title.split(whereSeparator: \.isWhitespace).joined(separator: " ") {
+            return "Your newest title is not on screen in the plan yet."
+        }
         return nil
     }
 

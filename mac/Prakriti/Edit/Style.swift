@@ -108,12 +108,43 @@ struct HouseStyle: Codable, Equatable, Sendable {
     var teaching = false
     /// Speech ends 5 s before the last frame, the picture held wide (research 2.3, room for YouTube's end screen).
     var endingRoom = true
+    /// The recording's title on screen for the first 2 s (v2 part M9b), when it has one in Info.
+    var titleOnScreen = true
+    /// Each teacher's name on screen once, near the bottom of the frame (v2 part M9b): the lower third.
+    var namesOnScreen = true
 
     static let standard = HouseStyle()
+
+    init(style: StyleName = .clear, pace: Pace = .balanced, punchIns: PunchLevel = .standard, teaching: Bool = false, endingRoom: Bool = true,
+         titleOnScreen: Bool = true, namesOnScreen: Bool = true) {
+        self.style = style
+        self.pace = pace
+        self.punchIns = punchIns
+        self.teaching = teaching
+        self.endingRoom = endingRoom
+        self.titleOnScreen = titleOnScreen
+        self.namesOnScreen = namesOnScreen
+    }
+
+    /// Reads every setting that is there and takes the standard for any that is not, so a House Style saved before a setting
+    /// existed (M9a's, before the text of M9b) keeps every choice Ivan made. A synthesized decoder would refuse the whole
+    /// value for one missing key and fall back to the standard, losing them.
+    init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let standard = HouseStyle()
+        style = (try? c.decodeIfPresent(StyleName.self, forKey: .style)) ?? standard.style
+        pace = (try? c.decodeIfPresent(Pace.self, forKey: .pace)) ?? standard.pace
+        punchIns = (try? c.decodeIfPresent(PunchLevel.self, forKey: .punchIns)) ?? standard.punchIns
+        teaching = (try? c.decodeIfPresent(Bool.self, forKey: .teaching)) ?? standard.teaching
+        endingRoom = (try? c.decodeIfPresent(Bool.self, forKey: .endingRoom)) ?? standard.endingRoom
+        titleOnScreen = (try? c.decodeIfPresent(Bool.self, forKey: .titleOnScreen)) ?? standard.titleOnScreen
+        namesOnScreen = (try? c.decodeIfPresent(Bool.self, forKey: .namesOnScreen)) ?? standard.namesOnScreen
+    }
 
     /// One line that changes whenever a setting does: kept in the plan's basis, so the app can say the plan is behind.
     var signature: String {
         "\(style.rawValue) pace \(pace.rawValue) punch-ins \(punchIns.rawValue) teaching \(teaching ? 1 : 0) ending \(endingRoom ? 1 : 0)"
+            + " title \(titleOnScreen ? 1 : 0) names \(namesOnScreen ? 1 : 0)"
     }
 
     /// Reads the preference, falling back to the standard for anything missing or unreadable.

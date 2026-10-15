@@ -833,6 +833,31 @@ in the plan yet."; a plan made before M9a is never called behind. Help 02, 05, 0
 `make accept-style`. Measured on the whole 13 Sep talk: 7.07 changes a minute, 11 in the first 30 s, 39 punch-ins at 1.12 and
 4 push-ins, speech ending 5.02 s before the last frame, and the eyes 0.315 to 0.332 of the height in the frames measured.
 
+**v2 part M9b, text and graphics, Thu 15 Oct (see BUILD-LOG "v2 part M9b"):** the edited video carries text, in **Alegreya
+Sans** (Yoga Marga's own face, SIL Open Font License; three weights and `OFL.txt` in `mac/Prakriti/Resources/Fonts`, carried as
+one folder and registered for the app's process only, `Render/TypeFace.swift`), chosen from a contact sheet of the IAST test
+string in Noto Sans, Source Sans 3, Inter and Alegreya Sans (`screens/mac/v2-m9b/typeface.png`; the three candidates live in
+`~/Prakriti/Dev/Fonts`, not in the app). Alegreya Sans lacks four rare IAST letters as one glyph (ṝ ḹ Ṝ Ḹ), so
+`TypeFace.prepared` writes those as the letter and its combining marks, which the face places itself. **Planning the edit** now
+also writes text items after the punch-ins (`Edit/TextPlan.swift`): the **title** (the recording's title as Ivan set it in Info,
+never a written one; none without one) for 2 s from the first frame, on the side of the frame away from the faces, as large as
+fits in three lines (84 down to 56 px of a 1080-line picture); and a **lower third** once per teacher Ivan named who is Included
+in the video (Who Is Teaching, or a Person whose role is Teacher, `PeopleSetup.teachers`), name in bold and "Teacher" at 70%, at
+the first moment after the title their face is seen, near the bottom on the side away from their face, for 4.55 s. Every face
+the people check saw, of anyone, followed through each frame's punch-in (`TextPlan.Faces`), stays 2.5% of the frame away from
+the text's box (the box widened by its slide) for the whole time it shows, and every box sits inside title safe (the middle 90%,
+`OverlayLayout.titleSafe`); otherwise the next moment is tried, or the text is left out. `EditPlan.Visual` gains `lines`, `box`,
+`align` and `size`; PlanValidation rule 7 checks text (inside its span, 0 to 10 s, before the hold, inside title safe, no
+overlap). **The overlay engine** (`Render/Overlays.swift`): each text a SwiftUI view (`OverlayView`) laid out by Core Text
+(`OverlayLayout`), drawn once by `ImageRenderer` on the main actor (`OverlayCache`), placed on the edited clock
+(`OverlayTable`, built in `CompositionBuilder.build`, shared by every instruction) and moved and faded by the `Compositor`
+after hiding and framing, with research 2.7's timings (`OverlayKind.motion`: lower third 24 px slide and 300 ms in, 4 s, 250 ms
+out; title 16 px rise and 300 ms in, 200 ms out, 2 s; date label 3 s), so the file and the Viewer draw the same text. The
+**date label** M12b will place ("6 Sep 2026", top corner) is built and drawn in tests only. Settings, House Style gains **Text on
+Screen** (Title at the start, Teacher's name, the typeface line); both start on, and a House Style saved before them keeps every
+choice (`HouseStyle.init(from:)`). A plan whose title differs from Info says "Your newest title is not on screen in the plan
+yet." Help 05 and 10 (`textOnScreen` capability). `make accept-text`.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -1062,7 +1087,7 @@ from cuts and punch changes, every punch-in at most 1.15 on the 1080p source, th
 frame, the file as long as the spans plus the hold) and measures three punch-ins and a push-in in the MP4 (Vision's pupils within
 the upper third plus or minus 5%, and 30 dB or more against the original framed by Core Graphics); it writes
 `acceptance-style.txt` and the measured frames to `for-ivan/` (numbers only). On the excerpt the rate and the first 30 s are
-written as measured, not gated: its own cuts are already 6.95 a minute, so 10 changes in its first 30 s would put it over 8. `make accept-viewer-video` (v2 part M8c, about 3 minutes) makes a 5-minute excerpt of the **real 13 Sep talk**
+written as measured, not gated: its own cuts are already 6.95 a minute, so 10 changes in its first 30 s would put it over 8. `make accept-text` (v2 part M9b, about 2 minutes) draws the typeface contact sheet (`typeface.png`, every candidate's `CTFont` asked for every glyph of the IAST string; needs the three candidates in `~/Prakriti/Dev/Fonts`), then makes the 13 Sep excerpt in development with a test title and a teacher named and measures every text moment of the MP4 every 0.5 s: the text's pixels against the same frame drawn without text (`CompositionBuilder.build(drawText: false)`), inside title safe and clear of every face Vision finds; it writes `acceptance-text.txt` and the frames to `for-ivan/` (numbers only). `make accept-viewer-video` (v2 part M8c, about 3 minutes) makes a 5-minute excerpt of the **real 13 Sep talk**
 (`~/Prakriti/Dev/Excerpts/2026-09-13 excerpt 2m to 7m.mp4`, cut once with `-c copy` from 2:00) with the video on, opens it in
 the Viewer on Video and compares six frames of the MP4 with the Viewer's own player item by PSNR (38 dB or better; numbers only),
 then writes the test-pattern video `make look-video` plays (`~/Prakriti/Dev/Fixtures/viewer-video-sample`). `make look-video`
@@ -1264,6 +1289,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | Progress and Activity (v2 part M4a) | `mac/Prakriti/Progress/`: `JobProgress.swift` (`ProgressTracker`, the pure arithmetic: weights, the percent that never goes back, the time left only from a measured rate, the stall line; `ProgressSnapshot` with its status line; `TimeLeft`; `JobProgress`, published at most twice a second), `ProgressMeter.swift` (what the pipeline and ffmpeg report, read twice a second; `ProcessControl`, Pause by SIGSTOP and SIGCONT), `StageTimings.swift` (`StageTiming`, a SwiftData model, the last 10 runs of each stage, seeded once from the store; `firstGuess`, measured 12 Oct). `Engine/Subprocess.swift` (`onStdoutLine`, `control`), `Engine/Pipeline.swift` (`meter`, `passes`, ffmpeg's `-progress pipe:1` in `tool`), `App/PipelineRunner.swift` (`currentJob`, `pause`, `resume`, `stop`, `makeNext`, `queueFraction`, `queueTimeLeft`, `showSample`), `App/StatusSummary.swift` (`noteStatusLine`, `--debug-status-log`); views: `Views/Activity/ActivityWindow.swift` (the window, Now, Finished, Log, `ActivityButton`), `Views/ProgressViews.swift` (`ProgressRing`, `ProgressBlock`, `ProgressButtons`), the card's `StatusCapsule`, the list's Status column, `StatusBlock` in `OutputsTab`, `ViewerBanner`, `Views/MenuBar.swift`; `Fixtures.showProgress` (the sample talk being made, for snapshots and captures); tests `ProgressTests` (in `make test`) and `ProgressAcceptanceTests` (`make accept-progress`) |
 | The edited video (v2 parts M8b and M8c) | `mac/Prakriti/Render/`: `VideoPreview.swift` (M8c: the Viewer's Video, built from the plan the video was made from, `VideoSampleFolder`), `EditTimeline.swift` (the plan in frames and samples), `CompositionBuilder.swift`, `Instructions.swift` (`RenderInstruction`), `Compositor.swift`, `VideoAudio.swift` (decode, join with crossfades, master), `VideoWriter.swift`, `Mp4Boxes.swift` (moov, edit lists), `Captions.swift`, `VideoDescription.swift` (`Description.txt`), `ReadyChecklist.swift`, `OutputGate.swift` (the not-checked refusal, the people output checks since M8d, and the only move), `VideoStep.swift` (`VideoRecord`, make and check); since M8d `VideoHiding.swift` (`HiddenFaces`, `video-hiding.json`) and `People/PictureOutputCheck.swift`; the pipeline's `.renderVideo` and `.checkVideo` steps and `PipelineOptions.makeVideo`; `Recording.videoJSON` and `videoProblem`; `App/VideoActions.swift` (Make Video); `Views/Inspector/VideoSection.swift`; since M8c `App/VideoEditActions.swift` (Restore, Remove, Take Out Again, Keep, Delete, Undo, `Recording.planRestores`, `restoresPending`, Watch Video), the Video rendition in `Views/Viewer/ViewerModel.swift`, `CaptionsOverlay` and `PictureToggle` in `Views/Viewer/PeopleOverlay.swift`, `Captions.cues(srt:)`; tests `RenderTests`, `ViewerVideoTests` (in `make test`), `VideoAcceptanceTests` (`make accept-video`), `ViewerVideoAcceptanceTests` (`make accept-viewer-video`), `PeopleInVideoTests` (in `make test`), `PeopleVideoAcceptanceTests` (`make accept-people-video`) and `capture-window.swift --video` (`make look-video`) |
 | House style and zooms (v2 part M9a) | `mac/Prakriti/Edit/Style.swift` (`StyleName`, `Pace`, `PunchLevel`, `Length`, `HouseStyle`, `Style` with research 2.3 and 2.4's numbers, `maxScale`), `Edit/VisualPlan.swift` (`FaceSpot`, `VisualPlan.make`, `assign`, `center`, `shots`, `count`; `Framing`), the plan's `visual` items and `holdSeconds` (`EditPlan.Visual`), PlanValidation rule 7, `EditTimeline.holdFrames`, the hold in `CompositionBuilder`, `VideoWriter` and `VideoAudio.join`, `Compositor.frame`, `RenderInstruction.crop`, `Pipeline.subject`, `PipelineOptions.house`, `AppSettings.houseStyle`, `Views/Settings/HouseStylePane.swift`; tests `StyleTests` (in `make test`) and `StyleAcceptanceTests` (`make accept-style`) |
+| Text and graphics (v2 part M9b) | `mac/Prakriti/Render/TypeFace.swift` (Alegreya Sans, `register`, `prepared`, `missing`), `Render/Overlays.swift` (`OverlayKind` and its motion, `OverlayLayout`, `OverlayView`, `OverlayCache`, `OverlayTable`, `EditTimeline.editFrame(span:original:)`), `Edit/TextPlan.swift` (the title and lower thirds, `Faces`), `Resources/Fonts/` (three weights and `OFL.txt`), the text fields of `EditPlan.Visual`, rule 7's text half, `Compositor.overlay`, `RenderInstruction.textLayers`, `Pipeline.textSetup`, `PipelineOptions.planTitle`, `PeopleSetup.teachers`, `HouseStyle.titleOnScreen` and `namesOnScreen`, the pane's Text on Screen; tests `TextTests` (in `make test`) and `TextAcceptanceTests` (`make accept-text`) |
 | Faces (v2 part M6a) | `mac/Prakriti/People/`: `FaceScan.swift` (the reader, Vision at two frames a second, the change-of-picture measure), `Tracks.swift` (`FaceBox` and the Vision conversion, `FaceTracker`, `FaceGrouping`, `FacesFound` with its lines), `PeopleFile.swift` (`PeopleFolders`, the people file, `FaceStep` with its job folder), `FaceCrops.swift` (the People tab's live crops, memory only); the pipeline's `.faces` step and `PipelineOptions.people`; `Recording.facesJSON`; `App/FaceActions.swift` (`applyFaces`, Look for Faces); `Views/Inspector/PeopleTab.swift` (`PeopleTab`, `FaceRow`, `PeopleLine`); the job cleanup in `AppModel.launch`; `--debug-face-scan` in `App/DebugSwitches.swift`; tests `PeopleTests` (in `make test`), `PeopleAcceptanceTests` and `scripts/people-crash-check.sh` (`make accept-people`) |
 | People files and job folders | `~/Library/Application Support/Prakriti/People/Recordings/<recording id>.json` and `.../Jobs/` (live); `.../Prakriti/Development/People/...` and `.../Development/Jobs/` (development) |
 | Swift packages | `swift-markdown` 0.9.0 (21 Sep 2026, with `swift-cmark` 0.9.0), pinned in `mac/project.yml` and `mac/Prakriti.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, both committed (v2 part M2a) |
@@ -2193,6 +2219,24 @@ top and its end. Reading the code is not verification, and neither is a passing 
     cannot be punched in on (no face, or a moving one) breaks a back-to-front alternation and turns the split beside it into
     no change; chosen shot by shot, the 13 Sep plan lost changes in its first 30 s (9 of the 10 needed). Together, the most
     boundaries change: 11.
+164. **Text is laid over the picture last, after hiding and framing (`Compositor.overlay`), and is never scaled by a punch-in.**
+    Reason: text is placed in the edited frame's own fractions, checked against faces carried through that frame's punch-in;
+    drawn before framing it would be enlarged and moved by the punch-in and could land on a face the plan kept it clear of.
+165. **Every text picture is drawn by `ImageRenderer` on the main actor, once, before the composition is built
+    (`OverlayTable.make`); the compositor only moves and fades it.** Reason: `ImageRenderer` is main-actor only and the
+    compositor runs on AVFoundation's threads; drawn there it would block or crash, and drawn per frame it would cost a render
+    per frame. One cache keyed by the text and the picture's height means the Viewer reuses the file's pictures exactly
+    (TextTests: no new drawing for the preview).
+166. **The box a text is checked against is measured by Core Text at plan time (`OverlayLayout.size`), and the view draws those
+    exact lines in that exact box.** Reason: the face check happens when the plan is made, long before anything is drawn; if
+    the view were allowed to wrap or size itself, the drawn text could leave the box the plan cleared. Measured 15 Oct: the
+    drawn pixels sit inside the planned box (title ink 0.632 to 0.934 across in a box of 0.629 to 0.935, TextTests).
+167. **A House Style is decoded field by field (`HouseStyle.init(from:)`), with the standard for any missing field.** Reason:
+    a synthesized decoder refuses the whole value when one key is missing, so adding the text switches in M9b would have reset
+    Ivan's saved style, pace and punch-ins to the standard on the first launch. Any new House Style field follows the same rule.
+168. **Burned text uses only the bundled Alegreya Sans, through `TypeFace.prepared`.** Reason: SF Pro's licence for burned
+    pixels is not established (research 2.7); and Alegreya Sans has no single glyph for ṝ ḹ Ṝ Ḹ, so without `prepared` Core Text
+    would draw those letters from another face in the middle of a word.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

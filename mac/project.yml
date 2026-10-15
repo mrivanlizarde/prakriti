@@ -53,9 +53,15 @@ targets:
       - path: Prakriti
         excludes:
           - Resources/Help
+          - Resources/Fonts
       # The Help articles (v2 part M2a), copied into the app as one folder, Contents/Resources/Help,
       # so the bundle holds exactly the files in mac/Prakriti/Resources/Help and nothing flattens.
       - path: Prakriti/Resources/Help
+        type: folder
+        buildPhase: resources
+      # The typeface burned into the edited video (v2 part M9b): Alegreya Sans, three weights and its SIL Open Font
+      # License, copied as one folder, Contents/Resources/Fonts, and registered for the app's process only (TypeFace).
+      - path: Prakriti/Resources/Fonts
         type: folder
         buildPhase: resources
     dependencies:

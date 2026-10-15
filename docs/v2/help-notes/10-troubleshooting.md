@@ -84,3 +84,8 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
   video looks soft after a punch-in" under `houseStyle`, pointing at Settings, House Style, Punch-ins Subtle or Off. Added "If a
   punch-in cuts off a raised arm or a pose": Teaching, as built in M9a (changes only at cuts, no push-in, wide where no face).
   Keywords added: soft picture, punch-in, Teaching.
+
+## Notes from part M9b (Thu 15 Oct 2026)
+
+- New block `:::requires textOnScreen`, "If the title or the teacher's name is not on the video": the three reasons the plan
+  leaves text out (no title in Info, no included teacher named, no moment clear of every face) and the two switches.

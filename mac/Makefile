@@ -131,7 +131,7 @@ STYLE_ONLY ?=
 YES       ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: accept-style accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: accept-text accept-style accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -199,6 +199,16 @@ accept-people-video:
 #                 acceptance-style.txt to ../screens/mac/$(MILESTONE)/ (about 10 minutes)
 accept-style:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=style TEST_RUNNER_PRAKRITI_STYLE_ONLY="$(STYLE_ONLY)" TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/StyleAcceptanceTests
+
+# accept-text  v2 part M9b's acceptance (PLAN M9 checks 2 and 4 for the title and the lower third): the typeface contact sheet
+#                 (typeface.png: the IAST test string and every IAST letter in Noto Sans, Source Sans 3 and Inter from
+#                 ~/Prakriti/Dev/Fonts and the bundled Alegreya Sans, each CTFont asked for every glyph), then the REAL 13 Sep
+#                 talk's 5-minute excerpt made in development with a test title and a teacher named, and every text moment of the
+#                 made MP4 (every 0.5 s of each text's life) measured: the text's pixels against the same frame without text, inside
+#                 title safe, clear of every face Vision finds. Writes acceptance-text.txt; frames of the talk go to for-ivan/ and
+#                 are not looked at (about 3 minutes)
+accept-text:
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=text TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/TextAcceptanceTests
 
 # look-video  v2 part M8c's real window (PLAN M8 check 7): a development copy on sample data opens the test-pattern video that
 #                 accept-viewer-video wrote, on Video with the Captions overlay on and --debug-playback-log, Space is sent, and

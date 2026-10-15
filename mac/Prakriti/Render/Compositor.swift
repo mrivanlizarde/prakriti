@@ -10,8 +10,8 @@ import Foundation
 // until the encoder. From part M8d a frame where someone is hidden goes through Core Image on Metal (`draw`, one context for
 // the compositor's life) with each region hidden by `FaceHide`; the regions are looked up by the original's frame in
 // `HiddenFaces`, worked out before the video is drawn (`VideoHiding`), so the file and the Viewer hide the same. From part
-// M9a a punch-in or push-in frames the picture here too (`Framing`, read by the edited frame, `frame(_:crop:)`); text (M9b)
-// will draw here as well. `RenderTests` and `StyleTests` run every path.
+// M9a a punch-in or push-in frames the picture here too (`Framing`, read by the edited frame, `frame(_:crop:)`), and from part
+// M9b the text on screen is laid over the framed picture (`OverlayTable`, `overlay(_:on:)`). `RenderTests` and `StyleTests` run every path.
 //
 // The SDK's macOS 27 names only (Mac warning 4, PLAN 2.2): `sourceReadOnlyPixelBuffer(byTrackID:)` and
 // `renderContext.makeMutablePixelBuffer()`, never `sourceFrame(byTrackID:)` or `newPixelBuffer()`.
@@ -43,12 +43,14 @@ final class Compositor: NSObject, AVVideoCompositing, @unchecked Sendable {
         let regions = instruction.regions(at: request.compositionTime)
         // The punch-in or push-in at this frame (v2 part M9a), nil for the whole picture.
         let crop = instruction.crop(at: request.compositionTime)
-        if regions.isEmpty && crop == nil && !instruction.throughCoreImage {
+        // The text on screen at this frame (v2 part M9b), already moved and faded.
+        let text = instruction.textLayers(at: request.compositionTime)
+        if regions.isEmpty && crop == nil && text.isEmpty && !instruction.throughCoreImage {
             request.finish(withComposedPixelBuffer: source)
             return
         }
         do {
-            request.finish(withComposedPixelBuffer: try draw(source, hiding: regions, crop: crop, into: request.renderContext))
+            request.finish(withComposedPixelBuffer: try draw(source, hiding: regions, crop: crop, text: text, into: request.renderContext))
         } catch {
             request.finish(with: error)
         }
@@ -57,10 +59,11 @@ final class Compositor: NSObject, AVVideoCompositing, @unchecked Sendable {
     /// The frame through Core Image into a new buffer from the render context's pool, with `hiding`'s regions hidden by
     /// `FaceHide` (the same function as the card picture's), then framed by `crop` (v2 part M9a): the faces are hidden on
     /// the whole picture first, so a punch-in never shows a face the hiding did not cover.
-    func draw(_ source: CVReadOnlyPixelBuffer, hiding: [FaceBox] = [], crop: CGRect? = nil, into renderContext: AVVideoCompositionRenderContext) throws -> CVReadOnlyPixelBuffer {
+    func draw(_ source: CVReadOnlyPixelBuffer, hiding: [FaceBox] = [], crop: CGRect? = nil, text: [CIImage] = [],
+              into renderContext: AVVideoCompositionRenderContext) throws -> CVReadOnlyPixelBuffer {
         let output = try renderContext.makeMutablePixelBuffer()
         let frame = source.withUnsafeBuffer { CIImage(cvPixelBuffer: $0) }
-        let image = Self.frame(FaceHide.apply(frame, regions: hiding), crop: crop)
+        let image = Self.overlay(text, on: Self.frame(FaceHide.apply(frame, regions: hiding), crop: crop))
         output.withUnsafeBuffer { buffer in
             // The source's colour tags (BT.709 matrix, primaries and transfer) go on the new buffer first: Core Image reads
             // them to turn its working colour back into the same YCbCr. Without them it wrote another matrix (measured 13 Oct
@@ -87,6 +90,15 @@ final class Compositor: NSObject, AVVideoCompositing, @unchecked Sendable {
         let scaled = moved.applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: scale, kCIInputAspectRatioKey: (h / rect.height) / scale])
         return scaled.cropped(to: CGRect(x: 0, y: 0, width: w, height: h))
             .transformed(by: CGAffineTransform(translationX: extent.minX, y: extent.minY))
+    }
+
+    /// The text pictures laid over the framed picture (v2 part M9b), last: text is never scaled by a punch-in and never
+    /// hidden. Cropped back to the picture, so a text sliding in never widens the frame.
+    static func overlay(_ layers: [CIImage], on image: CIImage) -> CIImage {
+        guard !layers.isEmpty else { return image }
+        var out = image
+        for layer in layers { out = layer.composited(over: out) }
+        return out.cropped(to: image.extent)
     }
 
     enum Failure: Error {

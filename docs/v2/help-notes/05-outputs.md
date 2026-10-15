@@ -104,3 +104,11 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
   the first 30 s, 5 s at the end), measured on the 13 Sep talk by `make accept-style`. Keywords added: punch-in, push-in, zoom,
   House Style, end screen. The `style` block's "Edited video" section (key ideas as text, transitions) stays hidden: text is M9b
   and transitions M9c/M9d; reconcile it with the `renderedVideo` and `houseStyle` blocks before `style` is switched on.
+
+## Notes from part M9b (Thu 15 Oct 2026)
+
+- New block `:::requires textOnScreen`, "The title and names on screen", before the hidden `style` block: the title for 2 s
+  (Ivan's own title in Info, never written for him), the teacher's name once with "Teacher" for about 4 s (4.55 s: 0.3 in, 4 s,
+  0.25 out), never over a face, inside the middle 90% (title safe), Alegreya Sans. Every number is `OverlayKind.motion` and
+  `OverlayLayout`, measured on the test pattern by `TextTests` and on the 13 Sep excerpt by `make accept-text`. Help 10 gains
+  "If the title or the teacher's name is not on the video". Key phrases and term cards stay in the hidden `style` block (M9d).

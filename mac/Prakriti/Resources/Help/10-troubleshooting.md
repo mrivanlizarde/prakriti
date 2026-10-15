@@ -174,6 +174,16 @@ In Settings, House Style, turn on Teaching: the picture then changes only at cut
 slowly, and stays whole wherever no face is seen. Then click Make Again.
 :::
 
+:::requires textOnScreen
+### If the title or the teacher's name is not on the video
+
+The title shows only when the recording has a title in the inspector's Info, and the name only for a
+teacher you named who is included in the video. Check both, and that Title at the start and Teacher's
+name are on in Settings, House Style. If they are and the text is still missing, there was no moment
+clear of every face: in a frame crowded with people Prakriti leaves the text out rather than cover
+someone. Then click Plan the Edit or Make Again.
+:::
+
 ### If the picture flickers or shows moving bands
 
 The camera's shutter speed does not match the lights. Set the shutter to 1/60. If the bands stay, try

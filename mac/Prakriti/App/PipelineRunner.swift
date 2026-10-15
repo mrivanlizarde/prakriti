@@ -300,7 +300,10 @@ final class PipelineRunner {
         // Voices are listened for right after, and Ivan's names and the people named in Settings travel with the make,
         // so its writing step's privacy lock reads this make's people check (v2 part M6b).
         options.people = PeopleSetup(recordingID: recording.id, folders: model.peopleFolders, names: recording.names,
-                                     microphones: recording.source?.microphones ?? [:], people: recording.namedPeople)
+                                     microphones: recording.source?.microphones ?? [:], people: recording.namedPeople,
+                                     teachers: recording.teacherIDs)
+        // The title on screen (v2 part M9b) is Ivan's own title for the recording, never a written one.
+        options.planTitle = recording.title
         // Who is left out of the podcast and which names said aloud are muted (v2 part M6c).
         options.choices = recording.choices
         options.kind = recording.kind

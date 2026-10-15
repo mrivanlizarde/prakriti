@@ -81,6 +81,37 @@ struct HouseStylePane: View {
                 }
             } header: {
                 SectionHeader("Pace and Zooms")
+            }
+
+            Section {
+                Toggle(isOn: $settings.houseStyle.titleOnScreen) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Title at the start").font(AppFont.body)
+                        Text("The recording's title, as you set it in Info, for the first 2 seconds, beside the teacher and never over a face. A recording with no title shows none.")
+                            .font(AppFont.secondary).foregroundStyle(.appSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Toggle(isOn: $settings.houseStyle.namesOnScreen) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Teacher's name").font(AppFont.body)
+                        Text("Once, the first time the teacher is seen after the title: their name and \u{201C}Teacher\u{201D} near the bottom, on the side away from their face, for about 4 seconds. Only for a teacher you named who is included in the video.")
+                            .font(AppFont.secondary).foregroundStyle(.appSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                LabeledContent {
+                    Text(TypeFace.familyName).font(AppFont.body)
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Typeface").font(AppFont.body)
+                        Text("Yoga Marga's own, under an open font licence that allows it in videos. White, with a soft shadow, no box behind it.")
+                            .font(AppFont.secondary).foregroundStyle(.appSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            } header: {
+                SectionHeader("Text on Screen")
             } footer: {
                 RowNote("Used the next time an edit is planned: Plan the Edit, Make Again, or a new recording. Videos already made stay as they are.")
             }

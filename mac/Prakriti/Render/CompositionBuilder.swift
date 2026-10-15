@@ -34,7 +34,8 @@ enum CompositionBuilder {
 
     /// The composition for a plan over its original. The original's picture track is read for its size and length; the
     /// spans are inserted in the plan's order.
-    static func build(plan: EditPlan, original: URL, throughCoreImage: Bool = false, hidden: HiddenFaces? = nil) async throws -> Built {
+    /// `drawText: false` leaves the text on screen out (tests only, to measure where the text is by difference).
+    static func build(plan: EditPlan, original: URL, throughCoreImage: Bool = false, hidden: HiddenFaces? = nil, drawText: Bool = true) async throws -> Built {
         let asset = AVURLAsset(url: original)
         guard let source = try await asset.loadTracks(withMediaType: .video).first else {
             throw Failure(reason: "The original has no picture, so no video can be made from it.")
@@ -80,17 +81,20 @@ enum CompositionBuilder {
         let table = hidden.flatMap { $0.isEmpty ? nil : $0.table() }
         // The punch-ins and push-ins (v2 part M9a), one table shared by every instruction, read by the edited frame.
         let framing = Framing(plan: plan, timeline: timeline)
+        // The text on screen (v2 part M9b): each text drawn once (on the main actor, `OverlayCache`) and placed on the edited
+        // clock, one table shared by every instruction.
+        let overlays = drawText ? await OverlayTable.make(plan: plan, timeline: timeline, renderSize: renderSize) : nil
         var instructions = timeline.pieces.map { piece in
             RenderInstruction(timeRange: CMTimeRange(start: timeline.time(piece.editFrame), duration: timeline.time(piece.frames)),
                               trackID: track.trackID, spanID: piece.id, sourceStart: timeline.seconds(piece.sourceFrame),
                               throughCoreImage: throughCoreImage, firstSourceFrame: piece.sourceFrame, frameDuration: frameDuration,
-                              hidden: table, framing: framing.isEmpty ? nil : framing)
+                              hidden: table, framing: framing.isEmpty ? nil : framing, overlays: overlays)
         }
         if timeline.holdFrames > 0, let shown = timeline.holdSourceFrame, let last = timeline.pieces.last {
             instructions.append(RenderInstruction(timeRange: CMTimeRange(start: timeline.time(timeline.keptFrames), duration: timeline.time(timeline.holdFrames)),
                                                   trackID: track.trackID, spanID: last.id, sourceStart: timeline.seconds(shown),
                                                   throughCoreImage: throughCoreImage, firstSourceFrame: shown, frameDuration: frameDuration,
-                                                  hidden: table, framing: nil, holds: true))
+                                                  hidden: table, framing: nil, holds: true, overlays: overlays))
         }
         let configuration = AVVideoComposition.Configuration(
             colorPrimaries: AVVideoColorPrimaries_ITU_R_709_2, colorTransferFunction: AVVideoTransferFunction_ITU_R_709_2,

@@ -210,6 +210,29 @@ wide. A change in House Style is used the next time the edit is planned: click P
 Again. Videos already made stay as they are.
 :::
 
+:::requires textOnScreen
+### The title and names on screen
+
+Two kinds of text can appear on the edited video, each switched on or off in Settings, House Style,
+under Text on Screen.
+[Show Me](prakriti://show/settings/houseStyle)
+
+- **The title.** For the first 2 seconds, the recording's title as you set it in the inspector's Info.
+  It sits on the side of the frame away from the teacher, as large as fits in three lines. A recording
+  with no title shows none: nothing is written for you.
+- **The teacher's name.** Once, the first time the teacher is seen after the title, their name with
+  "Teacher" under it, near the bottom of the frame on the side away from their face, for about 4
+  seconds. Only for a teacher you named (Who Is Teaching, or a person whose role is Teacher) who is
+  included in the video.
+
+Text never covers a face: Prakriti checks every face it found, through each punch-in, for the whole
+time the text shows, and waits for a clear moment or leaves the text out. All text stays inside the
+middle 90% of the frame, so no screen crops it. The type is Alegreya Sans, Yoga Marga's own, white with
+a soft shadow and no box behind it. It comes in over a third of a second and goes out over a quarter.
+
+To change a title on screen, change the title in Info, then click Plan the Edit or Make Again.
+:::
+
 :::requires style
 ### Edited video
 

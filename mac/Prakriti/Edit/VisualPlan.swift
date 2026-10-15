@@ -485,9 +485,12 @@ struct Framing: Equatable, Sendable {
     }
 
     /// The push-in's ease (research 2.6): a cubic Bezier through (0.42, 0) and (0.58, 1), an even ease in and out.
-    static func ease(_ x: Double) -> Double {
+    static func ease(_ x: Double) -> Double { bezier(x, 0.42, 0, 0.58, 1) }
+
+    /// A CSS-style cubic Bezier ease through (x1, y1) and (x2, y2): the curve's y where its x is `x` (v2 part M9b uses it for
+    /// text coming in, research 2.6's (0.2, 0.8, 0.2, 1)).
+    static func bezier(_ x: Double, _ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) -> Double {
         let x = min(max(x, 0), 1)
-        let p1 = 0.42, p2 = 0.58
         func bez(_ t: Double, _ a: Double, _ b: Double) -> Double {
             let u = 1 - t
             return 3 * u * u * t * a + 3 * u * t * t * b + t * t * t
@@ -495,9 +498,9 @@ struct Framing: Equatable, Sendable {
         var lo = 0.0, hi = 1.0
         for _ in 0..<40 {
             let mid = (lo + hi) / 2
-            if bez(mid, p1, p2) < x { lo = mid } else { hi = mid }
+            if bez(mid, x1, x2) < x { lo = mid } else { hi = mid }
         }
-        return bez((lo + hi) / 2, 0, 1)
+        return bez((lo + hi) / 2, y1, y2)
     }
 
     /// A box found in the edited video's frame (from its top left, fractions of the frame) on the original's picture.
