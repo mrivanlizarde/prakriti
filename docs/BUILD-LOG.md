@@ -5948,7 +5948,12 @@ dark. **Found by looking:** finding 4 above.
 
 ### Installed
 
-Not yet at this commit: `make install` follows it, and the next commit records it.
+**Installed** at 07:08:03 on Thu 15 Oct with `make install` (commit 4fd1f66): old pid 82496 quit, new pid **26138** from
+`~/Applications/Prakriti.app`, signed, only the installed copy registered. Live log: "Finished launching. Mode: live.", "Studio
+Recordings: listed 13 recordings", "Drop folder: listed 0 recordings", **"07:08:04 Checked 2 folders. Nothing new."**, "Caught up on
+changes made while Prakriti was closed: 0 events." The next sweep, **"07:13:03 Checked 2 folders. Nothing new."**, pid 26138 still
+running. The live preferences hold no choice for Planning the edit, so it follows Writing (the Claude API). No recording has a
+direction, so nothing was planned or made again by the install.
 
 ### For Ivan
 
