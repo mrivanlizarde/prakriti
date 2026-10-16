@@ -6223,7 +6223,14 @@ unchanged (13 Sep 730,464,600 bytes, same date; the excerpt 231,898,852 bytes, s
 
 ### Installed
 
-To be installed with `make install` right after this commit; the install is recorded in the next commit.
+**Installed** at 21:08:17 on Thu 15 Oct with `make install` (commit 302b52e): the installed copy quit (21:08:11), new pid **29354** from
+`~/Applications/Prakriti.app`, signed, only the installed copy registered. The install script also found another copy running in live
+mode from `~/Code/prakriti-holdfix/mac/build` (pid 27821, another session's build) and asked it to quit, as it does. Live log: "Prakriti
+0.1 (1) opened. Mode: live.", **"New output available: Timelines. It is off for every folder until you turn it on."**, "Caught up on
+changes made while Prakriti was closed: 0 events.", "Finished launching. Mode: live.", "Studio Recordings: listed 13 recordings",
+"Drop folder: listed 0 recordings", **"21:08:18 Checked 2 folders. Nothing new."** The next sweep, **"21:13:37 Checked 2 folders.
+Nothing new."**, pid 29354 still running. Nothing was made or written again by the install: Timelines is off for every folder, and
+no recording has timelines until Make Timelines is clicked.
 
 ### For Ivan
 
