@@ -5,6 +5,32 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-15, Thu: v2 part M10a, timelines for Final Cut Pro and DaVinci Resolve
+
+- **The edit can now be finished by hand: FCPXML 1.14 for Final Cut Pro and 1.10 for DaVinci Resolve, from one generator.** Why:
+  REQUEST item 4 asked for "an XML for FCP or DaVinci"; 1.14 is what Final Cut Pro 12.4 writes, and 1.10 is the version Resolve
+  20.2.1 is said to read (research 5.2; the live import is Ivan's check, since the free Resolve refused an outside script).
+- **Every text is a rendered ProRes 4444 clip, drawn by the compositor's own code, with an editable copy switched off above it.**
+  Why: Resolve flattens Final Cut Pro's titles to plain text, and in-XML styling fails silently (the vault's 2026-07-30 lesson). The
+  rendered clip is the safety net, so the timeline looks exactly like the MP4 (measured 40 to 45 dB against the compositor).
+- **Punch-ins are static transforms; slow push-ins are markers until the round trips pass.** Why: research 5.8's gate. A static
+  scale and position imports reliably; animation is what fails silently.
+- **The media is an APFS clone beside the timelines, proved per file.** Why: no extra disk, and the timelines never point into the
+  shared Studio Recordings folder, where iCloud could evict the original. Free space proves nothing when another agent writes to the
+  same disk, so the volume's own clone record is read (getattrlist).
+- **No timeline is written for a recording with anyone hidden or left out, or a muted name, and the inspector says so.** Why: an
+  editing app's timeline points at the whole recording, so a dragged clip edge undoes a privacy choice (PLAN R2). Ivan's 12 Oct
+  decision made everyone released, but Hide Face and Leave Out remain his editing choices, and only M10b's cleaned media may honour
+  them in a timeline. The refusal is in code, at the gate, and against his choices now, not only the video's.
+- **Make Timelines writes them in seconds from the video already made; the Timelines output writes them in every make.** Why: least
+  friction (REQUEST item 4); a remake costs minutes, and the plan and video are already there. Off for every folder (rule 2.1.7).
+- **Open in DaVinci Resolve opens Resolve and shows the file.** Why: Resolve does not open FCPXML from the Finder (its Info.plist
+  claims only its own files); File > Import > Timeline is the only way in, and the row says so.
+- **The DTDs are copied to a path without spaces before xmllint reads them.** Why: measured, xmllint fails to resolve a DTD whose
+  path has a space ("xmlSAX2ResolveEntity"), and every recording's output folder has one.
+- **Approve and versions leave the Timeline folder alone.** Why: its files point at Outputs by absolute path; a copy elsewhere would
+  quietly point back.
+
 ## 2026-10-15, Thu: v2 part M9d, hook, chapters, versions
 
 - **Every video now opens on the talk's strongest line, then the title, then the talk from its start.** Why: research 2.3's

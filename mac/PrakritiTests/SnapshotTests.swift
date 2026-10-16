@@ -650,6 +650,40 @@ final class SnapshotTests: XCTestCase {
             }
             model.inspectorTab = .outputs
         }
+        // The timelines (v2 part M10a) under the video: a made-up record and empty stand-in files in a Timeline folder made here and
+        // taken away after; then the refusal, with the sample's made-up corner face set to Hide Face. No picture of anyone is drawn.
+        let timelineFolder = media.outputs.appending(path: TimelineExport.folderName, directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: timelineFolder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: timelineFolder) }
+        for version in FCPXMLVersion.allCases { try Data().write(to: timelineFolder.appending(path: version.fileName)) }
+        let timelineRecord = TimelineExport.Record(madeAt: Fixtures.now, planMadeAt: plan.madeAt, project: "Sun 13 Sep, Clear", seconds: 890.4, frames: 26_685,
+                                                   clips: 61, graphics: 9, captions: 312, chapters: 11, markers: 4, pushInMarkers: 4,
+                                                   mediaName: "2026-09-13 18-25-44.mp4", mediaCloned: true, captionsName: "The Lineage of Krsnamacarya.srt",
+                                                   dtd: ["1.14": "valid", "1.10": "valid"])
+        try timelineRecord.encoded().write(to: timelineFolder.appending(path: TimelineExport.recordName))
+        var timedVideo = SnapshotTests.sampleVideoRecord()
+        timedVideo.planMadeAt = plan.madeAt
+        timedVideo.hiddenFaces = 0
+        timedVideo.leftOutVoices = 0
+        try draw("26-timelines-ready") { model in
+            _ = try openPlan(model) { r in
+                r.videoJSON = timedVideo.json()
+                r.madeFiles = (Set(r.madeFiles).union([VideoStep.folderName, TimelineExport.folderName])).sorted()
+            }
+            model.inspectorTab = .outputs
+        }
+        var hiddenVideo = timedVideo
+        hiddenVideo.hiddenFaces = 1
+        // Refused, and nothing written: no Timeline folder.
+        try? FileManager.default.removeItem(at: timelineFolder)
+        try draw("26-timelines-refused") { model in
+            _ = try openPlan(model) { r in
+                r.videoJSON = hiddenVideo.json()
+                if !r.madeFiles.contains(VideoStep.folderName) { r.madeFiles += [VideoStep.folderName] }
+                Fixtures.showPeopleOverlay(model, on: r)
+            }
+            model.inspectorTab = .outputs
+        }
         // The edited video in the Viewer (v2 part M8c): the sample talk on Video, a filler chosen on the strip with Restore, then
         // restored (Take Out Again, the line under the toolbar "Not in the video yet"). The video file is the test pattern, so
         // nothing of anyone is drawn; the player's picture is black in a bitmap (Mac warning 43), the real window is look-video's.
@@ -763,7 +797,7 @@ final class SnapshotTests: XCTestCase {
             model.inspectorTab = .direction
         }
         try? FileManager.default.removeItem(at: planURL)
-        let viewerCount = 26 * 2 // v2 part M8d: 22-video-hidden; v2 part M9c: 24-direction and 24-direction-people; v2 part M9d: 25-direction-*
+        let viewerCount = 28 * 2 // v2 part M10a: 26-timelines-ready and -refused; v2 part M8d: 22-video-hidden; v2 part M9c: 24-direction and 24-direction-people; v2 part M9d: 25-direction-*
 
         if only == "recording" {
             print("Snapshots written to \(outputFolder.path): \(written.count) Viewer pictures")

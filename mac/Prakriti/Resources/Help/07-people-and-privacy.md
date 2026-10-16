@@ -159,6 +159,15 @@ video in the inspector says when, so you can hide or include the person and clic
 faces is kept beside the edit plan as `video-hiding.json`: boxes and times only, never a picture.
 :::
 
+:::requires timelines
+## In the timelines
+
+A timeline for Final Cut Pro or DaVinci Resolve points at the whole recording, so a clip edge dragged out or a blur
+switched off there would bring back what you hid. So Prakriti writes a timeline only when everyone in the video is
+included and no name is muted. For a recording with anyone set to Hide Face or Leave Out, it says "A timeline for a
+recording with hidden people arrives in the next update." and writes nothing.
+:::
+
 :::requires choices
 ## Names said aloud
 

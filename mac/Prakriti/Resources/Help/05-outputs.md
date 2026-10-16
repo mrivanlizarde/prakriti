@@ -4,7 +4,7 @@ title: Outputs
 summary: What Prakriti makes from each recording, what is in each file, and where the files go.
 section: outputs
 order: 1
-keywords: [outputs, edit plan, rough cut, edited video, MP4, YouTube, Make Video, Watch Video, punch-in, push-in, zoom, House Style, end screen, ready checklist, description, pauses, filler words, podcast episode, podcast-ready, MP3, loudness, LUFS, transcript, captions, SRT, VTT, report, show notes, chapters, titles, episode text, upload checklist, artwork, show name, word list, intro, outro, mono, stereo]
+keywords: [outputs, timelines, Final Cut Pro, DaVinci Resolve, FCPXML, Make Timelines, export timeline, edit plan, rough cut, edited video, MP4, YouTube, Make Video, Watch Video, punch-in, push-in, zoom, House Style, end screen, ready checklist, description, pauses, filler words, podcast episode, podcast-ready, MP3, loudness, LUFS, transcript, captions, SRT, VTT, report, show notes, chapters, titles, episode text, upload checklist, artwork, show name, word list, intro, outro, mono, stereo]
 related: [sources-and-watching, reviewing-and-approving, models-and-api-keys]
 ---
 
@@ -41,7 +41,7 @@ The original recording is never changed. Nothing is uploaded or posted.
 - **Thumbnails:** three still images to choose from.
 :::
 :::requires timelines
-- **Timeline:** the same edit, to open and finish in Final Cut Pro or DaVinci Resolve.
+- **Timelines:** the same edit, to open and finish in Final Cut Pro or DaVinci Resolve.
 :::
 
 The podcast episode, the transcript and the report are on for every new folder. The podcast-ready
@@ -264,20 +264,31 @@ frames of the recording, and only show people who have agreed to appear. Choose 
 :::
 
 :::requires timelines
-### Timeline for Final Cut Pro or DaVinci Resolve
+### Timelines for Final Cut Pro and DaVinci Resolve
 
-The same edit as the finished video, as a file you can open and change by hand: every cut, zoom,
-caption, title and transition stays editable.
+The same edit as the edited video, as files you can open and finish by hand: every cut, punch-in, caption, chapter
+and title. Prakriti writes them with the video when Timelines is on for the recording, or at once with Make
+Timelines, in the inspector's Outputs, under Timelines. They are in the recording's Timeline folder in Outputs:
 
-- **Final Cut Pro:** choose File > Import > XML, select the `.fcpxml` file, then click Import. Or
-  double-click the file in the Finder.
-- **DaVinci Resolve:** open a project, then choose File > Import > Timeline and select the file. If a
-  clip shows as offline, Control-click the timeline in the Media Pool and choose Relink Clips for
-  Selected Timeline.
+- **Edit for Final Cut Pro.fcpxml:** click Open in Final Cut Pro, double-click the file, or choose File > Import >
+  XML in Final Cut Pro and select it.
+- **Edit for DaVinci Resolve.fcpxml:** in DaVinci Resolve, choose File > Import > Timeline and select it, with Use
+  sizing information turned on, so the punch-ins come in. If the captions do not come in, choose File > Import >
+  Subtitle and select the .srt file beside it.
+- **Graphics:** the title, the teacher's name, key phrases and terms as clips that look exactly as in the video. Each
+  has an editable copy on the lane above it, switched off.
+- **Media:** a copy of the recording that takes no extra space on this Mac until one of them changes.
+- **Read Me.txt:** how to open each file, in five lines.
 
-The timeline uses media from the recording's folder in Outputs, with blurs and removals already
-applied. Keep that folder together. If you move it, Final Cut Pro or Resolve asks you to find the media
-again.
+Slow push-ins are markers named "Push-in here", not moves, until they have been checked in both apps. File > Export
+Final Cut Pro Timeline (Command-E) and File > Export DaVinci Resolve Timeline show the file in the Finder, and write it
+first if needed.
+
+**Important:** A timeline is written only when everyone in the video is included and no name is muted. For a
+recording with anyone set to Hide Face or Leave Out, Timelines says "A timeline for a recording with hidden people
+arrives in the next update." and nothing is written.
+
+Keep the Timeline folder together. If you move it, Final Cut Pro or Resolve asks you to find the media again.
 :::
 
 ## Choose which outputs are made

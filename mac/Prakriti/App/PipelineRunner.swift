@@ -333,6 +333,8 @@ final class PipelineRunner {
         if make.contains(.editedVideo) {
             options.makeVideo = true
             options.video = VideoFacts(title: recording.title, notes: recording.notes, recordedAt: recording.recordedAt ?? recording.foundAt)
+            // The timelines (v2 part M10a), with the video only, when their switch is on; off for every folder (rule 2.1.7).
+            options.makeTimelines = make.contains(.timelines)
         }
         if make.contains(.podcastReady) {
             options.podcastReady = PodcastReadySetup(settings: OutputResolver.podcastReady(recording: recording, defaults: defaults), facts: recording.podcastFacts)
@@ -819,6 +821,14 @@ final class PipelineRunner {
                              level: video.failed == 0 ? .info : .attention, run: run)
             } else if let problem = result.videoProblem, activeOptions.makeVideo {
                 model.record("\(label) (\(recording.fileName)): no video was made. \(problem)", level: .attention, run: run)
+            }
+            // The timelines (v2 part M10a): this make's, or why not when they were asked for.
+            if let timeline = result.timeline {
+                model.timelineProblems[recording.id] = nil
+                model.record("\(label) (\(recording.fileName)): the timelines for Final Cut Pro and DaVinci Resolve, \(timeline.summary.lowercasedFirst)", run: run)
+            } else if let problem = result.timelineProblem, activeOptions.makeTimelines {
+                model.timelineProblems[recording.id] = problem
+                model.record("\(label) (\(recording.fileName)): no timeline was written. \(problem)", level: .attention, run: run)
             }
             if let plan = result.editPlan {
                 model.record("\(label) (\(recording.fileName)): the edit plan. " + plan.summary, run: run)

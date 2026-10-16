@@ -131,7 +131,7 @@ STYLE_ONLY ?=
 YES       ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: accept-hook accept-direction accept-text accept-style accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: accept-timeline resolve-import accept-hook accept-direction accept-text accept-style accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -227,6 +227,27 @@ KEEP_BEATS ?=
 #                 and Approve into the development Approved folder. Writes acceptance-hook.txt (about 30 minutes)
 accept-hook:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=hook TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/HookAcceptanceTests
+
+# accept-timeline  v2 part M10a's acceptance (PLAN M10 checks 2 and 4): the REAL 13 Sep talk's 5-minute excerpt made in development
+#                 with the edited video and the Timelines on (Clear, a test title, Gabriel named; the parts of the talk from ~/Prakriti/Dev/Beats
+#                 when made from this transcript, else Qwen3.8-27B in LM Studio, a few minutes): both FCPXML files valid against Final Cut
+#                 Pro's own DTDs (copied to build/dtd) and clean under the lint in place; every media-rep src in the Timeline folder, none
+#                 in Studio Recordings; every Media/ file a clone proved per file with getattrlist; every Graphics/ clip ProRes 4444 with
+#                 alpha, decoded to its end, one frame of each text written to graphics/ to look at (text only); Make Timelines again from
+#                 the video already made; refused with the teacher set to Hide Face. Then runs resolve-import (PLAN check 5). Writes
+#                 acceptance-timeline.txt to ../screens/mac/$(MILESTONE)/ (about 5 minutes with cached beats)
+accept-timeline:
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=timeline TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/TimelineAcceptanceTests
+	-$(MAKE) resolve-import MILESTONE=$(MILESTONE)
+
+# resolve-import  PLAN M10 check 5 (not a ship gate): DaVinci Resolve 20.2.1 imports the Resolve timeline accept-timeline wrote, by its
+#                 own scripting API, into a new scratch project ("Prakriti scratch v2-m10", never an existing one), and the clip count and
+#                 length are compared with the file's. Opens Resolve if it is not open (and quits it again after, only then). The free
+#                 edition may refuse outside scripts: then it writes SKIPPED with the reason, and Ivan runs the same script from
+#                 Workspace, Scripts (steps in BUILD-LOG). Writes resolve-import.txt to ../screens/mac/$(MILESTONE)/
+resolve-import:
+	mkdir -p ../screens/mac/$(MILESTONE)
+	/usr/bin/python3 scripts/resolve-import.py --open | tee ../screens/mac/$(MILESTONE)/resolve-import.txt
 
 accept-direction:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=direction TEST_RUNNER_PRAKRITI_DIRECTION_SEED=$(DIRECTION_SEED) TEST_RUNNER_PRAKRITI_DIRECTION_KEEP_BEATS=$(KEEP_BEATS) TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/DirectionAcceptanceTests

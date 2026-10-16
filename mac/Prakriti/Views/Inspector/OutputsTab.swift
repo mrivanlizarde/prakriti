@@ -34,6 +34,10 @@ struct OutputsTab: View {
                     EditPlanSection(recording: recording)
                     // The edited video (v2 part M8b), made from the plan.
                     VideoSection(recording: recording)
+                    // The timelines (v2 part M10a), once a video is made: the same edit for Final Cut Pro and DaVinci Resolve.
+                    if recording.video != nil || model.timelineFolder(recording) != nil {
+                        TimelineSection(recording: recording)
+                    }
                 }
                 if recording.outputFolder != nil || recording.written != nil {
                     WritingSection(recording: recording, showsChecklist: false)
@@ -200,7 +204,7 @@ struct Deliverable: Identifiable, Equatable {
             return folder.appending(path: name)
         }
         var list: [Deliverable] = []
-        for kind in [OutputKind.podcastEpisode, .podcastReady, .editedVideo, .transcript, .checksAndReport, .titlesNotesChapters] {
+        for kind in [OutputKind.podcastEpisode, .podcastReady, .editedVideo, .timelines, .transcript, .checksAndReport, .titlesNotesChapters] {
             switch kind {
             case .podcastEpisode:
                 if let url = file("episode.mp3") {
@@ -224,6 +228,14 @@ struct Deliverable: Identifiable, Equatable {
                     list.append(Deliverable(kind: kind,
                                             detail: "MP4, \(Format.timecode(video.duration)), with captions and Description.txt. Ready checklist: \(video.failed) FAIL, \(video.missing) MISSING.",
                                             url: folder.appending(path: VideoStep.folderName, directoryHint: .isDirectory).appending(path: video.fileName)))
+                    continue
+                }
+            case .timelines:
+                if let folder, names.contains(TimelineExport.folderName) {
+                    let timeline = folder.appending(path: TimelineExport.folderName, directoryHint: .isDirectory)
+                    let detail = TimelineExport.Record.read(timeline).map { "Final Cut Pro and DaVinci Resolve, \($0.summary.lowercasedFirst)" }
+                        ?? "Final Cut Pro and DaVinci Resolve."
+                    list.append(Deliverable(kind: kind, detail: detail, url: timeline.appending(path: FCPXMLVersion.finalCut.fileName)))
                     continue
                 }
             case .transcript:

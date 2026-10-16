@@ -94,6 +94,11 @@ talk's strongest line, shows a few key phrases and terms in the speaker's own wo
 main point, and carries chapters; every video made is kept as a version to play or use again, Approve names the one it covers, and
 Direction has its own inspector tab. On the whole 13 Sep talk: 7.08 changes a minute with every text counted, 66 of 66 text frames
 inside title safe and clear of faces; the Energetic versions of 13 Sep and 6 Sep pass every M8 check.
+**Then part M10a, timelines** (the last section, "v2 part M10a", Thu 15 Oct): the same edit as files to finish by hand, FCPXML 1.14 for Final
+Cut Pro and 1.10 for DaVinci Resolve, in a Timeline folder beside the video: every cut and punch-in, the texts as clips that look exactly
+as in the video, captions, chapters, a clone of the recording, Read Me; Make Timelines in the inspector writes them in seconds, Open in
+Final Cut Pro hands them over. Written only when everyone in the video is included. On the 13 Sep excerpt both files are valid against
+Final Cut Pro's own DTDs and the media is a proved clone; Resolve's import waits for Ivan (the free Resolve refuses outside scripts).
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -6107,3 +6112,130 @@ are read only at the next Make Video or Plan the Edit.
   phrases and two terms on the 13 Sep talk. Say if the size and place look right.
 - [ ] **Nothing to switch on:** your next Make Video or Plan the Edit reads the parts of the talk with the Claude API once, then the
   video opens on its strongest line, with key phrases, terms and chapters. Settings, House Style turns any of them off.
+
+## v2 part M10a: timelines. Thu 15 Oct 2026
+
+The first part of M10 (`docs/v2/PLAN.md`, M10, part M10a; REQUEST item 4, "an XML for FCP or DaVinci"). Built on `main` Thu 15 Oct
+19:05 to 21:30. No Swift package added, nothing downloaded, no SwiftData model changed (the new output, `OutputKind.timelines`, is a
+stored raw string; its switches are added at launch like every output's, off). Under Ivan's decision of Mon 12 Oct every participant
+counts as released; this run's rules: frames of Gabriel's talks measured only (the held frame is listed for Ivan below), cloud
+providers tested only on the synthetic transcript, so the one model call (the parts of the 13 Sep excerpt) went to Qwen3.8-27B in LM
+Studio on this Mac and nothing was sent anywhere. Routine runs on the 5-minute excerpt (PLAN's 14 Oct note); M10b, the last of M10,
+runs the whole talks.
+
+### What was built
+
+- **The timelines** (`Export/FCPXMLWriter.swift`): one generator, two files, only the version differs: `Edit for Final Cut
+  Pro.fcpxml` (1.14) and `Edit for DaVinci Resolve.fcpxml` (1.10). Research 5.7's rules: whole-frame rational times, one asset per
+  file with `start="0s"` and an absolute, percent-encoded `file://` source, anchored items in the parent's own time, captions in
+  Final Cut Pro's `iTT?captionFormat=ITT.en` role, cut at clip edges and never overlapping, plain `.fcpxml` files. Every kept span
+  (the opening line first) is an `asset-clip` with a one-frame `adjust-volume` fade at each cut, split wherever the framing changes;
+  a punch-in is a static `adjust-transform` (scale, and the position in percent of the frame's height that keeps the plan's framing,
+  `FCPXMLWriter.position`); **a slow push-in stays wide with a to-do marker "Push-in here"** and nothing is animated or dissolved
+  (research 5.8's gate, until M10b). The held last frame is its own clip. Chapters are `chapter-marker`s; the plan's moments to check
+  are to-do markers.
+- **Graphics** (`Export/GraphicsClips.swift`): every text (title, teacher's name, key phrases, terms) as a full-frame ProRes 4444 clip
+  with transparency, drawn frame by frame by the compositor's own `OverlayTable.layers` (same pictures, same motion), on a lane,
+  enabled; an editable Basic Title or Basic Lower Third above it, `enabled="0"`. The held last frame as ProRes 422.
+- **Media** (`Export/TimelineMedia.swift`): an APFS clone of the recording (`clonefile`), proved per file with getattrlist
+  (`cloneFacts`: the same clone id as the source, 0 bytes of its own). Neither file ever names the original.
+- **`Read Me.txt`** (five lines, `Export/ReadMe.swift`) and the video's own `.srt` beside the files.
+- **The checks before a timeline is kept** (`Export/FCPXMLLint.swift`, `Export/TimelineExport.swift`): the lint (whole frames, no
+  spine overlap or gap, the sequence's length, every ref, every src, transition handles, captions inside their clip and not
+  overlapping), Final Cut Pro's own DTD for each version through `xmllint` (DTDs copied out first), every clip decoded to its end, then
+  `OutputGate.admitTimeline`, which reads the refusal again and alone moves the folder into place.
+- **By construction, a timeline is written only when everyone in the video is included and no name is muted**, in the video as made
+  and in Ivan's choices now; otherwise "A timeline for a recording with hidden people arrives in the next update." (or "...with a
+  muted name...") and nothing is written.
+- **In the app:** the **Timelines** output (off for every folder; step "Writing the timelines" right after the video in a make);
+  **Make Timelines** in the inspector's Outputs, under Timelines (`Views/Inspector/TimelineSection.swift`, `App/TimelineActions.swift`),
+  writes them in seconds from the video already made and turns the output on for the recording; rows for Final Cut Pro and DaVinci
+  Resolve with **Open in Final Cut Pro**, **Open in DaVinci Resolve** (each shown only when `NSWorkspace` finds the app) and Show in
+  Finder; a Timelines row in Files; File, **Export Final Cut Pro Timeline** (Command-E) and **Export DaVinci Resolve Timeline**. Approve
+  does not copy the Timeline folder and versions do not keep it.
+- **Help** (capability `timelines` on): 05 (the timelines section rewritten to what is built), 07 ("In the timelines"), 10 (no
+  timeline, offline media, Resolve's file, missing punch-ins or captions); notes in `docs/v2/help-notes/05-outputs.md`.
+- **Tests:** `FCPXMLTests` (6, in `make test`), `TimelineAcceptanceTests` (`make accept-timeline`), `scripts/resolve-import.py`
+  (`make resolve-import`, PLAN check 5); snapshots `26-timelines-ready` and `26-timelines-refused`. START_HERE: the M10a paragraph, the
+  commands, the file map, Mac warnings 188 to 194.
+
+### Found by measuring (each fixed, each with its measurement)
+
+1. **`xmllint` could not read the DTD from the recording's own folder**: "parser error : xmlSAX2ResolveEntity" on both files in the
+   first synthetic run, while the same files were valid with the DTD in a folder without spaces. The DTDs now go to a temporary
+   folder whose path has none (warning 190).
+2. **"Points at the original" fired on a clean timeline** in the synthetic run, because the check looked for the original's folder
+   and the test's outputs lived under it. It now looks for the original file itself.
+3. **The look PNGs of the graphics were plain grey**: the check's own ffmpeg overlay paired the first background frame with nothing.
+   The frame is now decoded with its alpha and laid over grey with Core Graphics; the clips themselves were never at fault (40.1 and
+   44.6 dB against the compositor's drawing in `FCPXMLTests`).
+4. **"Open in DaVinci Resolve" was cut short** beside Show in Finder at the inspector's width (`26-timelines-ready`). The buttons now
+   go one under the other when they do not fit (`ViewThatFits`).
+5. **The first full `make test` had 4 failures**: three lists of what is built (Help, welcome, outputs) not yet naming `timelines`, and
+   a small progress spinner under 12 pt (RulesTests). Fixed, and the whole set run again.
+
+**Found and not fixed here (M9a's writer, logged for a separate session):** the excerpt's edited MP4 holds two pictures for two frame
+times each at the start of its held last frame (8,941 pictures over 8,943 frame times; packet gaps at 293.39 s), so its own Ready
+checklist says FAIL for Frame timing and Key frames. The timelines are counted on the video's clock (8,943 frames, equal). `Render/`
+was not changed by this part.
+
+### Checks run, with results (PLAN M10, the checks part M10a runs: 1, 2, 4, 5, 8)
+
+Real media: the 13 Sep excerpt (`~/Prakriti/Dev/Excerpts/2026-09-13 excerpt 2m to 7m.mp4`, from the 13 Sep talk at 2:00), and the
+fixtures in the regression set. Beats for the excerpt: 7 by Qwen3.8-27B in 11 min 11 s, kept in `~/Prakriti/Dev/Beats`. Originals
+unchanged (13 Sep 730,464,600 bytes, same date; the excerpt 231,898,852 bytes, same date).
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `make test` with `FCPXMLTests`: three fixture plans valid against `FCPXMLv1_14.dtd` and `FCPXMLv1_10.dtd` (copied to `mac/build/dtd/`), clean under the semantic lint; the lint catches each rule | **PASS.** Plain cut (14 spine clips, 40 captions), Clear with title and name (70 clips, 6 push-in markers, the hold, 215 captions), a 4K talk opening on its strongest line (22 clips, 3 texts on two lane pairs, 3 chapters, a check marker, 63 captions): **6 of 6 files valid**, 0 lint problems; the two versions of each differ only in `version`. A broken copy of each rule (a time of 1/7 s, a 3-frame gap, a sequence 30 frames long, a ref to nothing, a missing source, a 120 s dissolve with no handle, two overlapping captions, a marker outside its clip) is caught. Clone proof: a clone 0 private bytes and the source's clone id; a copy 2,000,000 bytes of its own. End to end on the test pattern: written in 0.7 s, both valid, the title clip `prores 4444 yuva444p12le`, 40.1 and 44.6 dB against the compositor, the held frame as long as the hold, the media a clone, a plan with someone left out refused with nothing kept |
+| 2 | `make accept-timeline MILESTONE=v2-m10a` on the 13 Sep Clear version (excerpt) | **PASS** (`screens/mac/v2-m10a/acceptance-timeline.txt`). The make wrote them in its own step (1.8 s); **both files valid** against Final Cut Pro's DTDs (xmllint) and **0 lint problems in place**; the files differ only in their version; **6 sources: 1 under `Media/`, 5 under `Graphics/`; "Studio Recordings" 0 times, the original 0 times**; `Media/2026-09-13 excerpt 2m to 7m.mp4` **a clone, proved per file**: clone id 11722226, the source's 11722226, **0 of its 231,898,852 bytes its own**, 2 files share its blocks; 8,943 frames, the video's 298.398 s; 35 spine clips; 4 texts = the plan's 4, 4 editable copies off; 5 chapters = the plan's 5; 14 punch-ins as transforms, 2 push-ins as 2 markers, no animation; Read Me five lines, no dashes; the `.srt` byte for byte the video's; Make Timelines again from the video already made in 1.7 s; with the teacher set to Hide Face, refused in words and nothing written; 0 cloud calls |
+| 4 | `Graphics/` clips: ProRes 4444 with alpha (ffprobe); one frame of each looked at | **PASS.** Title, Lower third 1, Key phrase 1 and 2: each `prores 4444 yuva444p12le` 1920x1080 30000/1001, decoded to its end (60, 136, 72, 74 frames), its middle frame 95.5 to 98.3% clear pixels with 3,570 to 18,266 opaque. **Looked at** (`screens/mac/v2-m10a/graphics/*.png`, text only, laid over grey): the title "The Lineage of Kṛṣṇamācārya" in two lines on the right with every IAST mark, the name "Gabriel Galindo" with "Teacher" at 70% bottom right, "the coaching program" and "working in sales" on the right; Alegreya Sans, white with its soft shadow. The held last frame (ProRes 422, 146 frames = the hold) shows the talk: **measured only**, for Ivan below |
+| 5 | DaVinci Resolve 20.2.1 import by script | **SKIPPED, now Ivan's** (`screens/mac/v2-m10a/resolve-import.txt`). `make resolve-import` opened Resolve (it was not running), waited, and could not connect from outside (Resolve's scripting module loaded, and Resolve returned no connection); it quit Resolve again. The free edition allows scripts only from Workspace, Scripts, or External scripting is not set to Local. Steps for Ivan below. Not a ship gate |
+| 8 | Regression set | **PASS.** `make build`: no warnings. **`make test`: 424 tests, 0 failures, 29 skipped by design** (1,433 s; 214 screens, 1,149 pictures, `26-timelines-ready` and `26-timelines-refused` looked at, light and dark: the two rows with Open in Final Cut Pro, Open in DaVinci Resolve whole and Show in Finder, the note, Make Timelines Again; refused: the sentence and Make Timelines dimmed; Help 05's timelines section). The first full run had 4 failures (finding 5). `make accept`: 13 Sep -16.8 LUFS, -1.7 dBFS, transcript to 15:47 of 15:48; silent-60s refused at the sound check, nothing made; 6 Sep -16.7 LUFS, -1.4 dBFS, 153 words found again. `make accept-edits`: **38.82 s shorter (expected 38.82)**, 0 of 73 runs from the cut heard, 189 of 201 after it, the class refused. `make migrate-check`: recordings 13/13, folders 2/2, output settings 40/40, Activity lines 1,451/1,451, approved 2 (the Timelines switches are added at launch, off: 43 settings in the copy) |
+
+**Em dashes:** 0 in every line this part added (grep for U+2014 and U+2013 over the diff, the new files, the Help articles and Read Me).
+
+### Decisions, each with its reason
+
+1. **Timelines in their own `Timeline` folder beside `Video`, not inside it.** Reason: the video folder is what versions keep and
+   Approve copies; the timelines point at Outputs by absolute path, so they must not travel (warning 194).
+2. **Make Timelines writes from the video already made; the output writes them in every make.** Reason: least friction; a make costs
+   minutes, and the plan, the video and its captions are already there and checked.
+3. **The texts are rendered clips drawn by the compositor's code, with editable copies switched off.** Reason: research 5.4; Resolve
+   flattens titles, and in-XML styling and motion fail silently. The rendered clip makes the timeline look like the MP4.
+4. **The held last frame is a rendered clip, not a freeze written in XML.** Reason: a `timeMap` freeze is the kind of retiming that
+   fails silently on import; a clip of the frame always opens.
+5. **Captions are cut at clip edges.** Reason: research 5.7 rule 5 (inside the parent clip); a cue across a cut becomes two captions
+   with the same words.
+6. **Fail closed against Ivan's choices now, not only the video's.** Reason: someone he has just set to Hide Face must never reach a
+   timeline made from an older video.
+7. **Open in DaVinci Resolve opens Resolve and shows the file.** Reason: Resolve does not open FCPXML from the Finder (warning 193).
+
+### What does not work yet
+
+- A recording with anyone hidden, left out or a name muted gets no timeline (M10b, privacy-safe media).
+- Push-ins are markers and there are no dissolves until the round trips (M10b, checks 6 and 7).
+- Whether Resolve 20.2.1 imports the 1.10 file with its captions, markers and text lanes is unverified until Ivan's check 5.
+- The editable copies name Alegreya Sans, which Final Cut Pro and Resolve only have if it is installed on the Mac; they substitute
+  another face otherwise. The rendered clips are unaffected.
+- Versions keep no timelines; after Use This Version the row says the timelines are from an earlier plan, and Make Timelines writes
+  them again.
+
+### Installed
+
+To be installed with `make install` right after this commit; the install is recorded in the next commit.
+
+### For Ivan
+
+- [ ] **Check 5, about 3 minutes (DaVinci Resolve could not be reached from outside it).** Paste this in Terminal:
+  ```bash
+  cd ~/Code/prakriti/mac && mkdir -p "$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility" && cp scripts/resolve-import.py "$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility/"
+  ```
+  Then open DaVinci Resolve, open any project, choose Workspace > Console, then Workspace > Scripts > resolve-import. The Console
+  prints "Imported: N clips ..." and PASS or FAIL against 35 clips and 8,943 frames. It makes its own project, "Prakriti scratch
+  v2-m10"; delete it afterwards if you like. Tell me the lines it printed.
+- [ ] **Please do not update DaVinci Resolve during the v2 build** (PLAN M10): the timeline is written for 20.2.1.
+- [ ] **Look at the frame I could only measure** (D1): `~/Prakriti/Dev/Outputs/2026-09-13 excerpt 2m to 7m/Timeline/Graphics/Held last
+  frame.mov`, the held last frame of the excerpt.
+- [ ] **Try it on a real recording:** open one with an edited video, Outputs tab, Timelines, Make Timelines, then Open in Final Cut Pro.
+  Nothing to switch on first.

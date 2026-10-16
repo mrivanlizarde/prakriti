@@ -918,6 +918,32 @@ opening line, chapter). Settings, House Style gains Open on the strongest line, 
 accept-hook`; `TEST_RUNNER_PRAKRITI_VIDEO_DIRECTION="More energetic. Faster, more frequent cuts." make accept-video` measures the
 Energetic version by M8's checks 2 and 3.
 
+**v2 part M10a, timelines, Thu 15 Oct (see BUILD-LOG "v2 part M10a"):** the same edit as the edited video, as files to finish by hand
+in Final Cut Pro or DaVinci Resolve, in a `Timeline` folder in the recording's output folder: `Edit for Final Cut Pro.fcpxml` (FCPXML
+1.14) and `Edit for DaVinci Resolve.fcpxml` (1.10), one generator, only the version differs (`Export/FCPXMLWriter.swift`); the video's
+own `.srt` beside them; `Read Me.txt` (five lines, `Export/ReadMe.swift`); `Graphics/` with every text (title, teacher's name, key
+phrases, terms) as a full-frame ProRes 4444 clip with transparency, drawn frame by frame by the compositor's own `OverlayTable.layers`
+(`Export/GraphicsClips.swift`; measured 40 to 45 dB against the compositor's drawing), and the held last frame as ProRes 422; `Media/`
+with an APFS clone of the recording (`clonefile`, `Export/TimelineMedia.swift`, proved per file by getattrlist: the same clone id, 0
+bytes of its own). In the files: every kept span in the spine on whole frames with a one-frame audio fade at each cut, split wherever
+the framing changes, each punch-in a static `adjust-transform` (scale, and the position in percent of the frame's height that keeps the
+plan's framing); slow push-ins a to-do marker "Push-in here", no animation and no dissolve until M10b's round trips; each text the
+rendered clip on a lane, enabled, with an editable title above it, `enabled="0"`; captions in the `iTT` role, cut at clip edges, never
+overlapping; chapters as `chapter-marker`; the plan's moments to check as to-do markers. Every file is checked before it is kept
+(`Export/FCPXMLLint.swift`: whole frames, no spine overlap or gap, the sequence's length, every ref, every src, transition handles,
+captions inside their clip and not overlapping; and Final Cut Pro's own DTD through `xmllint` when Final Cut Pro is on the Mac), every
+clip decoded to its end, then moved into place only by `OutputGate.admitTimeline` (`Export/TimelineExport.swift`). **Written only when
+everyone in the video is included and no name is muted**, in the video as made and in Ivan's choices now: otherwise "A timeline for a
+recording with hidden people arrives in the next update." and nothing is written (M10b lifts it with privacy-safe media). Made two
+ways: the **Timelines** output (`OutputKind.timelines`, off for every folder) writes them in a make, step "Writing the timelines",
+right after the video is kept; and **Make Timelines** in the inspector's Outputs, under Timelines (`Views/Inspector/TimelineSection.swift`,
+`App/TimelineActions.swift`), writes them in seconds from the video already made, and turns the output on for the recording. Rows for
+Final Cut Pro and DaVinci Resolve with **Open in Final Cut Pro** (hands it the file) and **Open in DaVinci Resolve** (opens Resolve and
+shows the file: Resolve does not open FCPXML from the Finder), each only when the app is on this Mac, and Show in Finder; File, **Export
+Final Cut Pro Timeline** (Command-E) and **Export DaVinci Resolve Timeline**. Approve does not copy the Timeline folder and versions do
+not keep it (it points at Outputs by absolute path). Help 05, 07 and 10 (`timelines` capability). `make accept-timeline`, then `make
+resolve-import`.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -1113,6 +1139,12 @@ cd ~/Code/prakriti/mac && make accept-video MILESTONE=v2-m8b
 ```
 ```bash
 cd ~/Code/prakriti/mac && make accept-hook MILESTONE=v2-m9d
+```
+```bash
+cd ~/Code/prakriti/mac && make accept-timeline MILESTONE=v2-m10a
+```
+```bash
+cd ~/Code/prakriti/mac && make resolve-import MILESTONE=v2-m10a
 ```
 ```bash
 cd ~/Code/prakriti/mac && TEST_RUNNER_PRAKRITI_VIDEO_DIRECTION="More energetic. Faster, more frequent cuts." make accept-video MILESTONE=v2-m9d
@@ -1366,6 +1398,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | Progress and Activity (v2 part M4a) | `mac/Prakriti/Progress/`: `JobProgress.swift` (`ProgressTracker`, the pure arithmetic: weights, the percent that never goes back, the time left only from a measured rate, the stall line; `ProgressSnapshot` with its status line; `TimeLeft`; `JobProgress`, published at most twice a second), `ProgressMeter.swift` (what the pipeline and ffmpeg report, read twice a second; `ProcessControl`, Pause by SIGSTOP and SIGCONT), `StageTimings.swift` (`StageTiming`, a SwiftData model, the last 10 runs of each stage, seeded once from the store; `firstGuess`, measured 12 Oct). `Engine/Subprocess.swift` (`onStdoutLine`, `control`), `Engine/Pipeline.swift` (`meter`, `passes`, ffmpeg's `-progress pipe:1` in `tool`), `App/PipelineRunner.swift` (`currentJob`, `pause`, `resume`, `stop`, `makeNext`, `queueFraction`, `queueTimeLeft`, `showSample`), `App/StatusSummary.swift` (`noteStatusLine`, `--debug-status-log`); views: `Views/Activity/ActivityWindow.swift` (the window, Now, Finished, Log, `ActivityButton`), `Views/ProgressViews.swift` (`ProgressRing`, `ProgressBlock`, `ProgressButtons`), the card's `StatusCapsule`, the list's Status column, `StatusBlock` in `OutputsTab`, `ViewerBanner`, `Views/MenuBar.swift`; `Fixtures.showProgress` (the sample talk being made, for snapshots and captures); tests `ProgressTests` (in `make test`) and `ProgressAcceptanceTests` (`make accept-progress`) |
 | The edited video (v2 parts M8b and M8c) | `mac/Prakriti/Render/`: `VideoPreview.swift` (M8c: the Viewer's Video, built from the plan the video was made from, `VideoSampleFolder`), `EditTimeline.swift` (the plan in frames and samples), `CompositionBuilder.swift`, `Instructions.swift` (`RenderInstruction`), `Compositor.swift`, `VideoAudio.swift` (decode, join with crossfades, master), `VideoWriter.swift`, `Mp4Boxes.swift` (moov, edit lists), `Captions.swift`, `VideoDescription.swift` (`Description.txt`), `ReadyChecklist.swift`, `OutputGate.swift` (the not-checked refusal, the people output checks since M8d, and the only move), `VideoStep.swift` (`VideoRecord`, make and check); since M8d `VideoHiding.swift` (`HiddenFaces`, `video-hiding.json`) and `People/PictureOutputCheck.swift`; the pipeline's `.renderVideo` and `.checkVideo` steps and `PipelineOptions.makeVideo`; `Recording.videoJSON` and `videoProblem`; `App/VideoActions.swift` (Make Video); `Views/Inspector/VideoSection.swift`; since M8c `App/VideoEditActions.swift` (Restore, Remove, Take Out Again, Keep, Delete, Undo, `Recording.planRestores`, `restoresPending`, Watch Video), the Video rendition in `Views/Viewer/ViewerModel.swift`, `CaptionsOverlay` and `PictureToggle` in `Views/Viewer/PeopleOverlay.swift`, `Captions.cues(srt:)`; tests `RenderTests`, `ViewerVideoTests` (in `make test`), `VideoAcceptanceTests` (`make accept-video`), `ViewerVideoAcceptanceTests` (`make accept-viewer-video`), `PeopleInVideoTests` (in `make test`), `PeopleVideoAcceptanceTests` (`make accept-people-video`) and `capture-window.swift --video` (`make look-video`) |
 | House style and zooms (v2 part M9a) | `mac/Prakriti/Edit/Style.swift` (`StyleName`, `Pace`, `PunchLevel`, `Length`, `HouseStyle`, `Style` with research 2.3 and 2.4's numbers, `maxScale`), `Edit/VisualPlan.swift` (`FaceSpot`, `VisualPlan.make`, `assign`, `center`, `shots`, `count`; `Framing`), the plan's `visual` items and `holdSeconds` (`EditPlan.Visual`), PlanValidation rule 7, `EditTimeline.holdFrames`, the hold in `CompositionBuilder`, `VideoWriter` and `VideoAudio.join`, `Compositor.frame`, `RenderInstruction.crop`, `Pipeline.subject`, `PipelineOptions.house`, `AppSettings.houseStyle`, `Views/Settings/HouseStylePane.swift`; tests `StyleTests` (in `make test`) and `StyleAcceptanceTests` (`make accept-style`) |
+| Timelines (v2 part M10a) | `mac/Prakriti/Export/`: `FCPXMLWriter.swift` (`FCPXMLVersion`, `TimelineSpec`, `TimelineLayout`, the spine, punch-ins, push-in markers, texts and their editable copies, captions, chapters, markers, the XML), `FCPXMLLint.swift` (the lint's seven rules, the DTDs copied out of Final Cut Pro, `xmllint`), `GraphicsClips.swift` (texts as ProRes 4444 through `OverlayTable.layers`, the held last frame), `TimelineMedia.swift` (the clone, `cloneFacts` with getattrlist, `info`, `tailFrames`), `ReadMe.swift`, `TimelineExport.swift` (the refusal, `Record` in `Timeline/.timeline.json`, make and check); `OutputGate.admitTimeline`; `OutputKind.timelines`; `PipelineStep.timelines`, `PipelineOptions.makeTimelines`, `PipelineResult.timeline`; `App/TimelineActions.swift` (Make Timelines, Open In, Export); `Views/Inspector/TimelineSection.swift`; File menu items in `App/PrakritiApp.swift`; tests `FCPXMLTests` (in `make test`), `TimelineAcceptanceTests` (`make accept-timeline`), `scripts/resolve-import.py` (`make resolve-import`) |
 | Hook, chapters, versions (v2 part M9d) | `mac/Prakriti/Edit/Hook.swift` (`Hook`, `HeldMoment`), `Edit/Chapters.swift`, `Edit/TextLight.swift`, key phrases and terms in `Edit/TextPlan.swift` (`Moment`, `placePhrase`) and `PlanStep.keyPhrases`, `terms`, `Lexicon.terms`, `Beat.keyPhrase`, `OverlayKind.keyPhrase` and `.term` with `OverlayLayout.wordEdges` and `OverlayTable.wordLayers`, `EditPlan.Span.hook`, `hookSpans`, `mainSpans`, `held`, `Chapter.seconds`, `EditTimeline.Piece.hook`, `editTime(_:span:)`, `hookFrames`, `RoughCut.Input.held`, `VisualPlan.Input.held` and `textChanges`, `Count.textIns`, `PlanValidation` (opening line, chapters on the video's clock, key phrases and terms word for word, zooms on the video's clock), `HouseStyle.keyPhrases`, `termCards`, `openingLine`, `Style.opening`, `keyPhraseEvery`, `held`, `termCards`, `VideoDescription.make(planChapters:)`; versions in `Model/Models.swift` (`EditVersion`, `EditVersions`, `Recording.versionsJSON`) and `App/VersionActions.swift`, `ViewerModel.versionPlaying`, `Approval.Receipt.version`; `Views/Inspector/DirectionTab.swift`, `InspectorTab.direction`, `TimelineMark` in `Views/Viewer/TimelineLite.swift`; tests in `HookTests` and `VersionTests` (in `make test`), `HookAcceptanceTests` (`make accept-hook`), `BeatsCache` and `BeatsWarmTests` |
 | Beats and direction (v2 part M9c) | `mac/Prakriti/Edit/Beats.swift` (`BeatTag`, `BeatKind`, `Beat`, `BeatsFile` and `beats.json`, `BeatSentence`, `BeatCheck`), `Edit/Direction.swift` (`DirectionPreset`, `LengthChoice`, `TextLevel`, `DirectionFields` and its vocabulary, `DirectionChip`, `RecordingDirection`, `DirectionReading`, `Direction.read`, `house`, `style`, `chips`, `DirectionModelCheck`), `Edit/DirectionRules.swift` (the rules table, `tagPatterns`, the people and publishing patterns), `Edit/Selection.swift` (the knapsack), `Writing/Planner.swift` (the beats and the direction's own words through the "Planning the edit" model under the lock), `PlanStep` (selection, `RemovedKind.beat`, `planLines`), `Pipeline.prepareDirection`, `PipelineOptions.direction`, `planning`, `planFolder`, `EditPlan.Direction`, `BeatChoice`, `planLines`, `Basis.direction`, `Style.changeAim`, `VisualPlan.Input.beatStarts` and `keyLines`, `ModelRequest.deterministic` and `Shape.planning`, `Recording.directionJSON`, `AppModel.setDirection` and `planningLine`, `Views/Inspector/DirectionSection.swift` (with `FlowLayout`), the plan's lines in `EditPlanSection` and `ProgressBlock`; tests in `StyleTests` (in `make test`) and `DirectionAcceptanceTests` (`make accept-direction`) |
 | Text and graphics (v2 part M9b) | `mac/Prakriti/Render/TypeFace.swift` (Alegreya Sans, `register`, `prepared`, `missing`), `Render/Overlays.swift` (`OverlayKind` and its motion, `OverlayLayout`, `OverlayView`, `OverlayCache`, `OverlayTable`, `EditTimeline.editFrame(span:original:)`), `Edit/TextPlan.swift` (the title and lower thirds, `Faces`), `Resources/Fonts/` (three weights and `OFL.txt`), the text fields of `EditPlan.Visual`, rule 7's text half, `Compositor.overlay`, `RenderInstruction.textLayers`, `Pipeline.textSetup`, `PipelineOptions.planTitle`, `PeopleSetup.teachers`, `HouseStyle.titleOnScreen` and `namesOnScreen`, the pane's Text on Screen; tests `TextTests` (in `make test`) and `TextAcceptanceTests` (`make accept-text`) |
@@ -2387,6 +2420,36 @@ top and its end. Reading the code is not verification, and neither is a passing 
 187. **A selection under 85% of the length asked for takes a long part in place of shorter, weaker ones when that reaches the length
     (`Selection.floor`).** Reason: measured 15 Oct on the 13 Sep talk with the M9d beats, the best value under 10 minutes was a
     7:58 video, under PLAN M9 check 3's 8:30 floor, because the one part left that fit was 3:34 long.
+
+188. **A timeline is written only when everyone in the video is included and no name is muted, and never points at the original
+    (`TimelineExport.refusal`, read again in `OutputGate.admitTimeline`, and Ivan's choices now in `AppModel.timelineRefusal`).**
+    Reason: an editing app's timeline points at whole source files, so one clip edge dragged out or one blur switched off would bring
+    back a person Ivan hid (research-edit-engine.md 5.5, PLAN R2). Only M10b's privacy-safe media may lift the refusal. The gate also
+    refuses a file that names the original's path.
+
+189. **The timelines' media is a clone in `Timeline/Media`, proved per file with getattrlist (the same clone id as the source, 0
+    bytes of its own), never by free disk space.** Reason: PLAN M10 check 2; another agent may write to the same disk, and pointing at
+    Outputs keeps iCloud from evicting the shared Studio Recordings original under an open timeline.
+
+190. **The DTDs are copied out of Final Cut Pro to a folder whose path has no space before `xmllint` reads them.** Reason: measured
+    15 Oct, `xmllint --dtdvalid` with the DTD in the recording's own folder failed with "parser error : xmlSAX2ResolveEntity"; the same
+    file and DTD from a path without spaces were valid. Research 5.8 saw the same inside the app bundle.
+
+191. **No animation and no dissolve in a timeline: a slow push-in is the marker "Push-in here" and the clip stays wide.** Reason: the
+    vault's 2026-07-30 lesson (in-XML animation fails silently on import) and PLAN M10's gate; M10b turns animation on only after the
+    round trips in both apps, with `timelineAnimationsVerified`.
+
+192. **Every text in `Graphics/` is drawn by `OverlayTable.layers`, the compositor's own code, frame by frame; never a second drawing
+    of the text.** Reason: the timeline must look exactly like the MP4 (research 5.4); measured 15 Oct, the title clip decoded by
+    ffmpeg with its alpha is 40.1 to 44.6 dB from the compositor's drawing. Buffers are tagged premultiplied, which is what Core Image
+    draws.
+
+193. **Open in DaVinci Resolve opens Resolve and shows the file in the Finder; it never hands the file to Resolve.** Reason: Resolve
+    20.2.1's Info.plist claims only its own documents (.drp, .drt and others), not .fcpxml; File > Import > Timeline is the way in.
+
+194. **Approve never copies the Timeline folder, and versions do not keep it.** Reason: the files point at `Timeline/Media` and
+    `Timeline/Graphics` in Outputs by absolute path, so a copy in Approved or Versions would quietly point back at Outputs, and at media
+    a later make replaces.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

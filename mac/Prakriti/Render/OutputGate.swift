@@ -17,6 +17,8 @@ import Foundation
 // - **The sound output check** (research-people.md 3.6 item 2, M6c's check on the podcast), whenever someone is left out:
 //   the made file's sound is told apart again and every voice in it must be someone included (`AudioOutputCheck`).
 // - **The file is whole.** It opens, its last 5 seconds decode, and it is the plan's length within one frame.
+// The timelines (v2 part M10a) pass the same gate through `admitTimeline`: everyone in the video included and no name muted
+// (until M10b's privacy-safe media), the lint and DTD clean on both files, every clip decoded to its end.
 // A check that was needed and did not run counts as failed (fail closed). The rest of the Ready checklist (bitrate, tags,
 // captions, the words) is reported, not gated: a file that misses YouTube's spec is safe to keep and look at, and its
 // checklist says FAIL.
@@ -118,7 +120,20 @@ enum OutputGate {
         try move(staged, to: destination)
     }
 
-    /// The only way a made video reaches its folder.
+    /// Moves a staged `Timeline` folder (v2 part M10a) to `destination` only when it may be kept: `refusal` is the timeline's own
+    /// rule read again here (everyone in the video included, no name muted; by construction until M10b's privacy-safe media), and
+    /// `problems` what its checks found (the lint and DTD on both files, every clip decoded to its end). Otherwise it is deleted
+    /// where it was made and the reason thrown.
+    static func admitTimeline(staged: URL, to destination: URL, refusal: String?, problems: [String]) throws {
+        let all = (refusal.map { [$0] } ?? []) + problems
+        guard all.isEmpty else {
+            try? FileManager.default.removeItem(at: staged)
+            throw Refused(reason: all.joined(separator: " "))
+        }
+        try move(staged, to: destination)
+    }
+
+    /// The only way a made video or timeline reaches its folder.
     private static func move(_ staged: URL, to destination: URL) throws {
         let fm = FileManager.default
         if fm.fileExists(atPath: destination.path) {

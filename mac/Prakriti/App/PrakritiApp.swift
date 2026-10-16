@@ -224,6 +224,13 @@ struct AppCommands: Commands {
             Button("Add Folder…") { model.chooseFolder() }
                 .keyboardShortcut("o", modifiers: [.command, .shift])
             Divider()
+            // The timelines (v2 part M10a, design spec 3.12): written beside the outputs when needed, then shown in the Finder.
+            Button("Export Final Cut Pro Timeline") { model.exportTimeline(.finalCut) }
+                .keyboardShortcut("e", modifiers: .command)
+                .disabled(!model.canExportTimeline)
+            Button("Export DaVinci Resolve Timeline") { model.exportTimeline(.resolve) }
+                .disabled(!model.canExportTimeline)
+            Divider()
             Button(model.settings.isPaused ? "Resume All" : "Pause All") {
                 model.setPaused(!model.settings.isPaused)
             }

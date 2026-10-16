@@ -82,6 +82,8 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
     case checksAndReport
     case titlesNotesChapters
     case editedVideo
+    /// The same edit for Final Cut Pro and DaVinci Resolve (v2 part M10a), made with the edited video.
+    case timelines
     case thumbnails
     case shorts
     case knowledgeBase
@@ -95,6 +97,7 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
         case .checksAndReport: "Checks and report"
         case .titlesNotesChapters: "Titles, show notes and chapters"
         case .editedVideo: "Edited video"
+        case .timelines: "Timelines"
         case .thumbnails: "Three thumbnails"
         case .shorts: "Shorts"
         case .knowledgeBase: "Knowledge base"
@@ -110,6 +113,7 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
         case .checksAndReport: "Length, sound, loudness and coverage, in one short report."
         case .titlesNotesChapters: "Written by the model you choose for writing."
         case .editedVideo: "An MP4 cut from the edit plan, with captions, a description and a checklist for YouTube."
+        case .timelines: "The same edit for Final Cut Pro and DaVinci Resolve, made with the edited video."
         case .thumbnails: "Three still images to choose from for each video."
         case .shorts: "Short vertical clips from the strongest moments."
         case .knowledgeBase: "Each talk added to a searchable library of the teaching."
@@ -125,6 +129,7 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
         case .checksAndReport: "checklist"
         case .titlesNotesChapters: "list.bullet.indent"
         case .editedVideo: "play.rectangle"
+        case .timelines: "square.and.arrow.down.on.square"
         case .thumbnails: "rectangle.split.3x1"
         case .shorts: "rectangle.portrait"
         case .knowledgeBase: "text.magnifyingglass"
@@ -134,7 +139,7 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
 
     var isBuilt: Bool {
         switch self {
-        case .podcastEpisode, .podcastReady, .transcript, .checksAndReport, .titlesNotesChapters, .editedVideo: true
+        case .podcastEpisode, .podcastReady, .transcript, .checksAndReport, .titlesNotesChapters, .editedVideo, .timelines: true
         default: false
         }
     }

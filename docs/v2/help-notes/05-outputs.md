@@ -126,3 +126,17 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
 - The Direction pointer now names the Direction tab. A new `style` paragraph says a video's plan reads the parts of the talk and
   that their chapters go in `Description.txt` (the Ready checklist's Chapters line passes with writing off).
 - "The title and names on screen": the title shows as the talk begins, after the opening line; key phrases and terms point to 08.
+
+## Built in v2 part M10a (Thu 15 Oct 2026)
+
+- "Timelines for Final Cut Pro and DaVinci Resolve" now describes what is built: the Timeline folder (two `.fcpxml` files, the
+  video's `.srt`, `Read Me.txt`, `Graphics/`, `Media/`), Make Timelines and the Timelines output, Open in Final Cut Pro, File >
+  Import > Timeline in Resolve with Use sizing information, File > Export Final Cut Pro Timeline (Command-E), push-ins as markers,
+  and the refusal for anyone hidden or a muted name. The old text promised "every cut, zoom, caption, title and transition stays
+  editable"; zooms that move and transitions are not written until M10b's round trips, so it was cut. "with blurs and removals
+  already applied" was cut too: M10a writes no timeline when anyone is hidden.
+- 10 (troubleshooting): "Update DaVinci Resolve to the latest version" was replaced: the file is written for Resolve 20 and the
+  plan asks Ivan not to update Resolve during the build. Added: no timeline, and missing punch-ins or captions in Resolve.
+- 07: "In the timelines", under `timelines`. The older line under `people` (cleaned media) stays hidden for M10b.
+- Unverified until Ivan's round trips (PLAN M10 checks 5 to 7): that Resolve 20.2.1 imports the 1.10 file with its captions,
+  markers and the texts' lanes; that Final Cut Pro shows the punch-ins exactly as the MP4.

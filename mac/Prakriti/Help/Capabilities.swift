@@ -66,7 +66,9 @@ enum Capability: String, CaseIterable, Sendable {
     /// The rest of M9 (M9d): key-phrase text, term cards, the opening line (the hook), the held moment, chapters, versions, the
     /// Direction tab and the marks lane.
     case style
-    /// Timelines for Final Cut Pro and DaVinci Resolve (M10).
+    /// Timelines for Final Cut Pro and DaVinci Resolve (M10a): FCPXML 1.14 and 1.10, the texts as graphics clips, the media as a
+    /// clone, Read Me, Make Timelines and Open In, the File menu's export items; written only when everyone is included. The
+    /// privacy-safe media for a recording with anyone hidden (M10b) is described under `people`.
     case timelines
     /// Vertical shorts (M11a).
     case shorts
@@ -82,9 +84,9 @@ enum Capabilities {
     /// (M6b), choices applied to audio (M6c), hiding in pictures (M6d), the People gallery (M7a), recognition (M7b), the
     /// edit plan (M8a), the rendered MP4 (M8b), the video in the Viewer (M8c), the House Style with its zooms (M9a), the title and
     /// names on screen (M9b), direction for one recording (M9c), and the opening line, key phrases, terms, chapters, versions and
-    /// the Direction tab (M9d). Each later part switches its own on.
+    /// the Direction tab (M9d), and the timelines for Final Cut Pro and DaVinci Resolve (M10a). Each later part switches its own on.
     static let built: Set<Capability> = [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery,
-                                         .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style]
+                                         .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style, .timelines]
 
     /// Every capability, for the test that every article and every block is visible once all are built.
     static let all = Set(Capability.allCases)

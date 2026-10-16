@@ -98,8 +98,9 @@ struct ApprovalCheck: Equatable, Sendable {
             names = Pipeline.madeFiles(in: URL(fileURLWithPath: folder)).filter(Pipeline.madeNames.contains)
         }
         // titles-notes-chapters.json keeps the model's own answer, quotes that failed the check
-        // included; show-notes.md is what is approved.
-        return names.filter { $0 != TranscriptFiles.asHeard && $0 != "speech.wav" && $0 != WrittenPackage.fileName }.sorted()
+        // included; show-notes.md is what is approved. The timelines (v2 part M10a) are for finishing by hand, not for upload,
+        // and point at the media in Outputs, so a copy in Approved would point back there: they stay out.
+        return names.filter { $0 != TranscriptFiles.asHeard && $0 != "speech.wav" && $0 != WrittenPackage.fileName && $0 != TimelineExport.folderName }.sorted()
     }
 }
 

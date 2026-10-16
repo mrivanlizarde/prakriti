@@ -4,7 +4,7 @@ title: If something isn't working
 summary: What to check when a recording is not found, has no sound, sends no notice, or a model does not answer, and where the log is.
 section: troubleshooting
 order: 1
-keywords: [troubleshooting, problem, edit plan, Plan the Edit, soft picture, punch-in, Teaching, video does not play, watch video, not found, silent, no sound, capture check, audio tracks, both channels, Check Capture, notifications, stopped, quit, flicker, bands, sync, LM Studio, API key, Claude API, Anthropic, OpenAI, model list, cut, disk space, encoding overloaded, log, show log]
+keywords: [troubleshooting, problem, timeline, Final Cut Pro, DaVinci Resolve, relink, offline media, edit plan, Plan the Edit, soft picture, punch-in, Teaching, video does not play, watch video, not found, silent, no sound, capture check, audio tracks, both channels, Check Capture, notifications, stopped, quit, flicker, bands, sync, LM Studio, API key, Claude API, Anthropic, OpenAI, model list, cut, disk space, encoding overloaded, log, show log]
 related: [capture-the-best-video, set-up-obs-for-prakriti, sources-and-watching, models-and-api-keys]
 ---
 
@@ -260,21 +260,30 @@ is still made, and the inspector's Outputs say why the writing stopped.
 :::requires timelines
 ## Final Cut Pro and DaVinci Resolve
 
+### If there is no timeline
+
+Timelines are made from the edited video, so make the video first. A timeline is written only when everyone in the
+video is included and no name is muted: for anyone set to Hide Face or Leave Out, the inspector's Outputs, under
+Timelines, says "A timeline for a recording with hidden people arrives in the next update." If it says the edit plan
+changed, click Make Video Again, then Make Timelines.
+
 ### If the media shows as missing or offline
 
-The timeline uses media in the recording's folder in Outputs. If the folder was moved or renamed, put it
+The timeline uses the media in the recording's Timeline folder in Outputs. If the folder was moved or renamed, put it
 back, or point the app to it:
 
 - **Final Cut Pro:** select the missing clips, choose File > Relink Files, and choose the folder.
 - **DaVinci Resolve:** Control-click the timeline in the Media Pool, choose Relink Clips for Selected
   Timeline, and choose the folder.
 
-If the folder is in iCloud Drive, make sure its files are downloaded.
-
 ### If DaVinci Resolve says the file is not valid
 
-Update DaVinci Resolve to the latest version, then import again. Use the file Prakriti made for Resolve,
-not the one for Final Cut Pro, if both are in the folder.
+Use Edit for DaVinci Resolve.fcpxml, not the file for Final Cut Pro: it is written for DaVinci Resolve 20.
+
+### If the punch-ins or captions are missing in DaVinci Resolve
+
+Import the timeline again with Use sizing information turned on. For the captions, choose File > Import > Subtitle
+and select the .srt file in the Timeline folder.
 :::
 
 ## Space

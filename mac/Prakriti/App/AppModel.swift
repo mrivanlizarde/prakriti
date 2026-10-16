@@ -175,6 +175,12 @@ final class AppModel {
     var planningLines: [UUID: String] = [:]
     /// Why Make Video refused a recording the last time Ivan asked (v2 part M8b), by recording.
     var videoProblems: [UUID: String] = [:]
+    /// Why the timelines were not written the last time (v2 part M10a), and the recordings whose timelines are being written now
+    /// by Make Timelines, by recording.
+    var timelineProblems: [UUID: String] = [:]
+    var writingTimelines: Set<UUID> = []
+    /// Bumped when timelines are written, so the window reads their record again.
+    var timelineRevision = 0
     /// Bumped when a plan is written, so the window reads it again.
     var planRevision = 0
     @ObservationIgnored var planCache: [String: (modified: Date, plan: EditPlan?)] = [:]

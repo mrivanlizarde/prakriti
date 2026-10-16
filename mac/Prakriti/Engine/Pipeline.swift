@@ -30,7 +30,7 @@ import Foundation
 /// The steps, in order. `title` is what the recording page lists; `doing` is what the status line
 /// says while it runs ("Working on Sun 13 Sep: making the episode audio"). Never "Processing".
 enum PipelineStep: String, CaseIterable, Sendable {
-    case complete, capture, sound, speechAudio, transcript, coverage, wordList, namesSaid, faces, voices, trim, edits, leaveOut, planEdit, episode, loudness, podcastAudio, audioCheck, episodeTranscript, writing, renderVideo, checkVideo, podcastPackage, report
+    case complete, capture, sound, speechAudio, transcript, coverage, wordList, namesSaid, faces, voices, trim, edits, leaveOut, planEdit, episode, loudness, podcastAudio, audioCheck, episodeTranscript, writing, renderVideo, checkVideo, timelines, podcastPackage, report
 
     var title: String {
         switch self {
@@ -57,6 +57,7 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .writing: "Titles, show notes and chapters"
         case .renderVideo: "Making the video"
         case .checkVideo: "Checking the video"
+        case .timelines: "Timelines for Final Cut Pro and DaVinci Resolve"
         case .report: "Report"
         }
     }
@@ -94,6 +95,7 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .writing: "Writing the titles, show notes and chapters"
         case .renderVideo: "Making the video"
         case .checkVideo: "Checking the video"
+        case .timelines: "Writing the timelines"
         case .report: "Writing the report"
         }
     }
@@ -175,6 +177,9 @@ struct PipelineOptions: Sendable {
     /// plan, which is then always planned. Only with the transcript, which the plan is made from. Off unless the
     /// recording's output switches ask for it (PLAN rule 2.1.7).
     var makeVideo = false
+    /// The timelines for Final Cut Pro and DaVinci Resolve (v2 part M10a), written after the video from the same plan, only with
+    /// the video and only when everyone in it is included. Off unless the recording's output switches ask for it.
+    var makeTimelines = false
     /// The recording's title and notes as Ivan set them, and when it was recorded: the video's name and Description.txt.
     var video = VideoFacts()
     /// The recording's title as Ivan set it in Info, for the title on screen (v2 part M9b). Empty: no title on screen.
@@ -229,6 +234,7 @@ struct PipelineOptions: Sendable {
         if makeTranscript && writing != nil { steps.append(.writing) }
         // After the writing, so its title, notes and chapters can go in Description.txt (v2 part M8b).
         if makeVideo && makeTranscript { steps += [.renderVideo, .checkVideo] }
+        if makeVideo && makeTranscript && makeTimelines { steps.append(.timelines) }
         if makePodcastReady { steps.append(.podcastPackage) }
         if makeReport { steps.append(.report) }
         return steps
@@ -338,6 +344,9 @@ struct PipelineResult: Sendable {
     /// The edited video this make made and checked (v2 part M8b), or why it did not, or neither when it was not asked for.
     var video: VideoRecord?
     var videoProblem: String?
+    /// The timelines this make wrote (v2 part M10a), or why it did not, or neither when they were not asked for.
+    var timeline: TimelineExport.Record?
+    var timelineProblem: String?
 }
 
 /// Where the face and voice steps write, for one recording, and Ivan's names the writing step's privacy lock reads.
@@ -1199,6 +1208,41 @@ struct Pipeline: Sendable {
                 }
             }
 
+            // 9c. The timelines (v2 part M10a): from the plan the video was just made from, only once the video was kept, into a
+            //     hidden folder, checked, and let through `OutputGate` into Timeline. Every path inside them points at the
+            //     recording's own folder, where the place step below puts them. A refusal or a failure costs only this step.
+            if options.makeVideo && options.makeTranscript && options.makeTimelines {
+                await begin(.timelines)
+                meter?.startPass()
+                if let video = result.video, let plan = result.editPlan {
+                    let (faces, voices) = OutputGate.hidden(peopleFacts(result: result))
+                    let style = StyleName(rawValue: plan.style)?.title ?? plan.style
+                    let setup = TimelineExport.Setup(original: file, plan: plan, videoFolder: staging.appending(path: VideoStep.folderName, directoryHint: .isDirectory),
+                                                     captionsName: video.captionsName, project: "\(label), \(style)",
+                                                     build: staging.appending(path: ".timeline", directoryHint: .isDirectory),
+                                                     final: outputFolder.appending(path: TimelineExport.folderName, directoryHint: .isDirectory),
+                                                     admitTo: staging.appending(path: TimelineExport.folderName, directoryHint: .isDirectory),
+                                                     hiddenFaces: faces, leftOutVoices: voices)
+                    do {
+                        let record = try await TimelineExport.make(setup, now: Date(), progress: { [meter] in meter?.passProgress($0) })
+                        result.timeline = record
+                        await finish(.timelines, "In the \(TimelineExport.folderName) folder: \(record.summary.lowercasedFirst) For Final Cut Pro and DaVinci Resolve.")
+                    } catch is CancellationError {
+                        throw CancellationError()
+                    } catch {
+                        let reason = (error as? TimelineExport.Failure)?.reason ?? error.localizedDescription
+                        result.timelineProblem = reason
+                        log?.write("\(name): the timelines were not written. \(reason)")
+                        let refused = reason == TimelineExport.hiddenRefusal || reason == TimelineExport.mutedRefusal || reason == TimelineExport.unknownRefusal
+                        await finish(.timelines, reason + " Everything else is kept.", state: refused ? .skipped : .failed)
+                    }
+                } else {
+                    let reason = "No timeline was written, because the video was not made."
+                    result.timelineProblem = reason
+                    await finish(.timelines, reason, state: .skipped)
+                }
+            }
+
             // 8b. The podcast-ready files: the tagged MP3, captions, the text file and the checklist,
             //     written after the titles and notes so they can carry them.
             if let refusal = podcastRefusal {
@@ -1826,7 +1870,7 @@ struct Pipeline: Sendable {
     /// Every file a make can leave. Only these are ever replaced or removed from a recording's
     /// folder; anything else Ivan keeps there is left alone.
     static let madeNames: Set<String> = Set(["episode.mp3", "REPORT.md", "speech.wav", TranscriptFiles.asHeard, PodcastPackage.folderName, EditPlan.fileName,
-                                                   VideoStep.folderName, HiddenFaces.fileName, BeatsFile.fileName]
+                                                   VideoStep.folderName, HiddenFaces.fileName, BeatsFile.fileName, TimelineExport.folderName]
                                             + TranscriptFormat.allCases.map(TranscriptFiles.fileName))
         .union(WrittenPackage.fileNames)
 

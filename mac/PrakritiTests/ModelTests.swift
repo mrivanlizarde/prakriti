@@ -35,8 +35,8 @@ final class ModelTests: XCTestCase {
         for kind in OutputKind.notBuilt {
             XCTAssertFalse(OutputSetting(kind: kind, isOn: true).isOn, "\(kind) is not built and must stay off")
         }
-        XCTAssertEqual(OutputKind.built, [.podcastEpisode, .podcastReady, .transcript, .checksAndReport, .titlesNotesChapters, .editedVideo],
-                       "the edited video is built in v2 part M8b")
+        XCTAssertEqual(OutputKind.built, [.podcastEpisode, .podcastReady, .transcript, .checksAndReport, .titlesNotesChapters, .editedVideo, .timelines],
+                       "the edited video is built in v2 part M8b, the timelines in M10a")
         XCTAssertEqual(OutputKind.notBuilt.count, 4)
         XCTAssertFalse(OutputKind.editedVideo.isOnByDefault, "off for every new folder (PLAN rule 2.1.7)")
     }
