@@ -6601,7 +6601,10 @@ Originals unchanged: 13 Sep 730,464,600 bytes, 6 Sep 2,578,079,009, its vertical
 
 ### Installed
 
-(Below, after `make install`.)
+**Installed** at 06:54:15 on Fri 16 Oct with `make install` (commit 46784f4): new pid **90336** from `~/Applications/Prakriti.app` (was
+67129), signed, only the installed copy registered. Live log: "Prakriti 0.1 (1) opened. Mode: live.", "Finished launching. Mode: live.",
+**"06:54:15 Checked 2 folders. Nothing new."** and **"06:59:15 Checked 2 folders. Nothing new."**, pid 90336 still running. Nothing was made by
+the install: Thumbnails is off for every folder, and no approval in the live store has a record to check again, so none moved.
 
 ### For Ivan
 
