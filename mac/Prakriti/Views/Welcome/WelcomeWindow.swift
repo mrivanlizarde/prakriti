@@ -66,16 +66,24 @@ struct WelcomeWindow: View {
     private var footer: some View {
         let welcome = model.welcome
         return HStack(spacing: 12) {
-            Text(welcome.position)
-                .font(AppFont.secondary)
-                .foregroundStyle(.appSecondary)
-                .monospacedDigit()
-                .accessibilityLabel("Panel \(welcome.panel + 1) of \(welcome.panels.count)")
+            if welcome.panels.count > 1 {
+                Text(welcome.position)
+                    .font(AppFont.secondary)
+                    .foregroundStyle(.appSecondary)
+                    .monospacedDigit()
+                    .accessibilityLabel("Panel \(welcome.panel + 1) of \(welcome.panels.count)")
+            }
             Spacer()
-            Button("Back") { welcome.goBack() }
-                .keyboardShortcut(.leftArrow, modifiers: .command)
-                .disabled(welcome.isFirst)
-            if welcome.isLast {
+            if welcome.panels.count > 1 {
+                Button("Back") { welcome.goBack() }
+                    .keyboardShortcut(.leftArrow, modifiers: .command)
+                    .disabled(welcome.isFirst)
+            }
+            if welcome.showsWhatsNew {
+                // What's New is one panel: Continue closes it and brings the main window forward.
+                Button("Continue") { start() }
+                    .keyboardShortcut(.defaultAction)
+            } else if welcome.isLast {
                 Button("Start Using Prakriti") { start() }
                     .keyboardShortcut(.defaultAction)
             } else {

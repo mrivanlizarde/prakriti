@@ -108,9 +108,12 @@ struct VisibleWelcomePanel: Sendable, Equatable, Identifiable {
 
 enum WelcomeContent {
     /// The welcome's version, stored as `welcomeSeenVersion` once it has been shown. The window opens by
-    /// itself only while the stored number is lower. 2 is Prakriti v2's welcome, the first one; a later
-    /// "What's New" panel raises it (docs/v2/design-spec.md 4.1).
-    static let version = 2
+    /// itself only while the stored number is lower. 2 was Prakriti v2's first welcome (part M2b); 3 is v2 finished
+    /// (part M13), with the What's New panel shown to anyone who saw version 2 (docs/v2/design-spec.md 4.1).
+    static let version = 3
+    /// The first version that showed the five panels: a stored number from here up means the welcome was seen, so a newer
+    /// version shows What's New instead.
+    static let firstVersion = 2
 
     static func isVisible(requires: Set<Capability>, unless: Set<Capability>, with capabilities: Set<Capability>) -> Bool {
         requires.isSubset(of: capabilities) && (unless.isEmpty || !unless.isSubset(of: capabilities))
@@ -133,10 +136,18 @@ enum WelcomeContent {
         return words.indices.contains(n) ? words[n] : String(n)
     }
 
+    /// The What's New panel as this build shows it, or none when no row is visible.
+    static func visibleWhatsNew(with capabilities: Set<Capability> = Capabilities.built) -> [VisibleWelcomePanel] {
+        let rows = whatsNew.rows.filter { $0.isVisible(with: capabilities) }
+        guard rows.count >= 3, let line = whatsNew.lines.first(where: { $0.isVisible(with: capabilities) }) else { return [] }
+        return [VisibleWelcomePanel(id: whatsNew.id, symbol: whatsNew.symbol, title: whatsNew.title, line: line.text, rows: rows, isSteps: false,
+                                    helpArticle: whatsNew.helpArticle)]
+    }
+
     /// Every word the panels hold, visible or not, for the copy test.
     static var everyString: [(where: String, text: String)] {
         var out: [(String, String)] = []
-        for panel in panels {
+        for panel in panels + [whatsNew] {
             out.append(("\(panel.id) title", panel.title))
             for (n, line) in panel.lines.enumerated() { out.append(("\(panel.id) line \(n + 1)", line.text)) }
             for row in panel.rows {
@@ -146,6 +157,36 @@ enum WelcomeContent {
         }
         return out
     }
+
+    // MARK: What's New
+
+    /// What's New in Prakriti (v2 part M13): one panel of what v2 added, shown once to someone who saw the welcome before.
+    /// Each row names what it describes, like the panels', so it never shows a feature this build lacks.
+    static let whatsNew = WelcomePanel(
+        id: "whats-new", symbol: "sparkles", title: "What's New in Prakriti",
+        lines: [WelcomeText("Prakriti now edits the video as well as the podcast.")],
+        style: .rows,
+        rows: [
+            WelcomeRow("new-video", symbol: "wand.and.sparkles", headline: "An edited video.",
+                       "Pauses, filler words and retakes come out, and zooms, titles, key phrases and chapters go in, in your house style.",
+                       requires: [.video, .style]),
+            WelcomeRow("new-direction", symbol: "text.bubble", headline: "Direction in your own words.",
+                       "Say how the edit should feel in the Direction tab, and Prakriti shows the plan before anything is made.",
+                       requires: [.direction]),
+            WelcomeRow("new-shorts", symbol: "rectangle.portrait", headline: "Shorts and thumbnails.",
+                       "Vertical shorts with captions, and three designed thumbnails for each video.",
+                       requires: [.shorts, .thumbnails]),
+            WelcomeRow("new-people", symbol: "person.2", headline: "Who appears is your choice.",
+                       "The People tab lists everyone found. Hide a face or leave someone out, and every file is checked for them.",
+                       requires: [.people]),
+            WelcomeRow("new-timelines", symbol: "square.and.arrow.up", headline: "Finish by hand when you want to.",
+                       "Any edit opens in Final Cut Pro or DaVinci Resolve as a timeline.",
+                       requires: [.timelines]),
+            WelcomeRow("new-approve", symbol: "checkmark.seal", headline: "Approve with a checklist.",
+                       "The Approve sheet checks every file, and the upload checklist lists what each platform asks for.",
+                       requires: [.thumbnails]),
+        ],
+        helpArticle: "outputs")
 
     // MARK: The five panels
 
@@ -203,7 +244,7 @@ enum WelcomeContent {
                            "Seat them behind the camera or beside it, and tell them each time that the class is recorded.",
                            unless: [.people]),
                 WelcomeRow("students-v2", symbol: "person.2", headline: "Keep students out of frame.",
-                           "Seat them behind the camera. Anyone Prakriti does not know is blurred and their voice removed, so a clean frame means less is cut.",
+                           "Seat them behind the camera or beside it, so the picture stays on the teacher. Anyone can still be hidden later, in the People tab.",
                            requires: [.people]),
                 WelcomeRow("test", symbol: "headphones", headline: "Record a 10-second test.",
                            "Play it back with headphones, and check the face, the framing and each voice."),
@@ -241,7 +282,7 @@ enum WelcomeContent {
                            "Approve it. Prakriti copies the finished files to your Approved folder with a receipt, and you upload them.",
                            unless: [.thumbnails]),
                 WelcomeRow("approve-v2", symbol: "5.circle",
-                           "Approve it. The finished files and an upload checklist are ready, and you press Upload.",
+                           "Approve it. The finished files and an upload checklist are ready, and you upload them yourself.",
                            requires: [.thumbnails]),
             ]),
 
@@ -250,11 +291,11 @@ enum WelcomeContent {
             id: "privacy", symbol: "hand.raised", title: "Privacy",
             lines: [WelcomeText("Prakriti keeps every recording on this Mac, and holds back anything a person has not checked.",
                                 unless: [.people, .video]),
-                    WelcomeText("Prakriti protects everyone who did not choose to be in the video.", requires: [.people, .video])],
+                    WelcomeText("You decide who appears in each output, and Prakriti checks every file against your choice.", requires: [.people, .video])],
             style: .rows,
             rows: [
                 WelcomeRow("hidden", symbol: "eye.slash",
-                           "People Prakriti does not know are blurred and their voices removed, unless you choose otherwise.",
+                           "Everyone who takes part has signed a release, so everyone starts in the finished files. Choose Hide Face or Leave Out for anyone, and every file is checked for them before you can approve it.",
                            requires: [.people]),
                 WelcomeRow("named", symbol: "person.crop.square",
                            "People lists everyone you name, with their recordings. Prakriti keeps their name and their release, never their face or voice.",
@@ -272,7 +313,7 @@ enum WelcomeContent {
                            "Recordings never leave this Mac. With an Anthropic or OpenAI key, only words are sent, and only for a talk whose people have been checked. Until Prakriti checks who appears, nothing is sent.",
                            unless: [.cloudProviders, .people]),
                 WelcomeRow("cloud-v2", symbol: "lock",
-                           "Recordings never leave this Mac. With an Anthropic or OpenAI key, only words are sent, and never for a class or a recording where other people appear.",
+                           "Recordings never leave this Mac. With an Anthropic or OpenAI key, only words are sent, and never for a recording with someone you left out or someone without a signed release.",
                            requires: [.cloudProviders, .people]),
             ],
             helpArticle: "people-and-privacy"),

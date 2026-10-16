@@ -164,6 +164,10 @@ enum VideoThumbnails {
         var contrast = 0.0
         /// The person was cut out by Vision's mask (false: the room composition, or no mask was found).
         var cutOut = false
+        /// The teacher's edge, measured on the finished picture (v2 part M13, `ThumbnailMatte`): the halo in 8-bit levels and the
+        /// leftover background in percent of the picture. Nil in records made before it was measured.
+        var edgeHalo: Double?
+        var edgeLeftover: Double?
         var lines: [ChecklistLine] = []
 
         var failed: Int { lines.filter { $0.status == .fail }.count }
@@ -546,6 +550,8 @@ enum VideoThumbnails {
                 }
                 guard let designed else { throw lastFailure ?? Failure(reason: "It could not be drawn.") }
                 candidate.cutOut = designed.cutOut
+                candidate.edgeHalo = designed.edge?.halo
+                candidate.edgeLeftover = designed.edge?.leftover
                 candidate.capAtSmallest = designed.capAtSmallest
                 candidate.contrast = designed.contrast
                 let masterURL = build.appending(path: candidate.masterName), smallURL = build.appending(path: candidate.fileName)
@@ -595,6 +601,11 @@ enum VideoThumbnails {
             : "A face in it is not someone you included, so it must not be used.")
         add(c.capAtSmallest >= smallestCap, "Words at 168 pixels wide", String(format: "Capital letters %.1f px tall when shown 168 wide (8 or more).", c.capAtSmallest))
         add(c.contrast >= leastContrast, "Contrast", String(format: "%.1f to 1 between the words and what is behind them (4.5 or more).", c.contrast))
+        if let halo = c.edgeHalo, let leftover = c.edgeLeftover {
+            add(halo <= ThumbnailMatte.mostHalo && leftover <= ThumbnailMatte.mostLeftover, "Clean edge",
+                String(format: "A ring around the teacher %.1f levels brighter than a clean edge (%.0f or less); background left beside them %.2f%% of the picture (%.2f%% or less).",
+                       halo, ThumbnailMatte.mostHalo, leftover, ThumbnailMatte.mostLeftover))
+        }
         return out
     }
 
@@ -605,17 +616,23 @@ enum VideoThumbnails {
         var cutOut: Bool
         var capAtSmallest: Double
         var contrast: Double
+        /// The teacher's edge measured on the finished picture (`ThumbnailMatte.measure`); nil when no one was cut out.
+        var edge: ThumbnailMatte.Edge? = nil
     }
 
     /// Draws one composition at the master size.
     /// `person` replaces Vision's cut-out (tests only: a drawn test-pattern figure, so a composition can be looked at without a frame
     /// of anyone, PLAN section 11, D1).
+    /// `cleanEdge` false draws the edge as it was before v2 part M13 (Vision's soft mask as it came, and Saffron's white outline), kept
+    /// only so `ThumbnailTests` can measure the difference; the app always draws the clean edge.
     static func design(_ composition: Composition, frame: CGImage, look: Look, headline: String, canvas: CGSize, context: CIContext,
-                       person override: CIImage? = nil) async throws -> Designed {
+                       person override: CIImage? = nil, cleanEdge: Bool = true) async throws -> Designed {
         let source = CGSize(width: frame.width, height: frame.height)
         let frameImage = CIImage(cgImage: frame)
-        let person: CIImage?
-        if let override { person = override } else { person = try await cutOut(frame, at: look.subject) }
+        let raw: CIImage?
+        if let override { raw = override } else { raw = try await cutOut(frame, at: look.subject) }
+        // The clean edge (ThumbnailMatte): only what joins the teacher's face, pulled in and softened, its colour the teacher's own.
+        let person: CIImage? = cleanEdge ? raw.flatMap { ThumbnailMatte.refine($0, colours: override == nil ? frameImage : nil, face: look.subject, context: context) } : raw
         // The first place where the words fit beside the teacher at a size that reads, else the last tried.
         var place = placement(composition, subject: look.subject, source: source, canvas: canvas)
         var move = CGAffineTransform.identity, box = CGRect.zero, subjectOnCanvas = look.subject
@@ -630,6 +647,7 @@ enum VideoThumbnails {
         }
         let extent = CGRect(origin: .zero, size: canvas)
         let picture: CIImage
+        var groundOnly: CIImage?, placedMatte: CIImage?
         var included = look.included.map { place.map($0, source: source, canvas: canvas) }
         var hidden = look.hidden.map { place.map($0, source: source, canvas: canvas) }
         var cutOut = false
@@ -647,8 +665,8 @@ enum VideoThumbnails {
             if let lit = glow.outputImage?.cropped(to: extent) { base = lit.composited(over: base) }
             guard let person else { throw Failure(reason: "Vision found no outline of the teacher to cut out in the frame at \(Format.timecode(look.time)).") }
             let placed = person.transformed(by: move)
-            // A thin white edge around the teacher, so they stand apart from the ground at any size: their outline in white, a
-            // little wider than they are.
+            // Before v2 part M13 a thin white outline was drawn around the teacher here. It read as a halo (Sonny, Fri 16 Oct), so the
+            // clean edge draws none: the teacher stands apart from the ground by the ground's own colour and the soft light behind.
             let edge = placed.applyingFilter("CIColorMatrix", parameters: ["inputRVector": CIVector(x: 0, y: 0, z: 0, w: 0), "inputGVector": CIVector(x: 0, y: 0, z: 0, w: 0),
                                                                            "inputBVector": CIVector(x: 0, y: 0, z: 0, w: 0), "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 1),
                                                                            "inputBiasVector": CIVector(x: 0, y: 0, z: 0, w: 0)])
@@ -656,7 +674,9 @@ enum VideoThumbnails {
                 .applyingFilter("CIMorphologyMaximum", parameters: [kCIInputRadiusKey: canvas.height * 0.006])
             let white = CIImage(color: CIColor(red: 1, green: 1, blue: 1, alpha: 1)).cropped(to: extent)
                 .applyingFilter("CISourceInCompositing", parameters: [kCIInputBackgroundImageKey: edge])
-            picture = placed.composited(over: white.composited(over: base)).cropped(to: extent)
+            picture = placed.composited(over: cleanEdge ? base : white.composited(over: base)).cropped(to: extent)
+            groundOnly = base
+            placedMatte = placed
             cutOut = true
             // Only the teacher is drawn: no other face of the frame reaches the picture.
             included = [subjectOnCanvas]
@@ -667,7 +687,7 @@ enum VideoThumbnails {
             guard let words = layOut(headline, in: box, canvas: canvas) else { throw Failure(reason: "The headline \u{201C}\(headline)\u{201D} does not fit at a size that reads (\(Int(box.width)) of \(Int(canvas.width)) pixels beside the teacher).") }
             let rect = textRect(words, canvas: canvas)
             let leftSide = box.minX < canvas.width / 2
-            var best: (image: CGImage, contrast: Double)?
+            var best: (image: CGImage, contrast: Double, ground: CIImage, placed: CIImage?)?
             for strength in [0.78, 0.86, 0.93, 0.97] {
                 var room = frameImage.transformed(by: move).cropped(to: extent)
                 let shade = CIFilter.linearGradient()
@@ -677,20 +697,24 @@ enum VideoThumbnails {
                 shade.color0 = CIColor(red: 0, green: 0, blue: 0, alpha: strength)
                 shade.color1 = CIColor(red: 0, green: 0, blue: 0, alpha: 0)
                 if let dark = shade.outputImage?.cropped(to: extent) { room = dark.composited(over: room) }
+                let roomGround = room
+                var lifted: CIImage?
                 if let person {
-                    let lifted = person.applyingFilter("CIExposureAdjust", parameters: [kCIInputEVKey: 0.25]).transformed(by: move)
-                    room = lifted.composited(over: room).cropped(to: extent)
+                    let placed = person.applyingFilter("CIExposureAdjust", parameters: [kCIInputEVKey: 0.25]).transformed(by: move)
+                    room = placed.composited(over: room).cropped(to: extent)
+                    lifted = placed
                     cutOut = true
                 }
                 guard let drawn = context.createCGImage(room, from: extent, format: .RGBA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)) else { continue }
                 let measured = contrast(composition.ink.luminance, meanLuminance(drawn, in: rect))
-                best = (drawn, measured)
+                best = (drawn, measured, roomGround, lifted)
                 if measured >= leastContrast { break }
             }
             guard let best else { throw Failure(reason: "The picture could not be drawn.") }
+            let edge = best.placed.flatMap { edgeMeasure(picture: best.image, ground: best.ground, placed: $0, subject: subjectOnCanvas, extent: extent, context: context) }
             let finished = try drawWords(words, ink: composition.ink, bar: true, on: best.image, canvas: canvas)
             return Designed(image: finished, included: included, hidden: hidden, cutOut: cutOut, capAtSmallest: capAtSmallest(words, canvas: canvas),
-                            contrast: best.contrast)
+                            contrast: best.contrast, edge: edge)
         }
 
         guard let words = layOut(headline, in: box, canvas: canvas) else { throw Failure(reason: "The headline \u{201C}\(headline)\u{201D} does not fit at a size that reads (\(Int(box.width)) of \(Int(canvas.width)) pixels beside the teacher).") }
@@ -699,9 +723,18 @@ enum VideoThumbnails {
         }
         // The contrast is measured on what is really behind the words, before they are drawn.
         let behind = meanLuminance(drawn, in: textRect(words, canvas: canvas))
+        let edge = groundOnly.flatMap { g in placedMatte.flatMap { edgeMeasure(picture: drawn, ground: g, placed: $0, subject: subjectOnCanvas, extent: extent, context: context) } }
         let finished = try drawWords(words, ink: composition.ink, bar: false, on: drawn, canvas: canvas)
         return Designed(image: finished, included: included, hidden: hidden, cutOut: cutOut, capAtSmallest: capAtSmallest(words, canvas: canvas),
-                        contrast: contrast(composition.ink.luminance, behind))
+                        contrast: contrast(composition.ink.luminance, behind), edge: edge)
+    }
+
+    /// The edge check on a drawn picture (before the words): the same picture with no teacher, and the teacher's placed outline.
+    static func edgeMeasure(picture: CGImage, ground: CIImage, placed: CIImage, subject: FaceBox, extent: CGRect, context: CIContext) -> ThumbnailMatte.Edge? {
+        let space = CGColorSpace(name: CGColorSpace.sRGB)
+        guard let g = context.createCGImage(ground.cropped(to: extent), from: extent, format: .RGBA8, colorSpace: space),
+              let m = context.createCGImage(placed.cropped(to: extent), from: extent, format: .RGBA8, colorSpace: space) else { return nil }
+        return ThumbnailMatte.measure(picture: picture, ground: g, matte: m, face: subject)
     }
 
     /// The rectangle the words' lines take, top-left canvas pixels, vertically centred in their box.

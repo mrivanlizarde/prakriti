@@ -1061,6 +1061,19 @@ who is hidden. Remove it or change their choice." Timeline-lite draws it in teal
 list it. **Timelines are not made for a plan with a moment yet** (`TimelineExport.momentsRefusal`, the step skipped). Help 08 (`merge`
 capability). `make accept-merge PRAKRITI_MERGE_PART=add`; `MergeAddTests` (synthetic test patterns).
 
+**v2 part M13, the finish line, Fri 16 Oct (see BUILD-LOG "v2 finish line"):** every capability is on (`Capabilities.built ==
+Capabilities.all`; `people` was the last, its Help blocks rewritten to the build under Ivan's 12 Oct decision). **Help names are tested**
+(`PrakritiTests/HelpNamesTests.swift`): every bold or quoted name in the visible articles must be found in the app's own string literals
+(comments left out, `\(...)` and format specifiers as short wildcards), a quoted article heading counts as a cross-reference, and anything
+that is not Prakriti's (OBS's labels, lead-ins, words Ivan types) is listed with its reason. **The welcome's final copy and What's New**
+(`WelcomeContent.version` 3, `firstVersion` 2, `WelcomeContent.whatsNew`, `WelcomeModel.showsWhatsNew`, `AppModel.whatsNewIsDue`): a first
+launch shows the five panels; a copy that saw version 2 shows one What's New in Prakriti panel once, at a launch by hand; Help, Welcome to
+Prakriti always opens the five; `--show=welcome --whats-new` captures it. **The thumbnails' clean edge** (`Render/ThumbnailMatte.swift`):
+Vision's mask made hard at half strength, only the part joined to the teacher's face kept, pulled in 1.5 px and softened 1 px (at 1080p), the
+edge's colour spread from the teacher's own pixels (blur then `CIColorMatrix`, which divides by alpha itself), no white outline; measured on
+every finished option (`ThumbnailMatte.measure`: the halo in 8-bit levels against a clean edge mixed in linear light, the leftover room in
+percent) and gated by a "Clean edge" checklist line (6 levels, 0.05%). No TipKit (M3b kept its own tip row; PLAN's condition not met).
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -1532,6 +1545,8 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | Faces (v2 part M6a) | `mac/Prakriti/People/`: `FaceScan.swift` (the reader, Vision at two frames a second, the change-of-picture measure), `Tracks.swift` (`FaceBox` and the Vision conversion, `FaceTracker`, `FaceGrouping`, `FacesFound` with its lines), `PeopleFile.swift` (`PeopleFolders`, the people file, `FaceStep` with its job folder), `FaceCrops.swift` (the People tab's live crops, memory only); the pipeline's `.faces` step and `PipelineOptions.people`; `Recording.facesJSON`; `App/FaceActions.swift` (`applyFaces`, Look for Faces); `Views/Inspector/PeopleTab.swift` (`PeopleTab`, `FaceRow`, `PeopleLine`); the job cleanup in `AppModel.launch`; `--debug-face-scan` in `App/DebugSwitches.swift`; tests `PeopleTests` (in `make test`), `PeopleAcceptanceTests` and `scripts/people-crash-check.sh` (`make accept-people`) |
 | People files and job folders | `~/Library/Application Support/Prakriti/People/Recordings/<recording id>.json` and `.../Jobs/` (live); `.../Prakriti/Development/People/...` and `.../Development/Jobs/` (development) |
 | Swift packages | `swift-markdown` 0.9.0 (21 Sep 2026, with `swift-cmark` 0.9.0), pinned in `mac/project.yml` and `mac/Prakriti.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, both committed (v2 part M2a) |
+| Help name check (v2 part M13) | `mac/PrakritiTests/HelpNamesTests.swift`: `notInPrakriti` lists, with a reason each, the bold and quoted words in Help that are not Prakriti's own names |
+| Thumbnails' clean edge (v2 part M13) | `mac/Prakriti/Render/ThumbnailMatte.swift` (`refine`, `measure`, `mostHalo`, `mostLeftover`); `VideoThumbnails.design(cleanEdge:)` keeps the old edge only for `ThumbnailTests` to measure against |
 | Menu bar mark | Seven template image sets in `Assets.xcassets` (`prakriti-menubar`, `-working-1`, `-working-2`, `-waiting`, `-problem`, `-paused`, `-not-watching`), copied from `docs/v2/icons/source/menubar/imagesets/`; which one each state draws is `StatusSummary.Icon.menuBarAsset`; the working frames are turned by `App/WorkingTicker.swift` |
 
 ### Load-bearing warnings for the Mac app
@@ -2692,6 +2707,16 @@ top and its end. Reading the code is not verification, and neither is a passing 
     punch-in found on 13 Sep's face boxes means nothing on 6 Sep's frames.
 227. **Timelines are refused, as a skipped step, for a plan with a moment (`TimelineExport.momentsRefusal`).** Reason: they would point at
     one recording only and not be the video; carrying the other recording's media is not built yet.
+
+228. **CIColorMatrix divides by alpha before it applies its matrix: never call `unpremultiplyingAlpha()` before it.** Reason: measured 16 Oct,
+    the thumbnails' spread edge colour divided twice drew a line 38 levels brighter than the teacher at the edge (`ThumbnailMatte.opaque`).
+229. **Measure a soft edge against a clean one mixed in linear light, never in sRGB levels.** Reason: Core Image composites in linear light; the
+    sRGB average of a dark teacher on bright saffron read as an 8.7-level halo on an edge that had none (0.07 measured in linear light).
+230. **A name in Help must be one the app says (`HelpNamesTests`); add to `notInPrakriti` only what truly is not Prakriti's, with its reason.**
+    Reason: risk R16; the first run found "Blur Face or Remove", "View > Show Recordings With Other People" and "People in This Recording",
+    none of them in the app.
+231. **`WelcomeContent.version` is raised only with a What's New panel whose rows are true of the build.** Reason: raising it shows that panel,
+    once, on Ivan's live copy at its next launch by hand (his stored version was 2 on 16 Oct).
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

@@ -291,6 +291,10 @@ them. Each option says in one line why it looks the way it does.
 Faces of anyone you set to Hide Face or Leave Out are hidden before anything is drawn, and every finished
 thumbnail is looked at again: if a face in it is not someone you included, that option is not kept.
 
+The teacher's edge is kept clean: only what joins their face is cut out, its edge takes the colour of the
+teacher rather than the wall behind, and no outline is drawn around them. Each option's checklist measures
+it: a light ring around the teacher, or part of the room left beside them, means that option is not kept.
+
 In the inspector, Outputs, under Thumbnails, click Use This One under the one you want; the recording's
 picture in the library shows it. Make Thumbnails makes them for a recording made without them. If you
 change who is hidden afterwards, the library shows the recording's own picture again until you make them

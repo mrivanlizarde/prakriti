@@ -10,8 +10,8 @@ related: [capture-the-best-video, reviewing-and-approving, models-and-api-keys]
 
 # Privacy and students
 
-Teachers choose to appear in what is published. Students usually have not. Prakriti keeps every
-recording on this Mac, and holds back anything a person has not checked.
+Everyone who takes part in a recording has signed a release. Prakriti still keeps every recording on
+this Mac, and you decide who appears in each output.
 
 ## What stays on this Mac
 
@@ -220,10 +220,10 @@ In every recording, Prakriti looks for faces in the picture and voices in the so
 ## See who is in a recording
 
 In the browser, each recording shows who was found: the names of the people you have named, and how many
-other people appear or speak, such as "Gabriel, Serenity and 3 other people". Choose View > Show
-Recordings With Other People to see only those.
+other people appear or speak, such as "Gabriel. Up to 3 people at once. 1 other voice." In the toolbar's
+Sort menu, turn on Other People Appear to see only those.
 
-In the inspector's People tab, People in This Recording lists each person with a picture of their face, when
+In the inspector's People tab, In This Recording lists each person with a picture of their face, when
 they appear, and when they speak.
 
 ## Choose who appears in each output
@@ -254,7 +254,7 @@ release that covers their face (see Recognition, below).
 - **The picture** is a frame of their face from one of their recordings, taken from the recording each time People
   shows it and never saved. For someone who should not be shown, turn off Can Appear in What Is Published: People
   shows their initials instead.
-- **Favorites** come first. Sort **By Name** or in **Custom Order**: in Custom Order, drag a person onto another to put
+- People you mark **Favorite** come first. Sort **By Name** or in **Custom Order**: in Custom Order, drag a person onto another to put
   them in that place.
 - **Unnamed people** is one tile with no face. It lists the recordings with someone you have not named. Prakriti does
   not remember people who are not named; each recording shows its own, in the inspector's People tab.

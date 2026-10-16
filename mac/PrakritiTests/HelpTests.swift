@@ -282,7 +282,7 @@ final class HelpTests: XCTestCase {
     }
 
     func testOnlyWhatIsBuiltIsVisible() {
-        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style, .timelines, .shorts, .thumbnails, .moments, .merge], "v2 parts M2a, M2b, M3b, M4a, M4b, M5b, M6a, M6b, M6c, M6d, M7a, M7b, M8a, M8b, M8c, M9a, M9b, M9c, M9d, M10a and M11a build Help, the welcome, the Viewer, progress, the capture check, the cloud providers, faces, voices, choices applied to audio, hiding in pictures, the People gallery, recognition, the edit plan, the rendered MP4, the video in the Viewer, the House Style, the text on screen, direction, the opening line, key phrases, chapters and versions, the timelines, the shorts, the thumbnails, Find Supporting Moments (M12a) and moments added by hand (M12b); each later part adds its own capability")
+        XCTAssertEqual(Capabilities.built, Capabilities.all, "every capability is built at the finish line: v2 parts M2a to M12b each switched on their own, and M13 the last, people")
         let library = built
         XCTAssertEqual(unbuiltNamesFound(in: library, built: library.capabilities), [])
         XCTAssertNotNil(library.visibleArticle(id: "editorial-direction"), "editorial direction is built (v2 part M9c)")
@@ -292,7 +292,7 @@ final class HelpTests: XCTestCase {
         // The check finds what it is meant to find: the same articles with every block shown name
         // features that are not built, and it must say so.
         let all = everything
-        XCTAssertFalse(unbuiltNamesFound(in: all, built: Capabilities.built).isEmpty, "the check would have caught an unbuilt feature")
+        XCTAssertFalse(unbuiltNamesFound(in: all, built: Capabilities.built.subtracting([.people])).isEmpty, "the check would have caught an unbuilt feature (people taken away)")
     }
 
     func testWithEveryCapabilityEveryArticleIsVisible() {

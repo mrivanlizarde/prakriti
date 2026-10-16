@@ -126,6 +126,10 @@ final class ThumbnailsAcceptanceTests: XCTestCase {
                         candidate.capAtSmallest >= 8 && candidate.contrast >= 4.5,
                         String(format: "capitals %.1f px at 168 wide; contrast %.1f to 1; face quality %.2f, aesthetics %.2f, eyes open %@", candidate.capAtSmallest,
                                candidate.contrast, candidate.quality, candidate.aesthetics, candidate.eyesOpen ? "yes" : "no"))
+                verdict("Clean edge (v2 part M13): Thumbnail \(candidate.letter) has no ring around the teacher and no background left beside them",
+                        candidate.edgeHalo.map { $0 <= ThumbnailMatte.mostHalo } == true && candidate.edgeLeftover.map { $0 <= ThumbnailMatte.mostLeftover } == true,
+                        String(format: "halo %.2f levels (%.0f or less), leftover background %.3f%% of the picture (%.2f%% or less), %@", candidate.edgeHalo ?? -1,
+                               ThumbnailMatte.mostHalo, candidate.edgeLeftover ?? -1, ThumbnailMatte.mostLeftover, candidate.composition.title))
                 lines.append("  Thumbnail \(candidate.letter): \(candidate.reason)")
                 let copy = forIvan.appending(path: "m11b-13-Sep-thumbnail-\(candidate.letter).jpg")
                 try? FileManager.default.removeItem(at: copy)
@@ -262,6 +266,9 @@ final class ThumbnailsAcceptanceTests: XCTestCase {
                         m.faces.count <= 1 && candidate.lines.first { $0.item == "People" }?.status == .pass,
                         "\(m.faces.count) faces found by Vision" + (m.faces.first.map { String(format: " at x %.2f to %.2f, y %.2f to %.2f", $0.x, $0.x + $0.width, $0.y, $0.y + $0.height) } ?? "")
                             + "; \(candidate.composition.title) from \(Format.timecode(candidate.time)), cut out: \(candidate.cutOut ? "yes" : "no")")
+                verdict("Clean edge (v2 part M13): two-people-mixed Thumbnail \(candidate.letter)",
+                        candidate.edgeHalo.map { $0 <= ThumbnailMatte.mostHalo } == true && candidate.edgeLeftover.map { $0 <= ThumbnailMatte.mostLeftover } == true,
+                        String(format: "halo %.2f levels, leftover background %.3f%%, %@", candidate.edgeHalo ?? -1, candidate.edgeLeftover ?? -1, candidate.composition.title))
                 let copy = forIvan.appending(path: "m11b-two-people-mixed-thumbnail-\(candidate.letter).jpg")
                 try? FileManager.default.removeItem(at: copy)
                 try FileManager.default.copyItem(at: folder.appending(path: candidate.fileName), to: copy)

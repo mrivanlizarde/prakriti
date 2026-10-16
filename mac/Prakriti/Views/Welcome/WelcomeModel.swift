@@ -19,8 +19,16 @@ final class WelcomeModel {
     /// How this launch began, known once the app has finished launching (the app delegate says).
     enum Launch: Sendable { case unknown, login, byHand }
 
-    /// The panels this build shows (`Capabilities.built`), in order.
-    @ObservationIgnored let panels: [VisibleWelcomePanel]
+    /// The five panels this build shows (`Capabilities.built`), in order, and the What's New panel (v2 part M13).
+    @ObservationIgnored let welcomePanels: [VisibleWelcomePanel]
+    @ObservationIgnored let whatsNewPanels: [VisibleWelcomePanel]
+    /// The window shows What's New in Prakriti instead of the five panels: at the first launch of a version with one, for
+    /// someone who has seen the welcome before (design spec 4.1, the Pixelmator Pro and Final Cut Pro shape).
+    var showsWhatsNew = false {
+        didSet { panel = 0 }
+    }
+    /// The panels the window shows now.
+    var panels: [VisibleWelcomePanel] { showsWhatsNew && !whatsNewPanels.isEmpty ? whatsNewPanels : welcomePanels }
     /// The open panel, counted from 0.
     var panel = 0 {
         didSet { if panel != min(max(panel, 0), panels.count - 1) { panel = min(max(panel, 0), panels.count - 1) } }
@@ -46,7 +54,8 @@ final class WelcomeModel {
     func record(needed height: Double, panel: Int) { needed[panel] = height }
 
     init(capabilities: Set<Capability> = Capabilities.built) {
-        panels = WelcomeContent.visiblePanels(with: capabilities)
+        welcomePanels = WelcomeContent.visiblePanels(with: capabilities)
+        whatsNewPanels = WelcomeContent.visibleWhatsNew(with: capabilities)
     }
 
     var current: VisibleWelcomePanel { panels[min(max(panel, 0), panels.count - 1)] }
@@ -62,9 +71,12 @@ final class WelcomeModel {
 extension AppModel {
     /// The welcome has not been shown in this version yet.
     var welcomeIsDue: Bool { settings.welcomeSeenVersion < WelcomeContent.version }
+    /// The welcome was seen in an earlier version, so this version shows only What's New (v2 part M13).
+    var whatsNewIsDue: Bool { welcomeIsDue && settings.welcomeSeenVersion >= WelcomeContent.firstVersion }
 
     /// Help, Welcome to Prakriti: the window opens at the first panel, by request.
     func prepareWelcomeFromMenu() {
+        welcome.showsWhatsNew = false
         welcome.panel = 0
         welcome.openedFromMenu = true
     }
@@ -119,7 +131,11 @@ extension AppModel {
 
     private func markWelcomeSeen() {
         settings.welcomeSeenVersion = WelcomeContent.version
-        log.write("Welcome shown at first launch (version \(WelcomeContent.version)). It does not open by itself again; Help, Welcome to Prakriti opens it.")
+        if welcome.showsWhatsNew {
+            log.write("What's New in Prakriti shown (version \(WelcomeContent.version)). It does not open by itself again; Help, Welcome to Prakriti opens the welcome.")
+        } else {
+            log.write("Welcome shown at first launch (version \(WelcomeContent.version)). It does not open by itself again; Help, Welcome to Prakriti opens it.")
+        }
     }
 
     /// Whether a panel fits the window without scrolling (docs/v2/design-spec.md 4.1: everything fits at

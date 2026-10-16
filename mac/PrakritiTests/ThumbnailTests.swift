@@ -108,6 +108,71 @@ final class ThumbnailTests: XCTestCase {
         }
     }
 
+    /// v2 part M13 (PLAN section 11, Sonny Fri 16 Oct: a light halo round the teacher, and background left as a smear along the
+    /// bottom edge). A dark figure cut from a light wall the way Vision's soft mask cuts it: the edge mixed with the wall over about
+    /// 12 pixels, and a faint patch of the room (a chair, at a third of full strength) below the figure's shoulder line, apart from
+    /// it. Each composition drawn as the edge was before and as it is now, measured by `ThumbnailMatte.measure`, and written to
+    /// `m13-thumbnail-edge-*.png` (1280 and 168 wide) to look at. Before: a ring and the patch, both measured over the limits;
+    /// now: under both.
+    func testTheCutOutHasNoHaloAndNoLeftoverBackground() async throws {
+        let size = CGSize(width: 1920, height: 1080)
+        let w = Int(size.width), h = Int(size.height)
+        let space = CGColorSpace(name: CGColorSpace.sRGB)!
+        func draw(_ body: (CGContext) -> Void, grey: Bool = false) -> CGImage {
+            let cg = grey ? CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue)!
+                : CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0, space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            body(cg)
+            return cg.makeImage()!
+        }
+        func figure(_ cg: CGContext) {
+            cg.fillEllipse(in: CGRect(x: size.width * 0.44, y: size.height * 0.55, width: size.width * 0.12, height: size.height * 0.28))
+            cg.fill(CGRect(x: size.width * 0.36, y: 0, width: size.width * 0.28, height: size.height * 0.5))
+            cg.fillEllipse(in: CGRect(x: size.width * 0.36, y: size.height * 0.35, width: size.width * 0.28, height: size.height * 0.3))
+        }
+        // The room: a light wall, a darker floor, a chair-coloured patch low on the left; the figure dark, as a teacher in dark
+        // clothes in front of a white wall.
+        let frame = draw { cg in
+            cg.setFillColor(CGColor(srgbRed: 0.93, green: 0.92, blue: 0.9, alpha: 1)); cg.fill(CGRect(x: 0, y: 0, width: w, height: h))
+            cg.setFillColor(CGColor(srgbRed: 0.7, green: 0.62, blue: 0.5, alpha: 1)); cg.fill(CGRect(x: 0, y: 0, width: w, height: h / 5))
+            cg.setFillColor(CGColor(srgbRed: 0.55, green: 0.4, blue: 0.3, alpha: 1)); cg.fill(CGRect(x: w / 8, y: 0, width: w / 6, height: h / 4))
+            cg.setFillColor(CGColor(srgbRed: 0.25, green: 0.22, blue: 0.24, alpha: 1)); figure(cg)
+        }
+        // Vision's mask, as it comes: the figure softened over about 12 pixels, and the chair at a third of full strength.
+        let hardFigure = CIImage(cgImage: draw({ cg in cg.setFillColor(gray: 1, alpha: 1); figure(cg) }, grey: true))
+        let chair = CIImage(cgImage: draw({ cg in cg.setFillColor(gray: 0.35, alpha: 1); cg.fill(CGRect(x: w / 8, y: 0, width: w / 6, height: h / 4)) }, grey: true))
+        let extent = CGRect(origin: .zero, size: size)
+        let soft = hardFigure.clampedToExtent().applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: 6]).cropped(to: extent)
+            .applyingFilter("CIMaximumCompositing", parameters: [kCIInputBackgroundImageKey: chair])
+        let clear = CIImage(color: CIColor(red: 0, green: 0, blue: 0, alpha: 0)).cropped(to: extent)
+        let cut = CIImage(cgImage: frame).applyingFilter("CIBlendWithMask", parameters: [kCIInputBackgroundImageKey: clear, kCIInputMaskImageKey: soft])
+        let face = FaceBox(x: 0.44, y: 1 - 0.83, width: 0.12, height: 0.28)
+        let look = VideoThumbnails.Look(time: 461, score: 1, quality: 0.8, aesthetics: 0.3, eyesOpen: true, subject: face, included: [face], hidden: [])
+        let out = SnapshotRenderer.milestoneFolder()
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        let context = CIContext(options: [.cacheIntermediates: false])
+        var lines: [String] = []
+        for composition in VideoThumbnails.Composition.allCases {
+            for clean in [false, true] {
+                let designed = try await VideoThumbnails.design(composition, frame: frame, look: look, headline: "Steady Mind", canvas: size, context: context,
+                                                                person: cut, cleanEdge: clean)
+                let edge = try XCTUnwrap(designed.edge, "\(composition) measured")
+                let name = "m13-thumbnail-edge-\(composition.rawValue)-\(clean ? "now" : "before")"
+                lines.append(String(format: "%@: halo %.2f levels, leftover %.3f%%", name, edge.halo, edge.leftover))
+                try StyleTests.writePNG(try VideoThumbnails.scaled(designed.image, to: CGSize(width: 1280, height: 720)), to: out.appending(path: name + ".png"))
+                try StyleTests.writePNG(try VideoThumbnails.scaled(designed.image, to: CGSize(width: 168, height: 94.5)), to: out.appending(path: name + "-168.png"))
+                if clean {
+                    XCTAssertLessThanOrEqual(edge.halo, ThumbnailMatte.mostHalo, "\(composition): no ring now")
+                    XCTAssertLessThanOrEqual(edge.leftover, ThumbnailMatte.mostLeftover, "\(composition): no background left now")
+                } else if composition != .frame {
+                    XCTAssertGreaterThan(edge.halo, ThumbnailMatte.mostHalo, "\(composition): the old edge had a ring, and the check sees it")
+                    XCTAssertGreaterThan(edge.leftover, ThumbnailMatte.mostLeftover, "\(composition): the old edge kept the chair, and the check sees it")
+                }
+            }
+        }
+        try lines.joined(separator: "\n").appending("\n").write(to: out.appending(path: "m13-thumbnail-edge.txt"), atomically: true, encoding: .utf8)
+        print(lines.joined(separator: "\n"))
+    }
+
     func testTheGateKeepsOnlyTheOptionsThatPassAndDeletesTheOthers() throws {
         let folder = FileManager.default.temporaryDirectory.appending(path: "prakriti-thumbs-\(UUID().uuidString)", directoryHint: .isDirectory)
         let staged = folder.appending(path: ".thumbnails", directoryHint: .isDirectory)

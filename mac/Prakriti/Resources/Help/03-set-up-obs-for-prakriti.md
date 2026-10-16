@@ -98,8 +98,8 @@ on a mixed track. Name each teacher's microphone once with Track 2 in This Folde
 :::
 
 :::requires people
-Prakriti builds the finished sound from tracks 2 to 5, so it can keep each teacher's voice clean and
-leave out a voice you choose to remove.
+When you choose Leave Out for someone who has their own microphone, the timelines' privacy-safe copy leaves
+their track out entirely, as well as cutting their speech from the others.
 :::
 
 Turning on Mono for a microphone puts the voice in both ears instead of one.

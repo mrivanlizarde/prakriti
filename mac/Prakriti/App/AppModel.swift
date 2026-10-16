@@ -376,6 +376,7 @@ final class AppModel {
             // optionally with a folder chosen on the last panel (in memory, through the panel's own path).
             if launch.showsWelcome {
                 model.welcome.presentsAtLaunch = true
+                model.welcome.showsWhatsNew = launch.whatsNew
                 model.welcome.panel = launch.welcomePanel - 1
                 if let folder = launch.welcomeFolder {
                     // Never a look through the folders here: the sample data names the real studio
@@ -461,6 +462,8 @@ final class AppModel {
         // The welcome opens by itself until it has been shown once (v2 part M2b). Decided before
         // anything else starts, because the notifier does not ask macOS at a launch that shows it.
         model.welcome.presentsAtLaunch = model.welcomeIsDue
+        // Someone who has seen the welcome before sees only What's New for this version (v2 part M13).
+        model.welcome.showsWhatsNew = model.whatsNewIsDue
         model.didLaunch()
         return model
     }
@@ -959,6 +962,8 @@ struct CaptureLaunch {
     /// without a picture of anyone. `--captions` turns the Captions overlay on (v2 part M8c).
     var sampleVideo: String?
     var captions = false
+    /// `--whats-new` with `--show=welcome`: the What's New panel instead of the five (v2 part M13).
+    var whatsNew = false
 
     static var current: CaptureLaunch? {
         let args = CommandLine.arguments
@@ -990,7 +995,8 @@ struct CaptureLaunch {
                              activityTab: value("--activity-tab").flatMap(ActivityTab.init(rawValue:)),
                              nameSheet: args.contains("--name-sheet"),
                              sampleVideo: value("--sample-video"),
-                             captions: args.contains("--captions"))
+                             captions: args.contains("--captions"),
+                             whatsNew: args.contains("--whats-new"))
     }
 
     /// The window this capture shows, for the log line.

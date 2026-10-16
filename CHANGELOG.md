@@ -5,6 +5,26 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-16, Fri: v2 part M13, the finish line
+
+- **Thumbnails: the cut-out edge is clean.** Why: Sonny looked at the 13 Sep excerpt's thumbnails and saw a light ring round the teacher
+  and part of the room left as a smear along the bottom. Two causes: Vision's soft mask kept everything it was unsure of, and Saffron drew a
+  white outline. Now only what joins the teacher's face is kept, the edge is pulled in and softened by about a pixel, its colour comes from
+  the teacher's own pixels, and no outline is drawn. Each option's checklist measures the ring and the leftover room, and the gate drops an
+  option that fails, so a smear can never reach Outputs unseen.
+- **A test that every name Help uses is one the app says.** Why: risk R16, copy drifting from the build. It found real drift: Help said
+  "Blur Face or Remove" (the app says Hide Face and Leave Out), "View > Show Recordings With Other People" (the filter is Other People Appear,
+  in the Sort menu), "People in This Recording" (the tab says In This Recording), "Favorites" and an old people line and version line.
+- **Every capability is on: `people` was the last.** Why: every output it describes exists since M11b. Each of its blocks was read against
+  the build and rewritten where it was not true under Ivan's 12 Oct decision (everyone starts as Include; the cloud is closed only by Leave Out
+  or a missing release).
+- **The welcome in its final copy, and What's New for v2.** Why: the privacy panel still said strangers are blurred by default, and the
+  cloud row said classes never go to the cloud; both stopped being true on 12 Oct. Anyone who saw the welcome (Ivan's live copy did, version
+  2) sees one What's New panel once at the next launch by hand; Help, Welcome to Prakriti still opens the five panels.
+- **No TipKit tips.** Why: PLAN M13 adds them only if M3 proved TipKit draws at 12 pt or more; M3b did not, and kept its own tip row.
+
+---
+
 ## 2026-10-16, Fri: v2 part M12b, supporting moments, added
 
 - **Add, by hand only, and kept with the recording until the next Make Again.** Why: REQUEST item 9, "added to the video at hand but not

@@ -53,7 +53,7 @@ final class WelcomeTests: XCTestCase {
     }
 
     func testEverySymbolTheWelcomeUsesExists() {
-        var symbols = WelcomeContent.panels.flatMap { [$0.symbol] + $0.rows.map(\.symbol) }
+        var symbols = (WelcomeContent.panels + [WelcomeContent.whatsNew]).flatMap { [$0.symbol] + $0.rows.map(\.symbol) }
         symbols += (1...6).map { "\($0).circle" }
         symbols += ["checkmark.circle.fill", "exclamationmark.triangle"]
         for symbol in Set(symbols) {
@@ -96,22 +96,25 @@ final class WelcomeTests: XCTestCase {
     }
 
     func testOnlyWhatIsBuiltIsVisibleInThePanels() {
-        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style, .timelines, .shorts, .thumbnails, .moments, .merge],
-                       "v2 part M2b adds the welcome to Help, M3b the Viewer, M4a progress, M4b the capture check, M5b the cloud providers, M6a faces, M6b voices, M6c choices, M6d hiding, M7a the People gallery, M7b recognition, M8a the edit plan, M8b the rendered MP4, M8c the video in the Viewer, M9a the House Style, M9b the text on screen, M9c direction, M10a the timelines, M11a the shorts, M11b the thumbnails, M12a Find Supporting Moments, M12b moments added by hand")
+        XCTAssertEqual(Capabilities.built, Capabilities.all,
+                       "every capability is built at the finish line (M13 switched on people, the last); v2 part M2b adds the welcome to Help, M3b the Viewer, M4a progress, M4b the capture check, M5b the cloud providers, M6a faces, M6b voices, M6c choices, M6d hiding, M7a the People gallery, M7b recognition, M8a the edit plan, M8b the rendered MP4, M8c the video in the Viewer, M9a the House Style, M9b the text on screen, M9c direction, M10a the timelines, M11a the shorts, M11b the thumbnails, M12a Find Supporting Moments, M12b moments added by hand")
         XCTAssertEqual(unbuiltNamesFound(in: visibleText(built, capabilities: Capabilities.built), built: Capabilities.built), [])
         // At M2b, panel 1 lists finding recordings, the podcast and "nothing is posted without you".
         XCTAssertEqual(built.map(\.id), ["welcome", "record", "outputs", "privacy", "start"])
-        XCTAssertEqual(built[0].rows.map(\.id), ["finds", "edit", "files", "yours"], "M9d adds It makes the edit; M11a, with the video and the timelines built, It hands you finished files")
-        XCTAssertEqual(built.map(\.rows.count), [4, 6, 5, 4, 4], "M5b adds Choose where models write to Get Started; M6c the People step to How Outputs Work; M7a the People row to Privacy; M9c the Direction step; M9d It makes the edit")
+        XCTAssertEqual(built[0].rows.map(\.id), ["finds", "edit", "files", "yours-v2"], "M9d adds It makes the edit; M11a, with the video and the timelines built, It hands you finished files; M13 (people) the v2 approval sentence")
+        XCTAssertEqual(built.map(\.rows.count), [4, 6, 5, 3, 4], "M5b adds Choose where models write to Get Started; M6c the People step to How Outputs Work; M7a the People row to Privacy; M9c the Direction step; M9d It makes the edit; M13 leaves Privacy its three v2 points")
+        XCTAssertEqual(built[3].rows.map(\.id), ["hidden", "remembered", "cloud-v2"])
         XCTAssertEqual(built[4].rows.map(\.id), ["folder", "notifications", "models", "help"])
         // M4a built `progress`, so step 1 of How Outputs Work reads its v2 sentence; M4b built `captureCheck`, so the
         // recording settings row names Hybrid MOV; M8c built `video`, so step 2 says to watch the edit in the Viewer. No other v2
         // sentence yet.
-        XCTAssertEqual(built.flatMap(\.rows).filter { $0.id.hasSuffix("-v2") }.map(\.id), ["frame-v2", "settings-v2", "found-v2", "review-v2", "approve-v2"], "no v2 sentence before its part (M11a: the framing row names the vertical clips; M11b: Approve, with the upload checklist)")
+        XCTAssertEqual(built.flatMap(\.rows).filter { $0.id.hasSuffix("-v2") }.map(\.id),
+                       ["yours-v2", "frame-v2", "settings-v2", "students-v2", "found-v2", "review-v2", "approve-v2", "cloud-v2"],
+                       "every v2 sentence, now that every part is built")
 
-        // The check finds what it is meant to find: with every row shown, the panels name features that
-        // are not built, and it must say so.
-        XCTAssertFalse(unbuiltNamesFound(in: visibleText(everything, capabilities: Capabilities.all), built: Capabilities.built).isEmpty,
+        // The check finds what it is meant to find: with every row shown but one capability taken away (people, the last
+        // built), the panels name a feature that would not be built, and it must say so.
+        XCTAssertFalse(unbuiltNamesFound(in: visibleText(everything, capabilities: Capabilities.all), built: Capabilities.built.subtracting([.people, .choices])).isEmpty,
                        "the check would have caught an unbuilt feature")
     }
 
@@ -211,6 +214,35 @@ final class WelcomeTests: XCTestCase {
         XCTAssertEqual(model.welcome.panel, 0)
         XCTAssertTrue(model.welcomeAppeared(), "asked for from the Help menu, it opens at any launch")
         XCTAssertFalse(model.welcome.openedFromMenu)
+    }
+
+    /// v2 part M13: someone who saw the welcome in an earlier version (2) sees What's New once, at a launch by hand; a first
+    /// launch still sees the five panels; Help, Welcome to Prakriti always opens the five panels.
+    func testWhatsNewShowsOnceToSomeoneWhoSawTheWelcome() {
+        let model = freshModel()
+        model.settings.welcomeSeenVersion = WelcomeContent.firstVersion
+        XCTAssertTrue(model.welcomeIsDue)
+        XCTAssertTrue(model.whatsNewIsDue)
+        model.welcome.presentsAtLaunch = model.welcomeIsDue
+        model.welcome.showsWhatsNew = model.whatsNewIsDue
+        XCTAssertEqual(model.welcome.panels.map(\.id), ["whats-new"])
+        XCTAssertEqual(model.welcome.panels.first?.rows.count, 6, "every v2 row is built")
+        XCTAssertTrue(model.welcomeAppeared())
+        model.launchFinished(atLogin: false)
+        XCTAssertEqual(model.settings.welcomeSeenVersion, WelcomeContent.version)
+        XCTAssertFalse(model.welcomeIsDue, "once")
+        XCTAssertFalse(model.whatsNewIsDue)
+
+        let first = freshModel()
+        XCTAssertTrue(first.welcomeIsDue)
+        XCTAssertFalse(first.whatsNewIsDue, "a first launch sees the five panels")
+
+        model.prepareWelcomeFromMenu()
+        XCTAssertFalse(model.welcome.showsWhatsNew)
+        XCTAssertEqual(model.welcome.panels.count, 5, "the Help menu opens the welcome itself")
+
+        // Before the parts it names were built, What's New shows nothing.
+        XCTAssertEqual(WelcomeContent.visibleWhatsNew(with: [.help, .welcome]).count, 0)
     }
 
     func testBackContinueAndThePosition() {

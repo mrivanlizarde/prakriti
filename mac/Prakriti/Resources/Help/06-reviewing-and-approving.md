@@ -202,11 +202,10 @@ picture and the sound. Choose Video in the toolbar to watch it as it will be pos
 :::requires people
 ## Check who appears
 
-Under People in This Recording, every face and voice Prakriti found is listed, with what happens to
-them in each output: Include, Blur Face or Remove. Check each one before you approve. Watch the moments
-where someone you blurred or removed appears. See [Privacy and students](07-people-and-privacy.md).
-
-Prakriti marks the moments where the transcript or a person's name may be wrong. Listen to them.
+In the inspector's People tab, In This Recording lists every face and voice Prakriti found, with what
+happens to them in each output: Include, Hide Face or Leave Out. Everyone starts on Include. Check each one
+before you approve, and watch the moments where someone you hid or left out appears. See
+[Privacy and students](07-people-and-privacy.md).
 :::
 
 ## Check what is said
@@ -252,11 +251,8 @@ Before you can approve:
 - If you left someone out and the voices were told apart on one mixed track, you listened to the changes of voice.
 :::
 :::requires people
-Before you can approve:
-
-- Every output you chose is made, and made after your last change.
-- Every person in the recording has a choice in every output.
-- Every line of each output's checklist passes.
+- Every file you approve passes its own checks, including the check that no one you hid or left out can be
+  seen or heard in it.
 :::
 
 :::unless thumbnails
@@ -284,7 +280,7 @@ A class or a conversation can be approved once Prakriti has checked who appears 
 :::
 :::requires style
 When the recording has an edited video, Approve covers the version in use: the question says which
-("Version 2, made Thu 15 Oct, 9:41 pm."), and so does the receipt. To approve another version, click Use
+("Version 2, made Thu 15 Oct 2026 at 9:41 pm. Clear, the house style."), and so does the receipt. To approve another version, click Use
 This Version beside it in the Direction tab first.
 :::
 

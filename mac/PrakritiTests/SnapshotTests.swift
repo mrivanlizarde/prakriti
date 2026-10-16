@@ -973,8 +973,12 @@ final class SnapshotTests: XCTestCase {
         for panel in 1...5 {
             try draw("welcome-every-part-built-\(panel)-light", .aqua, capabilities: Capabilities.all, panel: panel)
         }
+        // v2 part M13: What's New in Prakriti, one panel, light and dark.
+        for (scheme, appearance) in appearances {
+            try draw("whats-new-\(scheme)", appearance, panel: 1) { $0.welcome.showsWhatsNew = true }
+        }
         print("Welcome snapshots written to \(renderer.outputFolder.path): \(written.count)")
-        XCTAssertEqual(written.count, 10 + 8 + 5)
+        XCTAssertEqual(written.count, 10 + 8 + 5 + 2)
     }
 
     /// The Viewer's picture in a main-window snapshot (1440 by 900 at 2x, the sidebar open): every 8th pixel of the
