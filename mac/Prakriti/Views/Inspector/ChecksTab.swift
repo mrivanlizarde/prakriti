@@ -12,6 +12,8 @@ struct ChecksTab: View {
     var body: some View {
         Form {
             CaptureSection(recording: recording)
+            // Where the shorts' picture came from, the capture warning of a 1080p crop, and each short's checklist (v2 part M11a).
+            ShortsChecksSection(recording: recording)
             Section {
                 if measured.isEmpty {
                     RowNote(recording.status == .found ? "Nothing is measured until it is made." : "Nothing was measured.")

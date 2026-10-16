@@ -144,4 +144,47 @@ enum CompositionBuilder {
         return Built(composition: composition, videoComposition: AVVideoComposition(configuration: configuration), track: track,
                      timeline: timeline, renderSize: renderSize)
     }
+
+    /// A short (v2 part M11a, `Shorts`): `timeline`'s pieces of `source` (the main recording, or its vertical twin, on that file's
+    /// own frames) end to end, drawn by the same `Compositor` at `renderSize` (1080 by 1920): the faces in `hidden` hidden on the
+    /// whole picture first, then the 9:16 window of `framing` (none for the twin, which is already vertical), then the burned
+    /// captions. No punch-in, no title, no held frame.
+    static func buildShort(timeline: EditTimeline, source original: URL, renderSize: CGSize, framing: Framing, hidden: HiddenFaces?,
+                           captions: BurnedCaptions.Table?) async throws -> Built {
+        let asset = AVURLAsset(url: original)
+        guard let source = try await asset.loadTracks(withMediaType: .video).first else {
+            throw Failure(reason: "The recording has no picture, so no short can be made from it.")
+        }
+        let transform = try await source.load(.preferredTransform)
+        guard transform.isIdentity else {
+            throw Failure(reason: "The recording's picture is recorded turned, and Prakriti cannot make a short from a turned picture yet.")
+        }
+        guard timeline.totalFrames > 0 else { throw Failure(reason: "The short keeps no frame of the picture.") }
+        let composition = AVMutableComposition()
+        guard let track = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid) else {
+            throw Failure(reason: "The short could not be put together.")
+        }
+        for piece in timeline.pieces {
+            do {
+                try track.insertTimeRange(CMTimeRange(start: timeline.time(piece.sourceFrame), duration: timeline.time(piece.frames)), of: source,
+                                          at: timeline.time(piece.editFrame))
+            } catch {
+                throw Failure(reason: "A part of the short could not be put together: \(error.localizedDescription)")
+            }
+        }
+        let frameDuration = timeline.time(1)
+        let table = hidden.flatMap { $0.isEmpty ? nil : $0.table() }
+        let instructions = timeline.pieces.map { piece in
+            RenderInstruction(timeRange: CMTimeRange(start: timeline.time(piece.editFrame), duration: timeline.time(piece.frames)),
+                              trackID: track.trackID, spanID: piece.id, sourceStart: timeline.seconds(piece.sourceFrame),
+                              firstSourceFrame: piece.sourceFrame, frameDuration: frameDuration, hidden: table,
+                              framing: framing.isEmpty ? nil : framing, captions: captions)
+        }
+        let configuration = AVVideoComposition.Configuration(
+            colorPrimaries: AVVideoColorPrimaries_ITU_R_709_2, colorTransferFunction: AVVideoTransferFunction_ITU_R_709_2,
+            colorYCbCrMatrix: AVVideoYCbCrMatrix_ITU_R_709_2, customVideoCompositorClass: Compositor.self, frameDuration: frameDuration,
+            instructions: instructions, renderSize: renderSize)
+        return Built(composition: composition, videoComposition: AVVideoComposition(configuration: configuration), track: track,
+                     timeline: timeline, renderSize: renderSize)
+    }
 }

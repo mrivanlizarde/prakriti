@@ -104,6 +104,9 @@ anyone hidden or left out gets timelines too, pointing at a privacy-safe copy of
 speech replaced by the room's own sound on every track, a left-out microphone track left out), looked at and listened to again inside
 the gate. On two-people-mixed: 0 faces in the hidden place in 377 frames, 0 runs of the second voice, 49.2 Mbps. Face hiding is padded
 2.0 now. The round trips in Final Cut Pro and Resolve are Ivan's.
+**Then part M11a, shorts** (the last section, "v2 part M11a", Fri 16 Oct): vertical clips of the strongest moments, cut from the video's
+own edit plan with calm captions burned in inside the safe area, from the vertical recording when its sound lines up (its faces found
+again on it) or a crop that follows the speaker; the Viewer plays them (Short 1 of 3) and draws the Vertical Guide.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -6386,3 +6389,102 @@ says notices are turned off for Prakriti in System Settings (unchanged by this p
 - [ ] **Look at the frames I could only measure:** `screens/mac/v2-m10b/for-ivan/m10b-two-people-mixed-media.png` and
   `m10b-two-people-tracks-media.png` (the privacy-safe media, corner face hidden).
 - [ ] **The 13 Sep audience cannot be hidden yet** (finding 4): for now, keep that talk's people on Include if you want its video.
+
+## v2 part M11a: shorts. Fri 16 Oct 2026
+
+The first part of M11 (`docs/v2/PLAN.md`, M11, part M11a; REQUEST item 4 and "post ready"). Built on `main` Fri 16 Oct 00:40 to 03:10.
+No Swift package added, nothing downloaded, no SwiftData model changed (the shorts' record is `Shorts/shorts.json`; the Direction tab's
+count and length are two optional fields in the direction's existing JSON). Under Ivan's decision of Mon 12 Oct every participant counts
+as released; this run's rules: frames of Gabriel's talks measured only (pictures listed for Ivan below), synthetic test patterns looked
+at, nothing sent to any cloud provider (the parts of the 6 Sep excerpt were read by Qwen3.8-27B in LM Studio, 11 min 14 s; the 13 Sep
+excerpt's came from `~/Prakriti/Dev/Beats`). Routine checks run on the 5-minute excerpts (PLAN, Wed 14 Oct): the 13 Sep one from 2:00, and
+a new 6 Sep one from 20:00 with its vertical twin cut from the same moment, both in `~/Prakriti/Dev/Excerpts`. The whole talks are M11b's.
+
+### What was built
+
+- **The Shorts output** (`OutputKind.shorts`, now built, off for every folder; `PipelineStep.shorts`, "Making the shorts", after the
+  video and the timelines). **Make Shorts** in the inspector turns it on for one recording and makes it again. `Render/Shorts.swift`:
+  `Shorts.choose` (the parts of the talk ranked by a marked opening, standing alone and best score; housekeeping, welcome and closing last;
+  whole sentences of one part from its key line, forward then back, within 30 to 60 s for the default; cut halfway into the pause on a
+  frame; no overlap; never where a voice left out of shorts speaks), `Shorts.spans` and `Shorts.plan` (the plan's own kept spans cut at
+  the short's ends), `Shorts.make` (per short: picture, hiding, captions, sound, writer, measure, people checks, gate), `Shorts.checklist`,
+  `Shorts.Record` in `Shorts/shorts.json`.
+- **Where the picture comes from** (`Render/VerticalCrop.swift`): the vertical twin when `TwinSync` finds its sound within one frame at
+  three moments (4 kHz decode with the seek after `-i`, vDSP correlation), shifted by the measured whole frames, with a window of 1/1.25
+  following the face; otherwise a 9:16 crop the full height (1215 by 2160 from 4K; 608 by 1080 from 1080p with `Shorts.softWarning` in
+  Checks). The follow: dead zone of the window's middle third, an ease of about half a second, 0.3 s of lookahead, never past the edge.
+- **The twin's own face step** (`People/TwinFaces.swift`): `FaceScan.scan(range:)` on the twin over the short, tracks matched to the
+  main recording's rows by time and order, or by the voice speaking; unknown means hidden; every twin short gets the picture output check.
+- **Calm burned captions** (`Render/BurnedCaptions.swift`): 2 to 5 words a page, the spoken word white and the rest 70%, Alegreya Sans
+  Bold at a 64 px cap height, soft shadow, no box, baseline y 1330 centred on x 510, lines at most 840 px, every box checked inside the
+  safe area x 60 to 960, y 250 to 1570; drawn ahead by Core Graphics, laid over last (`RenderInstruction.captions`).
+- **The file**: 1080 by 1920 at the recording's rate, H.264 High at a constant 10 Mbps, AAC 320 kbps, -14 LUFS, a 20 ms fade at each end
+  (`VideoAudio.make(edgeFade:)`), its `.srt` beside it; `Compositor.frame(_:crop:to:)` scales the window to the render size (the video's
+  frames unchanged); `CompositionBuilder.buildShort`. **`OutputGate.admitShort`**: choices for shorts, picture check when anyone is hidden
+  in shorts or the picture is the twin's, sound check when anyone is left out of shorts, both codecs, 1080 by 1920, tail, length within a
+  frame, at most 3 minutes, captions in the safe area; a refused short is deleted and the others kept.
+- **In the app**: Outputs' Shorts section (each short with Play and Show in Finder, Make Shorts) and a Shorts row under Files; Checks'
+  Shorts section (source, the twin's offset or why not, its face step, each short's checklist); the Direction tab's Shorts (Make N shorts,
+  0 to 5; Length up to 30, 45 or 60 s); the Viewer's **Shorts** rendition with **Short 1 of 3** beside the picker; **Vertical Guide** on
+  the Original and the Video (and View > Vertical Guide). Help 02, 03, 05, 06, 08 (`shorts` capability on); the welcome's "It hands you
+  finished files" and "frame-v2" rows now show. Mac warnings 199 to 204 added.
+- **Tests**: `ShortsTests` (7: the safe rectangle refuses planted boxes, pages, the dead-zone crop, the twin's offset, the twin's face
+  matching, the choice of moments, and a short made end to end from a test pattern, cropped and from a synthetic twin 3 frames late);
+  `ShortsAcceptanceTests` (`make accept-shorts`); snapshots `27-viewer-shorts`, `27-checks-shorts`, `27-viewer-vertical-guide` and
+  `-video`.
+
+### Found by measuring (each with its measurement)
+
+1. **Caption lines set to the full 900 px reached 8 px past the safe area as Vision reads them** (13 Sep excerpt: 2 to 3 lines a short,
+   right edge 968 to 969). Lines are now at most 840 px: 0 lines outside on all six shorts.
+2. **Seeking before `-i` read the twin's offset wrong on the `-c copy` excerpts** (their sound starts at -1.0 s): 0.451, -0.012 and
+   0.407 s at three moments, so the twin was refused. The whole talks read -0.012 s at 1245, 1350 and 1455 s; with the seek after `-i`
+   the excerpts read -0.012 s at all three (correlation 0.997 to 0.998). About 1.5 s per moment near the end of the 55-minute talk.
+3. **The twin used whole kept the face in the middle third in only 77 to 88% of frames** (the face's middle 0.26 to 0.69 across). At a
+   1.15 reframe one short planned 89.8% (the window could move only 0.065 each way); with lookahead alone 89.7% measured. At 1.25: 96.7,
+   95.5 and 91.2% measured (planned 97.3, 96.9, 91.7). Short 3 is close to the bar; it is the twin's own framing.
+4. **A banner in the 6 Sep room reading "RETREA..." matched the short's word "retreat"** and was counted as a caption outside the safe
+   area; the acceptance now reads caption lines only near where captions sit (y 950 to 1750).
+5. The test target logs `mdb_txn_commit error: MDB_MAP_FULL` from a system framework's cache throughout; the disk had 14 GB free. No
+   result depended on it.
+
+### Checks run, with results (PLAN M11, the checks part M11a runs: 1 (safe rectangle, dead zone), 2, 2b, 3, 7 (Viewer), 8)
+
+Originals unchanged: 13 Sep 730,464,600 bytes, 6 Sep 2,578,079,009, its vertical 2,564,386,713, same dates. Report:
+`screens/mac/v2-m11a/acceptance-shorts.txt`.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `ShortsTests`: the safe rectangle rejects a planted caption box outside it; the dead-zone crop does not move for a face in the middle third | **PASS** (7 of 7). A box moved to y 1600 and one past x 960 each refused, and the gate deleted the planted file; a face swaying inside the middle third over 600 frames: one window position, one segment; walking out, settled within 0.8 s with 95% or more in the middle third |
+| 2 | 6 Sep excerpt with its twin: offset written; three shorts 1080 by 1920, 29.97, at most 180 s; -14 within 1, TP at or under -1; tail; Vision text every 2 s; face middle third in 90%; safe-area frames | **PASS.** Offset -0.012 s (0 frames), correlation 0.998, 0.997, 0.998, from the vertical recording. Shorts 0:31, 0:33, 0:34 (30.6, 32.9, 34.1 s): -14.0/-13.9/-13.9 LUFS, -1.5/-1.4/-1.5 dBTP, tails decode; Vision read caption text on 16 of 16, 17 of 17, 17 of 17 frames, 98%, 100%, 100% of words the short's own; face middle third 96.7%, 95.5%, 91.2%; 0 caption lines outside the safe area; 38.9 to 43.5 MB (about 10.2 Mbps). Frames with the safe area drawn are for Ivan (below) |
+| 2b | Twin shorts: Vision every 0.5 s finds no face outside an included person's matched track or a hidden region; the twin's people step ran | **PASS.** 62/62, 66/66, 69/69 faces accounted for (0 findings); each twin face step: 1 face track matched, 0 unknown; the log line is in the development log; the gate's own check (5 a second): 153, 164, 171 sightings, all included |
+| 3 | 13 Sep excerpt (1080p, no twin): shorts from a crop, the capture warning in Checks | **PASS.** 3 shorts 0:33, 0:32, 0:31 from the crop, -13.9 LUFS, -1.5 dBTP, tails decode, Vision 100% own words, face middle third 100%, 100%, 98.4%, 0 caption lines outside; the warning in the record and drawn in the Checks tab (`m11a-checks-13sep-shorts-light.png`, looked at) |
+| 7 | Snapshots: Viewer with Shorts and the 9:16 guide | **PASS, looked at:** `27-viewer-shorts` (Short 2 of 3 beside the picker, Outputs), `27-checks-shorts` (the warning, the source line), `27-viewer-vertical-guide` (the window's white edge over the canvas, People and Vertical Guide toggles, the Direction tab's Shorts), `-video`. The player's picture is black in a bitmap (Mac warning 43); the shading shows in the real window. Test-pattern frames looked at: `m11a-test-pattern-short-crop.png`, `m11a-test-pattern-short-twin.png` (one line of captions inside the safe area, the spoken word brighter) |
+| 8 | Regression set; `make migrate-check` | **PASS.** `make build` no warnings; **`make test` 439 tests, 0 failures, 32 skipped by design** (1,630 s); `make accept`: 13 Sep -16.8 LUFS, -1.7 dBFS; silent-60s refused at the sound check; 6 Sep -16.7 LUFS, -1.4 dBFS; `make accept-edits`: 38.82 s shorter (expected 38.82); `make migrate-check` passed |
+
+**Em dashes:** 0 in every line this part added (grep of the diff and the new files for U+2014 and U+2013).
+
+### Decisions, each with its reason
+
+1. **A short is cut from the edit plan, never planned again, and no model is asked.** Reason: the plan is where every cut and person is
+   proved applied (warning 138); the beats already say which parts stand alone.
+2. **The twin is reframed at 1.25, above research 2.6's 1.15 for punch-ins.** Reason: measured above (finding 3), 1.15 cannot keep the
+   face in the middle third; 1.25 of a 1080-wide picture is still sharper than a 1080p crop's 1.78. Ivan judges it by eye.
+3. **The shorts' record is a file in `Shorts`, not the store.** Reason: no migration, as with the timelines.
+4. **No upload checklists, thumbnails or Approve sheet here.** Reason: PLAN gives them to M11b. Approve copies the Shorts folder like any
+   made output until then.
+
+### What does not work yet
+
+- The whole talks' shorts (M11b, the last part of M11). Upload checklists for Shorts, Reels and TikTok, thumbnails, the Approve sheet
+  and Ready (M11b).
+- One 6 Sep short keeps the face in the middle third in 91.2% of frames: above the bar, not by much.
+
+### For Ivan
+
+- [ ] **Look at the frames I could only measure** (they show the talk): `screens/mac/v2-m11a/for-ivan/m11a-6-Sep-short-*.png` and
+  `m11a-13-Sep-short-*.png`, each with the safe area drawn in red. Better: play the shorts themselves in
+  `~/Prakriti/Dev/Outputs/2026-09-06 excerpt 20m to 25m/Shorts/` (from the vertical recording, reframed 1.25) and
+  `~/Prakriti/Dev/Outputs/2026-09-13 excerpt 2m to 7m/Shorts/` (a 1080p crop, softer). Is the twin's 1.25 reframe sharp enough, and are the
+  captions calm enough?
+- [ ] **To make shorts of a real recording:** select it, Outputs, Make Shorts (or switch Shorts on for a folder). Nothing is uploaded.

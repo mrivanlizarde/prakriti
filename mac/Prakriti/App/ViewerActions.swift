@@ -42,6 +42,10 @@ extension AppModel {
             start = (seek.rendition, seek.time, seek.play)
         }
         viewer.load(recording, applyLexicon: wordListOn(recording), start: start)
+        if let index = pendingShortIndex {
+            pendingShortIndex = nil
+            viewer.chooseShort(index)
+        }
     }
 
     /// The word list as this recording's transcript was made, for reading its words.
@@ -69,6 +73,17 @@ extension AppModel {
     /// The Viewer's Captions toggle and View > Captions (v2 part M8c).
     func setShowsCaptions(_ on: Bool) {
         viewer.showsCaptions = on
+    }
+
+    /// The Viewer's Vertical Guide toggle and View > Vertical Guide (v2 part M11a).
+    func setShowsVerticalGuide(_ on: Bool) {
+        viewer.showsVerticalGuide = on
+    }
+
+    /// The pop-up beside the picker while Shorts plays (v2 part M11a).
+    func chooseShort(_ index: Int) {
+        viewer.chooseShort(index)
+        saveWindowState()
     }
 
     func setFollowPlayback(_ on: Bool) {

@@ -46,8 +46,10 @@ enum FaceScan {
     }
 
     /// Looks for faces in `file`. `progress` is called with how far through the picture the scan is, 0 to 1.
-    /// A paused make holds between samples; a cancelled one stops at the next.
-    static func scan(file: URL, control: ProcessControl? = nil, progress: @escaping @Sendable (Double) -> Void = { _ in }) async throws -> Result {
+    /// A paused make holds between samples; a cancelled one stops at the next. `range` (v2 part M11a, the vertical twin's own face
+    /// step) reads only that stretch of the file, in seconds; nil reads it all.
+    static func scan(file: URL, range: ClosedRange<Double>? = nil, control: ProcessControl? = nil,
+                     progress: @escaping @Sendable (Double) -> Void = { _ in }) async throws -> Result {
         let started = ContinuousClock.now
         let asset = AVURLAsset(url: file)
         let duration = (try? await asset.load(.duration).seconds) ?? 0
@@ -66,6 +68,10 @@ enum FaceScan {
         let output = AVAssetReaderTrackOutput(track: track, outputSettings: [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange,
         ])
+        if let range {
+            reader.timeRange = CMTimeRange(start: CMTime(seconds: max(0, range.lowerBound), preferredTimescale: 600),
+                                           end: CMTime(seconds: range.upperBound, preferredTimescale: 600))
+        }
         let provider = reader.outputProvider(for: output)
         do {
             try reader.start()
@@ -74,7 +80,7 @@ enum FaceScan {
         }
         let scale = result.height > analysisHeight ? Double(analysisHeight) / Double(result.height) : 1
         let detect = DetectFaceRectanglesRequest(.revision4)
-        var next = 0.0
+        var next = max(0, range?.lowerBound ?? 0)
         var previousGrid: [Double]?
         var warmed = false
         while let buffer = try await provider.next() {
@@ -118,7 +124,11 @@ enum FaceScan {
             result.samples.append(FaceSample(time: time, faces: faces.map { face in
                 FaceDetection(box: FaceGeometry.fromVision(face.boundingBox.cgRect), confidence: Double(face.confidence), quality: qualities[face.uuid])
             }))
-            if result.duration > 0 { progress(min(1, time / result.duration)) }
+            if let range, range.upperBound > range.lowerBound {
+                progress(min(1, max(0, time - range.lowerBound) / (range.upperBound - range.lowerBound)))
+            } else if result.duration > 0 {
+                progress(min(1, time / result.duration))
+            }
         }
         if reader.status == .failed {
             throw Failure(reason: "The picture stopped part way: \(reader.error?.localizedDescription ?? "the file could not be read to its end").")

@@ -263,6 +263,9 @@ struct AppCommands: Commands {
             // The video's captions over the picture (v2 part M8c), the same as the toggle on the picture.
             Toggle("Captions", isOn: Binding(get: { model.viewer.showsCaptions }, set: { model.setShowsCaptions($0) }))
                 .disabled(model.path.isEmpty || model.viewer.rendition != .video || model.viewer.captions.isEmpty)
+            // The 9:16 window the shorts use (v2 part M11a), the same as the toggle on the picture.
+            Toggle("Vertical Guide", isOn: Binding(get: { model.viewer.showsVerticalGuide }, set: { model.setShowsVerticalGuide($0) }))
+                .disabled(model.path.isEmpty || (model.viewer.rendition != .original && model.viewer.rendition != .video))
             Divider()
             Button(model.inspectorShown ? "Hide Inspector" : "Show Inspector") { model.inspectorShown.toggle() }
                 .keyboardShortcut("i", modifiers: [.command, .option])

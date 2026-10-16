@@ -70,7 +70,8 @@ enum Capability: String, CaseIterable, Sendable {
     /// clone, Read Me, Make Timelines and Open In, the File menu's export items; written only when everyone is included. The
     /// privacy-safe media for a recording with anyone hidden (M10b) is described under `people`.
     case timelines
-    /// Vertical shorts (M11a).
+    /// Vertical shorts (M11a): the Shorts output, cut from the edit plan with burned captions, from the vertical twin or a crop that
+    /// follows the speaker; Make Shorts, the Shorts rendition with Short 1 of 3, the Vertical Guide, and Shorts in the Direction tab.
     case shorts
     /// Thumbnails, the Approve sheet and Ready (M11b).
     case thumbnails
@@ -84,9 +85,9 @@ enum Capabilities {
     /// (M6b), choices applied to audio (M6c), hiding in pictures (M6d), the People gallery (M7a), recognition (M7b), the
     /// edit plan (M8a), the rendered MP4 (M8b), the video in the Viewer (M8c), the House Style with its zooms (M9a), the title and
     /// names on screen (M9b), direction for one recording (M9c), and the opening line, key phrases, terms, chapters, versions and
-    /// the Direction tab (M9d), and the timelines for Final Cut Pro and DaVinci Resolve (M10a). Each later part switches its own on.
+    /// the Direction tab (M9d), the timelines for Final Cut Pro and DaVinci Resolve (M10a), and the shorts (M11a). Each later part switches its own on.
     static let built: Set<Capability> = [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery,
-                                         .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style, .timelines]
+                                         .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style, .timelines, .shorts]
 
     /// Every capability, for the test that every article and every block is visible once all are built.
     static let all = Set(Capability.allCases)

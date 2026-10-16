@@ -5,6 +5,28 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-16, Fri: v2 part M11a, shorts
+
+- **A Shorts output: vertical clips of the strongest moments, cut from the same edit plan as the video.** Why: REQUEST 4 ("100% ready
+  for distribution") and the "post ready" ask; cutting from the plan's own kept spans means a short can never bring back a pause, a
+  filler, a retake or someone Ivan left out.
+- **Moments are chosen in code from the parts of the talk, starting on each part's strongest line, whole sentences only.** Why: a short
+  must stand on its own and open strong, and no model should be asked again for what the beats already hold (warning 179's rule).
+- **The vertical recording is the picture when its sound lines up within one frame, and its faces are found again on it.** Why: it is
+  sharp where a 1080p crop is not, but it is a second camera (PLAN R20): the main recording's face boxes say nothing about it, so
+  anything not matched to someone included is hidden, and every twin short is checked for faces.
+- **Otherwise a 9:16 crop that follows the speaker with a dead zone, and a warning in Checks when it comes from 1080p.** Why: research
+  2.6, a window that moves with every nod is tiring to watch; a 1080p crop is enlarged 1.78 times, and Ivan should know before he posts.
+- **Calm burned captions, 2 to 5 words, the spoken word brighter, inside the strictest safe area, lines kept 30 px inside it.** Why: most
+  shorts are watched muted; the margin came from Vision reading full-width lines 8 px past the safe edge on the 13 Sep excerpt.
+- **Every short passes its own gate, and a failing one is deleted while the others are kept.** Why: PLAN 2.1.11, nothing that failed a
+  check sits in Outputs.
+- **The Viewer plays the shorts (Short 1 of 3) and draws a Vertical Guide over the Original and the Video.** Why: REQUEST 10, preview in
+  the app; the guide shows the window the shorts use before any are made.
+- **The record lives in `Shorts/shorts.json`, not the store.** Why: no migration for an output's record, as with the timelines.
+
+---
+
 ## 2026-10-15, Thu: v2 part M10b, privacy-safe timeline media
 
 - **A recording with anyone hidden or left out, or a muted name, now gets timelines, pointing at a privacy-safe copy instead of the

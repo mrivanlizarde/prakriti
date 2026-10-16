@@ -30,7 +30,7 @@ import Foundation
 /// The steps, in order. `title` is what the recording page lists; `doing` is what the status line
 /// says while it runs ("Working on Sun 13 Sep: making the episode audio"). Never "Processing".
 enum PipelineStep: String, CaseIterable, Sendable {
-    case complete, capture, sound, speechAudio, transcript, coverage, wordList, namesSaid, faces, voices, trim, edits, leaveOut, planEdit, episode, loudness, podcastAudio, audioCheck, episodeTranscript, writing, renderVideo, checkVideo, timelines, podcastPackage, report
+    case complete, capture, sound, speechAudio, transcript, coverage, wordList, namesSaid, faces, voices, trim, edits, leaveOut, planEdit, episode, loudness, podcastAudio, audioCheck, episodeTranscript, writing, renderVideo, checkVideo, timelines, shorts, podcastPackage, report
 
     var title: String {
         switch self {
@@ -58,6 +58,7 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .renderVideo: "Making the video"
         case .checkVideo: "Checking the video"
         case .timelines: "Timelines for Final Cut Pro and DaVinci Resolve"
+        case .shorts: "Shorts"
         case .report: "Report"
         }
     }
@@ -96,6 +97,7 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .renderVideo: "Making the video"
         case .checkVideo: "Checking the video"
         case .timelines: "Writing the timelines"
+        case .shorts: "Making the shorts"
         case .report: "Writing the report"
         }
     }
@@ -180,6 +182,11 @@ struct PipelineOptions: Sendable {
     /// The timelines for Final Cut Pro and DaVinci Resolve (v2 part M10a), written after the video from the same plan, only with
     /// the video and only when everyone in it is included. Off unless the recording's output switches ask for it.
     var makeTimelines = false
+    /// The shorts (v2 part M11a): vertical clips of the strongest moments, cut from the same edit plan, made after the video, only
+    /// with the transcript. Off unless the recording's output switches ask for it (PLAN rule 2.1.7). How many and how long come
+    /// from the recording's Direction tab.
+    var makeShorts = false
+    var shorts = ShortsSettings()
     /// The recording's title and notes as Ivan set them, and when it was recorded: the video's name and Description.txt.
     var video = VideoFacts()
     /// The recording's title as Ivan set it in Info, for the title on screen (v2 part M9b). Empty: no title on screen.
@@ -225,7 +232,7 @@ struct PipelineOptions: Sendable {
             if !edits.isEmpty { steps.append(.edits) }
             if appliesChoices { steps.append(.leaveOut) }
         }
-        if (planEdit || makeVideo) && makeTranscript { steps.append(.planEdit) }
+        if (planEdit || makeVideo || makeShorts) && makeTranscript { steps.append(.planEdit) }
         if makeEpisode { steps += [.episode, .loudness] }
         if makePodcastReady { steps.append(.podcastAudio) }
         // The audio output check, whenever someone is left out (v2 part M6c).
@@ -235,6 +242,8 @@ struct PipelineOptions: Sendable {
         // After the writing, so its title, notes and chapters can go in Description.txt (v2 part M8b).
         if makeVideo && makeTranscript { steps += [.renderVideo, .checkVideo] }
         if makeVideo && makeTranscript && makeTimelines { steps.append(.timelines) }
+        // The shorts (v2 part M11a), from the same plan, after the video.
+        if makeShorts && makeTranscript { steps.append(.shorts) }
         if makePodcastReady { steps.append(.podcastPackage) }
         if makeReport { steps.append(.report) }
         return steps
@@ -347,6 +356,9 @@ struct PipelineResult: Sendable {
     /// The timelines this make wrote (v2 part M10a), or why it did not, or neither when they were not asked for.
     var timeline: TimelineExport.Record?
     var timelineProblem: String?
+    /// The shorts this make made (v2 part M11a), or why it did not, or neither when they were not asked for.
+    var shorts: Shorts.Record?
+    var shortsProblem: String?
 }
 
 /// Where the face and voice steps write, for one recording, and Ivan's names the writing step's privacy lock reads.
@@ -946,7 +958,7 @@ struct Pipeline: Sendable {
             // 5d. The edit plan (v2 part M8a): the rough cut as `edit-plan.json`, from the transcript and the original's
             //     sound, with Ivan's trim and cuts and the people left out of the video applied on top. A plan that cannot
             //     be made or does not pass its own check costs only this step; nothing else reads it in M8a.
-            if (options.planEdit || options.makeVideo) && options.makeTranscript {
+            if (options.planEdit || options.makeVideo || options.makeShorts) && options.makeTranscript {
                 await begin(.planEdit)
                 do {
                     let plan = try await planTheEdit(file: file, staging: staging, duration: ready.duration, capture: result.capture,
@@ -1251,6 +1263,47 @@ struct Pipeline: Sendable {
                     let reason = "No timeline was written, because the video was not made."
                     result.timelineProblem = reason
                     await finish(.timelines, reason, state: .skipped)
+                }
+            }
+
+            // 9d. The shorts (v2 part M11a): from the same plan, chosen from the parts of the talk, each made in a hidden folder and
+            //     let through `OutputGate.admitShort` into Shorts. A refusal or a failure costs only this step.
+            if options.makeShorts && options.makeTranscript {
+                await begin(.shorts)
+                meter?.startPass()
+                if let plan = result.editPlan {
+                    let transcript = staging.appending(path: TranscriptFiles.asHeard)
+                    let sha = (try? Data(contentsOf: transcript)).flatMap(PlanWords.from(json:))?.transcriptSHA256 ?? ""
+                    let peopleFile = options.people.flatMap { $0.folders.read($0.recordingID) }
+                    let setup = Shorts.Setup(original: file, plan: plan, transcript: transcript, beats: BeatsFile.cached(in: staging, transcriptSHA256: sha),
+                                             staging: staging, title: options.video.title, recordedAt: options.video.recordedAt, settings: options.shorts,
+                                             people: peopleFacts(result: result), peopleFile: peopleFile, teacher: options.people?.names.teacher,
+                                             folders: options.people?.folders, control: meter?.control,
+                                             log: { [log] line in log?.write("\(label): " + line) })
+                    let ffmpeg = tools.ffmpeg, ffprobe = tools.ffprobe, limit = limit(ready.duration), control = meter?.control
+                    do {
+                        let record = try await Shorts.make(setup, ffmpeg: { arguments in
+                            try await Subprocess.run(ffmpeg, arguments, timeout: limit, control: control).stderr
+                        }, ffprobe: { arguments in
+                            try await Subprocess.run(ffprobe, arguments, timeout: limit, control: control).stdout
+                        }, now: Date(), progress: { [meter] in meter?.passProgress($0) })
+                        result.shorts = record
+                        let left = record.shorts.count < options.shorts.count ? " " + (record.notes.last ?? "") : ""
+                        await finish(.shorts, "In the \(Shorts.folderName) folder: \(record.summary.lowercasedFirst)" + left,
+                                     state: record.shorts.allSatisfy { $0.failed == 0 } ? .done : .failed)
+                    } catch is CancellationError {
+                        throw CancellationError()
+                    } catch {
+                        let reason = (error as? Shorts.Failure)?.reason ?? (error as? ToolError)?.logLine ?? error.localizedDescription
+                        result.shortsProblem = reason
+                        try? FileManager.default.removeItem(at: staging.appending(path: Shorts.folderName))
+                        log?.write("\(name): no shorts were made. \(reason)")
+                        await finish(.shorts, reason + " Everything else is kept.", state: .failed)
+                    }
+                } else {
+                    let reason = "No shorts were made, because the edit plan could not be made" + (result.planProblem.map { ": " + $0 } ?? ".")
+                    result.shortsProblem = reason
+                    await finish(.shorts, reason, state: .failed)
                 }
             }
 
@@ -1881,7 +1934,8 @@ struct Pipeline: Sendable {
     /// Every file a make can leave. Only these are ever replaced or removed from a recording's
     /// folder; anything else Ivan keeps there is left alone.
     static let madeNames: Set<String> = Set(["episode.mp3", "REPORT.md", "speech.wav", TranscriptFiles.asHeard, PodcastPackage.folderName, EditPlan.fileName,
-                                                   VideoStep.folderName, HiddenFaces.fileName, BeatsFile.fileName, TimelineExport.folderName]
+                                                   VideoStep.folderName, HiddenFaces.fileName, BeatsFile.fileName, TimelineExport.folderName,
+                                                   Shorts.folderName]
                                             + TranscriptFormat.allCases.map(TranscriptFiles.fileName))
         .union(WrittenPackage.fileNames)
 

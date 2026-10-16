@@ -8,8 +8,8 @@ import Observation
 // or span chosen for Cut and Keep. One Viewer at a time, owned by AppModel, so the inspector, the menus
 // and the window's state restoration read the same one. Replaces v1's `RecordingPage` (retired here).
 
-/// What the Viewer plays. Video plays since part M8c, through the same compositor as the file; Shorts is named now and
-/// comes with its part (M11): it shows in the picker, unavailable, with the reason.
+/// What the Viewer plays. Video plays since part M8c, through the same compositor as the file; Shorts since part M11a, each
+/// short's own file, chosen with the pop-up beside the picker ("Short 1 of 3").
 enum Rendition: String, CaseIterable, Identifiable, Sendable {
     case original, podcast, podcastReady, video, shorts
     var id: String { rawValue }
@@ -34,8 +34,8 @@ enum Rendition: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// Whether this build can make it at all.
-    var isBuilt: Bool { self != .shorts }
+    /// Whether this build can make it at all (every rendition since part M11a).
+    var isBuilt: Bool { true }
 
     /// Has a picture to show (the others are sound with the transcript under it).
     var hasPicture: Bool { self == .original || self == .video || self == .shorts }
@@ -66,6 +66,20 @@ final class ViewerModel {
     /// The Captions overlay on the Video (v2 part M8c, design spec 3.4.1): the captions file as it will be uploaded, shown
     /// over the picture. Off until turned on, for this session.
     var showsCaptions = false
+    /// The Vertical Guide over the Original and the Video (v2 part M11a, design spec 3.4.1): the 9:16 window the shorts use. Off
+    /// until turned on, for this session.
+    var showsVerticalGuide = false
+    /// The made shorts (v2 part M11a), in their order, and the one Shorts plays.
+    struct ShortFile: Equatable {
+        var short: Shorts.Short
+        var url: URL
+    }
+    private(set) var shorts: [ShortFile] = []
+    private(set) var shortIndex = 0
+    /// The short playing's clock against the original's, from the plan it was cut from (nil when the plan cannot be read).
+    private(set) var shortTimeline: EditTimeline?
+    @ObservationIgnored private var shortsPlan: EditPlan?
+    @ObservationIgnored private var guideCache: (key: String, track: VerticalGuideTrack)?
     /// The made video's captions, on the video's clock, read from its `.srt` (v2 part M8c).
     private(set) var captions: [Captions.Cue] = []
     /// The plan the made video was made from, and its timeline between the original's clock and the video's (v2 part M8c).
@@ -153,6 +167,7 @@ final class ViewerModel {
             originalItem = nil
             originalNote = nil
             readVideo(recording)
+            readShorts(recording)
             selectedWords = nil
             selectedSpan = nil
             if changedRecording {
@@ -211,11 +226,76 @@ final class ViewerModel {
         }
     }
 
+    /// The made shorts, read once per make (v2 part M11a), from `Shorts/shorts.json` and the plan they were cut from.
+    private func readShorts(_ recording: Recording) {
+        shorts = []
+        shortIndex = 0
+        shortTimeline = nil
+        shortsPlan = nil
+        files[.shorts] = nil
+        guard let folder = recording.outputFolder, recording.madeFiles.contains(Shorts.folderName) else { return }
+        let base = URL(fileURLWithPath: folder, isDirectory: true)
+        let shortsFolder = base.appending(path: Shorts.folderName, directoryHint: .isDirectory)
+        guard let record = Shorts.Record.read(shortsFolder) else { return }
+        shorts = record.shorts.compactMap { short in
+            let url = shortsFolder.appending(path: short.fileName)
+            return FileManager.default.fileExists(atPath: url.path) ? ShortFile(short: short, url: url) : nil
+        }
+        shortsPlan = EditPlan.read(folder: folder)
+        selectShortFile(0)
+    }
+
+    private func selectShortFile(_ index: Int) {
+        guard shorts.indices.contains(index) else { return }
+        shortIndex = index
+        files[.shorts] = shorts[index].url
+        shortTimeline = shortsPlan.map { EditTimeline(plan: Shorts.plan($0, window: shorts[index].short.window)) }
+    }
+
+    /// Plays another short (the pop-up beside the picker), from its start.
+    func chooseShort(_ index: Int) {
+        guard index != shortIndex || rendition != .shorts, shorts.indices.contains(index) else { return }
+        selectShortFile(index)
+        guard rendition == .shorts, let url = files[.shorts] else { return }
+        player.pause()
+        player.replaceCurrentItem(with: AVPlayerItem(url: url))
+        time = 0
+        onPositionChange?(rendition, 0)
+    }
+
+    /// "Short 1 of 3".
+    func shortLabel(_ index: Int) -> String { "Short \(index + 1) of \(shorts.count)" }
+
+    /// Where the Vertical Guide's window is, worked out once per people check (v2 part M11a).
+    func guideTrack(_ file: PeopleFile, recording: Recording) -> VerticalGuideTrack {
+        let key = "\(recording.id.uuidString)|\(file.madeAt.timeIntervalSince1970)|\(recording.choicesJSON ?? "")|\(recording.namesJSON ?? "")"
+        if let guideCache, guideCache.key == key { return guideCache.track }
+        let track = VerticalGuideTrack.make(file, recording: recording)
+        guideCache = (key, track)
+        return track
+    }
+
+    /// The guide's middle across the picture on show now: on the Original at this moment; on the Video at the moment of the
+    /// original it shows, moved through the punch-in on screen. Nil when the moment is not on show.
+    func guideCenter(_ track: VerticalGuideTrack) -> Double? {
+        switch rendition {
+        case .original:
+            return track.center(at: time)
+        case .video:
+            guard let timeline = videoTimeline, let plan = videoPlan, let original = timeline.originalTime(time) else { return nil }
+            let center = track.center(at: original)
+            guard let crop = Framing(plan: plan, timeline: timeline).rect(atEditFrame: Int64((time / timeline.frame.seconds).rounded())) else { return center }
+            return (center - crop.minX) / max(0.001, crop.width)
+        default:
+            return nil
+        }
+    }
+
     /// Why a rendition cannot be chosen, in one sentence; nil when it can.
     func unavailableReason(_ rendition: Rendition) -> String? {
         switch rendition {
         case .video: return videoPlan == nil ? (videoNote ?? "The edited video is not made for this recording.") : nil
-        case .shorts: return "Prakriti does not make shorts yet."
+        case .shorts: return shorts.isEmpty ? "No shorts are made for this recording." : nil
         case .podcast: return files[.podcast] == nil ? "The episode is not made for this recording." : nil
         case .podcastReady: return files[.podcastReady] == nil ? "The podcast-ready episode is not made for this recording." : nil
         case .original: return files[.original] == nil ? "The original is not known." : nil
@@ -374,6 +454,7 @@ final class ViewerModel {
     var currentOriginal: Double? {
         guard rendition != .original else { return time }
         if rendition == .video { return videoTimeline?.originalTime(time) }
+        if rendition == .shorts { return shortTimeline?.originalTime(time) }
         guard let clock = clocks[rendition] else { return time }
         return clock.originalTime(time)
     }
@@ -393,6 +474,8 @@ final class ViewerModel {
         case .original: t
         // A moment the plan took out plays from where the video carries on after it.
         case .video: videoTimeline?.editTimeAtOrAfter(t) ?? videoTimeline?.duration ?? t
+        // A moment outside the short plays it from its start.
+        case .shorts: shortTimeline?.editTime(t) ?? 0
         default: clocks[rendition]?.episodeTime(t).time ?? t
         }
         player.seek(to: CMTime(seconds: target, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)

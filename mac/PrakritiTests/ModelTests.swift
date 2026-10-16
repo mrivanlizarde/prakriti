@@ -35,10 +35,11 @@ final class ModelTests: XCTestCase {
         for kind in OutputKind.notBuilt {
             XCTAssertFalse(OutputSetting(kind: kind, isOn: true).isOn, "\(kind) is not built and must stay off")
         }
-        XCTAssertEqual(OutputKind.built, [.podcastEpisode, .podcastReady, .transcript, .checksAndReport, .titlesNotesChapters, .editedVideo, .timelines],
-                       "the edited video is built in v2 part M8b, the timelines in M10a")
-        XCTAssertEqual(OutputKind.notBuilt.count, 4)
+        XCTAssertEqual(OutputKind.built, [.podcastEpisode, .podcastReady, .transcript, .checksAndReport, .titlesNotesChapters, .editedVideo, .timelines, .shorts],
+                       "the edited video is built in v2 part M8b, the timelines in M10a, the shorts in M11a")
+        XCTAssertEqual(OutputKind.notBuilt.count, 3)
         XCTAssertFalse(OutputKind.editedVideo.isOnByDefault, "off for every new folder (PLAN rule 2.1.7)")
+        XCTAssertFalse(OutputKind.shorts.isOnByDefault, "off for every new folder (PLAN rule 2.1.7)")
     }
 
     func testOutputResolution() throws {

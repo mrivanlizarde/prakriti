@@ -35,11 +35,14 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol, 
     let holds: Bool
     /// The text on screen (v2 part M9b), shared by every instruction and read by the edited frame; nil when there is none.
     let overlays: OverlayTable?
+    /// A short's burned captions (v2 part M11a), shared by every instruction and read by the edited frame; nil for the video.
+    let captions: BurnedCaptions.Table?
 
     init(timeRange: CMTimeRange, trackID: CMPersistentTrackID, spanID: String, sourceStart: Double, throughCoreImage: Bool = false,
          firstSourceFrame: Int64 = 0, frameDuration: CMTime = CMTime(value: 1001, timescale: 30000), hidden: HiddenFaces.Table? = nil,
-         framing: Framing? = nil, holds: Bool = false, overlays: OverlayTable? = nil) {
+         framing: Framing? = nil, holds: Bool = false, overlays: OverlayTable? = nil, captions: BurnedCaptions.Table? = nil) {
         self.overlays = overlays
+        self.captions = captions
         self.timeRange = timeRange
         self.trackID = trackID
         self.spanID = spanID
@@ -68,8 +71,11 @@ final class RenderInstruction: NSObject, AVVideoCompositionInstructionProtocol, 
 
     /// The text pictures to lay over the frame at `compositionTime`, moved and faded (v2 part M9b); empty when none shows.
     func textLayers(at compositionTime: CMTime) -> [CIImage] {
-        guard let overlays else { return [] }
-        return overlays.layers(atEditFrame: Int64((compositionTime.seconds / frameDuration.seconds).rounded()))
+        let frame = Int64((compositionTime.seconds / frameDuration.seconds).rounded())
+        var layers = overlays?.layers(atEditFrame: frame) ?? []
+        // A short's caption (v2 part M11a), laid over last.
+        if let caption = captions?.layer(atEditFrame: frame) { layers.append(caption) }
+        return layers
     }
 
     /// The regions to hide in the frame at `compositionTime` (none when nobody is hidden).

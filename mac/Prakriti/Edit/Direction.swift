@@ -191,13 +191,28 @@ struct RecordingDirection: Codable, Equatable, Sendable {
     var length = LengthChoice.everything
     /// Chips Ivan removed (their ids): the fields they hold are cleared.
     var removed: [String] = []
+    /// How many shorts and how long (v2 part M11a, the Direction tab's Shorts): nil is 3 shorts of up to 60 s. Not part of the plan
+    /// (the shorts are cut from it), so neither is in `isEmpty` or `signature`.
+    var shortsCount: Int?
+    var shortsLength: Int?
 
-    init(prompt: String = "", presets: [DirectionPreset] = [], pace: Pace? = nil, length: LengthChoice = .everything, removed: [String] = []) {
+    init(prompt: String = "", presets: [DirectionPreset] = [], pace: Pace? = nil, length: LengthChoice = .everything, removed: [String] = [],
+         shortsCount: Int? = nil, shortsLength: Int? = nil) {
         self.prompt = prompt
         self.presets = presets
         self.pace = pace
         self.length = length
         self.removed = removed
+        self.shortsCount = shortsCount
+        self.shortsLength = shortsLength
+    }
+
+    /// The shorts asked for: 0 to 5, 30, 45 or 60 s.
+    var shorts: ShortsSettings {
+        var out = ShortsSettings()
+        if let count = shortsCount { out.count = min(max(count, ShortsSettings.counts.lowerBound), ShortsSettings.counts.upperBound) }
+        if let length = shortsLength, ShortsSettings.lengths.contains(length) { out.length = length }
+        return out
     }
 
     /// Reads field by field, so a direction saved by an older build keeps every choice.
@@ -208,6 +223,8 @@ struct RecordingDirection: Codable, Equatable, Sendable {
         pace = try? c.decodeIfPresent(Pace.self, forKey: .pace)
         length = (try? c.decodeIfPresent(LengthChoice.self, forKey: .length)) ?? .everything
         removed = (try? c.decodeIfPresent([String].self, forKey: .removed)) ?? []
+        shortsCount = try? c.decodeIfPresent(Int.self, forKey: .shortsCount)
+        shortsLength = try? c.decodeIfPresent(Int.self, forKey: .shortsLength)
     }
 
     var trimmedPrompt: String { prompt.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -236,7 +253,7 @@ struct RecordingDirection: Codable, Equatable, Sendable {
     }
 
     func json() -> String? {
-        guard !isEmpty || !removed.isEmpty else { return nil }
+        guard !isEmpty || !removed.isEmpty || shortsCount != nil || shortsLength != nil else { return nil }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         return (try? encoder.encode(self)).map { String(decoding: $0, as: UTF8.self) }

@@ -31,8 +31,8 @@ struct ViewerView: View {
     }
 }
 
-/// The rendition picker for the toolbar while a recording is open: Original, Podcast, Podcast-ready and Video (v2 part
-/// M8c), and Shorts, which this build does not make (choosing one says why, as does Video before it is made).
+/// The rendition picker for the toolbar while a recording is open: Original, Podcast, Podcast-ready, Video (v2 part M8c) and
+/// Shorts (v2 part M11a). One that is not made says why when chosen.
 struct RenditionPicker: View {
     @Environment(AppModel.self) private var model
 
@@ -48,8 +48,28 @@ struct RenditionPicker: View {
         .pickerStyle(.segmented)
         .labelsHidden()
         .fixedSize()
-        .quickHelp("Choose what plays: the Original as recorded, the Podcast episode, the Podcast-ready episode, or the edited Video. Shorts are not made yet.",
+        .quickHelp("Choose what plays: the Original as recorded, the Podcast episode, the Podcast-ready episode, the edited Video, or the Shorts.",
                    article: "reviewing-and-approving")
+    }
+}
+
+/// Beside the picker while Shorts plays (design spec 3.4.1): which short, "Short 1 of 3" (v2 part M11a).
+struct ShortPicker: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let viewer = model.viewer
+        if viewer.rendition == .shorts, viewer.shorts.count > 1 {
+            Picker("Short", selection: Binding(get: { viewer.shortIndex }, set: { model.chooseShort($0) })) {
+                ForEach(viewer.shorts.indices, id: \.self) { index in
+                    Text(viewer.shortLabel(index)).tag(index)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .fixedSize()
+            .quickHelp("Chooses which short plays. Each is a complete moment, 1080 by 1920, with its words burned in.", article: "reviewing-and-approving")
+        }
     }
 }
 
@@ -166,6 +186,8 @@ struct ViewerPicture: View {
                 .accessibilityLabel(viewer.rendition.title + " player")
             // Who is where, over the Original (v2 part M6d): boxes and names, and the toggle that shows them.
             PeopleOverlay(recording: recording)
+            // The 9:16 window the shorts use, over the Original and the Video (v2 part M11a).
+            VerticalGuideOverlay(recording: recording)
             // The video's captions as they will be uploaded (v2 part M8c).
             CaptionsOverlay()
             ViewerPictureToggles(recording: recording)

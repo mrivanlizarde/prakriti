@@ -65,7 +65,9 @@ enum VideoAudio {
 
     /// Makes the sound for a timeline. `tool` runs ffmpeg with the arguments it is given and returns what it wrote to
     /// stderr.
-    static func make(original: URL, timeline: EditTimeline, mutes: [TimeRange], job: URL,
+    /// `edgeFade` (v2 part M11a, a short): the first and last that many sample frames fade in and out, so a short that starts
+    /// or ends in the middle of the room's sound does not click. 0 for the video, whose start and end are as they were.
+    static func make(original: URL, timeline: EditTimeline, mutes: [TimeRange], job: URL, edgeFade: Int = 0,
                      tool: @Sendable ([String]) async throws -> String) async throws -> Made {
         let fm = FileManager.default
         try fm.createDirectory(at: job, withIntermediateDirectories: true)
@@ -83,12 +85,36 @@ enum VideoAudio {
         guard written == timeline.totalSamples else {
             throw Failure(reason: "The sound for the video came out \(written) samples long instead of \(timeline.totalSamples).")
         }
+        if edgeFade > 0 { try fadeEdges(joined, frames: min(edgeFade, Int(written / 2))) }
         let first = try await tool(measureArguments(joined: joined))
         guard let measured = Measure.loudnorm(stderr: first) else {
             throw Failure(reason: "The loudness of the video's sound could not be measured.")
         }
         let second = try await tool(masterArguments(joined: joined, measured: measured, wav: wav))
         return Made(wav: wav, samples: written, inputLUFS: measured.inputLUFS, normalizationType: Measure.loudnorm(stderr: second)?.normalizationType)
+    }
+
+    /// Fades the first and last `frames` sample frames of a joined stereo float file in place, a quarter cosine each way.
+    static func fadeEdges(_ file: URL, frames: Int) throws {
+        guard frames > 0 else { return }
+        let handle = try FileHandle(forUpdating: file)
+        defer { try? handle.close() }
+        let bytesPerFrame = channels * MemoryLayout<Float>.size
+        let total = Int(try handle.seekToEnd()) / bytesPerFrame
+        guard total >= 2 * frames else { return }
+        for (start, rising) in [(0, true), (total - frames, false)] {
+            try handle.seek(toOffset: UInt64(start * bytesPerFrame))
+            guard let data = try handle.read(upToCount: frames * bytesPerFrame) else { continue }
+            var samples = data.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
+            let n = samples.count / channels
+            for i in 0..<n {
+                let x = Double(rising ? i : n - 1 - i) / Double(max(1, n - 1))
+                let g = Float(sin(Double.pi / 2 * x))
+                for ch in 0..<channels { samples[i * channels + ch] *= g }
+            }
+            try handle.seek(toOffset: UInt64(start * bytesPerFrame))
+            handle.write(Data(floatsAsBytes: samples))
+        }
     }
 
     /// Step 2: the pieces joined from interleaved stereo floats into `output`, streamed a piece at a time. Returns the

@@ -251,9 +251,23 @@ To change a title on screen, change the title in Info, then click Plan the Edit 
 :::requires shorts
 ### Shorts
 
-Vertical clips, 1080 by 1920, each a complete moment of up to 3 minutes. YouTube treats a square or
-vertical video of up to 3 minutes as a Short. The words appear on screen, because many people watch
-shorts with the sound off.
+Vertical clips, 1080 by 1920, of the strongest moments, cut from the same edit plan as the video, so
+pauses, filler words and anyone you left out stay out. Three of up to 60 seconds each unless you choose
+otherwise in the Direction tab (0 to 5 shorts, up to 30, 45 or 60 seconds). Each is whole sentences
+from one part of the talk, starting on its strongest line. YouTube treats a vertical video of up to 3
+minutes as a Short, and Prakriti never makes one longer.
+
+The words are on screen, because many people watch shorts with the sound off: one line of two to five
+words at a time, the word being said in full white and the rest a little dimmer, inside the part of the
+frame no app covers with its buttons. The sound is at -14 LUFS, like the video.
+
+The picture comes from the vertical recording when OBS made one and its sound lines up with the main
+recording, from a crop of a 4K picture, or from a crop of a 1080p picture, which is softer, and Checks
+says so. A crop follows the speaker's face and moves only when the face leaves the middle of the frame.
+Faces you hid are hidden in every short, and each short is checked for faces and voices before it is
+kept, like the video. They are in the Shorts folder, each with its captions file. In the inspector,
+Outputs lists them with Play and Show in Finder, and Make Shorts makes them for a recording made
+without them.
 :::
 
 :::requires thumbnails

@@ -76,24 +76,35 @@ struct PeopleOverlayBox: View {
 }
 
 /// The toggles over the picture, top trailing, in one clear-glass group (design spec 3.4.1: the HIG's case for clear
-/// glass over video): People on the Original (v2 part M6d), Captions on the Video (v2 part M8c); Vertical Guide comes with
-/// its part. Each shows its word under the symbol at 12 pt semibold, because there are no tooltips.
+/// glass over video): People on the Original (v2 part M6d), Captions on the Video (v2 part M8c), and the Vertical Guide on both
+/// (v2 part M11a). Each shows its word under the symbol at 12 pt semibold, because there are no tooltips.
 struct ViewerPictureToggles: View {
     @Bindable var recording: Recording
     @Environment(AppModel.self) private var model
 
     var body: some View {
         let viewer = model.viewer
-        if viewer.rendition == .original, model.peopleBoxes.file(for: recording, folders: model.peopleFolders) != nil {
-            PictureToggle(title: "People", symbol: "person.crop.rectangle", isOn: viewer.showsPeople) { model.setShowsPeople(!viewer.showsPeople) }
-                .accessibilityHint("Shows a box and a name around each face in the original.")
-                .quickHelp("Draws a box around each face in the original, with its name or Unnamed, and the choice for anyone hidden.",
-                           article: "people-and-privacy")
-        } else if viewer.rendition == .video, !viewer.captions.isEmpty {
-            PictureToggle(title: "Captions", symbol: "captions.bubble", isOn: viewer.showsCaptions) { model.setShowsCaptions(!viewer.showsCaptions) }
-                .accessibilityHint("Shows the captions file that goes with the video, as it will be uploaded.")
-                .quickHelp("Shows the video's captions over the picture: the same .srt file that is uploaded with it.",
+        let hasPeople = model.peopleBoxes.file(for: recording, folders: model.peopleFolders) != nil
+        HStack(spacing: 0) {
+            if viewer.rendition == .original, hasPeople {
+                PictureToggle(title: "People", symbol: "person.crop.rectangle", isOn: viewer.showsPeople) { model.setShowsPeople(!viewer.showsPeople) }
+                    .accessibilityHint("Shows a box and a name around each face in the original.")
+                    .quickHelp("Draws a box around each face in the original, with its name or Unnamed, and the choice for anyone hidden.",
+                               article: "people-and-privacy")
+            } else if viewer.rendition == .video, !viewer.captions.isEmpty {
+                PictureToggle(title: "Captions", symbol: "captions.bubble", isOn: viewer.showsCaptions) { model.setShowsCaptions(!viewer.showsCaptions) }
+                    .accessibilityHint("Shows the captions file that goes with the video, as it will be uploaded.")
+                    .quickHelp("Shows the video's captions over the picture: the same .srt file that is uploaded with it.",
+                               article: "reviewing-and-approving")
+            }
+            if viewer.rendition == .original || viewer.rendition == .video, hasPeople {
+                PictureToggle(title: "Vertical Guide", symbol: "rectangle.portrait", isOn: viewer.showsVerticalGuide) {
+                    model.setShowsVerticalGuide(!viewer.showsVerticalGuide)
+                }
+                .accessibilityHint("Shades everything outside the 9:16 window the shorts use, which follows the speaker.")
+                .quickHelp("Shades the picture outside the vertical window the shorts are cut from. The window follows the speaker the way the shorts do.",
                            article: "reviewing-and-approving")
+            }
         }
     }
 }

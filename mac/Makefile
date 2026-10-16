@@ -131,7 +131,7 @@ STYLE_ONLY ?=
 YES       ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: accept-timeline-full accept-timeline-people accept-timeline resolve-import accept-hook accept-direction accept-text accept-style accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: accept-shorts accept-timeline-full accept-timeline-people accept-timeline resolve-import accept-hook accept-direction accept-text accept-style accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -239,6 +239,19 @@ accept-hook:
 accept-timeline-people:
 	./scripts/make-fixtures.sh --if-missing
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=timeline-people TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/TimelinePeopleAcceptanceTests
+
+# accept-shorts  v2 part M11a's acceptance (PLAN M11 checks 2, 2b and 3): the 5-minute excerpts of the REAL 6 Sep talk (from 20:00,
+#                 with its vertical twin cut from the same moment) and 13 Sep talk (from 2:00, no twin) made in development with the Shorts
+#                 on (Gabriel teaching, parts of the talk from ~/Prakriti/Dev/Beats or Qwen3.8-27B in LM Studio): the twin's offset,
+#                 three shorts measured by ffprobe (1080 by 1920, 29.97, at most 180 s), ebur128 (-14 within 1, true peak at or
+#                 under -1) and the last 5 s decoded; Vision's text every 2 s (the caption words are the short's own, every caption
+#                 line inside the safe area) and faces every 0.5 s (the face's middle in the middle third in 90% or more); on the
+#                 twin's shorts Vision every 0.5 s finds no face outside an included person's matched track or a hidden region; the
+#                 13 Sep shorts a crop with the capture warning in Checks. Frames with the safe area drawn go to for-ivan/ (measured
+#                 only). PRAKRITI_SHORTS_ONLY="13 Sep" runs one talk. Writes acceptance-shorts.txt to ../screens/mac/$(MILESTONE)/
+#                 (about 10 minutes with the parts cached; add about 10 for each talk whose parts Qwen must read)
+accept-shorts:
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=shorts TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) TEST_RUNNER_PRAKRITI_SHORTS_ONLY="$(PRAKRITI_SHORTS_ONLY)" $(XCB) test -only-testing:PrakritiTests/ShortsAcceptanceTests
 
 # accept-timeline-full  v2 part M10b, the whole talks (the last part of M10): the REAL 13 Sep and 6 Sep talks made in development
 #                 with the edited video and the Timelines on (Clear, Gabriel teaching, parts from ~/Prakriti/Dev/Beats): both files valid

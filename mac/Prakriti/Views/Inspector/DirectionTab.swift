@@ -12,6 +12,8 @@ struct DirectionTab: View {
         Form {
             if recording.madeFiles.contains(TranscriptFiles.asHeard) {
                 DirectionSection(recording: recording)
+                // How many shorts and how long (v2 part M11a, design spec 3.5.3 item 5).
+                ShortsDirectionSection(recording: recording)
                 DirectionPlanSection(recording: recording)
                 VersionsSection(recording: recording)
             } else {

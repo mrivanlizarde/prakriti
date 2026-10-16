@@ -46,22 +46,26 @@ enum OutputGate {
     }
 
     /// The face rows (and the glimpses, row 0) hidden in the video, and the voices left out of it.
-    static func hidden(_ people: People) -> (faces: Int, voices: Int) {
+    /// `output` is `.shorts` for a short (v2 part M11a): Ivan may choose differently per output.
+    static func hidden(_ people: People, output: ChoiceOutput = .video) -> (faces: Int, voices: Int) {
         guard let faces = people.faces else { return (0, 0) }
         var keys = faces.people.map { PersonKey.face($0.id, names: people.names) }
         if faces.glimpses > 0 { keys.append(PersonKey.face(0, names: people.names)) }
-        let hidden = keys.filter { people.choices.choice($0, for: .video) != .include }.count
-        let out = people.voices.map { people.choices.leftOutVoices($0, names: people.names, output: .video).count } ?? 0
+        let hidden = keys.filter { people.choices.choice($0, for: output) != .include }.count
+        let out = people.voices.map { people.choices.leftOutVoices($0, names: people.names, output: output).count } ?? 0
         return (hidden, out)
     }
 
     /// What the gate found wrong with who is in the made video: the refusal, a needed output check that did not run, or one
     /// that failed. Empty when it passes.
-    static func peopleProblems(_ people: People, picture: PictureCheck?, sound: AudioCheck?) -> [String] {
+    /// `output` and `pictureNeeded` (v2 part M11a): a short reads Ivan's choices for shorts, and a short drawn from the vertical
+    /// twin, a second camera, always needs its faces seen again, whoever is hidden.
+    static func peopleProblems(_ people: People, picture: PictureCheck?, sound: AudioCheck?, output: ChoiceOutput = .video,
+                               pictureNeeded: Bool = false) -> [String] {
         if let reason = refusal(people) { return [reason] }
         var problems: [String] = []
-        let (faces, voices) = hidden(people)
-        if faces > 0 {
+        let (faces, voices) = hidden(people, output: output)
+        if faces > 0 || pictureNeeded {
             if let picture {
                 if !picture.passed { problems.append(picture.line) }
             } else {
@@ -121,6 +125,53 @@ enum OutputGate {
         try move(staged, to: destination)
     }
 
+    /// What the gate reads of one made short (v2 part M11a).
+    struct ShortFacts: Sendable {
+        var measured: ReadyChecklist.Measured
+        /// The short's planned length and one frame.
+        var duration: Double
+        var frame: Double
+        /// Every caption box outside the safe area, in words (`BurnedCaptions.problems`).
+        var captionProblems: [String]
+        /// Drawn from the vertical twin: its faces were found again on their own and must be seen again in the file.
+        var twin: Bool
+    }
+
+    /// The longest a short may be (YouTube: a vertical video of up to 3 minutes is a Short).
+    static let longestShort = 180.0
+
+    /// What the gate finds wrong with one made short: who is in it (Ivan's choices for shorts, the picture output check whenever
+    /// anyone is hidden or the picture is the twin's, the sound output check whenever anyone is left out), and the file: both
+    /// picture and sound, 1080 by 1920, its last 5 seconds decoding, the planned length within one frame, at most 3 minutes, and
+    /// every caption inside the safe area. Empty when it passes.
+    static func shortProblems(_ people: People, facts: ShortFacts, picture: PictureCheck?, sound: AudioCheck?) -> [String] {
+        var problems = peopleProblems(people, picture: picture, sound: sound, output: .shorts, pictureNeeded: facts.twin)
+        let m = facts.measured
+        if m.videoCodec.isEmpty || m.audioCodec.isEmpty { problems.append("The short does not open with both its picture and its sound.") }
+        if m.width != Int(BurnedCaptions.frame.width) || m.height != Int(BurnedCaptions.frame.height) {
+            problems.append("It is \(m.width) by \(m.height), not 1080 by 1920.")
+        }
+        if !m.tailDecodes { problems.append("Its last 5 seconds do not decode.") }
+        if let d = m.videoDuration ?? m.duration {
+            if abs(d - facts.duration) > facts.frame + 0.0005 { problems.append(String(format: "It is %.3f s long, not the %.3f s planned.", d, facts.duration)) }
+            if d > longestShort { problems.append(String(format: "It is %.0f s long, over the 3 minutes a Short may be.", d)) }
+        } else {
+            problems.append("Its length cannot be read.")
+        }
+        problems += facts.captionProblems
+        return problems
+    }
+
+    /// Moves a made short's files into `folder` only when it passes `shortProblems`; otherwise deletes them and throws why.
+    static func admitShort(files: [URL], to folder: URL, people: People, facts: ShortFacts, picture: PictureCheck?, sound: AudioCheck?) throws {
+        let problems = shortProblems(people, facts: facts, picture: picture, sound: sound)
+        guard problems.isEmpty else {
+            for file in files { try? FileManager.default.removeItem(at: file) }
+            throw Refused(reason: problems.joined(separator: " "))
+        }
+        for file in files { try move(file, to: folder.appending(path: file.lastPathComponent)) }
+    }
+
     /// What the timelines point at, for the gate (v2 part M10b): whether privacy-safe media was needed (anyone hidden or left out,
     /// or a name muted), whether it was made, and what its checks found.
     struct TimelineMediaFacts: Sendable {
@@ -172,7 +223,7 @@ enum OutputGate {
         try move(staged, to: destination)
     }
 
-    /// The only way a made video or timeline reaches its folder.
+    /// The only way a made video, timeline or short reaches its folder.
     private static func move(_ staged: URL, to destination: URL) throws {
         let fm = FileManager.default
         if fm.fileExists(atPath: destination.path) {

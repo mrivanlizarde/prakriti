@@ -179,6 +179,10 @@ final class AppModel {
     /// by Make Timelines, by recording.
     var timelineProblems: [UUID: String] = [:]
     var writingTimelines: Set<UUID> = []
+    /// Why the shorts were not made the last time they were asked for (v2 part M11a), by recording.
+    var shortsProblems: [UUID: String] = [:]
+    /// The short the inspector's Play asked for, chosen once the Viewer has the recording open (v2 part M11a).
+    @ObservationIgnored var pendingShortIndex: Int?
     /// How far Make Timelines has come, 0 to 1, by recording (v2 part M10b: privacy-safe media takes minutes, not seconds).
     var timelineProgress: [UUID: Double] = [:]
     /// Bumped when timelines are written, so the window reads their record again.
@@ -406,7 +410,7 @@ final class AppModel {
             }
             if launch.quickHelp {
                 model.quickHelp.isOn = true
-                model.quickHelp.show("Choose what plays: the Original as recorded, the Podcast episode, or the Podcast-ready episode. Video and Shorts are not made yet.",
+                model.quickHelp.show("Choose what plays: the Original as recorded, the Podcast episode, the Podcast-ready episode, the edited Video, or the Shorts.",
                                      article: "reviewing-and-approving")
             }
             return model

@@ -151,3 +151,16 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
   your choices already applied") now names the privacy-safe copy, which is what is built.
 - 10: "If there is no timeline" names the two new reasons (choices newer than the video, the copy failing its own check) and
   the disk room the copy needs.
+
+## Built in v2 part M11a (Fri 16 Oct 2026)
+
+- 05: "Shorts" describes what is built: cut from the edit plan, 3 of up to 60 s unless the Direction tab says otherwise (0 to 5;
+  30, 45 or 60 s), whole sentences of one part starting on its strongest line, never over 3 minutes; calm captions of 2 to 5
+  words inside the area no app covers; -14 LUFS; the picture from the vertical recording, a 4K crop or a softer 1080p crop
+  (Checks says so), a crop following the speaker; hidden faces hidden and every short checked before it is kept.
+- 02: "Stay near the middle" no longer says a short is cut from the center: a crop follows the speaker.
+- 03: the vertical canvas paragraph says the `-vertical` file becomes the shorts' picture once its sound lines up, with its own
+  face step; a 4K short follows the speaker.
+- 06: the Shorts rendition with "Short 1 of 3", and Vertical Guide (also in View).
+- 08: the Direction tab's Shorts (how many, how long).
+- Not built here (M11b): thumbnails, upload checklists for Shorts, Reels and TikTok, the Approve sheet, Ready.

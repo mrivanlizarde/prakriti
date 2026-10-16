@@ -137,7 +137,10 @@ struct MainToolbar: ToolbarContent {
                 .accessibilityLabel("Back to the library")
             }
             ToolbarItem(placement: .principal) {
-                RenditionPicker()
+                HStack(spacing: 8) {
+                    RenditionPicker()
+                    ShortPicker()
+                }
             }
             if let recording = model.focusedRecording {
                 if model.canMakeAgain(recording) {

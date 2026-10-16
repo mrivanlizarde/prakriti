@@ -92,9 +92,9 @@ final class ViewerTests: XCTestCase {
         let viewer = ViewerModel()
         XCTAssertEqual(viewer.unavailableReason(.video), "The edited video is not made for this recording.",
                        "v2 part M8c plays the video here once it is made")
-        XCTAssertEqual(viewer.unavailableReason(.shorts), "Prakriti does not make shorts yet.")
+        XCTAssertEqual(viewer.unavailableReason(.shorts), "No shorts are made for this recording.", "v2 part M11a plays the shorts once they are made")
         XCTAssertTrue(Rendition.video.isBuilt)
-        XCTAssertFalse(Rendition.shorts.isBuilt)
+        XCTAssertTrue(Rendition.shorts.isBuilt)
         XCTAssertTrue(Rendition.podcastReady.isBuilt)
     }
 

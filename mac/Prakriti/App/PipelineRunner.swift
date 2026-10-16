@@ -313,7 +313,7 @@ final class PipelineRunner {
         // The model is set up (and a cloud key read) for a recording with a direction, and (v2 part M9d) for a video, whose key
         // phrases, opening line and chapters come from the parts of the talk; otherwise planning asks no model.
         options.wantBeats = askForBeats
-        if !options.direction.isEmpty || (askForBeats && (make.contains(.editedVideo) || recording.madeFiles.contains(EditPlan.fileName))) {
+        if !options.direction.isEmpty || (askForBeats && (make.contains(.editedVideo) || make.contains(.shorts) || recording.madeFiles.contains(EditPlan.fileName))) {
             options.planning = writingSetup()
         }
         options.planFolder = model.paths.outputs.appending(path: URL(fileURLWithPath: recording.filePath).deletingPathExtension().lastPathComponent,
@@ -335,6 +335,15 @@ final class PipelineRunner {
             options.video = VideoFacts(title: recording.title, notes: recording.notes, recordedAt: recording.recordedAt ?? recording.foundAt)
             // The timelines (v2 part M10a), with the video only, when their switch is on; off for every folder (rule 2.1.7).
             options.makeTimelines = make.contains(.timelines)
+        }
+        // The shorts (v2 part M11a), when their switch is on; off for every folder (rule 2.1.7). They are cut from the edit plan, so
+        // it is planned with them; how many and how long come from the recording's Direction tab.
+        if make.contains(.shorts) {
+            options.makeShorts = true
+            options.shorts = recording.direction.shorts
+            if !options.makeVideo {
+                options.video = VideoFacts(title: recording.title, notes: recording.notes, recordedAt: recording.recordedAt ?? recording.foundAt)
+            }
         }
         if make.contains(.podcastReady) {
             options.podcastReady = PodcastReadySetup(settings: OutputResolver.podcastReady(recording: recording, defaults: defaults), facts: recording.podcastFacts)
@@ -829,6 +838,15 @@ final class PipelineRunner {
             } else if let problem = result.timelineProblem, activeOptions.makeTimelines {
                 model.timelineProblems[recording.id] = problem
                 model.record("\(label) (\(recording.fileName)): no timeline was written. \(problem)", level: .attention, run: run)
+            }
+            // The shorts (v2 part M11a): this make's, or why not when they were asked for.
+            if let shorts = result.shorts {
+                model.shortsProblems[recording.id] = nil
+                model.record("\(label) (\(recording.fileName)): the shorts, \(shorts.summary.lowercasedFirst)",
+                             level: shorts.shorts.allSatisfy { $0.failed == 0 } ? .info : .attention, run: run)
+            } else if let problem = result.shortsProblem, activeOptions.makeShorts {
+                model.shortsProblems[recording.id] = problem
+                model.record("\(label) (\(recording.fileName)): no shorts were made. \(problem)", level: .attention, run: run)
             }
             if let plan = result.editPlan {
                 model.record("\(label) (\(recording.fileName)): the edit plan. " + plan.summary, run: run)

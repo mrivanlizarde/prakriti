@@ -64,6 +64,14 @@ The viewer takes the place of the library while a recording is open. Choose what
 :::requires video
 - **Video:** the edited video, once it is made. A recording with a video opens on it.
 :::
+:::requires shorts
+- **Shorts:** the shorts, once they are made. The menu beside the control chooses which one plays, such
+  as Short 1 of 3. Each plays as its own file, with its words on screen.
+
+**Vertical Guide,** at the top right of the picture on the Original and the Video, shades everything
+outside the 9:16 window the shorts are cut from. The window follows the speaker the way the shorts do.
+View > Vertical Guide does the same.
+:::
 
 :::unless video
 Two more choices in that control do not play here yet; choosing one says why.

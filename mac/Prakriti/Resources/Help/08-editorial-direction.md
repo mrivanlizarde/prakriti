@@ -27,6 +27,12 @@ Command-Option-3):
 - **Pace:** as in House Style, Relaxed, Balanced or Brisk.
 - **Length:** Everything that matters, About 20 minutes, About 10 minutes or About 3 minutes.
 
+:::requires shorts
+Under it, **Shorts** sets how many shorts the next make cuts, from none to 5, and how long each may be:
+up to 30, 45 or 60 seconds. They are chosen from the parts of the talk, starting on each part's
+strongest line, and do not change the plan.
+:::
+
 Nothing changes until you click **Plan Again**.
 
 ## Say what you want

@@ -964,6 +964,41 @@ when Ivan's choices of who is hidden or heard changed after the video was made. 
 scale) exist behind `TimelineAnimations.verified`, off until Ivan's round trips pass. Measured on two-people-mixed: 75.2 s of media in
 14 s (5.4 times real time), 49.2 Mbps (about 22 GB an hour of edit). `make accept-timeline-people`.
 
+**v2 part M11a, shorts, Fri 16 Oct (see BUILD-LOG "v2 part M11a"):** the **Shorts** output (`OutputKind.shorts`, off for every folder;
+**Make Shorts** in the inspector's Outputs turns it on for one recording and makes it again) cuts vertical clips of the strongest moments
+from the same edit plan as the video, after it, step "Making the shorts" (`Render/Shorts.swift`). How many and how long are the Direction
+tab's **Shorts** (0 to 5, up to 30, 45 or 60 s; `RecordingDirection.shortsCount` and `shortsLength`, kept in the direction's JSON and
+outside its signature, so they never make the plan "behind"); 3 of up to 60 s unless set. **Choosing** (`Shorts.choose`, no model asked):
+the parts of the talk (`beats.json`), strongest first (a marked opening, standing alone, its best score; housekeeping, welcome and
+closing parts only when nothing else will do), each short whole sentences of one part starting at its key line, grown forward then back
+until its kept length is within the bounds (30 to 60 s for 60), cut halfway into the pause on each side on a frame, never overlapping
+another or a stretch where someone left out of shorts speaks; no parts of the talk, no shorts (the step says why). **Its spans are the
+plan's kept spans cut at its ends** (`Shorts.spans`, `Shorts.plan`), so pauses, fillers, retakes and people cuts stay out. **The picture**
+(`Render/VerticalCrop.swift`): the vertical twin (`<name>-vertical.mp4` beside the original, `TwinSync.twin`) when its sound
+cross-correlates with the main recording's at three moments within one frame of each other (`TwinSync.measure`, 4 kHz, vDSP, the seek
+after `-i`), on its own clock shifted by the measured whole frames, with a window of 1/1.25 of it following the face (`VerticalCrop.twinZoom`, measured: at 1.15 one 6 Sep short kept the face in the middle third in only 89.8% of frames); else a 9:16 window the full height of the picture (1215 by 2160 from 4K, 608 by
+1080 from 1080p, scaled to 1080 by 1920 by the compositor), following the face the shorts follow (`Shorts.subject`: the teacher's face
+row, else the included row seen most) with a dead zone (`VerticalCrop.follow`: still while the face is in the window's middle third, then
+an ease of about half a second back to the face, never past the picture's edge), as a `Framing` of one segment per pixel position; a
+1080p crop carries the warning `Shorts.softWarning`, shown in Checks. **The twin's own face step** (`People/TwinFaces.swift`): the face
+scan on the twin over the short's stretch (`FaceScan.scan(range:)`), tracks matched to the main recording's rows by time and left-to-right
+order, or by the voice speaking when the twin sees one face; a track not matched to someone Included in shorts is hidden (unknown means
+hidden). **Captions** (`Render/BurnedCaptions.swift`): one line of 2 to 5 words a page, the word being said full white and the rest at
+70%, Alegreya Sans Bold at a 64 px cap height, a soft shadow, no box, baseline at y 1330 centred on x 510, lines at most 840 px wide,
+every page's Core Text box checked inside research 6.3's safe area (x 60 to 960, y 250 to 1570), pictures drawn once by Core Graphics
+before the short is drawn and laid over last by the compositor (`RenderInstruction.captions`). **The file**: H.264 High at a constant 10
+Mbps, 1080 by 1920 at the recording's rate, AAC 320 kbps, the sound mastered to -14 LUFS with a 20 ms fade at each end
+(`VideoAudio.make(edgeFade:)`), its `.srt` beside it. **Every short passes `OutputGate.admitShort`**: Ivan's choices for shorts
+(`ChoiceOutput.shorts`), the picture output check whenever anyone is hidden in shorts or the picture is the twin's, the sound output
+check whenever anyone is left out of shorts, both codecs, 1080 by 1920, the tail decoding, the planned length within a frame, at most 3
+minutes, every caption inside the safe area; a refused short is deleted where it was made and the others kept. What was made is
+`Shorts/shorts.json` (`Shorts.Record`), not the store, so nothing migrated. **In the app**: Outputs' Shorts section (each short with Play
+and Show in Finder) and a Shorts row under Files; Checks' Shorts section (the picture's source, the twin's offset or why it was not used,
+its face step's counts, every short's checklist); the Viewer's **Shorts** rendition with **Short 1 of 3** beside the picker, each short's
+own file; and **Vertical Guide** over the Original and the Video (`Views/Viewer/VerticalGuide.swift`, View > Vertical Guide), the same
+follow worked out ten times a second over the whole recording, moved through the punch-in on the Video. Help 02, 03, 05, 06 and 08
+(`shorts` capability). `make accept-shorts`.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -1168,6 +1203,9 @@ cd ~/Code/prakriti/mac && make resolve-import MILESTONE=v2-m10a
 ```
 ```bash
 cd ~/Code/prakriti/mac && make accept-timeline-people MILESTONE=v2-m10b
+```
+```bash
+cd ~/Code/prakriti/mac && make accept-shorts MILESTONE=v2-m11a
 ```
 ```bash
 cd ~/Code/prakriti/mac && TEST_RUNNER_PRAKRITI_VIDEO_DIRECTION="More energetic. Faster, more frequent cuts." make accept-video MILESTONE=v2-m9d
@@ -1422,6 +1460,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | The edited video (v2 parts M8b and M8c) | `mac/Prakriti/Render/`: `VideoPreview.swift` (M8c: the Viewer's Video, built from the plan the video was made from, `VideoSampleFolder`), `EditTimeline.swift` (the plan in frames and samples), `CompositionBuilder.swift`, `Instructions.swift` (`RenderInstruction`), `Compositor.swift`, `VideoAudio.swift` (decode, join with crossfades, master), `VideoWriter.swift`, `Mp4Boxes.swift` (moov, edit lists), `Captions.swift`, `VideoDescription.swift` (`Description.txt`), `ReadyChecklist.swift`, `OutputGate.swift` (the not-checked refusal, the people output checks since M8d, and the only move), `VideoStep.swift` (`VideoRecord`, make and check); since M8d `VideoHiding.swift` (`HiddenFaces`, `video-hiding.json`) and `People/PictureOutputCheck.swift`; the pipeline's `.renderVideo` and `.checkVideo` steps and `PipelineOptions.makeVideo`; `Recording.videoJSON` and `videoProblem`; `App/VideoActions.swift` (Make Video); `Views/Inspector/VideoSection.swift`; since M8c `App/VideoEditActions.swift` (Restore, Remove, Take Out Again, Keep, Delete, Undo, `Recording.planRestores`, `restoresPending`, Watch Video), the Video rendition in `Views/Viewer/ViewerModel.swift`, `CaptionsOverlay` and `PictureToggle` in `Views/Viewer/PeopleOverlay.swift`, `Captions.cues(srt:)`; tests `RenderTests`, `ViewerVideoTests` (in `make test`), `VideoAcceptanceTests` (`make accept-video`), `ViewerVideoAcceptanceTests` (`make accept-viewer-video`), `PeopleInVideoTests` (in `make test`), `PeopleVideoAcceptanceTests` (`make accept-people-video`) and `capture-window.swift --video` (`make look-video`) |
 | House style and zooms (v2 part M9a) | `mac/Prakriti/Edit/Style.swift` (`StyleName`, `Pace`, `PunchLevel`, `Length`, `HouseStyle`, `Style` with research 2.3 and 2.4's numbers, `maxScale`), `Edit/VisualPlan.swift` (`FaceSpot`, `VisualPlan.make`, `assign`, `center`, `shots`, `count`; `Framing`), the plan's `visual` items and `holdSeconds` (`EditPlan.Visual`), PlanValidation rule 7, `EditTimeline.holdFrames`, the hold in `CompositionBuilder`, `VideoWriter` and `VideoAudio.join`, `Compositor.frame`, `RenderInstruction.crop`, `Pipeline.subject`, `PipelineOptions.house`, `AppSettings.houseStyle`, `Views/Settings/HouseStylePane.swift`; tests `StyleTests` (in `make test`) and `StyleAcceptanceTests` (`make accept-style`) |
 | Timelines (v2 part M10a) | `mac/Prakriti/Export/`: `FCPXMLWriter.swift` (`FCPXMLVersion`, `TimelineSpec`, `TimelineLayout`, the spine, punch-ins, push-in markers, texts and their editable copies, captions, chapters, markers, the XML), `FCPXMLLint.swift` (the lint's eight rules, the DTDs copied out of Final Cut Pro, `xmllint`), `GraphicsClips.swift` (texts as ProRes 4444 through `OverlayTable.layers`, the held last frame), `TimelineMedia.swift` (the clone, `cloneFacts` with getattrlist, `info`, `tailFrames`, `privacySafeName`), `CleanedMedia.swift` (v2 part M10b: the used ranges, room tone, the sound per track, HEVC and PCM writer, its checks), `ReadMe.swift`, `TimelineExport.swift` (the refusal, `Record` in `Timeline/.timeline.json`, make and check); `OutputGate.admitTimeline`; `OutputKind.timelines`; `PipelineStep.timelines`, `PipelineOptions.makeTimelines`, `PipelineResult.timeline`; `App/TimelineActions.swift` (Make Timelines, Open In, Export); `Views/Inspector/TimelineSection.swift`; File menu items in `App/PrakritiApp.swift`; tests `FCPXMLTests` (in `make test`), `TimelineAcceptanceTests` (`make accept-timeline`), `TimelinePeopleAcceptanceTests` (`make accept-timeline-people`, M10b), `scripts/resolve-import.py` (`make resolve-import`) |
+| Shorts (v2 part M11a) | `mac/Prakriti/Render/Shorts.swift` (`ShortsSettings`, `Shorts.choose`, `spans`, `plan`, `subject`, `make`, `checklist`, `Record` and `Short` in `Shorts/shorts.json`), `Render/VerticalCrop.swift` (`VerticalCrop` and `TwinSync`), `Render/BurnedCaptions.swift`, `People/TwinFaces.swift`, `CompositionBuilder.buildShort`, `Compositor.frame(_:crop:to:)`, `RenderInstruction.captions`, `OutputGate.admitShort` and `shortProblems`, `FaceScan.scan(range:)`, `PictureOutputCheck.run(rate:)`, `VideoAudio.make(edgeFade:)`, the pipeline's `.shorts` step, `App/ShortsActions.swift`, `Views/Inspector/ShortsSection.swift` (Outputs, Checks and the Direction tab), `Views/Viewer/VerticalGuide.swift`; tests `ShortsTests` (in `make test`) and `ShortsAcceptanceTests` (`make accept-shorts`) |
 | Hook, chapters, versions (v2 part M9d) | `mac/Prakriti/Edit/Hook.swift` (`Hook`, `HeldMoment`), `Edit/Chapters.swift`, `Edit/TextLight.swift`, key phrases and terms in `Edit/TextPlan.swift` (`Moment`, `placePhrase`) and `PlanStep.keyPhrases`, `terms`, `Lexicon.terms`, `Beat.keyPhrase`, `OverlayKind.keyPhrase` and `.term` with `OverlayLayout.wordEdges` and `OverlayTable.wordLayers`, `EditPlan.Span.hook`, `hookSpans`, `mainSpans`, `held`, `Chapter.seconds`, `EditTimeline.Piece.hook`, `editTime(_:span:)`, `hookFrames`, `RoughCut.Input.held`, `VisualPlan.Input.held` and `textChanges`, `Count.textIns`, `PlanValidation` (opening line, chapters on the video's clock, key phrases and terms word for word, zooms on the video's clock), `HouseStyle.keyPhrases`, `termCards`, `openingLine`, `Style.opening`, `keyPhraseEvery`, `held`, `termCards`, `VideoDescription.make(planChapters:)`; versions in `Model/Models.swift` (`EditVersion`, `EditVersions`, `Recording.versionsJSON`) and `App/VersionActions.swift`, `ViewerModel.versionPlaying`, `Approval.Receipt.version`; `Views/Inspector/DirectionTab.swift`, `InspectorTab.direction`, `TimelineMark` in `Views/Viewer/TimelineLite.swift`; tests in `HookTests` and `VersionTests` (in `make test`), `HookAcceptanceTests` (`make accept-hook`), `BeatsCache` and `BeatsWarmTests` |
 | Beats and direction (v2 part M9c) | `mac/Prakriti/Edit/Beats.swift` (`BeatTag`, `BeatKind`, `Beat`, `BeatsFile` and `beats.json`, `BeatSentence`, `BeatCheck`), `Edit/Direction.swift` (`DirectionPreset`, `LengthChoice`, `TextLevel`, `DirectionFields` and its vocabulary, `DirectionChip`, `RecordingDirection`, `DirectionReading`, `Direction.read`, `house`, `style`, `chips`, `DirectionModelCheck`), `Edit/DirectionRules.swift` (the rules table, `tagPatterns`, the people and publishing patterns), `Edit/Selection.swift` (the knapsack), `Writing/Planner.swift` (the beats and the direction's own words through the "Planning the edit" model under the lock), `PlanStep` (selection, `RemovedKind.beat`, `planLines`), `Pipeline.prepareDirection`, `PipelineOptions.direction`, `planning`, `planFolder`, `EditPlan.Direction`, `BeatChoice`, `planLines`, `Basis.direction`, `Style.changeAim`, `VisualPlan.Input.beatStarts` and `keyLines`, `ModelRequest.deterministic` and `Shape.planning`, `Recording.directionJSON`, `AppModel.setDirection` and `planningLine`, `Views/Inspector/DirectionSection.swift` (with `FlowLayout`), the plan's lines in `EditPlanSection` and `ProgressBlock`; tests in `StyleTests` (in `make test`) and `DirectionAcceptanceTests` (`make accept-direction`) |
 | Text and graphics (v2 part M9b) | `mac/Prakriti/Render/TypeFace.swift` (Alegreya Sans, `register`, `prepared`, `missing`), `Render/Overlays.swift` (`OverlayKind` and its motion, `OverlayLayout`, `OverlayView`, `OverlayCache`, `OverlayTable`, `EditTimeline.editFrame(span:original:)`), `Edit/TextPlan.swift` (the title and lower thirds, `Faces`), `Resources/Fonts/` (three weights and `OFL.txt`), the text fields of `EditPlan.Visual`, rule 7's text half, `Compositor.overlay`, `RenderInstruction.textLayers`, `Pipeline.textSetup`, `PipelineOptions.planTitle`, `PeopleSetup.teachers`, `HouseStyle.titleOnScreen` and `namesOnScreen`, the pane's Text on Screen; tests `TextTests` (in `make test`) and `TextAcceptanceTests` (`make accept-text`) |
@@ -2497,6 +2536,25 @@ top and its end. Reading the code is not verification, and neither is a passing 
     allowed).** Reason: PLAN M10 ("checked like the MP4", research-people.md 3.6 item 3). The room tone is not even: a 0.3 s stretch
     measured against the whole second's level came out 3.1 dB over it (two-people-mixed, 15 Oct), while removed speech is 20 dB or
     more over it.
+
+199. **A short is cut from the edit plan's own kept spans (`Shorts.spans`), never planned again, and never asks a model.** Reason: the
+    plan is where pauses, fillers, retakes and people cuts are proved applied (Mac warning 138); a short planned on its own would bring back
+    what the video takes out. A voice left out of shorts but not of the video is kept out by never choosing a moment where it speaks.
+200. **The vertical twin is used only when its sound lines up with the main recording's within one frame at three moments, and its faces
+    are found again on the twin itself (`TwinFaces`); a twin track not matched to someone Included in shorts is hidden, and every twin
+    short passes the picture output check whoever is hidden.** Reason: PLAN R20, the twin is a second camera, so the main recording's face
+    boxes say nothing about it; unknown means hidden. Measured 16 Oct on the 6 Sep talk: the same sound at 0.999 correlation, 12 ms apart.
+201. **The compositor frames to the render size (`Compositor.frame(_:crop:to:)`); with no crop and the picture's own size it returns the
+    frame untouched.** Reason: a short's window is scaled to 1080 by 1920; the video's frames must not change (RenderTests and ShortsTests
+    both run it).
+202. **Caption lines are set at most 840 px wide, 30 px inside the safe area each side, and checked by their Core Text box against it.**
+    Reason: measured 16 Oct on the 13 Sep excerpt, lines set to the full 900 px read by Vision reached 8 px past the safe area's right edge
+    (its box includes the letters' overhang); the check must hold for what a viewer sees, not only for the layout.
+203. **What the shorts made lives in `Shorts/shorts.json`, never the store.** Reason: no SwiftData migration for an output's record, as with
+    the timelines' record; `Shorts` is one of `Pipeline.madeNames`, so a make that does not make shorts removes them with the rest.
+204. **Caption pictures are drawn by Core Graphics and Core Text, all of them, before the short is drawn (`BurnedCaptions.Table.make`).**
+    Reason: the compositor runs on AVFoundation's threads (Mac warning 165); Core Graphics is safe there, but drawing per frame would cost a
+    render per frame, and drawing ahead keeps every frame's picture the one that was measured.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

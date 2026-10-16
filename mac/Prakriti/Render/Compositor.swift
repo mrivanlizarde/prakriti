@@ -63,7 +63,11 @@ final class Compositor: NSObject, AVVideoCompositing, @unchecked Sendable {
               into renderContext: AVVideoCompositionRenderContext) throws -> CVReadOnlyPixelBuffer {
         let output = try renderContext.makeMutablePixelBuffer()
         let frame = source.withUnsafeBuffer { CIImage(cvPixelBuffer: $0) }
-        let image = Self.overlay(text, on: Self.frame(FaceHide.apply(frame, regions: hiding), crop: crop))
+        // The picture is framed to the render size: the source's own for the video, 1080 by 1920 for a short cropped from a
+        // wider picture (v2 part M11a).
+        let size = renderContext.size
+        let target = size.width > 0 && size.height > 0 ? size : frame.extent.size
+        let image = Self.overlay(text, on: Self.frame(FaceHide.apply(frame, regions: hiding), crop: crop, to: target))
         output.withUnsafeBuffer { buffer in
             // The source's colour tags (BT.709 matrix, primaries and transfer) go on the new buffer first: Core Image reads
             // them to turn its working colour back into the same YCbCr. Without them it wrote another matrix (measured 13 Oct
@@ -78,17 +82,22 @@ final class Compositor: NSObject, AVVideoCompositing, @unchecked Sendable {
     /// `image` framed by `crop` (from the top left, fractions of the picture), scaled back to the picture's own size with
     /// Lanczos (Core Image's sharpest resampling). The edge pixels are extended first, so the scale never pulls in black
     /// from outside the picture. Nil or the whole picture returns `image` unchanged.
-    static func frame(_ image: CIImage, crop: CGRect?) -> CIImage {
-        guard let crop, crop.width < 0.9999 || crop.height < 0.9999 else { return image }
+    /// `to` is the size of the frame made (v2 part M11a): a short's 9:16 window of a wider picture is scaled to 1080 by 1920.
+    /// Nil, or the picture's own size, keeps the picture's size, as for the video.
+    static func frame(_ image: CIImage, crop: CGRect?, to size: CGSize? = nil) -> CIImage {
         let extent = image.extent
         let w = extent.width, h = extent.height
+        let target = size ?? extent.size
+        let resized = abs(target.width - w) > 0.5 || abs(target.height - h) > 0.5
+        guard resized || (crop.map { $0.width < 0.9999 || $0.height < 0.9999 } ?? false) else { return image }
+        let crop = crop ?? Framing.whole
         // Core Image's origin is the bottom left.
         let rect = CGRect(x: extent.minX + crop.minX * w, y: extent.minY + (1 - crop.maxY) * h, width: crop.width * w, height: crop.height * h)
-        let scale = w / rect.width
+        let scale = target.width / rect.width
         let moved = image.clampedToExtent().cropped(to: rect.insetBy(dx: -8, dy: -8))
             .transformed(by: CGAffineTransform(translationX: -rect.minX, y: -rect.minY))
-        let scaled = moved.applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: scale, kCIInputAspectRatioKey: (h / rect.height) / scale])
-        return scaled.cropped(to: CGRect(x: 0, y: 0, width: w, height: h))
+        let scaled = moved.applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: scale, kCIInputAspectRatioKey: (target.height / rect.height) / scale])
+        return scaled.cropped(to: CGRect(x: 0, y: 0, width: target.width, height: target.height))
             .transformed(by: CGAffineTransform(translationX: extent.minX, y: extent.minY))
     }
 

@@ -60,8 +60,8 @@ faces look patchy. Set the camera's white balance by hand so it does not drift d
 - **Keep the camera still.** Use a tripod or a fixed mount, and do not move it during a session.
 - **Look into the lens** when you speak to the people who will watch.
 :::requires shorts
-- **Stay near the middle** for the moments you want as a short. A vertical short is cut from the center
-  of the frame.
+- **Stay near the middle** for the moments you want as a short. A short cut from a wide picture follows
+  the speaker, but a speaker near the middle keeps the most room around them.
 :::
 
 ## Choose a camera

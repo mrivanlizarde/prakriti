@@ -96,18 +96,18 @@ final class WelcomeTests: XCTestCase {
     }
 
     func testOnlyWhatIsBuiltIsVisibleInThePanels() {
-        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style, .timelines],
-                       "v2 part M2b adds the welcome to Help, M3b the Viewer, M4a progress, M4b the capture check, M5b the cloud providers, M6a faces, M6b voices, M6c choices, M6d hiding, M7a the People gallery, M7b recognition, M8a the edit plan, M8b the rendered MP4, M8c the video in the Viewer, M9a the House Style, M9b the text on screen, M9c direction, M10a the timelines")
+        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style, .timelines, .shorts],
+                       "v2 part M2b adds the welcome to Help, M3b the Viewer, M4a progress, M4b the capture check, M5b the cloud providers, M6a faces, M6b voices, M6c choices, M6d hiding, M7a the People gallery, M7b recognition, M8a the edit plan, M8b the rendered MP4, M8c the video in the Viewer, M9a the House Style, M9b the text on screen, M9c direction, M10a the timelines, M11a the shorts")
         XCTAssertEqual(unbuiltNamesFound(in: visibleText(built, capabilities: Capabilities.built), built: Capabilities.built), [])
         // At M2b, panel 1 lists finding recordings, the podcast and "nothing is posted without you".
         XCTAssertEqual(built.map(\.id), ["welcome", "record", "outputs", "privacy", "start"])
-        XCTAssertEqual(built[0].rows.map(\.id), ["finds", "edit", "podcast", "yours"], "M9d adds It makes the edit")
+        XCTAssertEqual(built[0].rows.map(\.id), ["finds", "edit", "files", "yours"], "M9d adds It makes the edit; M11a, with the video and the timelines built, It hands you finished files")
         XCTAssertEqual(built.map(\.rows.count), [4, 6, 5, 4, 4], "M5b adds Choose where models write to Get Started; M6c the People step to How Outputs Work; M7a the People row to Privacy; M9c the Direction step; M9d It makes the edit")
         XCTAssertEqual(built[4].rows.map(\.id), ["folder", "notifications", "models", "help"])
         // M4a built `progress`, so step 1 of How Outputs Work reads its v2 sentence; M4b built `captureCheck`, so the
         // recording settings row names Hybrid MOV; M8c built `video`, so step 2 says to watch the edit in the Viewer. No other v2
         // sentence yet.
-        XCTAssertEqual(built.flatMap(\.rows).filter { $0.id.hasSuffix("-v2") }.map(\.id), ["settings-v2", "found-v2", "review-v2"], "no v2 sentence before its part")
+        XCTAssertEqual(built.flatMap(\.rows).filter { $0.id.hasSuffix("-v2") }.map(\.id), ["frame-v2", "settings-v2", "found-v2", "review-v2"], "no v2 sentence before its part (M11a: the framing row names the vertical clips)")
 
         // The check finds what it is meant to find: with every row shown, the panels name features that
         // are not built, and it must say so.

@@ -38,6 +38,8 @@ struct OutputsTab: View {
                     if recording.video != nil || model.timelineFolder(recording) != nil {
                         TimelineSection(recording: recording)
                     }
+                    // The shorts (v2 part M11a), cut from the same plan.
+                    ShortsSection(recording: recording)
                 }
                 if recording.outputFolder != nil || recording.written != nil {
                     WritingSection(recording: recording, showsChecklist: false)
@@ -237,6 +239,15 @@ struct Deliverable: Identifiable, Equatable {
                         ?? "Final Cut Pro and DaVinci Resolve."
                     list.append(Deliverable(kind: kind, detail: detail, url: timeline.appending(path: FCPXMLVersion.finalCut.fileName)))
                     continue
+                }
+            case .shorts:
+                if let folder, names.contains(Shorts.folderName) {
+                    let shorts = folder.appending(path: Shorts.folderName, directoryHint: .isDirectory)
+                    if let record = Shorts.Record.read(shorts), let first = record.shorts.first {
+                        let fails = record.shorts.reduce(0) { $0 + $1.failed }
+                        list.append(Deliverable(kind: kind, detail: record.summary + " Checklists: \(fails) FAIL.", url: shorts.appending(path: first.fileName)))
+                        continue
+                    }
                 }
             case .transcript:
                 let formats = ["txt", "srt", "vtt", "md"].filter { names.contains("transcript.\($0)") }

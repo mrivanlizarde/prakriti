@@ -527,7 +527,7 @@ final class SnapshotTests: XCTestCase {
         }
         try draw("20-viewer-quick-help") { model in
             model.setQuickHelp(true)
-            model.quickHelp.show("Choose what plays: the Original as recorded, the Podcast episode, or the Podcast-ready episode. Video and Shorts are not made yet.",
+            model.quickHelp.show("Choose what plays: the Original as recorded, the Podcast episode, the Podcast-ready episode, the edited Video, or the Shorts.",
                                  article: "reviewing-and-approving")
             _ = try openTalk(model)
         }
@@ -740,6 +740,50 @@ final class SnapshotTests: XCTestCase {
             XCTAssertEqual(model.spanEdit(filler, in: r), .restored)
             model.inspectorTab = .outputs
         }
+        // The shorts (v2 part M11a): three made-up shorts of the sample talk, each a vertical test pattern made here (no picture of
+        // anyone), on Shorts with Short 2 chosen and the Outputs tab's Shorts; the Checks tab with a 1080p crop's warning; the
+        // Vertical Guide over the Original and the Video (the sample's made-up face, the window following it); and the Direction
+        // tab's Shorts. The player's picture is black in a bitmap (Mac warning 43); the real window is `make look`.
+        try plan.encoded().write(to: planURL)
+        let shortsFolder = media.outputs.appending(path: Shorts.folderName, directoryHint: .isDirectory)
+        try? FileManager.default.removeItem(at: shortsFolder)
+        try FileManager.default.createDirectory(at: shortsFolder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: shortsFolder) }
+        let sampleShorts = SnapshotTests.sampleShortsRecord(plan: plan)
+        try sampleShorts.encoded().write(to: shortsFolder.appending(path: Shorts.recordName))
+        let vertical = try ViewerSnapshotMedia.vertical()
+        for short in sampleShorts.shorts { try FileManager.default.copyItem(at: vertical, to: shortsFolder.appending(path: short.fileName)) }
+        func openShorts(_ model: AppModel, rendition: Rendition) throws -> Recording {
+            try openTalk(model, rendition: rendition, at: 120) { r in
+                r.videoJSON = playable.json()
+                r.madeFiles = Set(r.madeFiles).union([TranscriptFiles.asHeard, EditPlan.fileName, VideoStep.folderName, Shorts.folderName]).sorted()
+            }
+        }
+        try draw("27-viewer-shorts") { model in
+            _ = try openShorts(model, rendition: .shorts)
+            XCTAssertEqual(model.viewer.rendition, .shorts, model.viewer.unavailableReason(.shorts) ?? "")
+            model.chooseShort(1)
+            XCTAssertEqual(model.viewer.shortLabel(model.viewer.shortIndex), "Short 2 of 3")
+            model.inspectorTab = .outputs
+        }
+        try draw("27-checks-shorts") { model in
+            _ = try openShorts(model, rendition: .shorts)
+            model.inspectorTab = .checks
+        }
+        try draw("27-viewer-vertical-guide") { model in
+            _ = try openShorts(model, rendition: .original)
+            if let r = model.focusedRecording { Fixtures.showPeopleOverlay(model, on: r) }
+            model.viewer.showsPeople = false
+            model.setShowsVerticalGuide(true)
+            model.inspectorTab = .direction
+        }
+        try draw("27-viewer-vertical-guide-video") { model in
+            _ = try openShorts(model, rendition: .video)
+            if let r = model.focusedRecording { Fixtures.showPeopleOverlay(model, on: r) }
+            model.viewer.showsPeople = false
+            model.setShowsVerticalGuide(true)
+            model.inspectorTab = .outputs
+        }
         // Direction (v2 part M9c) in the inspector's Outputs: Ivan's words read as chips, with the plan made from them in plain lines
         // under Edit plan; then a direction that asks about the students (the People sentence, nothing changed) and words no rule
         // reads (to be read by the planning model). The plans are the sample plan with a made-up direction and made-up lines.
@@ -823,7 +867,7 @@ final class SnapshotTests: XCTestCase {
             model.inspectorTab = .direction
         }
         try? FileManager.default.removeItem(at: planURL)
-        let viewerCount = 29 * 2 // v2 part M10b: 26-timelines-writing and -privacy-safe in place of -refused; v2 part M10a: 26-timelines-ready; v2 part M8d: 22-video-hidden; v2 part M9c: 24-direction and 24-direction-people; v2 part M9d: 25-direction-*
+        let viewerCount = 33 * 2 // v2 part M11a: 27-viewer-shorts, 27-checks-shorts, 27-viewer-vertical-guide and -video; v2 part M10b: 26-timelines-writing and -privacy-safe in place of -refused; v2 part M10a: 26-timelines-ready; v2 part M8d: 22-video-hidden; v2 part M9c: 24-direction and 24-direction-people; v2 part M9d: 25-direction-*
 
         if only == "recording" {
             print("Snapshots written to \(outputFolder.path): \(written.count) Viewer pictures")
@@ -938,6 +982,24 @@ extension SnapshotTests {
     /// says a word is, -70 between), 29.97 fps, made at the fixtures' moment.
     @MainActor
     /// A video record as the M8b test pattern run made it (13 Oct), writing off: three MISSING lines, the rest PASS.
+    /// Three made-up shorts of the sample talk (v2 part M11a), cut from the sample plan's first spans, from a 1080p crop.
+    static func sampleShortsRecord(plan: EditPlan) -> Shorts.Record {
+        let spans = plan.mainSpans
+        let shorts: [Shorts.Short] = (0..<3).map { n in
+            let span = spans[min(n * 3, spans.count - 1)]
+            let a = PlanWord.index(of: span.from) ?? 0, b = PlanWord.index(of: span.to) ?? a
+            let lines = [ChecklistLine(status: .pass, item: "Size", detail: "1080 by 1920, vertical (1080 by 1920)."),
+                         ChecklistLine(status: .pass, item: "Loudness", detail: "-13.9 LUFS (-14, within 1)."),
+                         ChecklistLine(status: .pass, item: "Captions", detail: "28 captions burned in, every one inside the safe area.")]
+            return Shorts.Short(number: n + 1, fileName: "Talk with Gabriel short \(n + 1).mp4", captionsName: "Talk with Gabriel short \(n + 1).srt",
+                                start: span.in, end: span.out, beat: "b\(n + 2)", summary: ["why the breath comes first", "practice as a mirror", "returning each morning"][n],
+                                firstWord: a, lastWord: b, opening: "", duration: [42.4, 38.1, 55.0][n], bytes: 52_000_000, loudness: -13.9, truePeak: -1.5,
+                                captionPages: 28, middleShare: 0.98, renderSeconds: 6, lines: lines, pictureCheck: nil, soundCheck: nil)
+        }
+        return Shorts.Record(madeAt: Fixtures.now, planMadeAt: plan.madeAt, settings: ShortsSettings(), source: .crop1080, twin: nil, twinNote: nil,
+                             twinFaces: nil, warning: Shorts.softWarning, shorts: shorts, notes: [])
+    }
+
     static func sampleVideoRecord() -> VideoRecord {
         let pass: [(String, String)] = [
             ("Container and codecs", "MP4, picture H.264, sound AAC."), ("H.264 profile", "High."),
@@ -1005,5 +1067,19 @@ enum ViewerSnapshotMedia {
         let media = Media(pattern: pattern, outputs: outputs)
         made = media
         return media
+    }
+
+    /// A vertical test pattern (v2 part M11a), standing in for a made short: 360 by 640, 20 s, a tone. No picture of anyone.
+    static func vertical() throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appending(path: "prakriti-viewer-snapshots-vertical.mp4")
+        if FileManager.default.fileExists(atPath: url.path) { return url }
+        let ffmpeg = Process()
+        ffmpeg.executableURL = ToolPaths.standard.ffmpeg
+        ffmpeg.arguments = ["-hide_banner", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=360x640:rate=5", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000",
+                            "-t", "20", "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", url.path]
+        try ffmpeg.run()
+        ffmpeg.waitUntilExit()
+        guard ffmpeg.terminationStatus == 0 else { throw CocoaError(.fileWriteUnknown) }
+        return url
     }
 }

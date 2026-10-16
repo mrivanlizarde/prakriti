@@ -112,7 +112,7 @@ enum PictureOutputCheck {
     /// Looks at the made video `mp4` five frames a second. `timeline` maps its clock to the original's; `hidden` holds the
     /// regions the video hid; `tracks` are the people check's.
     static func run(mp4: URL, timeline: EditTimeline, hidden: HiddenFaces, tracks: [Track], framing: Framing = Framing(), now: Date,
-                    control: ProcessControl? = nil, progress: @escaping @Sendable (Double) -> Void = { _ in }) async throws -> PictureCheck {
+                    rate: Double = PictureOutputCheck.rate, control: ProcessControl? = nil, progress: @escaping @Sendable (Double) -> Void = { _ in }) async throws -> PictureCheck {
         let started = ContinuousClock.now
         var check = PictureCheck(checkedAt: now)
         let table = hidden.table()

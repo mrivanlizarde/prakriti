@@ -120,11 +120,12 @@ leaves that file alone, so the same session is never made twice.
 
 :::requires shorts
 With a 4K canvas you do not need a separate vertical canvas. Prakriti cuts each vertical short from
-the middle of the 4K picture at the full 1080 by 1920 size that Shorts and Reels use.
+the 4K picture, following the speaker, at the full 1080 by 1920 size that Shorts and Reels use.
 
-With a 1080p canvas, a short cut from the middle would be blurry. Keep a vertical canvas plugin on
-(such as Aitum Vertical) at 1080x1920. Prakriti recognizes its file, ending in `-vertical`, as the same
-session.
+With a 1080p canvas, a short cut from the picture is enlarged and looks soft. Keep a vertical canvas
+plugin on (such as Aitum Vertical) at 1080x1920. Prakriti uses its file, ending in `-vertical`, as the
+picture for the shorts once its sound lines up with the main recording, and finds the faces in it on
+their own, since it is a second camera.
 :::
 
 ## 7. Check it with a 10-second test
