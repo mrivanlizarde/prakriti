@@ -1683,3 +1683,10 @@ suite passes; make install.
   hours. Rule for every remaining part: never quit, kill or relaunch ~/Applications/Prakriti.app except through
   `make install`; tests drive only the Debug build. If a step must quit it, the same command reopens it
   (`open ~/Applications/Prakriti.app`) and the BUILD-LOG says so. Verifiers fail any part that leaves it not running.
+- **Fri 16 Oct, Sonny, after looking at the 13 Sep excerpt's thumbnails (Dev/Outputs/.../Thumbnails A and B):**
+  the composition, brand color and type are right, but the cut-out is not finished. (1) A light halo rings the
+  subject (hair, shoulders, hands), most visible on the dark background of B; (2) in B, unmasked background is
+  left as a blurred smear along the bottom edge (chair and objects below the shoulder line). Fix in M13 (or a part
+  before it): refine the foreground mask edges (erode and feather the matte, decontaminate edge color against the
+  new background, no outer glow), crop or fill so no source background remains, and add a thumbnail check that
+  measures halo and leftover background at the matte edge. Look at all three thumbnails at 1280 and at 168 px.
