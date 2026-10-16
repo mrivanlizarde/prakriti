@@ -6246,3 +6246,14 @@ no recording has timelines until Make Timelines is clicked.
   frame.mov`, the held last frame of the excerpt.
 - [ ] **Try it on a real recording:** open one with an edited video, Outputs tab, Timelines, Make Timelines, then Open in Final Cut Pro.
   Nothing to switch on first.
+## Fix: the video's frame timing at the hold. Thu 15 Oct 2026
+
+Logged as "found and not fixed" by M10a. **Cause:** `VideoWriter` filled frame times the composition's reader skipped only once
+the hold had begun (`lastFrame >= keptFrames - 1`). The 13 Sep excerpt, cut with `-c copy`, ends two frame times short of its
+kept span, so those two times just before the hold were never written and the pictures either side stretched over them
+(8,941 pictures over 8,943 frame times; one key-frame gap of 17). **Fix** (`Render/VideoWriter.swift`): every skipped frame
+time anywhere is the picture before it; a second picture for a time already written is dropped; each picture is stamped with
+`timeline.time(index)` on the grid. **Measured** on a fresh render of the excerpt (`make accept-style STYLE_ONLY="13 Sep
+excerpt"`, passed): 8,685 pictures, 8,684 steps all exactly 1,001 units (one frame at 30000/1001), `duration_ts` 8,693,685 =
+8,685 x 1,001, largest key-frame gap 15 (the limit). Mac warning 161 widened. Done in a separate worktree while the v2 run
+worked on M10, then merged.

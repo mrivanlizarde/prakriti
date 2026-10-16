@@ -33,6 +33,8 @@ why. Weekdays computed with `date(1)`.
 
 ## 2026-10-15, Thu: v2 part M9d, hook, chapters, versions
 
+- **Thu 15 Oct, the hold's frame timing.** The 13 Sep excerpt's edited video held two pictures for two frame times each just before its held last frame (8,941 pictures over 8,943 times), failing its own Ready checklist's Frame timing and Key frames lines. The writer filled skipped frame times only inside the hold; the excerpt's source ends short. It now fills any skipped time anywhere and never writes a time twice. Re-rendered: 8,685 pictures all exactly 1001 units apart, largest key-frame gap 15.
+
 - **Every video now opens on the talk's strongest line, then the title, then the talk from its start.** Why: research 2.3's
   grammar (a tease, then the title). The model only proposes; code checks the words, keeps whole sentences or whole clauses, and
   builds the line only from time the talk itself keeps, so a filler, Ivan's cut or someone left out can never come back through it.

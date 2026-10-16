@@ -2320,7 +2320,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 160. **Faces are hidden on the whole picture first, then the picture is framed (`Compositor.draw`).** Reason: hiding regions are on
     the original's picture (`video-hiding.json`); framed first, a region would have to be moved and scaled, and a mistake there
     shows a face. Hidden first, a punch-in can only enlarge what is already hidden.
-161. **A held frame is written by `VideoWriter` at every frame time; never trust the composition's reader for it.** Reason:
+161. **A held frame is written by `VideoWriter` at every frame time; never trust the composition's reader for it.** Reason: **Widened 15 Oct:** the writer fills EVERY skipped frame time, not only inside the hold, drops a second picture for a frame time already written, and stamps each picture on the frame grid; a source that ends short (an excerpt cut with -c copy) had left two frame times empty just before the hold.
     measured 14 Oct, an `AVAssetReaderVideoCompositionOutput` gives a frame that stays on screen across many frame times once
     (62 one-frame inserts of the same frame came out as one frame), and once it gave the next frame 2.9 s later: the MP4 had a
     hole the Ready checklist's Frame timing line caught. The Viewer's player holds the stretched frame by itself.

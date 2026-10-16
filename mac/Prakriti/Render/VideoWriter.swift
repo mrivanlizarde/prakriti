@@ -132,15 +132,21 @@ enum VideoWriter {
                 try Task.checkCancellation()
                 guard case let .pixelBuffer(buffer) = sample.content else { continue }
                 let index = Int64((sample.presentationTimeStamp.seconds / timeline.frame.seconds).rounded())
-                // Inside the hold the reader may skip frame times (measured 14 Oct: one frame at the hold's start, the next
-                // 2.9 s later): each skipped one is the held frame again.
-                if let held = last, timeline.holdFrames > 0, lastFrame >= timeline.keptFrames - 1, index > lastFrame + 1 {
+                // Exactly one picture per frame time, everywhere (Mac warning 161, widened 15 Oct). The reader may skip frame
+                // times inside the hold (measured 14 Oct: one frame at the hold's start, the next 2.9 s later) AND just before
+                // it, when the source itself ends short: the 13 Sep excerpt, cut with -c copy, lost two frame times at
+                // 293.39 s, and filling only from the hold's start left 8,941 pictures over 8,943 frame times, failing the
+                // Ready checklist's Frame timing and Key frames lines. So every skipped frame time is the picture before it,
+                // a second picture for a frame time already written is dropped, and each picture is stamped on the grid.
+                if index <= lastFrame { continue }
+                if index > lastFrame + 1 {
+                    let filler = last ?? buffer
                     for skipped in (lastFrame + 1)..<index {
-                        try await pictureIn.append(held, with: timeline.time(skipped))
+                        try await pictureIn.append(filler, with: timeline.time(skipped))
                         count += 1
                     }
                 }
-                try await pictureIn.append(buffer, with: sample.presentationTimeStamp)
+                try await pictureIn.append(buffer, with: timeline.time(index))
                 last = buffer
                 lastFrame = index
                 count += 1
