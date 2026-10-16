@@ -131,7 +131,7 @@ STYLE_ONLY ?=
 YES       ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: accept-shorts accept-timeline-full accept-timeline-people accept-timeline resolve-import accept-hook accept-direction accept-text accept-style accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: accept-thumbnails accept-shorts accept-timeline-full accept-timeline-people accept-timeline resolve-import accept-hook accept-direction accept-text accept-style accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -249,9 +249,23 @@ accept-timeline-people:
 #                 twin's shorts Vision every 0.5 s finds no face outside an included person's matched track or a hidden region; the
 #                 13 Sep shorts a crop with the capture warning in Checks. Frames with the safe area drawn go to for-ivan/ (measured
 #                 only). PRAKRITI_SHORTS_ONLY="13 Sep" runs one talk. Writes acceptance-shorts.txt to ../screens/mac/$(MILESTONE)/
-#                 (about 10 minutes with the parts cached; add about 10 for each talk whose parts Qwen must read)
+#                 (about 10 minutes with the parts cached; add about 10 for each talk whose parts Qwen must read). PRAKRITI_SHORTS_WHOLE=1
+#                 (v2 part M11b, the last part of M11) runs the same checks on the whole talks and writes acceptance-shorts-whole.txt
 accept-shorts:
-	TEST_RUNNER_PRAKRITI_ACCEPTANCE=shorts TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) TEST_RUNNER_PRAKRITI_SHORTS_ONLY="$(PRAKRITI_SHORTS_ONLY)" $(XCB) test -only-testing:PrakritiTests/ShortsAcceptanceTests
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=shorts TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) TEST_RUNNER_PRAKRITI_SHORTS_ONLY="$(PRAKRITI_SHORTS_ONLY)" TEST_RUNNER_PRAKRITI_SHORTS_WHOLE="$(PRAKRITI_SHORTS_WHOLE)" $(XCB) test -only-testing:PrakritiTests/ShortsAcceptanceTests
+
+# accept-thumbnails  v2 part M11b's acceptance (PLAN M11 checks 4, 5 and 6) through the app's runner in development: the REAL 13 Sep
+#                 talk, whole (the last part of M11), made with the edited video, the shorts and the thumbnails on (Gabriel teaching, parts
+#                 from ~/Prakriti/Dev/Beats, the headlines by Qwen3.8-27B in LM Studio): three thumbnails 1280 by 720 under 2 MB with their
+#                 masters, Vision finding only faces of people included, the card showing the chosen one; Approve in development: the
+#                 sheet drawn passing and with a planted 190 s short unticked, APPROVAL.md's hashes against the copied files, every file a
+#                 proved clone, Ready only while everything chosen passes, no network request (a URLProtocol counter); then
+#                 two-people-mixed with the corner face set to Hide Face: no face but the included one in any option. Thumbnails of the
+#                 talk go to for-ivan/ (measured only). PRAKRITI_THUMBS_ONLY="13" or "mixed" runs one; PRAKRITI_THUMBS_EXCERPT=1 uses the
+#                 13 Sep excerpt. Writes acceptance-thumbnails.txt to ../screens/mac/$(MILESTONE)/ (about 15 minutes for the whole talk)
+accept-thumbnails:
+	./scripts/make-fixtures.sh --if-missing
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=thumbnails TEST_RUNNER_PRAKRITI_THUMBS_ONLY="$(PRAKRITI_THUMBS_ONLY)" TEST_RUNNER_PRAKRITI_THUMBS_EXCERPT="$(PRAKRITI_THUMBS_EXCERPT)" TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/ThumbnailsAcceptanceTests
 
 # accept-timeline-full  v2 part M10b, the whole talks (the last part of M10): the REAL 13 Sep and 6 Sep talks made in development
 #                 with the edited video and the Timelines on (Clear, Gabriel teaching, parts from ~/Prakriti/Dev/Beats): both files valid

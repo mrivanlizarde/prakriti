@@ -85,9 +85,10 @@ enum Capabilities {
     /// (M6b), choices applied to audio (M6c), hiding in pictures (M6d), the People gallery (M7a), recognition (M7b), the
     /// edit plan (M8a), the rendered MP4 (M8b), the video in the Viewer (M8c), the House Style with its zooms (M9a), the title and
     /// names on screen (M9b), direction for one recording (M9c), and the opening line, key phrases, terms, chapters, versions and
-    /// the Direction tab (M9d), the timelines for Final Cut Pro and DaVinci Resolve (M10a), and the shorts (M11a). Each later part switches its own on.
+    /// the Direction tab (M9d), the timelines for Final Cut Pro and DaVinci Resolve (M10a), the shorts (M11a), and the thumbnails, the Approve sheet,
+    /// the upload checklists and Ready (M11b). Each later part switches its own on.
     static let built: Set<Capability> = [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery,
-                                         .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style, .timelines, .shorts]
+                                         .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style, .timelines, .shorts, .thumbnails]
 
     /// Every capability, for the test that every article and every block is visible once all are built.
     static let all = Set(Capability.allCases)

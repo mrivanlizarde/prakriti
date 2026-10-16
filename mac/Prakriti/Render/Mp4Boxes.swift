@@ -46,6 +46,36 @@ enum Mp4Boxes {
         let reason: String
     }
 
+    /// The movie's length from its `mvhd` box (the movie header's duration over its timescale), read without decoding anything
+    /// (v2 part M11b: the Approve sheet measures every short this way each time it opens). Nil when the file has no movie header.
+    static func duration(_ url: URL) -> Double? {
+        guard let layout = try? read(url), let moov = layout.topLevel.first(where: { $0.type == "moov" }),
+              let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        var at = moov.offset + moov.header
+        let end = moov.offset + moov.size
+        while at + 8 <= end {
+            guard (try? handle.seek(toOffset: UInt64(at))) != nil, let head = try? handle.read(upToCount: 8), head.count == 8 else { return nil }
+            let size = Int64(be32(head, 0))
+            let type = String(decoding: head[4..<8], as: UTF8.self)
+            guard size >= 8 else { return nil }
+            if type == "mvhd" {
+                guard let body = try? handle.read(upToCount: 32), body.count >= 20 else { return nil }
+                let version = body[0]
+                if version == 1 {
+                    guard body.count >= 32 else { return nil }
+                    let scale = Double(be32(body, 20))
+                    let length = Double(UInt64(be32(body, 24)) << 32 | UInt64(be32(body, 28)))
+                    return scale > 0 ? length / scale : nil
+                }
+                let scale = Double(be32(body, 12)), length = Double(be32(body, 16))
+                return scale > 0 ? length / scale : nil
+            }
+            at += size
+        }
+        return nil
+    }
+
     static func read(_ url: URL) throws -> Layout {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }

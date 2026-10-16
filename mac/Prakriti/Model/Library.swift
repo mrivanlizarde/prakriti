@@ -34,12 +34,12 @@ enum SmartGroup: String, CaseIterable, Identifiable, Hashable, Sendable {
         }
     }
 
-    /// The statuses this group holds, or nil for every recording. Ready holds what is approved: until
-    /// the platform checks exist (parts M8 and M11b), an approved recording has passed every check
-    /// Prakriti makes, and Approve already refuses one whose edits are not in its files.
+    /// The statuses this group holds, or nil for every recording. Ready holds what is approved and still passes every check of
+    /// what was chosen (v2 part M11b: Approve refuses a deliverable that fails, and `AppModel.recheckApproval` moves a recording
+    /// whose approved files or checks stop passing to "Approved, a check failed", in Needs You).
     var statuses: [RecordingStatus]? {
         switch self {
-        case .needsYou: [.readyForYourYes, .needsADecision, .couldntFinish]
+        case .needsYou: [.readyForYourYes, .needsADecision, .couldntFinish, .approvedCheckFailed]
         case .inProgress: [.found, .working]
         case .ready: [.approved]
         case .all: nil
@@ -224,8 +224,8 @@ enum Library {
     }
 
     /// The browser's sections for a selection, in the design spec's order (3.1.3):
-    /// - Needs You: Waiting for your yes, Needs a decision, Couldn't finish; oldest first in each, what
-    ///   has waited longest at the top.
+    /// - Needs You: Waiting for your yes, Needs a decision, Couldn't finish, Approved, a check failed (v2 part M11b); oldest
+    ///   first in each, what has waited longest at the top.
     /// - In Progress: Working, then Waiting in the order they will run, then Found.
     /// - Ready: by the month it was approved, newest first.
     /// - All Recordings and a folder: by the month it was recorded, newest first.
@@ -234,7 +234,7 @@ enum Library {
                          waitingOrder: [UUID] = [], calendar: Calendar = .current) -> [LibrarySection] {
         switch item {
         case .group(.needsYou):
-            return [RecordingStatus.readyForYourYes, .needsADecision, .couldntFinish].compactMap { status in
+            return [RecordingStatus.readyForYourYes, .needsADecision, .couldntFinish, .approvedCheckFailed].compactMap { status in
                 let these = recordings.filter { $0.status == status }
                 guard !these.isEmpty else { return nil }
                 let ordered = sort == .dateRecorded ? these.sorted(by: oldestFirst) : sorted(these, by: sort)

@@ -293,3 +293,228 @@ struct VideoPeopleLine: Codable, Equatable, Sendable {
     var detail: String
     var todo: String?
 }
+
+// MARK: Upload checklists (v2 part M11b)
+
+/// Where a finished file is uploaded by hand (design spec 3.11): YouTube for the long video, and YouTube Shorts, Instagram Reels and
+/// TikTok for the shorts. Each platform's fields are in the order its upload form asks for them. YouTube's are from its own help
+/// pages (research-edit-engine.md 6.1 and 6.2); Reels' and TikTok's are third-party figures (research 6.2), and their lines say so.
+enum UploadPlatform: String, CaseIterable, Identifiable, Sendable {
+    case youtube, youtubeShorts, instagramReels, tiktok
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .youtube: "YouTube"
+        case .youtubeShorts: "YouTube Shorts"
+        case .instagramReels: "Instagram Reels"
+        case .tiktok: "TikTok"
+        }
+    }
+
+    /// The short name for the picker.
+    var short: String {
+        switch self {
+        case .youtube: "YouTube"
+        case .youtubeShorts: "Shorts"
+        case .instagramReels: "Reels"
+        case .tiktok: "TikTok"
+        }
+    }
+
+    var vertical: Bool { self != .youtube }
+
+    /// Whose rules the checks follow.
+    var source: String {
+        switch self {
+        case .youtube: "YouTube's own help pages, read 10 Oct 2026."
+        case .youtubeShorts: "YouTube's own help pages, read 10 Oct 2026: a vertical video of up to 3 minutes is a Short."
+        case .instagramReels: "A third-party guide, not Instagram's own page (research 6.2): up to 3 minutes."
+        case .tiktok: "A third-party guide, not TikTok's own page (research 6.2): up to 10 minutes for most accounts."
+        }
+    }
+
+    /// The longest a video may be there, in seconds.
+    var longest: Double {
+        switch self {
+        case .youtube: .infinity
+        case .youtubeShorts, .instagramReels: 180
+        case .tiktok: 600
+        }
+    }
+}
+
+/// One field of an upload form: its words to copy, or a file to show in the Finder, or an answer only Ivan gives; and whether it
+/// is ready (PASS), not there (MISSING) or wrong (FAIL). An answer of his has no status.
+struct UploadField: Identifiable, Equatable, Sendable {
+    enum Value: Equatable, Sendable {
+        case text(String)
+        case file(URL)
+        case answer
+    }
+
+    var id: String
+    var label: String
+    var value: Value
+    var status: ChecklistLine.Status?
+    var detail: String
+    var thirdParty = false
+}
+
+/// Everything an upload checklist is made from, read from the recording's files by the app.
+struct UploadFacts: Sendable {
+    struct Short: Sendable {
+        var number: Int
+        var file: URL
+        var captions: URL?
+        var summary: String
+        var duration: Double
+        var failed: Int
+        var width = 1080
+        var height = 1920
+    }
+
+    var videoFile: URL?
+    var videoFailed = 0
+    var captionsFile: URL?
+    var captionsPass = false
+    var description: VideoDescription?
+    var tags: [String] = []
+    var thumbnail: URL?
+    var thumbnailLine: String?
+    var instagram: String?
+    var shorts: [Short] = []
+}
+
+extension ReadyChecklist {
+    /// YouTube's limits on the words (support.google.com/youtube: a title of up to 100 characters, a description of up to 5,000,
+    /// tags of up to 500 together).
+    static let titleLimit = 100
+    static let descriptionLimit = 5_000
+    static let tagsLimit = 500
+
+    /// The fields of one platform's upload form, in its order. Pure.
+    static func upload(_ platform: UploadPlatform, facts f: UploadFacts) -> [UploadField] {
+        var out: [UploadField] = []
+        switch platform {
+        case .youtube:
+            if let file = f.videoFile {
+                out.append(.init(id: "file", label: "Video file", value: .file(file), status: f.videoFailed == 0 ? .pass : .fail,
+                                 detail: f.videoFailed == 0 ? "Every line of its Ready checklist passes or is filled in below." : "\(Format.count(f.videoFailed, "line")) of its Ready checklist fail."))
+            } else {
+                out.append(.init(id: "file", label: "Video file", value: .answer, status: .missing, detail: "No edited video is made yet."))
+            }
+            if let title = f.description?.title {
+                out.append(.init(id: "title", label: "Title", value: .text(title), status: title.count <= titleLimit ? .pass : .fail,
+                                 detail: "\(title.count) characters (up to \(titleLimit))."))
+            } else {
+                out.append(.init(id: "title", label: "Title", value: .answer, status: .missing, detail: "No title chosen or written. Give the recording a title in Info."))
+            }
+            if let description = f.description?.description {
+                let full = description + (f.description?.chapters.isEmpty == false
+                    ? "\n\n" + (f.description?.chapters ?? []).map { "\(VideoDescription.stamp($0.start)) \($0.title)" }.joined(separator: "\n") : "")
+                out.append(.init(id: "description", label: "Description", value: .text(full), status: full.count <= descriptionLimit ? .pass : .fail,
+                                 detail: "\(Format.number(full.count)) characters (up to \(Format.number(descriptionLimit))), chapters included."))
+            } else {
+                out.append(.init(id: "description", label: "Description", value: .answer, status: .missing, detail: "No description chosen or written. Write notes in Info."))
+            }
+            if let thumbnail = f.thumbnail {
+                out.append(.init(id: "thumbnail", label: "Thumbnail", value: .file(thumbnail), status: .pass, detail: f.thumbnailLine ?? "1280 by 720, under 2 MB."))
+            } else {
+                out.append(.init(id: "thumbnail", label: "Thumbnail", value: .answer, status: .missing, detail: "No thumbnail is made yet. Choose Make Thumbnails."))
+            }
+            out.append(.init(id: "audience", label: "Audience: made for kids", value: .answer, status: nil,
+                             detail: "Your answer, in YouTube Studio. YouTube asks it of every video."))
+            out.append(.init(id: "altered", label: "Altered or synthetic content", value: .answer, status: nil,
+                             detail: "Your answer, in YouTube Studio. Prakriti's edit cuts, zooms and adds text; nothing in its picture or sound is generated."))
+            if f.tags.isEmpty {
+                out.append(.init(id: "tags", label: "Tags", value: .answer, status: .missing, detail: "No tags written. Turn on Titles, show notes and chapters, then Make Again."))
+            } else {
+                let text = f.tags.joined(separator: ", ")
+                out.append(.init(id: "tags", label: "Tags", value: .text(text), status: text.count <= tagsLimit ? .pass : .fail,
+                                 detail: "\(f.tags.count) tags, \(text.count) characters (up to \(tagsLimit))."))
+            }
+            if let description = f.description, !description.chapters.isEmpty {
+                out.append(.init(id: "chapters", label: "Chapters", value: .answer, status: .pass,
+                                 detail: "\(description.chapters.count) chapters, in the description, the first at 0:00."))
+            } else {
+                out.append(.init(id: "chapters", label: "Chapters", value: .answer, status: .missing, detail: f.description?.chapterProblem ?? "No chapters yet."))
+            }
+            if let captions = f.captionsFile {
+                out.append(.init(id: "captions", label: "Subtitles file", value: .file(captions), status: f.captionsPass ? .pass : .fail,
+                                 detail: "In Studio, Subtitles, Upload file, With timing."))
+            } else {
+                out.append(.init(id: "captions", label: "Subtitles file", value: .answer, status: .missing, detail: "No captions file is made yet."))
+            }
+        case .youtubeShorts, .instagramReels, .tiktok:
+            if f.shorts.isEmpty {
+                out.append(.init(id: "file", label: "Shorts", value: .answer, status: .missing, detail: "No shorts are made yet. Choose Make Shorts.", thirdParty: platform != .youtubeShorts))
+            }
+            for short in f.shorts {
+                let n = short.number
+                let fits = short.duration <= platform.longest + 0.001
+                out.append(.init(id: "file-\(n)", label: "Short \(n)", value: .file(short.file), status: short.failed == 0 && fits && short.width == 1080 && short.height == 1920 ? .pass : .fail,
+                                 detail: "\(Format.timecode(short.duration)), \(short.width) by \(short.height)"
+                                    + (fits ? "" : String(format: ", over the %.0f s %@ takes", platform.longest, platform.title))
+                                    + (short.failed == 0 ? ", every check passes." : ", \(Format.count(short.failed, "check")) fail."),
+                                 thirdParty: platform != .youtubeShorts))
+                switch platform {
+                case .youtubeShorts:
+                    let title = short.summary.prefix(1).uppercased() + short.summary.dropFirst()
+                    out.append(.init(id: "title-\(n)", label: "Short \(n): title", value: .text(title), status: title.count <= titleLimit ? .pass : .fail,
+                                     detail: "What its part of the talk is about, in the planner's words. Change it as you like."))
+                    out.append(.init(id: "captions-\(n)", label: "Short \(n): words on screen", value: .answer, status: .pass, detail: "Burned into the picture; no file to upload."))
+                default:
+                    if let caption = f.instagram {
+                        out.append(.init(id: "caption-\(n)", label: "Short \(n): caption", value: .text(caption), status: .pass,
+                                         detail: platform == .tiktok ? "The Instagram caption, written for the episode." : "The Instagram caption, written for the episode, with its hashtags.",
+                                         thirdParty: true))
+                    } else {
+                        out.append(.init(id: "caption-\(n)", label: "Short \(n): caption", value: .answer, status: .missing,
+                                         detail: "No caption written. Turn on Titles, show notes and chapters, then Make Again.", thirdParty: true))
+                    }
+                }
+            }
+            out.append(.init(id: "cover", label: "Cover", value: .answer, status: nil,
+                             detail: platform == .youtubeShorts ? "Chosen in YouTube Studio from the short's own frames." : "Chosen in the \(platform == .tiktok ? "TikTok" : "Instagram") app from the short's own frames.",
+                             thirdParty: platform != .youtubeShorts))
+        }
+        return out
+    }
+
+    /// Reads `Description.txt` back: its title and description (the chapters stay in the description, as YouTube reads them).
+    static func readDescription(_ text: String) -> VideoDescription {
+        var d = VideoDescription()
+        let parts = text.components(separatedBy: "\nDESCRIPTION\n")
+        if let head = parts.first {
+            let title = head.replacingOccurrences(of: "TITLE\n", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            d.title = title.isEmpty || title.hasPrefix("MISSING") ? nil : title
+        }
+        if parts.count > 1 {
+            let body = parts[1].components(separatedBy: "\nCHAPTERS\n")
+            var lines = body[0].trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: "\n")
+            // The chapter lines at the end of the description ("0:00 Opening"), read back as chapters.
+            var chapters: [VideoDescription.Chapter] = []
+            while let last = lines.last, let space = last.firstIndex(of: " "), let seconds = Self.seconds(String(last[..<space])) {
+                chapters.insert(.init(start: seconds, title: String(last[last.index(after: space)...])), at: 0)
+                lines.removeLast()
+            }
+            let description = lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            d.description = description.isEmpty || description.hasPrefix("MISSING") ? nil : description
+            d.chapters = chapters
+            if chapters.isEmpty, body.count > 1 {
+                let problem = body[1].replacingOccurrences(of: "MISSING: ", with: "").components(separatedBy: " Chapters go in")[0].trimmingCharacters(in: .whitespacesAndNewlines)
+                d.chapterProblem = problem.isEmpty || problem == "none." ? nil : problem
+            }
+        }
+        return d
+    }
+
+    /// "1:02:03" or "12:05" as seconds, or nil.
+    static func seconds(_ stamp: String) -> Double? {
+        let parts = stamp.split(separator: ":").map { Int($0) }
+        guard parts.count >= 2, parts.count <= 3, parts.allSatisfy({ $0 != nil }) else { return nil }
+        return Double(parts.compactMap { $0 }.reduce(0) { $0 * 60 + $1 })
+    }
+}

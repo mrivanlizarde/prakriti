@@ -114,7 +114,7 @@ extension AppModel {
     /// while it waits its turn or is being made again.
     func canEditEpisode(_ recording: Recording) -> Bool {
         switch recording.status {
-        case .readyForYourYes, .approved: true
+        case .readyForYourYes, .approved, .approvedCheckFailed: true
         case .working, .found, .couldntFinish: recording.outputFolder != nil && !runner.isCurrent(recording)
         case .needsADecision, .skipped: false
         }

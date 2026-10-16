@@ -14,6 +14,7 @@ extension RecordingStatus {
         case .needsADecision: .orange
         case .approved: .green
         case .couldntFinish: .red
+        case .approvedCheckFailed: .orange
         }
     }
 }
@@ -61,6 +62,8 @@ extension Recording {
             if let statusReason { parts.append(statusReason) }
         case .approved:
             if let approvedAt { parts.append("Approved " + Format.dayLabel(approvedAt) + ".") }
+        case .approvedCheckFailed:
+            parts.append(statusReason ?? "Approved, and a check no longer passes.")
         }
         return parts.joined(separator: " ")
     }

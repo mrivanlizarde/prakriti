@@ -218,8 +218,8 @@ struct EmptyLibrary: View {
                               message: "Recordings in a folder set to Make outputs automatically start on their own. Add a file to make one now.",
                               buttons: [("Add File…", { model.chooseFiles() })])
         case .group(.ready):
-            LibraryEmptyState(symbol: "checkmark.seal", title: "Nothing is approved yet",
-                              message: "A recording you approve appears here, with its files in the Approved folder. Nothing is uploaded.",
+            LibraryEmptyState(symbol: "checkmark.seal", title: "Nothing is ready to upload yet",
+                              message: "Approved recordings that pass every check appear here, with their files in the Approved folder. Nothing is uploaded.",
                               buttons: [])
         case .group(.all):
             LibraryEmptyState(symbol: "square.grid.2x2", title: "No recordings yet",

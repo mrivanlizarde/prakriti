@@ -181,6 +181,10 @@ final class AppModel {
     var writingTimelines: Set<UUID> = []
     /// Why the shorts were not made the last time they were asked for (v2 part M11a), by recording.
     var shortsProblems: [UUID: String] = [:]
+    /// Why the thumbnails were not made on the last try (v2 part M11b), by recording.
+    var thumbnailsProblems: [UUID: String] = [:]
+    /// The Approve sheet (v2 part M11b, design spec 3.11), for one recording, while it is open.
+    var approveSheet: ApproveRequest?
     /// The short the inspector's Play asked for, chosen once the Viewer has the recording open (v2 part M11a).
     @ObservationIgnored var pendingShortIndex: Int?
     /// How far Make Timelines has come, 0 to 1, by recording (v2 part M10b: privacy-safe media takes minutes, not seconds).

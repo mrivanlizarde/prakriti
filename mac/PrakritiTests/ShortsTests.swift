@@ -343,4 +343,27 @@ final class ShortsTests: XCTestCase {
         let image = try await generator.image(at: CMTime(seconds: seconds, preferredTimescale: 600)).image
         try await ShortsAcceptanceTests.writeWithSafeArea(image, to: png)
     }
+
+    /// PLAN M11 check 1, the part M11b runs: Approve refuses a deliverable whose checklist has a FAIL and copies nothing. A short of
+    /// 190 s (over YouTube's 3 minutes) is planted beside two good ones; ticked, the yes is refused and nothing reaches Approved.
+    @MainActor
+    func testApproveRefusesAShortThatFailsAndCopiesNothing() throws {
+        let work = FileManager.default.temporaryDirectory.appending(path: "prakriti-shorts-approve-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: work) }
+        let (model, recording) = try ApproveTests.madeRecording(in: work, plantedSeconds: 190)
+        let all = Set(model.approvalDeliverables(recording).map(\.id))
+        XCTAssertFalse(model.approve(recording, chosen: all))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: model.approvedFolder(for: recording).path), "nothing was copied")
+        XCTAssertNil(recording.approvedAt)
+        // A failing line in a short's own checklist is refused the same way.
+        let folder = URL(fileURLWithPath: recording.outputFolder!).appending(path: Shorts.folderName)
+        var record = try XCTUnwrap(Shorts.Record.read(folder))
+        record.shorts[1].lines = [ChecklistLine(status: .fail, item: "Loudness", detail: "-17.2 LUFS (-14, within 1).")]
+        try ApproveTests.headerOnlyMP4(seconds: 42, to: folder.appending(path: "Short 2.mp4"))
+        try record.encoded().write(to: folder.appending(path: Shorts.recordName))
+        let item = try XCTUnwrap(model.approvalDeliverables(recording).first { $0.id == "short-2" })
+        XCTAssertEqual(item.failure, "Short 2 fails a check: Loudness, -17.2 LUFS (-14, within 1).")
+        XCTAssertFalse(model.approve(recording, chosen: all))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: model.approvedFolder(for: recording).path))
+    }
 }

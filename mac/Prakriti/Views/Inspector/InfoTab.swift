@@ -121,7 +121,7 @@ struct InfoTab: View {
     /// Where the episode starts and ends can be set once something has been checked or made.
     private var showsEpisodeTimes: Bool {
         switch recording.status {
-        case .readyForYourYes, .approved: true
+        case .readyForYourYes, .approved, .approvedCheckFailed: true
         case .working, .found, .couldntFinish: recording.outputFolder != nil
         case .needsADecision, .skipped: false
         }

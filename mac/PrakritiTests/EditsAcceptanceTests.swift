@@ -17,7 +17,7 @@ import XCTest
 ///    against the first episode: about 40 s shorter (10 s trimmed, less the 1.18 s the silence trim
 ///    already took, plus the 30 s cut). The cut words are checked gone twice: from the approved
 ///    transcript, and by transcribing the approved episode again with Parakeet.
-/// 5. Marked as a class: the approval is taken back and Approve is refused (Speakers not checked).
+/// 5. Marked as a class: the approval is taken back; since v2 part M11b a class whose people were checked can be approved again.
 ///
 /// Skipped unless PRAKRITI_ACCEPTANCE=edits (the make target sets it). Reads only the 13 Sep talk,
 /// read-only; writes only into ~/Prakriti/Dev/Outputs, ~/Prakriti/Dev/Approved and a temporary
@@ -77,8 +77,11 @@ final class EditsAcceptanceTests: XCTestCase {
                    String(format: "  episode %@ (%.2f s); %.2f s of silence trimmed at the start", Format.timecode(recording.episodeDuration ?? 0),
                           recording.episodeDuration ?? 0, silenceAtStart),
                    "  approve: " + (model.approvalCheck(recording).line ?? "")]
-        XCTAssertFalse(model.approvalCheck(recording).canApprove, "not marked as a talk yet: unknown voices count as students")
-        XCTAssertTrue(model.approvalCheck(recording).speakersNotChecked)
+        // Every make checks who appears and speaks (v2 part M6a); since part M11b a recording whose people check ran can be approved
+        // whatever it is marked as (Ivan, 12 Oct: every participant signed a release). Without the check, only a talk.
+        let checked = recording.faces != nil && recording.voices != nil
+        XCTAssertEqual(model.approvalCheck(recording).canApprove, checked, "not marked as a talk yet: approvable only once its people were checked")
+        XCTAssertEqual(model.approvalCheck(recording).speakersNotChecked, !checked)
         try draw("talk-1-made")
 
         // 2. Marked as a talk; the first 10 s trimmed; 5:00 to 5:30 cut, typed as Ivan types it: since v2 part
@@ -217,19 +220,22 @@ final class EditsAcceptanceTests: XCTestCase {
 
         try draw("talk-4-approved")
 
-        // 5. Marked as a class: the approval is taken back, and Approve refuses.
+        // 5. Marked as a class: the approval is taken back. Since part M11b a class whose people check ran can be approved again; without
+        //    the check it is refused (Speakers not checked). Nothing is approved here, so the earlier copy stays as it was.
         let receiptBefore = try Data(contentsOf: approved.appending(path: "APPROVAL.md"))
         model.setKind(.lesson, for: recording)
         XCTAssertEqual(recording.status, .readyForYourYes, "a change takes the approval back")
         let classCheck = model.approvalCheck(recording)
-        XCTAssertFalse(classCheck.canApprove)
-        XCTAssertTrue(classCheck.speakersNotChecked)
-        XCTAssertFalse(model.approve(recording), "a class cannot be approved")
-        XCTAssertEqual(model.notice?.title, ApprovalCheck.speakersTitle)
+        XCTAssertEqual(classCheck.canApprove, checked)
+        XCTAssertEqual(classCheck.speakersNotChecked, !checked)
+        if !checked {
+            XCTAssertFalse(model.approve(recording), "a class nobody checked cannot be approved")
+            XCTAssertEqual(model.notice?.title, ApprovalCheck.speakersTitle)
+        }
         model.notice = nil
         XCTAssertEqual(try Data(contentsOf: approved.appending(path: "APPROVAL.md")), receiptBefore, "the earlier approved copy is left as it was")
         XCTAssertFalse(recording.isPrivacyLocked, "a class is not privacy locked since part LOCK")
-        report += ["", "Marked as a class: approval taken back; Approve refused: \(ApprovalCheck.speakersTitle). \(classCheck.line ?? "")"]
+        report += ["", "Marked as a class: approval taken back; " + (checked ? "its people were checked, so it can be approved again (part M11b)." : "Approve refused: \(ApprovalCheck.speakersTitle). \(classCheck.line ?? "")")]
         try draw("talk-5-class")
 
         XCTAssertEqual(fingerprint(talk), before, "the original changed")

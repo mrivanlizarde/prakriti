@@ -784,6 +784,24 @@ final class SnapshotTests: XCTestCase {
             model.setShowsVerticalGuide(true)
             model.inspectorTab = .outputs
         }
+        // Ready and "Approved, a check failed" (v2 part M11b): the sample talk approved, in Ready; then a check of what was approved
+        // failing, in Needs You under its own heading, with Approve again in the inspector.
+        try draw("28-ready") { model in
+            let talk = try talk13(model)
+            talk.status = .approved
+            talk.approvedAt = Fixtures.now
+            talk.statusReason = "Approved. Its files are in ~/Prakriti/Approved/2026-09-13 18-25-44. Nothing was uploaded or published."
+            model.selection = .group(.ready)
+            model.selectedRecordings = [talk.id]
+        }
+        try draw("28-needs-you-check-failed") { model in
+            let talk = try talk13(model)
+            talk.status = .approvedCheckFailed
+            talk.approvedAt = Fixtures.now
+            talk.statusReason = "A check no longer passes: Video/Talk with Gabriel.srt in the approved folder changed after it was approved."
+            model.selection = .group(.needsYou)
+            model.selectedRecordings = [talk.id]
+        }
         // Direction (v2 part M9c) in the inspector's Outputs: Ivan's words read as chips, with the plan made from them in plain lines
         // under Edit plan; then a direction that asks about the students (the People sentence, nothing changed) and words no rule
         // reads (to be read by the planning model). The plans are the sample plan with a made-up direction and made-up lines.
@@ -867,7 +885,7 @@ final class SnapshotTests: XCTestCase {
             model.inspectorTab = .direction
         }
         try? FileManager.default.removeItem(at: planURL)
-        let viewerCount = 33 * 2 // v2 part M11a: 27-viewer-shorts, 27-checks-shorts, 27-viewer-vertical-guide and -video; v2 part M10b: 26-timelines-writing and -privacy-safe in place of -refused; v2 part M10a: 26-timelines-ready; v2 part M8d: 22-video-hidden; v2 part M9c: 24-direction and 24-direction-people; v2 part M9d: 25-direction-*
+        let viewerCount = 35 * 2 // v2 part M11b: 28-ready, 28-needs-you-check-failed; v2 part M11a: 27-viewer-shorts, 27-checks-shorts, 27-viewer-vertical-guide and -video; v2 part M10b: 26-timelines-writing and -privacy-safe in place of -refused; v2 part M10a: 26-timelines-ready; v2 part M8d: 22-video-hidden; v2 part M9c: 24-direction and 24-direction-people; v2 part M9d: 25-direction-*
 
         if only == "recording" {
             print("Snapshots written to \(outputFolder.path): \(written.count) Viewer pictures")

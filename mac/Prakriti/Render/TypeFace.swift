@@ -18,8 +18,11 @@ enum TypeFace {
     static let regular = "AlegreyaSans-Regular"
     static let medium = "AlegreyaSans-Medium"
     static let bold = "AlegreyaSans-Bold"
+    /// The thumbnails' headlines (v2 part M11b): the family's ExtraBold, from the same Google Fonts copy as the other three (its
+    /// SHA-256 3861f08a77d5... matches the file read on Wed 14 Oct for the M9b contact sheet).
+    static let extraBold = "AlegreyaSans-ExtraBold"
     static let familyName = "Alegreya Sans"
-    static let files = ["AlegreyaSans-Regular.ttf", "AlegreyaSans-Medium.ttf", "AlegreyaSans-Bold.ttf"]
+    static let files = ["AlegreyaSans-Regular.ttf", "AlegreyaSans-Medium.ttf", "AlegreyaSans-Bold.ttf", "AlegreyaSans-ExtraBold.ttf"]
     static let licenceFile = "OFL.txt"
 
     /// The IAST test string of PLAN M9 check 2 (research 2.7): every burned face must draw each of its characters.
@@ -32,11 +35,11 @@ enum TypeFace {
     /// The folder of the bundled fonts inside the app.
     static var folder: URL? { Bundle.main.url(forResource: "Fonts", withExtension: nil) }
 
-    /// Registers the bundled faces for this process, once. Returns whether all three are usable by name afterwards.
+    /// Registers the bundled faces for this process, once. Returns whether all four are usable by name afterwards.
     @discardableResult
     static func register() -> Bool {
         _ = registration
-        return files.indices.allSatisfy { i in isAvailable([regular, medium, bold][i]) }
+        return files.indices.allSatisfy { i in isAvailable([regular, medium, bold, extraBold][i]) }
     }
 
     private static let registration: Void = {

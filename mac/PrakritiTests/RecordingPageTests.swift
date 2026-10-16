@@ -435,7 +435,7 @@ final class RecordingPageTests: XCTestCase {
         let check = model.approvalCheck(recording)
         XCTAssertFalse(check.canApprove)
         XCTAssertTrue(check.speakersNotChecked, "the page shows Speakers not checked")
-        XCTAssertEqual(check.line, "This is a class, so students may be heard. A class cannot be approved until Prakriti can check who is speaking.")
+        XCTAssertEqual(check.line, "This is a class, so students may be heard. A class can be approved once Prakriti has checked who appears and speaks in it: choose Check People.")
         XCTAssertFalse(model.approve(recording), "the button is not the only guard")
         XCTAssertEqual(recording.status, .readyForYourYes)
         XCTAssertNil(recording.approvedAt)

@@ -5,6 +5,29 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-16, Fri: v2 part M11b, thumbnails, Approve and Ready
+
+- **Three designed YouTube thumbnails, not screenshots.** Why: Ivan, 12 Oct: one subject cut out, a few words, the school's colours,
+  readable small. Each starts from the sharpest frame of the teacher with open eyes (Vision), is cut out by Vision's person mask, and
+  is set in one of three compositions with a one-line reason; the words are measured to read at 168 pixels wide and against what is
+  behind them. Media Intelligence's key frame was measured and not used: it chose 0:00 on an excerpt and took 105 s for one frame.
+- **Headlines from the writing model, checked in Swift.** Why: Ivan asked for the writing model (Claude Sonnet in his settings); Swift
+  refuses dashes, the title, his copy rules and words too long to fit, and the talk's own key phrases fill any gap, so nothing is invented.
+- **A thumbnail is kept only after Vision finds no face but someone included in the finished picture.** Why: Ivan's rule that faces of
+  anyone not included never reach a thumbnail; the check runs on the file, not the plan.
+- **The card shows the chosen thumbnail while it matches today's choices.** Why: Ivan asked to see it on every tile; a thumbnail made
+  before someone was hidden must not stay on screen.
+- **Approve became a sheet of deliverables; a failing one is unticked and a yes covering it copies nothing.** Why: design spec C8, a yes
+  must cover a file that would pass on upload. Files are cloned (no extra disk) and every one is proved a clone and hashed in APPROVAL.md.
+- **Ready means approved and still passing; "Approved, a check failed" goes to Needs You.** Why: Ready should mean only Upload is left.
+  Approvals made before today are never moved, so episode 1 stays where it is.
+- **Upload checklists for YouTube, Shorts, Reels and TikTok, with Copy and Show in Finder.** Why: "post ready": the only step left is
+  pressing Upload. Reels and TikTok rules are third-party and say so.
+- **A class or a conversation can be approved once its people were checked.** Why: Ivan, 12 Oct: every participant signed a release.
+- **A muted name is counted in APPROVAL.md, never written.** Why: nothing taken out may reach the approved folder (Mac warning 37).
+
+---
+
 ## 2026-10-16, Fri: v2 part M11a, shorts
 
 - **A Shorts output: vertical clips of the strongest moments, cut from the same edit plan as the video.** Why: REQUEST 4 ("100% ready

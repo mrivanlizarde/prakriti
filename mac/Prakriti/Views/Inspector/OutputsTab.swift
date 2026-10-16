@@ -40,6 +40,10 @@ struct OutputsTab: View {
                     }
                     // The shorts (v2 part M11a), cut from the same plan.
                     ShortsSection(recording: recording)
+                    // The thumbnails (v2 part M11b), designed from the same plan's frames.
+                    ThumbnailsSection(recording: recording)
+                    // What each platform's upload form asks for (v2 part M11b), once a video or shorts are made.
+                    UploadChecklistSection(recording: recording)
                 }
                 if recording.outputFolder != nil || recording.written != nil {
                     WritingSection(recording: recording, showsChecklist: false)
@@ -125,7 +129,7 @@ struct StatusBlock: View {
                     Button(start) { model.makeOutputs(recording) }
                         .buttonStyle(.borderedProminent)
                 }
-                if recording.status == .readyForYourYes {
+                if recording.status == .readyForYourYes || recording.status == .approvedCheckFailed {
                     Button("Approve…") { model.ask(.approve, for: recording) }
                         .buttonStyle(.borderedProminent)
                         .disabled(!check.canApprove)
@@ -134,14 +138,14 @@ struct StatusBlock: View {
                     Button("Make Again…") { model.ask(.makeAgain, for: recording) }
                 }
             }
-            if recording.status == .readyForYourYes {
-                Text("Approve copies the finished files to \(model.paths.display(model.paths.approved.path)). Nothing is uploaded.")
+            if recording.status == .readyForYourYes || recording.status == .approvedCheckFailed {
+                Text("Approve copies the files you choose to \(model.paths.display(model.paths.approved.path)). Nothing is uploaded.")
                     .font(AppFont.secondary)
                     .foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if let folder = recording.approvedFolder, FileManager.default.fileExists(atPath: folder) {
-                PathRow(label: recording.status == .approved ? "Approved files" : "Approved before this change", path: folder)
+                PathRow(label: recording.status.isApproved ? "Approved files" : "Approved before this change", path: folder)
             }
         }
         .padding(.vertical, 4)
@@ -167,12 +171,14 @@ struct StatusBlock: View {
                 if let reason = recording.statusReason { lines.append(reason) }
             case .approved:
                 lines.append(recording.statusReason ?? "Approved. Nothing has been uploaded.")
+            case .approvedCheckFailed:
+                lines.append(recording.statusReason ?? "Approved, and a check of what was approved no longer passes.")
             }
         }
-        if recording.editsPending && (recording.status == .readyForYourYes || recording.status == .approved) {
+        if recording.editsPending && (recording.status == .readyForYourYes || recording.status.isApproved) {
             lines.append("The trim or cuts in the Viewer are not in the episode yet. Make it again before approving.")
         }
-        if recording.choicesPending && (recording.status == .readyForYourYes || recording.status == .approved) {
+        if recording.choicesPending && (recording.status == .readyForYourYes || recording.status.isApproved) {
             lines.append("Your choices in People are not in the episode yet. Make it again before approving.")
         }
         return lines
@@ -206,7 +212,7 @@ struct Deliverable: Identifiable, Equatable {
             return folder.appending(path: name)
         }
         var list: [Deliverable] = []
-        for kind in [OutputKind.podcastEpisode, .podcastReady, .editedVideo, .timelines, .transcript, .checksAndReport, .titlesNotesChapters] {
+        for kind in [OutputKind.podcastEpisode, .podcastReady, .editedVideo, .timelines, .thumbnails, .transcript, .checksAndReport, .titlesNotesChapters] {
             switch kind {
             case .podcastEpisode:
                 if let url = file("episode.mp3") {
@@ -246,6 +252,14 @@ struct Deliverable: Identifiable, Equatable {
                     if let record = Shorts.Record.read(shorts), let first = record.shorts.first {
                         let fails = record.shorts.reduce(0) { $0 + $1.failed }
                         list.append(Deliverable(kind: kind, detail: record.summary + " Checklists: \(fails) FAIL.", url: shorts.appending(path: first.fileName)))
+                        continue
+                    }
+                }
+            case .thumbnails:
+                if let folder, names.contains(VideoThumbnails.folderName) {
+                    let thumbnails = folder.appending(path: VideoThumbnails.folderName, directoryHint: .isDirectory)
+                    if let record = VideoThumbnails.Record.read(thumbnails), let chosen = recording.chosenThumbnail(record) {
+                        list.append(Deliverable(kind: kind, detail: record.summary + " Thumbnail \(chosen.letter) chosen.", url: thumbnails.appending(path: chosen.fileName)))
                         continue
                     }
                 }

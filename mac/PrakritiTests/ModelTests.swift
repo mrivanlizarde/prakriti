@@ -35,9 +35,10 @@ final class ModelTests: XCTestCase {
         for kind in OutputKind.notBuilt {
             XCTAssertFalse(OutputSetting(kind: kind, isOn: true).isOn, "\(kind) is not built and must stay off")
         }
-        XCTAssertEqual(OutputKind.built, [.podcastEpisode, .podcastReady, .transcript, .checksAndReport, .titlesNotesChapters, .editedVideo, .timelines, .shorts],
-                       "the edited video is built in v2 part M8b, the timelines in M10a, the shorts in M11a")
-        XCTAssertEqual(OutputKind.notBuilt.count, 3)
+        XCTAssertEqual(OutputKind.built, [.podcastEpisode, .podcastReady, .transcript, .checksAndReport, .titlesNotesChapters, .editedVideo, .timelines, .thumbnails, .shorts],
+                       "the edited video is built in v2 part M8b, the timelines in M10a, the shorts in M11a, the thumbnails in M11b")
+        XCTAssertEqual(OutputKind.notBuilt.count, 2)
+        XCTAssertFalse(OutputKind.thumbnails.isOnByDefault, "off for every new folder (PLAN rule 2.1.7)")
         XCTAssertFalse(OutputKind.editedVideo.isOnByDefault, "off for every new folder (PLAN rule 2.1.7)")
         XCTAssertFalse(OutputKind.shorts.isOnByDefault, "off for every new folder (PLAN rule 2.1.7)")
     }
@@ -158,7 +159,7 @@ final class ModelTests: XCTestCase {
     }
 
     func testStatusVocabulary() {
-        XCTAssertEqual(RecordingStatus.allCases.filter(\.needsYou), [.readyForYourYes, .needsADecision, .couldntFinish])
+        XCTAssertEqual(RecordingStatus.allCases.filter(\.needsYou), [.readyForYourYes, .needsADecision, .couldntFinish, .approvedCheckFailed])
         XCTAssertEqual(RecordingStatus.readyForYourYes.title, "Waiting for your yes", "design spec C1: Ready means approved")
         XCTAssertEqual(RecordingStatus.couldntFinish.title, "Couldn't finish")
         XCTAssertEqual(Set(RecordingStatus.allCases.map(\.symbol)).count, RecordingStatus.allCases.count,

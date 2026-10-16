@@ -561,6 +561,12 @@ final class WritingTests: XCTestCase {
 
         let recording = Recording(filePath: "/tmp/a.mp4")
         recording.madeFiles = ["REPORT.md", "episode.mp3", "show-notes.md", "titles-notes-chapters.json", "transcript.json", "transcript.txt"]
+        // Since v2 part M11b the files come from the deliverables, each checked in the output folder.
+        let made = FileManager.default.temporaryDirectory.appending(path: "prakriti-writing-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: made, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: made) }
+        for name in recording.madeFiles { try "x".write(to: made.appending(path: name), atomically: true, encoding: .utf8) }
+        recording.outputFolder = made.path
         XCTAssertEqual(ApprovalCheck.filesToApprove(recording), ["REPORT.md", "episode.mp3", "show-notes.md", "transcript.txt"])
         XCTAssertTrue(Pipeline.madeNames.isSuperset(of: WrittenPackage.fileNames), "a remake replaces them and never anything else")
     }

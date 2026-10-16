@@ -3,7 +3,8 @@ import SwiftUI
 /// A recording's picture on its card, its list row and its Activity row (v2 part M6d, design spec 3.1.2): the card
 /// picture the people pass chose (every face in it someone included, or the others hidden), filling the space; until
 /// there is one, the plain tile with the date and the kind of recording. Nothing here chooses a frame or reads the
-/// original: the picture comes only from `Thumbnails/`, written after the people pass (`CardPicture`).
+/// original: the picture comes only from `Thumbnails/`, written after the people pass (`CardPicture`), or (v2 part M11b) the
+/// YouTube thumbnail chosen, once one is made under the choices of now (`AppModel.tileThumbnail`).
 struct RecordingPicture: View {
     let recording: Recording
     var compact = false
@@ -27,6 +28,6 @@ struct RecordingPicture: View {
                 NeutralTile(recording: recording, compact: compact)
             }
         }
-        .task(id: pictures.version(recording.id)) { pictures.load(recording) }
+        .task(id: pictures.version(recording.id)) { pictures.load(recording, preferred: model.tileThumbnail(recording)) }
     }
 }

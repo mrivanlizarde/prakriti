@@ -92,7 +92,7 @@ extension AppModel {
 
     /// Write Again can run: something is made, its transcript is there, and nothing is running on it.
     func canWrite(_ recording: Recording) -> Bool {
-        guard recording.status == .readyForYourYes || recording.status == .approved,
+        guard recording.status == .readyForYourYes || recording.status.isApproved,
               !runner.isWaiting(recording), !runner.isCurrent(recording), let folder = recording.outputFolder else { return false }
         return FileManager.default.fileExists(atPath: URL(fileURLWithPath: folder).appending(path: TranscriptFiles.asHeard).path)
     }
@@ -117,7 +117,7 @@ extension AppModel {
     /// Update Podcast-Ready Files can run: they exist, the MP3 is in its folder, nothing is running on
     /// it, and it is not a class (a class is never made ready to upload).
     func canUpdatePodcastReady(_ recording: Recording) -> Bool {
-        guard recording.status == .readyForYourYes || recording.status == .approved, PodcastPackage.refusal(kind: recording.kind) == nil,
+        guard recording.status == .readyForYourYes || recording.status.isApproved, PodcastPackage.refusal(kind: recording.kind) == nil,
               !runner.isWaiting(recording), !runner.isCurrent(recording),
               let folder = recording.outputFolder, let ready = recording.podcastReady else { return false }
         return FileManager.default.fileExists(atPath: URL(fileURLWithPath: folder).appending(path: PodcastPackage.folderName).appending(path: ready.fileName).path)

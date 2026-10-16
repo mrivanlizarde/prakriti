@@ -30,7 +30,7 @@ import Foundation
 /// The steps, in order. `title` is what the recording page lists; `doing` is what the status line
 /// says while it runs ("Working on Sun 13 Sep: making the episode audio"). Never "Processing".
 enum PipelineStep: String, CaseIterable, Sendable {
-    case complete, capture, sound, speechAudio, transcript, coverage, wordList, namesSaid, faces, voices, trim, edits, leaveOut, planEdit, episode, loudness, podcastAudio, audioCheck, episodeTranscript, writing, renderVideo, checkVideo, timelines, shorts, podcastPackage, report
+    case complete, capture, sound, speechAudio, transcript, coverage, wordList, namesSaid, faces, voices, trim, edits, leaveOut, planEdit, episode, loudness, podcastAudio, audioCheck, episodeTranscript, writing, renderVideo, checkVideo, timelines, shorts, thumbnails, podcastPackage, report
 
     var title: String {
         switch self {
@@ -59,6 +59,7 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .checkVideo: "Checking the video"
         case .timelines: "Timelines for Final Cut Pro and DaVinci Resolve"
         case .shorts: "Shorts"
+        case .thumbnails: "Thumbnails"
         case .report: "Report"
         }
     }
@@ -98,6 +99,7 @@ enum PipelineStep: String, CaseIterable, Sendable {
         case .checkVideo: "Checking the video"
         case .timelines: "Writing the timelines"
         case .shorts: "Making the shorts"
+        case .thumbnails: "Making the thumbnails"
         case .report: "Writing the report"
         }
     }
@@ -187,6 +189,11 @@ struct PipelineOptions: Sendable {
     /// from the recording's Direction tab.
     var makeShorts = false
     var shorts = ShortsSettings()
+    /// The YouTube thumbnails (v2 part M11b): three designed options from the same edit plan, made after the shorts, only with the
+    /// transcript and the people check. Off unless the recording's output switches ask for it (PLAN rule 2.1.7). Their headlines are
+    /// written by the Writing task's model (`thumbnailWriting`), under the privacy lock; without one they are the talk's key phrases.
+    var makeThumbnails = false
+    var thumbnailWriting: WritingSetup?
     /// The recording's title and notes as Ivan set them, and when it was recorded: the video's name and Description.txt.
     var video = VideoFacts()
     /// The recording's title as Ivan set it in Info, for the title on screen (v2 part M9b). Empty: no title on screen.
@@ -232,7 +239,7 @@ struct PipelineOptions: Sendable {
             if !edits.isEmpty { steps.append(.edits) }
             if appliesChoices { steps.append(.leaveOut) }
         }
-        if (planEdit || makeVideo || makeShorts) && makeTranscript { steps.append(.planEdit) }
+        if (planEdit || makeVideo || makeShorts || makeThumbnails) && makeTranscript { steps.append(.planEdit) }
         if makeEpisode { steps += [.episode, .loudness] }
         if makePodcastReady { steps.append(.podcastAudio) }
         // The audio output check, whenever someone is left out (v2 part M6c).
@@ -244,6 +251,8 @@ struct PipelineOptions: Sendable {
         if makeVideo && makeTranscript && makeTimelines { steps.append(.timelines) }
         // The shorts (v2 part M11a), from the same plan, after the video.
         if makeShorts && makeTranscript { steps.append(.shorts) }
+        // The thumbnails (v2 part M11b), from the same plan and the people check, after the shorts.
+        if makeThumbnails && makeTranscript { steps.append(.thumbnails) }
         if makePodcastReady { steps.append(.podcastPackage) }
         if makeReport { steps.append(.report) }
         return steps
@@ -359,6 +368,9 @@ struct PipelineResult: Sendable {
     /// The shorts this make made (v2 part M11a), or why it did not, or neither when they were not asked for.
     var shorts: Shorts.Record?
     var shortsProblem: String?
+    /// The thumbnails this make made (v2 part M11b), or why it did not, or neither when they were not asked for.
+    var thumbnails: VideoThumbnails.Record?
+    var thumbnailsProblem: String?
 }
 
 /// Where the face and voice steps write, for one recording, and Ivan's names the writing step's privacy lock reads.
@@ -958,7 +970,7 @@ struct Pipeline: Sendable {
             // 5d. The edit plan (v2 part M8a): the rough cut as `edit-plan.json`, from the transcript and the original's
             //     sound, with Ivan's trim and cuts and the people left out of the video applied on top. A plan that cannot
             //     be made or does not pass its own check costs only this step; nothing else reads it in M8a.
-            if (options.planEdit || options.makeVideo || options.makeShorts) && options.makeTranscript {
+            if (options.planEdit || options.makeVideo || options.makeShorts || options.makeThumbnails) && options.makeTranscript {
                 await begin(.planEdit)
                 do {
                     let plan = try await planTheEdit(file: file, staging: staging, duration: ready.duration, capture: result.capture,
@@ -1304,6 +1316,28 @@ struct Pipeline: Sendable {
                     let reason = "No shorts were made, because the edit plan could not be made" + (result.planProblem.map { ": " + $0 } ?? ".")
                     result.shortsProblem = reason
                     await finish(.shorts, reason, state: .failed)
+                }
+            }
+
+            // 9e. The thumbnails (v2 part M11b): from the same plan and the people check, three designed options, made in a hidden folder
+            //     and let through `OutputGate.admitThumbnails` into Thumbnails. A refusal or a failure costs only this step.
+            if options.makeThumbnails && options.makeTranscript {
+                await begin(.thumbnails)
+                meter?.startPass()
+                do {
+                    let record = try await makeThumbnails(file: file, staging: staging, result: result, progress: { [meter] in meter?.passProgress($0) })
+                    result.thumbnails = record
+                    await finish(.thumbnails, "In the \(VideoThumbnails.folderName) folder: \(record.summary.lowercasedFirst)",
+                                 state: record.candidates.allSatisfy { $0.failed == 0 } ? .done : .failed)
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    let reason = (error as? VideoThumbnails.Failure)?.reason ?? (error as? OutputGate.Refused)?.reason ?? error.localizedDescription
+                    result.thumbnailsProblem = reason
+                    try? FileManager.default.removeItem(at: staging.appending(path: VideoThumbnails.stagingName))
+                    try? FileManager.default.removeItem(at: staging.appending(path: VideoThumbnails.folderName))
+                    log?.write("\(name): no thumbnails were made. \(reason)")
+                    await finish(.thumbnails, reason + " Everything else is kept.", state: .failed)
                 }
             }
 
@@ -1856,6 +1890,54 @@ struct Pipeline: Sendable {
                                  names: names, choices: options.choices)
     }
 
+    /// The thumbnails of this make (v2 part M11b): the headlines asked of the Writing task's model under the privacy lock, then the
+    /// frames chosen and designed from the plan and the people check's own file. Throws why when none can be made.
+    func makeThumbnails(file: URL, staging: URL, result: PipelineResult, progress: @escaping @Sendable (Double) -> Void) async throws -> VideoThumbnails.Record {
+        guard let plan = result.editPlan else {
+            throw VideoThumbnails.Failure(reason: "No thumbnails were made, because the edit plan could not be made" + (result.planProblem.map { ": " + $0 } ?? "."))
+        }
+        let gate = peopleFacts(result: result)
+        if let refusal = OutputGate.refusal(gate) { throw VideoThumbnails.Failure(reason: refusal.replacingOccurrences(of: "no video is made", with: "no thumbnails are made")) }
+        guard let people = options.people, let peopleFile = people.folders.read(people.recordingID), peopleFile.hasPicture else {
+            throw VideoThumbnails.Failure(reason: "The people check's file has no picture to choose from, so no thumbnails were made.")
+        }
+        // Hidden in pictures: Hide Face or Leave Out for any output, as the card picture (Mac warning 123).
+        func hides(_ row: Int?) -> Bool {
+            ChoiceOutput.allCases.contains { gate.choices.choice(PersonKey.face(row ?? 0, names: gate.names), for: $0) != .include }
+        }
+        let rows = gate.faces?.people.map(\.id) ?? peopleFile.people.map(\.id)
+        let shown = rows.filter { !hides($0) }
+        let teacher = people.names.teacher
+        guard let subject = shown.first(where: { teacher != nil && gate.names.faces[$0] == teacher }) ?? shown.first else {
+            throw VideoThumbnails.Failure(reason: "Nobody seen in the recording is included in every output, so no thumbnails were made.")
+        }
+        let transcript = staging.appending(path: TranscriptFiles.asHeard)
+        let words = (try? Data(contentsOf: transcript)).flatMap(PlanWords.from(json:))
+        let beats = BeatsFile.cached(in: staging, transcriptSHA256: words?.transcriptSHA256 ?? "")?.beats ?? []
+        let refined = Dictionary(plan.words.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let keyLines = beats.compactMap { beat -> TimeRange? in
+            guard let line = beat.keyLine, let a = refined[line.from], let b = refined[line.to] else { return nil }
+            return TimeRange(start: a.in, end: b.out)
+        }
+        var subjectLock = LockSubject()
+        subjectLock.people = PeopleFacts.from(faces: result.faces, voices: result.voices, names: people.names(for: result.voices), people: people.people, choices: options.choices)
+        let fileName = file.lastPathComponent
+        let words3 = await ThumbnailWords.write(title: options.video.title, beats: beats, sentences: BeatSentence.from(words?.words ?? []).map(\.text),
+                                                setup: options.thumbnailWriting, subject: subjectLock, log: log, fileName: fileName)
+        for note in words3.notes { log?.write("\(fileName): \(note)") }
+        guard !words3.headlines.isEmpty else {
+            throw VideoThumbnails.Failure(reason: "No headline could be written or found in the talk, so no thumbnails were made." + (words3.notes.last.map { " " + $0 } ?? ""))
+        }
+        let setup = VideoThumbnails.Setup(original: file, plan: plan, peopleFile: peopleFile, hidePlan: HidePlan.from(peopleFile) { hides($0) },
+                                          hiddenRows: rows.filter { hides($0) } + (hides(nil) ? [0] : []), subjectRow: subject, keyLines: keyLines,
+                                          headlines: words3.headlines, headlinesBy: words3.by, staging: staging,
+                                          log: { [log] line in log?.write("\(fileName): " + line) })
+        var record = try await VideoThumbnails.make(setup, now: Date(), progress: progress)
+        record.notes = words3.notes + record.notes
+        try? record.encoded().write(to: staging.appending(path: VideoThumbnails.folderName).appending(path: VideoThumbnails.recordName))
+        return record
+    }
+
     /// The video's setup for this make, or nil when it may not be made (no plan, or the gate refuses who is in it).
     func videoSetup(file: URL, staging: URL, label: String, result: PipelineResult) -> VideoStep.Setup? {
         guard let plan = result.editPlan else { return nil }
@@ -1935,7 +2017,7 @@ struct Pipeline: Sendable {
     /// folder; anything else Ivan keeps there is left alone.
     static let madeNames: Set<String> = Set(["episode.mp3", "REPORT.md", "speech.wav", TranscriptFiles.asHeard, PodcastPackage.folderName, EditPlan.fileName,
                                                    VideoStep.folderName, HiddenFaces.fileName, BeatsFile.fileName, TimelineExport.folderName,
-                                                   Shorts.folderName]
+                                                   Shorts.folderName, VideoThumbnails.folderName]
                                             + TranscriptFormat.allCases.map(TranscriptFiles.fileName))
         .union(WrittenPackage.fileNames)
 

@@ -35,7 +35,7 @@ final class LibraryTests: XCTestCase {
         }
         try model.context.save()
         let expected: [SmartGroup: Set<RecordingStatus>] = [
-            .needsYou: [.readyForYourYes, .needsADecision, .couldntFinish],
+            .needsYou: [.readyForYourYes, .needsADecision, .couldntFinish, .approvedCheckFailed],
             .inProgress: [.found, .working],
             .ready: [.approved],
             .all: Set(RecordingStatus.allCases),

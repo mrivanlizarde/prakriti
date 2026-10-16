@@ -108,7 +108,7 @@ extension AppModel {
 
     /// Make Again is offered for a finished recording that is not waiting or being made (v1's rule).
     func canMakeAgain(_ recording: Recording) -> Bool {
-        (recording.status == .readyForYourYes || recording.status == .approved) && !runner.isWaiting(recording) && !runner.isCurrent(recording)
+        (recording.status == .readyForYourYes || recording.status.isApproved) && !runner.isWaiting(recording) && !runner.isCurrent(recording)
     }
 
     /// Make Outputs (a recording found and not made) or Try Again (one that could not finish).
@@ -122,6 +122,8 @@ extension AppModel {
     }
 
     func ask(_ action: Confirmation.Action, for recording: Recording) {
+        // Approve is a sheet of deliverables since v2 part M11b (design spec 3.11), never a one-line question.
+        if action == .approve { askToApprove(recording); return }
         confirmation = Confirmation(action: action, recordingID: recording.id)
     }
 

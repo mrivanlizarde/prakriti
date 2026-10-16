@@ -107,6 +107,10 @@ the gate. On two-people-mixed: 0 faces in the hidden place in 377 frames, 0 runs
 **Then part M11a, shorts** (the last section, "v2 part M11a", Fri 16 Oct): vertical clips of the strongest moments, cut from the video's
 own edit plan with calm captions burned in inside the safe area, from the vertical recording when its sound lines up (its faces found
 again on it) or a crop that follows the speaker; the Viewer plays them (Short 1 of 3) and draws the Vertical Guide.
+**Then part M11b, thumbnails, Approve and Ready** (the last section, "v2 part M11b", Fri 16 Oct), the last of M11: three designed YouTube
+thumbnails from the best frames of the teacher (cut out by Vision, Yoga Marga's colours, a headline from the writing model), the chosen one on
+every card; Approve as a sheet of deliverables that unticks a failing one and copies nothing for a yes that covers it, by clone, with every
+file's hash in APPROVAL.md; Ready only while what was approved still passes; upload checklists for YouTube, Shorts, Reels and TikTok.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -6495,3 +6499,115 @@ pid 67129 still running. Nothing was made by the install: Shorts is off for ever
   `~/Prakriti/Dev/Outputs/2026-09-13 excerpt 2m to 7m/Shorts/` (a 1080p crop, softer). Is the twin's 1.25 reframe sharp enough, and are the
   captions calm enough?
 - [ ] **To make shorts of a real recording:** select it, Outputs, Make Shorts (or switch Shorts on for a folder). Nothing is uploaded.
+
+## v2 part M11b: thumbnails, Approve and Ready. Fri 16 Oct 2026
+
+The second and last part of M11 (`docs/v2/PLAN.md`, M11, part M11b; REQUEST item 4, "post ready", and Ivan's thumbnail brief of Mon 12 Oct in
+PLAN section 11). Built on `main` Fri 16 Oct 03:58 to 07:00. No Swift package added; the one file added to the app's resources is
+`AlegreyaSans-ExtraBold.ttf`, copied from `~/Prakriti/Dev/Fonts` (the same Google Fonts copy as the three bundled weights, OFL, SHA-256
+3861f08a...), nothing downloaded. Two stored additions to `Recording` (`thumbnailChoice`, `approvalJSON`, both nil by default) and one new
+raw status value (`approvedCheckFailed`): `make migrate-check` passed. Under Ivan's decision of Mon 12 Oct every participant counts as
+released; this run's rules: frames of Gabriel's talks measured only (pictures listed for Ivan below), test patterns looked at, nothing sent to
+any cloud provider (headlines and parts of the talk by Qwen3.8-27B in LM Studio; the cloud client factory refused and counted 0 calls).
+M11b is the last part of M11, so its checks and M11a's shorts checks ran on the **whole** 13 Sep and 6 Sep talks (PLAN, Wed 14 Oct).
+
+### What was built
+
+- **Thumbnails** (`OutputKind.thumbnails`, now built, off for every folder; step "Thumbnails", after the shorts; Make Thumbnails in Outputs).
+  `Render/VideoThumbnails.swift` (named so because `People/Thumbnails.swift`, the card picture, holds the name in this module): up to 24 moments
+  where the teacher's face is seen inside the plan's kept spans, the beats' key lines first; each frame with hidden faces hidden by `FaceHide`
+  first, then scored by Vision (face capture quality, `CalculateImageAestheticsScoresRequest`, eyes open from face landmarks); three frames at
+  least 20 s apart; the teacher cut out by `GeneratePersonInstanceMaskRequest` at their face (else `GenerateForegroundInstanceMaskRequest`);
+  three compositions in Yoga Marga's colours: **A Saffron** (near-black words left, teacher right, a white edge), **B Night and gold** (gold
+  words right), **C The room** (the frame 1.2 times closer, the teacher on a third, a shade as dark as the words need, a saffron bar), each with
+  a one-line reason. Words: Alegreya Sans ExtraBold, upper case, one to four lines, never under 13.5% of the height, stopping 4% short of the
+  teacher's outline (`bodySpan`); contrast measured on the picture behind them. Files `Thumbnail A.jpg` to `C.jpg` (1280 by 720, under 2 MB)
+  and `Thumbnail A full size.jpg` (1920 by 1080 from 1080p, 3840 by 2160 from 4K), `thumbnails.json`. **`OutputGate.admitThumbnails`** keeps
+  only options whose checklist passes (size, bytes, master, every face Vision finds in the finished picture someone included, capitals 8 px or
+  more at 168 wide, contrast 4.5 to 1); a refused one is deleted.
+- **Headlines** (`Writing/ThumbnailWords.swift`): three of 2 to 4 words from the Writing task's model (Claude Sonnet in Ivan's settings), under
+  the privacy lock (`LockedCloudClient`), reading only the parts of the talk; checked in Swift (no dash, not the title, Ivan's copy rules, no
+  word over 10 letters, letters the face draws); the talk's own key phrases fill any gap; a headline that does not fit gives way to the next.
+- **The card** shows the chosen thumbnail (`AppModel.tileThumbnail`, Use This One sets `Recording.thumbnailChoice`) while it was made under
+  today's choices of who is hidden; otherwise the card picture.
+- **The Approve sheet** (`Views/Inspector/ApproveSheet.swift`; the toolbar, Outputs, Recording > Approve, Command-Shift-Return): every
+  deliverable (`ApprovalDeliverable.list`: episode, podcast-ready, edited video, thumbnails, each short, transcript, show notes, report) with a
+  box, a failing one unticked and disabled with its check named (a short's length is read from its own `mvhd`, `Mp4Boxes.duration`); the
+  version; a line per person; "None." for moments; where each model step ran; the footnote. `AppModel.approve(_:chosen:)` refuses, copying
+  nothing, a yes that covers a failing deliverable; it clones (`clonefile`) the ticked files and proves each a clone; APPROVAL.md adds
+  Deliverables (approved and not, with why), Thumbnail, Moments, Where each model step ran, Names said aloud (kept by name, muted only counted).
+- **Ready**: `approved` only. **Approved, a check failed** (`approvedCheckFailed`, in Needs You under its own heading): `recheckApproval` reads
+  every approved file's size against `approvalJSON` and the chosen deliverables' checks, at every launch and after every approval. Approvals
+  from before this part have no record and are never moved.
+- **Upload Checklist** in Outputs (`Views/Inspector/UploadChecklist.swift`; `UploadPlatform`, `UploadFacts`, `ReadyChecklist.upload`): YouTube,
+  YouTube Shorts, Instagram Reels, TikTok, each field in its upload form's order with Copy or Show in Finder and PASS, MISSING, FAIL or YOURS;
+  Reels and TikTok say their rules are third-party.
+- **A class, a conversation or "Not set" can be approved once its people check ran** (`ApprovalCheck.speakersLine(_:peopleChecked:)`).
+- Help 05 and 06 (`thumbnails` capability on; the welcome's "files ready to upload" line and "Approve it. The finished files and an upload
+  checklist are ready" row now show). Mac warnings 205 to 214. `make accept-thumbnails`; `make accept-shorts PRAKRITI_SHORTS_WHOLE=1`.
+- **Tests**: `ThumbnailTests` (6: words at 168 px, brand contrast, choosing frames, headline checks, three compositions drawn on a test
+  pattern, the gate), `ApproveTests` (5), `ShortsTests.testApproveRefusesAShortThatFailsAndCopiesNothing`, `ThumbnailsAcceptanceTests`;
+  snapshots `28-ready`, `28-needs-you-check-failed`, `28-approve-sheet-sample-*`, `28-thumbnails-section`, `28-upload-checklist-*`.
+
+### Found by measuring (each with its measurement)
+
+1. **KeyFrameAnalysisRequest is not usable here**: on the 13 Sep excerpt it returned 0.000 s (37.9 s to run); on the whole talk 13:14 in
+   104.7 s, one moment with no score. PLAN's Vision fallback runs instead (Mac warning 214).
+2. **White on saffron is 3.4 to 1**, under 4.5: the saffron option's words are near-black (5.2 to 1 measured on 13 Sep).
+3. **The room's words read 3.45 to 1 over the test pattern** with a fixed shade; the shade is now chosen by measuring (13.5 to 1 on 13 Sep).
+4. **A cut-out body reached past the middle and the words crossed it** (test pattern, room composition): the words now stop short of the
+   outline; on the 13 Sep excerpt the first room option had only 693 px beside the teacher, so the words take up to four lines.
+5. **"YOGA FOR SELF UNDERSTANDING" did not fit** (883 px beside the teacher, "UNDERSTANDING" needs about 1,180) and Thumbnail B was not made;
+   words over 10 letters are now refused and a headline that does not fit gives way to the next (Mac warning 213).
+6. **Thumbnails were not made on two-people-mixed**: the plan step ran only for the video or shorts; it now runs for thumbnails too.
+7. **accept-edits' class check**: every make runs the people check, so under the new rule its class can be approved again; the acceptance now
+   asserts the rule by whether the people check ran (it did: "its people were checked, so it can be approved again").
+
+### Checks run, with results (PLAN M11, the checks part M11b runs: 1 (Approve refuses), 4, 5, 6, 7 (sheet, Ready, checklist), 8; and M11a's 2, 2b, 3 on the whole talks)
+
+Originals unchanged: 13 Sep 730,464,600 bytes, 6 Sep 2,578,079,009, its vertical 2,564,386,713, same dates. Reports:
+`screens/mac/v2-m11b/acceptance-thumbnails.txt`, `acceptance-shorts-whole.txt`.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `make test`: Approve refuses a deliverable whose checklist has a FAIL and copies nothing | **PASS.** `ShortsTests.testApproveRefusesAShortThatFailsAndCopiesNothing`: a 190 s short ticked, refused, no Approved folder; a short with a failing Loudness line the same. `ApproveTests` 5 of 5 |
+| 4 | Thumbnails of 13 Sep (whole talk): three, 1280 by 720, each under 2 MB; Vision finds only the included face | **PASS.** A "Deep body reset" 1:08 (Saffron), B "Yoga is self knowledge" 2:36 (Night and gold), C "What yoga really is" 10:12 (The room); 1280 by 720, 132 to 174 KB, masters 1920 by 1080; Vision 1 face in each, inside the teacher's box; capitals 10.7 to 12.7 px at 168 wide; contrast 5.2, 11.5, 13.5 to 1; eyes open in all three; headlines by Qwen3.8-27B; 24 frames looked at, 0 refused. The card shows Thumbnail A |
+| 4 | two-people-mixed, the corner face set to Hide Face: hidden in every candidate | **PASS.** Signature hidden:2 (the corner row); A, B, C each 1 face found by Vision, the included one (x 0.68 to 0.82, 0.22 to 0.38, 0.61 to 0.79); all three cut out |
+| 5 | Approve on 13 Sep in development: sheet lists deliverables, version, people, "None" for moments; APPROVAL.md hashes match; planted 190 s short unticked and named; Ready only when everything chosen passes | **PASS.** 8 deliverables all passing; "Version 1, made Fri 16 Oct 2026 at 6:36 am. Clear, the house style."; one line per person; planted Short 9 "Short 9 is 190 s; the limit is 180 s.", a yes covering it refused with the Approved folder unchanged (7 entries); approved into `~/Prakriti/Dev/Approved/2026-09-13 18-25-44`; 24 of 24 hashes match, 24 proved clones; not in Ready before, in Ready after; an approved .srt changed: Approved, a check failed, in Needs You; put back: Ready. Sheet drawn and looked at: `28-approve-sheet-passing-*`, `28-approve-sheet-one-failing-*` (words only) |
+| 6 | No network request by Approve (URLProtocol counter) | **PASS.** 0 requests (whole talk), 0 in `ApproveTests` |
+| 7 | Snapshots: Approve sheet (passing, one failing), Ready group, upload checklist; looked at | **PASS, looked at:** `28-approve-sheet-sample-passing` and `-one-failing` (Short 2 unticked, its reason in red words), `28-ready`, `28-needs-you-check-failed` (its own section, the inspector's Approve...), `28-upload-checklist-youtube` and `-shorts`, `28-thumbnails-section` (the three compositions on the test pattern; the chosen one outlined), `m11b-thumbnail-test-pattern-*.png` and `-168.png` (the words read at 168 px) |
+| 8 | Regression set; `make migrate-check` | **PASS.** `make build` no warnings; **`make test` 452 tests, 0 failures, 33 skipped by design** (1,722 s); `make accept`: 13 Sep -16.8 LUFS, -1.7 dBFS; silent-60s refused at the sound check; 6 Sep -16.7 LUFS, -1.4 dBFS; `make accept-edits`: 38.82 s shorter (expected 38.82); `make migrate-check` passed |
+| 2, 2b, 3 (M11a, whole talks) | `make accept-shorts PRAKRITI_SHORTS_WHOLE=1` | **PASS, every check.** 6 Sep: twin offset -0.012 s (0 frames, correlation 0.997, 0.997, 0.998), 3 shorts 0:32 to 0:34, -13.7 to -13.8 LUFS, -1.5 dBTP, tails decode, caption words 94 to 100% the short's own, face in the middle third 93.7, 97.0, 100%, 0 caption lines outside; 2b: 64/64, 68/68, 66/66 faces accounted for. 13 Sep: 3 shorts from the 1080p crop with the warning, 0:37 to 0:45, -13.8 to -14.1 LUFS, middle third 100% |
+
+**Em dashes:** 0 in every line this part added (grep of the diff and the new files for U+2014 and U+2013).
+
+### Decisions, each with its reason
+
+1. **Classes, conversations and "Not set" are approvable once the people check ran.** Reason: Ivan, 12 Oct (PLAN section 11): "classes and
+   recordings with other people may be approved"; this supersedes PLAN M11's "Classes stay refused". Without a people check the v1 rule stays.
+2. **KeyFrameAnalysisRequest not used** (finding 1).
+3. **Headlines in Alegreya Sans ExtraBold, not Alegreya.** Reason: Alegreya (serif) is not on this Mac and downloading it needs Ivan's yes.
+4. **A muted name is only counted in APPROVAL.md.** Reason: Mac warning 37 outranks PLAN's "names said aloud and their choice".
+5. **The edit plan's working files (edit-plan.json, beats.json, hidden faces) are no longer copied by Approve.** Reason: not deliverables;
+   the hidden-faces file holds face boxes nobody uploads.
+6. **No system notice for "Approved, a check failed" and no Viewer banner for Ready yet.** Reason: kept small; the Activity line and the Needs
+   You section say it. Design spec 3.15 and 3.4.2 list both; M13 or a later part.
+
+### What does not work yet
+
+- Two-people-mixed's C reused A's headline (the model gave two usable); three different headlines are preferred, not guaranteed.
+- No 3840 by 2160 master until a 4K recording exists (D3).
+- Reels and TikTok captions reuse the Instagram caption written for the episode, MISSING when the writing step did not run.
+
+### Installed
+
+(Below, after `make install`.)
+
+### For Ivan
+
+- [ ] **Look at the thumbnails I could only measure** (they show the talk): `screens/mac/v2-m11b/for-ivan/m11b-13-Sep-thumbnail-A.jpg` to
+  `C.jpg`, `m11b-two-people-mixed-thumbnail-*.jpg`, and the inspector pictures `m11b-outputs-13sep-check-failed-*.png`; the shorts' frames
+  `m11a-*-short-*.png`. Better: `~/Prakriti/Dev/Outputs/2026-09-13 18-25-44/Thumbnails/`. Are the cut-outs clean, and which look do you want
+  first?
+- [ ] **Alegreya (serif) for headlines** needs a yes to download it from Google Fonts (OFL); until then Alegreya Sans ExtraBold.
+- [ ] **Before any real upload**, the private YouTube test upload of SCOPE SET-13 (PLAN M11 "Needs Ivan").

@@ -4,7 +4,7 @@ title: Outputs
 summary: What Prakriti makes from each recording, what is in each file, and where the files go.
 section: outputs
 order: 1
-keywords: [outputs, timelines, Final Cut Pro, DaVinci Resolve, FCPXML, Make Timelines, export timeline, edit plan, rough cut, edited video, MP4, YouTube, Make Video, Watch Video, punch-in, push-in, zoom, House Style, end screen, ready checklist, description, pauses, filler words, podcast episode, podcast-ready, MP3, loudness, LUFS, transcript, captions, SRT, VTT, report, show notes, chapters, titles, episode text, upload checklist, artwork, show name, word list, intro, outro, mono, stereo]
+keywords: [outputs, thumbnails, thumbnail, headline, make thumbnails, use this one, timelines, Final Cut Pro, DaVinci Resolve, FCPXML, Make Timelines, export timeline, edit plan, rough cut, edited video, MP4, YouTube, Make Video, Watch Video, punch-in, push-in, zoom, House Style, end screen, ready checklist, description, pauses, filler words, podcast episode, podcast-ready, MP3, loudness, LUFS, transcript, captions, SRT, VTT, report, show notes, chapters, titles, episode text, upload checklist, artwork, show name, word list, intro, outro, mono, stereo]
 related: [sources-and-watching, reviewing-and-approving, models-and-api-keys]
 ---
 
@@ -38,7 +38,7 @@ The original recording is never changed. Nothing is uploaded or posted.
 - **Shorts:** vertical clips of the strongest moments.
 :::
 :::requires thumbnails
-- **Thumbnails:** three still images to choose from.
+- **Thumbnails:** three designed YouTube thumbnails to choose from.
 :::
 :::requires timelines
 - **Timelines:** the same edit, to open and finish in Final Cut Pro or DaVinci Resolve.
@@ -273,8 +273,28 @@ without them.
 :::requires thumbnails
 ### Thumbnails
 
-Three still images in the 16:9 shape, at 3840 by 2160, as YouTube recommends. They are made from real
-frames of the recording, and only show people who have agreed to appear. Choose one when you approve.
+Three designed thumbnails for YouTube, each a different look, in the recording's Thumbnails folder:
+`Thumbnail A.jpg` to `Thumbnail C.jpg`, 1280 by 720 and under 2 MB as YouTube asks, and a full-size copy of
+each (1920 by 1080 from a 1080p recording, 3840 by 2160 from a 4K one).
+
+Each starts from a real frame of the teacher: Prakriti looks at frames from what the edit keeps, the
+strongest lines of the talk first, and picks the sharpest, best lit ones with the eyes open. The teacher is
+cut out of the frame and placed in Yoga Marga's colours, with a headline of two to four words written by
+the model chosen for Writing in Settings, Models (never the title, never a person's name). The words are
+large enough to read when YouTube shows the thumbnail small, and dark or light enough against what is behind
+them. Each option says in one line why it looks the way it does.
+
+- **A, Saffron:** the teacher on the right of the school's saffron, the words on the left.
+- **B, Night and gold:** the teacher on the left of near-black, the words in gold.
+- **C, The room:** the room as it was, darkened behind the words.
+
+Faces of anyone you set to Hide Face or Leave Out are hidden before anything is drawn, and every finished
+thumbnail is looked at again: if a face in it is not someone you included, that option is not kept.
+
+In the inspector, Outputs, under Thumbnails, click Use This One under the one you want; the recording's
+picture in the library shows it. Make Thumbnails makes them for a recording made without them. If you
+change who is hidden afterwards, the library shows the recording's own picture again until you make them
+again.
 :::
 
 :::requires timelines

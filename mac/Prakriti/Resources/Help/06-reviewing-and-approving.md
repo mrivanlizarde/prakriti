@@ -4,7 +4,7 @@ title: Review and approve
 summary: Play the recording and its episodes in the viewer, read the transcript, trim and cut, check what is said, and approve the finished files.
 section: reviewing
 order: 1
-keywords: [review, approve, listen, play, viewer, video, edited video, watch video, captions, take out again, undo, delete, podcast-ready, follow playback, remove from the edit, keep in the edit, restore, find, episode, original, transcript, cut, trim, make again, accuracy checklist, waiting for your yes, needs a decision, needs you, ready, inspector, approved folder, receipt, talk, class, what this is, remove from library]
+keywords: [review, approve, approve sheet, deliverables, upload checklist, upload, youtube, shorts, reels, tiktok, approved a check failed, listen, play, viewer, video, edited video, watch video, captions, take out again, undo, delete, podcast-ready, follow playback, remove from the edit, keep in the edit, restore, find, episode, original, transcript, cut, trim, make again, accuracy checklist, waiting for your yes, needs a decision, needs you, ready, inspector, approved folder, receipt, talk, class, what this is, remove from library]
 related: [outputs, people-and-privacy, models-and-api-keys]
 ---
 
@@ -20,7 +20,7 @@ the recording. Or click **Needs You** in the sidebar: it holds every recording w
 needing a decision or that could not finish. [Show Me](prakriti://show/group/needs-you)
 
 - **In Progress** holds what is being made, waiting its turn, or found and not made yet.
-- **Ready** holds what you have approved.
+- **Ready** holds what you have approved, while everything you approved still passes its checks.
 - **All Recordings** holds everything, by the month it was recorded. Each folder under Sources holds
   its own.
 
@@ -41,6 +41,11 @@ Its status is shown in symbol and words:
   and what you can do.
 - **Couldn't finish:** a step stopped. The inspector says which, and Try Again starts it again.
 - **Approved:** you approved it, and its files are in the Approved folder.
+:::requires thumbnails
+- **Approved, a check failed:** you approved it, and something it covered no longer passes, such as a
+  file in the Approved folder changed or gone. It moves to Needs You, the inspector says what, and you can
+  approve it again.
+:::
 
 :::unless viewer
 ## Listen to it
@@ -161,9 +166,14 @@ you approve, listen for any other voice, and for any name said aloud.
 :::requires voices
 ## Say what it is, and who is teaching
 
-Under What this is, choose **Talk, one teacher speaking**, **Class** or **Conversation**. Only a talk with
-one teacher speaking can be approved. Under **Who is teaching**, choose the teacher, so the People tab can say
-how much of the recording is theirs.
+Under What this is, choose **Talk, one teacher speaking**, **Class** or **Conversation**.
+:::
+:::requires thumbnails
+A talk can always be approved; a class or a conversation once Prakriti has checked who appears and speaks
+in it.
+:::
+:::requires voices
+Under **Who is teaching**, choose the teacher, so the People tab can say how much of the recording is theirs.
 
 :::
 
@@ -236,7 +246,7 @@ Before you can approve:
 :::requires choices
 Before you can approve:
 
-- The recording is marked Talk, one teacher speaking.
+- The recording is marked Talk, one teacher speaking, or Prakriti has checked who appears and speaks in it.
 - Every trim, cut and choice in the People tab is in the episode: click Make Again after changing them.
 - Prakriti's second listen to the episode found no one you left out.
 - If you left someone out and the voices were told apart on one mixed track, you listened to the changes of voice.
@@ -249,10 +259,29 @@ Before you can approve:
 - Every line of each output's checklist passes.
 :::
 
+:::unless thumbnails
 Then click Approve, in the toolbar while the recording is open or in the inspector's Outputs, and confirm. Prakriti copies
 the finished files to the Approved folder, in a folder
 named after the recording, with `APPROVAL.md`: a receipt with the title, the notes, the edits, and
 each file's size and fingerprint. Nothing is uploaded or posted.
+:::
+:::requires thumbnails
+Then click Approve, in the toolbar while the recording is open, in the inspector's Outputs, or choose
+Recording > Approve (Command-Shift-Return). The Approve sheet lists everything that can be approved: the
+episode, the edited video, the thumbnails, each short, the transcript and the report, each with a box.
+Everything that passes its checks is ticked. Anything that fails is unticked and cannot be ticked, with the
+check that fails named, such as "Short 2 is 190 s; the limit is 180 s." Untick anything you do not want.
+The sheet also shows the video's version, a line for each person and what happens to them, and where
+each step that used a model ran.
+
+Click Approve. Prakriti copies what is ticked to the Approved folder, in a folder named after the
+recording, without taking extra space on this Mac, with `APPROVAL.md`: a receipt with the title, the notes,
+the edits, the version, what was approved and what was not and why, each person's choice, the names said
+aloud (a name you muted is only counted, never written), and each file's size and fingerprint. Nothing is
+uploaded or posted.
+
+A class or a conversation can be approved once Prakriti has checked who appears and speaks in it.
+:::
 :::requires style
 When the recording has an edited video, Approve covers the version in use: the question says which
 ("Version 2, made Thu 15 Oct, 9:41 pm."), and so does the receipt. To approve another version, click Use
@@ -265,8 +294,17 @@ approved files stay as they were until you do.
 
 ## After you approve
 
-The recording moves to Ready. Upload the files yourself. For the podcast-ready episode, the Ready to
-upload section, in the inspector's Outputs, has the upload checklist and a
+The recording moves to Ready. Upload the files yourself.
+
+:::requires thumbnails
+In the inspector's Outputs, the Upload Checklist shows what YouTube, YouTube Shorts, Instagram Reels and
+TikTok each ask for, in the order their upload form asks: Copy beside each piece of text, Show in Finder
+beside each file, and PASS, MISSING or FAIL for each. A few answers are yours to give in the platform
+itself, such as whether a video is made for kids. The rules for Reels and TikTok come from guides
+written by others, not from Instagram or TikTok, and the lines say so.
+:::
+
+For the podcast-ready episode, the Ready to upload section, in the inspector's Outputs, has the upload checklist and a
 Copy button for each piece of text the podcast host asks for. See [Outputs](05-outputs.md).
 
 :::requires renderedVideo

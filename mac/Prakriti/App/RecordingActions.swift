@@ -99,9 +99,9 @@ extension AppModel {
         recording.kind = kind
         let what: String = switch kind {
         case .talk: "a talk with one teacher speaking"
-        case .lesson: "a class. Only models on this Mac may read it, and it cannot be approved"
-        case .conversation: "a conversation. It cannot be approved until speakers can be checked"
-        case .unknown: "not set. It cannot be approved until it is marked as a talk"
+        case .lesson: "a class. It can be approved once its people are checked"
+        case .conversation: "a conversation. It can be approved once its people are checked"
+        case .unknown: "not set. It can be approved once its people are checked, or once it is marked as a talk"
         case .test: "a test"
         }
         record("\(label(recording)) marked as \(what).")
@@ -112,7 +112,7 @@ extension AppModel {
     /// A change to an approved recording takes its approval back. The approved copy stays in its
     /// folder until Ivan approves again, which replaces it.
     func changedAfterApproval(_ recording: Recording, what: String) {
-        guard recording.status == .approved else { return }
+        guard recording.status.isApproved else { return }
         recording.status = .readyForYourYes
         recording.statusReason = "Changed after it was approved (\(what)). The approved copy is from before the change; approve again to replace it."
         record("\(label(recording)) changed after it was approved (\(what)), so it waits for your yes again. The approved copy was left as it was.", level: .attention)
@@ -142,46 +142,5 @@ extension AppModel {
     /// folder in ~/Prakriti/Outputs, which has the same name.
     func approvedFolder(for recording: Recording) -> URL {
         paths.approved.appending(path: URL(fileURLWithPath: recording.filePath).deletingPathExtension().lastPathComponent, directoryHint: .isDirectory)
-    }
-
-    /// Approve: copies the finished files (never transcript.json) and a receipt to the approved
-    /// folder. Nothing is uploaded, posted or published. Refused, with the reason in Activity and an
-    /// alert, when the rules above say no, whoever asks: the button is only the first guard.
-    @discardableResult
-    func approve(_ recording: Recording) -> Bool {
-        let check = approvalCheck(recording)
-        guard check.canApprove, let source = recording.outputFolder else {
-            let reason = check.line ?? "It cannot be approved now."
-            record("Did not approve \(label(recording)). " + (check.speakersNotChecked ? "\(ApprovalCheck.speakersTitle): " : "") + reason, level: .attention)
-            notice = Notice(title: check.speakersNotChecked ? ApprovalCheck.speakersTitle : "Not approved", message: reason)
-            return false
-        }
-        let destination = approvedFolder(for: recording)
-        guard paths.isSafeOutputLocation(destination), destination.path.hasPrefix(paths.approved.path + "/") else {
-            record("Did not approve \(label(recording)): its approved folder would land outside \(paths.display(paths.approved.path)).", level: .problem)
-            return false
-        }
-        let files = ApprovalCheck.filesToApprove(recording)
-        let at = now()
-        let receipt = Approval.Receipt(label: Format.dayLabel(recording.sessionDate), title: recording.title, notes: recording.notes,
-                                       recordingFile: recording.fileName,
-                                       editsSummary: recording.madeEdits.summary, approvedAt: at, people: receiptPeople(recording),
-                                       version: approvalVersionLine(recording))
-        do {
-            let copied = try Approval.copy(files, from: URL(fileURLWithPath: source, isDirectory: true), to: destination, receipt: receipt)
-            recording.status = .approved
-            recording.approvedAt = at
-            recording.approvedFolder = copied.folder.path
-            recording.approvedFiles = copied.files
-            recording.statusReason = "Approved. Its files are in \(paths.display(copied.folder.path)). Nothing was uploaded or published."
-            record("Approved \(label(recording)): \(Format.madeFiles(files)) and the receipt copied to \(paths.display(copied.folder.path))."
-                   + (approvalVersionLine(recording).map { " " + $0 } ?? "") + " Nothing was uploaded or published.")
-            try? context.save()
-            return true
-        } catch {
-            record("Could not approve \(label(recording)): the files could not be copied (\(error.localizedDescription)). The finished files are untouched.", level: .problem)
-            notice = Notice(title: "Not approved", message: "The files could not be copied to \(paths.display(destination.path)). The finished files are untouched.")
-            return false
-        }
     }
 }

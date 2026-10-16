@@ -68,13 +68,14 @@ final class CardPictures {
         return images[recording.id]
     }
 
-    /// Reads the recording's picture, if there is one, off the main thread.
-    func load(_ recording: Recording) {
+    /// Reads the recording's picture, if there is one, off the main thread. `preferred` (v2 part M11b) is the chosen YouTube
+    /// thumbnail when one was made under the choices of now (`AppModel.tileThumbnail`): shown in place of the card picture.
+    func load(_ recording: Recording, preferred: URL? = nil) {
         guard !useTestPattern else { return }
         let id = recording.id, version = version(id)
         guard loaded[id] != version, !loading.contains(id) else { return }
         loading.insert(id)
-        let url = folders.thumbnail(for: id)
+        let url = preferred ?? folders.thumbnail(for: id)
         Task { @MainActor in
             let image = await Task.detached { () -> CGImage? in
                 guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }

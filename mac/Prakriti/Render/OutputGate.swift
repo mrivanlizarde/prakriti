@@ -223,7 +223,38 @@ enum OutputGate {
         try move(staged, to: destination)
     }
 
-    /// The only way a made video, timeline or short reaches its folder.
+    /// What the gate finds wrong with one thumbnail (v2 part M11b): any line of its checklist that failed (the size, the file size
+    /// under 2 MB, the full-size master, a face that is not someone included, words too small to read at 168 pixels wide, too little
+    /// contrast). Empty when it passes.
+    static func thumbnailProblems(_ candidate: VideoThumbnails.Candidate) -> [String] {
+        candidate.lines.filter { $0.status != .pass }.map { "Thumbnail \(candidate.letter): \($0.item): \($0.detail)" }
+    }
+
+    /// Moves a staged Thumbnails folder (v2 part M11b) to `destination`, keeping only the options that pass: a refused option's two
+    /// pictures are deleted where they were made and its refusal is added to the record's notes; with none left the folder is
+    /// deleted and the reasons thrown. A face of anyone not included refuses that option here whatever made it (fail closed).
+    static func admitThumbnails(staged: URL, to destination: URL, record: VideoThumbnails.Record) throws {
+        var kept = record
+        kept.candidates = []
+        for candidate in record.candidates {
+            let problems = thumbnailProblems(candidate)
+            if problems.isEmpty {
+                kept.candidates.append(candidate)
+            } else {
+                try? FileManager.default.removeItem(at: staged.appending(path: candidate.fileName))
+                try? FileManager.default.removeItem(at: staged.appending(path: candidate.masterName))
+                kept.notes.append("Not kept: " + problems.joined(separator: " "))
+            }
+        }
+        guard !kept.candidates.isEmpty else {
+            try? FileManager.default.removeItem(at: staged)
+            throw Refused(reason: kept.notes.isEmpty ? "No thumbnail could be made." : kept.notes.joined(separator: " "))
+        }
+        try kept.encoded().write(to: staged.appending(path: VideoThumbnails.recordName))
+        try move(staged, to: destination)
+    }
+
+    /// The only way a made video, timeline, short or thumbnail reaches its folder.
     private static func move(_ staged: URL, to destination: URL) throws {
         let fm = FileManager.default
         if fm.fileExists(atPath: destination.path) {

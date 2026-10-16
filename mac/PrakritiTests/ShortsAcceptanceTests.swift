@@ -65,9 +65,11 @@ final class ShortsAcceptanceTests: XCTestCase {
             return url
         }
         let originals = [sixthTalk, sixthVertical, thirteenthTalk].map { ($0, fingerprint($0)) }
-        let sixth = try await cut(sixthTalk, from: 1200, into: Self.sixth)
-        let sixthTwin = try await cut(sixthVertical, from: 1200, into: Self.sixthTwin)
-        let thirteenth = try await cut(thirteenthTalk, from: 120, into: ViewerVideoAcceptanceTests.excerptName)
+        // The whole talks (v2 part M11b, the last part of M11: PLAN Wed 14 Oct) with PRAKRITI_SHORTS_WHOLE=1; the excerpts otherwise.
+        let whole = environment["PRAKRITI_SHORTS_WHOLE"] == "1"
+        let sixth = whole ? sixthTalk : try await cut(sixthTalk, from: 1200, into: Self.sixth)
+        let sixthTwin = whole ? sixthVertical : try await cut(sixthVertical, from: 1200, into: Self.sixthTwin)
+        let thirteenth = whole ? thirteenthTalk : try await cut(thirteenthTalk, from: 120, into: ViewerVideoAcceptanceTests.excerptName)
         let out = SnapshotRenderer.milestoneFolder()
         let forIvan = out.appending(path: "for-ivan", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: forIvan, withIntermediateDirectories: true)
@@ -86,7 +88,7 @@ final class ShortsAcceptanceTests: XCTestCase {
 
         for (file, label, twin) in [(sixth, "6 Sep", true), (thirteenth, "13 Sep", false)] where only.isEmpty || label.contains(only) {
             lines.append("")
-            lines.append("\(label) excerpt: \(file.lastPathComponent)" + (twin ? " with \(sixthTwin.lastPathComponent)" : " (no vertical recording)"))
+            lines.append("\(label) \(whole ? "whole talk" : "excerpt"): \(file.lastPathComponent)" + (twin ? " with \(sixthTwin.lastPathComponent)" : " (no vertical recording)"))
             let recording = Recording(filePath: file.path, recordedAt: AppModel.dateInName(file.lastPathComponent), foundAt: Date())
             model.context.insert(recording)
             recording.source = model.source(containing: file)
@@ -207,7 +209,7 @@ final class ShortsAcceptanceTests: XCTestCase {
         let text = (["v2 part M11a acceptance (shorts), \(Date().formatted(date: .abbreviated, time: .standard))"] + lines
                     + ["", failures == 0 ? "Every check passed." : "\(failures) check(s) failed.",
                        "Frames for Ivan (measured only, they show the talk): \(forIvan.path)"]).joined(separator: "\n") + "\n"
-        try text.write(to: out.appending(path: "acceptance-shorts.txt"), atomically: true, encoding: .utf8)
+        try text.write(to: out.appending(path: whole ? "acceptance-shorts-whole.txt" : "acceptance-shorts.txt"), atomically: true, encoding: .utf8)
         print(text)
         model.log.write("Acceptance test for v2 part M11a finished.")
     }

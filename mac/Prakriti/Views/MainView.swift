@@ -75,6 +75,10 @@ struct MainView: View {
         .sheet(item: $model.nameSheet) { request in
             NameThisPersonSheet(request: request)
         }
+        // The Approve sheet (v2 part M11b, design spec 3.11).
+        .sheet(item: $model.approveSheet) { request in
+            ApproveSheet(request: request)
+        }
         // Review Possible Matches and Merge 2 People (v2 part M7b).
         .sheet(item: $model.reviewSheet) { request in
             ReviewSheet(request: request)
@@ -148,7 +152,7 @@ struct MainToolbar: ToolbarContent {
                         Button("Make Again…") { model.ask(.makeAgain, for: recording) }
                     }
                 }
-                if recording.status == .readyForYourYes {
+                if recording.status == .readyForYourYes || recording.status == .approvedCheckFailed {
                     ToolbarItem(placement: .primaryAction) {
                         Button("Approve…") { model.ask(.approve, for: recording) }
                             .disabled(!model.approvalCheck(recording).canApprove)

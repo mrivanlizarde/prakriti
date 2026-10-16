@@ -16,6 +16,10 @@ enum RecordingStatus: String, Codable, CaseIterable, Sendable {
     case approved
     case skipped
     case couldntFinish
+    /// Approved, and a check of what was approved no longer passes (v2 part M11b, design spec 2.4): an approved file changed or
+    /// went missing, or a chosen deliverable's checklist now fails. In Needs You until it is approved again. A new raw value, so
+    /// nothing migrates.
+    case approvedCheckFailed
 
     var title: String {
         switch self {
@@ -26,8 +30,12 @@ enum RecordingStatus: String, Codable, CaseIterable, Sendable {
         case .approved: "Approved"
         case .skipped: "Skipped"
         case .couldntFinish: "Couldn't finish"
+        case .approvedCheckFailed: "Approved, a check failed"
         }
     }
+
+    /// Approved, whether or not its checks still pass.
+    var isApproved: Bool { self == .approved || self == .approvedCheckFailed }
 
     /// SF Symbols that differ by shape, not only by color (HIG, accessibility).
     var symbol: String {
@@ -39,13 +47,14 @@ enum RecordingStatus: String, Codable, CaseIterable, Sendable {
         case .approved: "checkmark.seal"
         case .skipped: "minus.circle"
         case .couldntFinish: "exclamationmark.triangle"
+        case .approvedCheckFailed: "xmark.seal"
         }
     }
 
-    /// The three states that wait on Ivan. Needs You lists exactly these.
+    /// The states that wait on Ivan. Needs You lists exactly these.
     var needsYou: Bool {
         switch self {
-        case .readyForYourYes, .needsADecision, .couldntFinish: true
+        case .readyForYourYes, .needsADecision, .couldntFinish, .approvedCheckFailed: true
         default: false
         }
     }
@@ -98,7 +107,7 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
         case .titlesNotesChapters: "Titles, show notes and chapters"
         case .editedVideo: "Edited video"
         case .timelines: "Timelines"
-        case .thumbnails: "Three thumbnails"
+        case .thumbnails: "Thumbnails"
         case .shorts: "Shorts"
         case .knowledgeBase: "Knowledge base"
         case .voiceDataset: "Voice dataset"
@@ -114,7 +123,7 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
         case .titlesNotesChapters: "Written by the model you choose for writing."
         case .editedVideo: "An MP4 cut from the edit plan, with captions, a description and a checklist for YouTube."
         case .timelines: "The same edit for Final Cut Pro and DaVinci Resolve, made with the edited video."
-        case .thumbnails: "Three still images to choose from for each video."
+        case .thumbnails: "Three designed YouTube thumbnails to choose from, each from a real frame of the teacher, with a headline."
         case .shorts: "Vertical clips of the strongest moments, 1080 by 1920, with the words on screen, cut from the edit plan."
         case .knowledgeBase: "Each talk added to a searchable library of the teaching."
         case .voiceDataset: "Clean recordings of consenting teachers' voices, kept on this Mac."
@@ -139,7 +148,7 @@ enum OutputKind: String, Codable, CaseIterable, Sendable {
 
     var isBuilt: Bool {
         switch self {
-        case .podcastEpisode, .podcastReady, .transcript, .checksAndReport, .titlesNotesChapters, .editedVideo, .timelines, .shorts: true
+        case .podcastEpisode, .podcastReady, .transcript, .checksAndReport, .titlesNotesChapters, .editedVideo, .timelines, .shorts, .thumbnails: true
         default: false
         }
     }

@@ -96,7 +96,7 @@ final class WelcomeTests: XCTestCase {
     }
 
     func testOnlyWhatIsBuiltIsVisibleInThePanels() {
-        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style, .timelines, .shorts],
+        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style, .timelines, .shorts, .thumbnails],
                        "v2 part M2b adds the welcome to Help, M3b the Viewer, M4a progress, M4b the capture check, M5b the cloud providers, M6a faces, M6b voices, M6c choices, M6d hiding, M7a the People gallery, M7b recognition, M8a the edit plan, M8b the rendered MP4, M8c the video in the Viewer, M9a the House Style, M9b the text on screen, M9c direction, M10a the timelines, M11a the shorts")
         XCTAssertEqual(unbuiltNamesFound(in: visibleText(built, capabilities: Capabilities.built), built: Capabilities.built), [])
         // At M2b, panel 1 lists finding recordings, the podcast and "nothing is posted without you".
@@ -107,7 +107,7 @@ final class WelcomeTests: XCTestCase {
         // M4a built `progress`, so step 1 of How Outputs Work reads its v2 sentence; M4b built `captureCheck`, so the
         // recording settings row names Hybrid MOV; M8c built `video`, so step 2 says to watch the edit in the Viewer. No other v2
         // sentence yet.
-        XCTAssertEqual(built.flatMap(\.rows).filter { $0.id.hasSuffix("-v2") }.map(\.id), ["frame-v2", "settings-v2", "found-v2", "review-v2"], "no v2 sentence before its part (M11a: the framing row names the vertical clips)")
+        XCTAssertEqual(built.flatMap(\.rows).filter { $0.id.hasSuffix("-v2") }.map(\.id), ["frame-v2", "settings-v2", "found-v2", "review-v2", "approve-v2"], "no v2 sentence before its part (M11a: the framing row names the vertical clips; M11b: Approve, with the upload checklist)")
 
         // The check finds what it is meant to find: with every row shown, the panels name features that
         // are not built, and it must say so.
@@ -148,7 +148,7 @@ final class WelcomeTests: XCTestCase {
 
     func testTheLineCountsTheRowsItShows() {
         XCTAssertEqual(built[1].line, "Prakriti does its best work with a clean recording. These six things make the biggest difference.")
-        XCTAssertEqual(built[2].line, "From a raw recording to finished files, in five steps.", "M6c adds choosing who is in the episode, M9c the Direction step")
+        XCTAssertEqual(built[2].line, "From a raw recording to files ready to upload, in five steps.", "M6c adds choosing who is in the episode, M9c the Direction step, M11b the upload checklist")
         XCTAssertEqual(built[2].rows.map { built[2].symbol(for: $0) }, ["1.circle", "2.circle", "3.circle", "4.circle", "5.circle"], "steps are numbered as shown")
         XCTAssertEqual(built[2].rows.map(\.id).contains("direction"), true)
         XCTAssertEqual(WelcomeContent.numberWord(6), "six")

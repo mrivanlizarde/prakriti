@@ -999,6 +999,31 @@ own file; and **Vertical Guide** over the Original and the Video (`Views/Viewer/
 follow worked out ten times a second over the whole recording, moved through the punch-in on the Video. Help 02, 03, 05, 06 and 08
 (`shorts` capability). `make accept-shorts`.
 
+**v2 part M11b, thumbnails, Approve and Ready, Fri 16 Oct (see BUILD-LOG "v2 part M11b"):** the last of M11. **Thumbnails**
+(`OutputKind.thumbnails`, off for every folder; **Make Thumbnails** in Outputs turns it on for one recording; step "Thumbnails", after the
+shorts; `Render/VideoThumbnails.swift`, named so because the card picture holds People/Thumbnails.swift): three designed YouTube thumbnails
+in `Thumbnails/` (`Thumbnail A.jpg` to `C.jpg`, 1280 by 720 under 2 MB, and a full-size master each, 1920 by 1080 from 1080p, 3840 by 2160
+from 4K; `thumbnails.json`). Frames: up to 24 moments where the teacher's face is seen inside the plan's kept spans, key lines first, scored
+by Vision's face capture quality, aesthetics and open eyes (landmarks), three at least 20 s apart; faces hidden in pictures (Hide Face or
+Leave Out for any output) hidden by `FaceHide` first. The teacher cut out by Vision's person instance mask (else the foreground mask) at
+their face. Three compositions in Yoga Marga's colours (docs/v2/brand-yoga-marga.md): **Saffron** (teacher right, near-black words left),
+**Night and gold** (teacher left, gold words), **The room** (the frame 1.2 times closer, the teacher on a third, a measured shade behind
+white words and a saffron bar), each with a one-line reason. Headlines (`Writing/ThumbnailWords.swift`): three of 2 to 4 words from the
+Writing task's model under the privacy lock (Claude Sonnet in Ivan's settings), reading only the parts of the talk; checked in Swift; the
+talk's own key phrases fill any missing. Alegreya Sans ExtraBold (bundled; Alegreya itself is not on this Mac and was not downloaded).
+Every option passes `OutputGate.admitThumbnails` (size, under 2 MB, master, faces, capitals 8 px or more at 168 wide, contrast 4.5 to 1).
+**Use This One** chooses (`Recording.thumbnailChoice`, a stored addition); the card shows the chosen one (`AppModel.tileThumbnail`).
+**The Approve sheet** (`Views/Inspector/ApproveSheet.swift`, Command-Shift-Return, the toolbar, Outputs, the Recording menu): every
+deliverable with a box (episode, podcast-ready, video, thumbnails, each short, transcript, show notes, report), a failing one unticked and
+disabled with its check named; the version, a line per person, "None." for moments, where each model step ran, the footnote. Approve clones
+the ticked files into `Approved/<name>/` and writes APPROVAL.md with the deliverables approved and left out, the thumbnail, the names said
+aloud, and every file's size and SHA-256; `Recording.approvalJSON` (a stored addition) keeps what it covered. **Ready** holds approved
+recordings whose approved files and chosen checks still pass; otherwise **Approved, a check failed** in Needs You. **Upload Checklist**
+in Outputs (`Views/Inspector/UploadChecklist.swift`, `UploadPlatform`, `ReadyChecklist.upload`): YouTube, YouTube Shorts, Instagram Reels
+and TikTok, each field in its form's order with Copy or Show in Finder and PASS, MISSING, FAIL or YOURS. A class or a conversation can be
+approved once its people check ran. Help 05 and 06 (`thumbnails` capability). `make accept-thumbnails`; `make accept-shorts
+PRAKRITI_SHORTS_WHOLE=1` runs M11a's checks on the whole talks.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -1627,7 +1652,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
     approved; a class, a conversation or one marked "Not set" shows "Speakers not checked" and is
     refused (a test approves a class and a conversation and checks nothing was copied). Reason:
     speaker checks do not exist yet, an unknown voice counts as a student (SCOPE PR-2, PR-3), and every
-    recording arrives "Not set".
+    recording arrives "Not set". **Since v2 part M11b** a class, a conversation or one "Not set" can be approved once its people check ran (Mac warning 209).
 36. **Approve waits while the trim or cuts on the page are not in the episode** (`Recording.editsPending`,
     comparing the page's edits with `madeTrimStart`, `madeTrimEnd`, `madeCuts` from the last finished
     make). Reason: a yes must cover exactly the file that was made, never an episode that still holds a
@@ -1942,7 +1967,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
     copy's preferences (the live domain holds Ivan's own saved frame, 1140 by 772 on Sun 11 Oct, which his
     window keeps).
 89. **The smart groups are predicates over `statusRaw` (`SmartGroup.predicate`), and Ready holds exactly the
-    approved recordings until the platform checks exist (M8, M11b).** "Ready for your yes" reads "Waiting for
+    approved recordings until the platform checks exist (M8, M11b); since M11b Ready holds `approved` only and "Approved, a check failed" is in Needs You (Mac warning 208).** "Ready for your yes" reads "Waiting for
     your yes" (design spec C1) in the app, in notices and in Activity's line "is waiting for your yes"; the
     stored raw value `readyForYourYes` never changed, so nothing migrated. `make drop` and `process-in-app.sh`
     accept both phrasings in the log. Reason: one word must mean one thing, and "Ready" now means approved.
@@ -2555,6 +2580,36 @@ top and its end. Reading the code is not verification, and neither is a passing 
 204. **Caption pictures are drawn by Core Graphics and Core Text, all of them, before the short is drawn (`BurnedCaptions.Table.make`).**
     Reason: the compositor runs on AVFoundation's threads (Mac warning 165); Core Graphics is safe there, but drawing per frame would cost a
     render per frame, and drawing ahead keeps every frame's picture the one that was measured.
+205. **Approve copies only what is ticked in the Approve sheet, and a yes that covers a failing deliverable copies nothing (`AppModel.approve(_:chosen:)`,
+    `ApprovalDeliverable.list`).** Reason: design spec C8, a yes must cover a file that would pass on upload; the sheet unticks a failing one,
+    but the function checks again whoever calls it (tests plant a 190 s short and tick it: nothing reaches Approved).
+206. **Approve clones (`clonefile`), and proves each file a clone (`TimelineMedia.isClone`) in `ApprovalRecord.rows`.** Reason: R6, a video
+    and its shorts approved twice would otherwise double the disk; measured on the 13 Sep excerpt, 22 of 22 files proved clones.
+207. **A muted name is never written into APPROVAL.md: kept names by name, muted ones only counted.** Reason: Mac warning 37, nothing taken
+    out may reach the approved folder, not even a word; PLAN M11 asks for "names said aloud and their choice".
+208. **Ready holds `approved` only; "Approved, a check failed" (`approvedCheckFailed`, a new raw value) is in Needs You, set by
+    `recheckApproval` at every launch and after every approval.** Reason: design spec 2.4, Ready means only Upload is left. An approval made
+    before M11b has no `approvalJSON` and is never moved, so Ivan's two approvals of episode 1 stay in Ready.
+209. **A class, a conversation or a recording marked "Not set" can be approved once its people check ran; without one, only a talk.**
+    Reason: Ivan, 12 Oct, every participant signed a release ("classes and recordings with other people may be approved"); the people check
+    is what applies his Leave Out choices to what is made, so a recording nobody checked still needs the v1 rule.
+210. **A thumbnail is kept only after Vision has looked at the finished 1280 by 720 picture and every face is someone included, carried
+    through the composition (`OutputGate.admitThumbnails`).** Reason: Ivan, 12 Oct, "Faces of anyone not Included are never in a
+    thumbnail"; the cut-out compositions draw only the teacher's own Vision outline, and hidden faces are hidden by `FaceHide` before
+    anything is cut out or drawn.
+211. **The card shows the chosen YouTube thumbnail only while it was made under the choices of now (`VideoThumbnails.Record.signature`
+    against `Recording.thumbnailSignature`); otherwise the card picture.** Reason: a thumbnail made before Ivan hid someone would show them
+    on every card until it is made again (Mac warning 124's reason, for the new picture).
+212. **The words of a thumbnail are never under 13.5% of its height, their contrast with what is behind them is measured on the picture
+    (4.5 to 1 or more), and they stop 4% of the width short of the teacher's outline (`VideoThumbnails.bodySpan`).** Reason: Ivan's
+    "readable at 168 px wide" (8 px capitals there); measured 16 Oct, white words over the room read 3.4 to 1 before the shade was measured,
+    and a cut-out body reached past the middle and crossed the words.
+213. **A headline is 2 to 4 words, none over 10 letters, no dash, never the title, never against Ivan's copy rules (`ThumbnailWords.problem`);
+    a headline that does not fit gives way to the next.** Reason: measured 16 Oct, "UNDERSTANDING" needed 1,180 of the 883 pixels beside
+    the teacher and Thumbnail B was not made.
+214. **Media Intelligence's KeyFrameAnalysisRequest is not used for thumbnails.** Reason: measured 16 Oct, it chose 0:00 on the 13 Sep
+    excerpt (a frame every card picture leaves out) and took 105 s on the whole talk for one moment with no score; Vision's face quality,
+    aesthetics and open eyes over 24 moments choose in seconds (PLAN's fallback).
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

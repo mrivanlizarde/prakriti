@@ -213,6 +213,12 @@ final class Recording {
     /// Every video made of this recording that is still kept, and which one is in use (v2 part M9d, design spec 3.5.3 and 3.7): an
     /// `EditVersions` as JSON. Nil until a video is made; an addition with a nil default, so the store migrates on its own.
     var versionsJSON: String?
+    /// The YouTube thumbnail Ivan chose (v2 part M11b): "A", "B" or "C", or nil for the first that passes. An addition with a nil
+    /// default, so the store migrates on its own.
+    var thumbnailChoice: String?
+    /// What the last approval covered (v2 part M11b): an `ApprovalRecord` as JSON (the deliverables chosen and left out, every
+    /// approved file's size and hash), so a later check of the approved copy can say what no longer passes. Nil before M11b.
+    var approvalJSON: String?
 
     var source: Source?
 

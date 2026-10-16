@@ -148,6 +148,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // The welcome counts as seen only at a launch made by hand (v2 part M2b): at login every window
         // is closed below, the welcome too, and it waits for the next launch Ivan makes himself.
         model.launchFinished(atLogin: atLogin)
+        // What was approved is read again at every launch (v2 part M11b): Ready holds only what still passes.
+        model.recheckApprovals()
         if atLogin {
             // Opened by macOS at login: the watcher starts, and no window jumps up on every login.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -294,6 +296,7 @@ struct AppCommands: Commands {
             Button("Make Again…") { model.focusedRecording.map { model.ask(.makeAgain, for: $0) } }
                 .disabled(model.focusedRecording.map(model.canMakeAgain) != true)
             Button("Approve…") { model.focusedRecording.map { model.ask(.approve, for: $0) } }
+                .keyboardShortcut(.return, modifiers: [.command, .shift])
                 .disabled(model.focusedRecording.map { model.approvalCheck($0).canApprove } != true)
             Divider()
             Button("Remove from Library…") { model.focusedRecording.map { model.ask(.removeFromLibrary, for: $0) } }
