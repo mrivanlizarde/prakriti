@@ -6359,6 +6359,15 @@ M10) the whole 13 Sep and 6 Sep talks. Originals unchanged: 13 Sep 730,464,600 b
   timelines while anyone is hidden.
 - The media takes about 22 GB an hour of edit; the disk was at 13 to 28 GB free during this run (523 GB is in the Trash).
 
+### Installed
+
+**Installed** at 23:56:20 on Thu 15 Oct with `make install` (commit e6db446): the installed copy quit (23:56:14), new pid **47910** from
+`~/Applications/Prakriti.app`, signed, only the installed copy registered. Live log: "Prakriti 0.1 (1) opened. Mode: live.", "Caught up
+on changes made while Prakriti was closed: 0 events.", "Finished launching. Mode: live.", "Studio Recordings: listed 13 recordings",
+**"23:56:21 Checked 2 folders. Nothing new."**, and the next sweep **"00:01:20 Checked 2 folders. Nothing new."**, pid 47910 still
+running. Nothing was made again by the install: Timelines stays off for every folder and no recording's choices changed. The log also
+says notices are turned off for Prakriti in System Settings (unchanged by this part).
+
 ### For Ivan
 
 - [ ] **Free the disk.** The Mac was at 99 to 100% full during this build (13 GB free at the start): the Trash holds 523 GB and
