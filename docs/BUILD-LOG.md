@@ -6709,6 +6709,13 @@ Originals unchanged: 13 Sep 730,464,600 bytes, 6 Sep 2,578,079,009, same dates. 
 - Play plays the original, not the source's edited video (design spec 3.8 says "from the source's edited video if one exists").
 - The main points need the parts of the talk; a recording never planned says to plan it first.
 
+### Installed
+
+**Installed** at 10:31:01 on Fri 16 Oct with `make install` (commit ce387e0): new pid **17616** from `~/Applications/Prakriti.app` (was 90336),
+signed, only the installed copy registered. Live log: "Prakriti 0.1 (1) opened. Mode: live.", **"10:31:01 Checked 2 folders. Nothing new."**,
+"Finished launching. Mode: live." and **"10:36:21 Checked 2 folders. Nothing new."**, pid 17616 still running. Nothing was made by the install:
+no index is built until Find Supporting Moments is used, and Choosing moments follows Writing (Anthropic in the live settings).
+
 ### For Ivan
 
 - [ ] **Try it on a recording you know well**: select a teacher's recording, Direction, Find Supporting Moments... (or select words in the
