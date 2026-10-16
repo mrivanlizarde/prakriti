@@ -6821,7 +6821,9 @@ Originals unchanged: 13 Sep 730,464,600 bytes, 6 Sep 2,578,079,009, same dates. 
 
 ### Installed
 
-Recorded in the commit after this one, once `make install` has run.
+**Installed** at 14:00:42 on Fri 16 Oct with `make install` (commit 785663d): new pid **46434** from `~/Applications/Prakriti.app` (was 17616),
+signed, only the installed copy registered. Live log: "Finished launching. Mode: live.", **"14:00:43 Checked 2 folders. Nothing new."** and "Caught up on
+changes made while Prakriti was closed: 0 events." Nothing was made by the install: no recording has an added moment until Ivan clicks Add.
 
 ### For Ivan
 
