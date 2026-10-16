@@ -16,6 +16,7 @@ struct DirectionTab: View {
                 ShortsDirectionSection(recording: recording)
                 DirectionPlanSection(recording: recording)
                 VersionsSection(recording: recording)
+                SupportingMomentsSection(recording: recording)
             } else {
                 Section {
                     Text("Direction steers how this recording is edited: its style, pace, length and what to focus on. It can be set once the recording's transcript is made.")
@@ -154,5 +155,28 @@ struct VersionRow: View {
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// Supporting Moments (design spec 3.5.3 item 8, v2 part M12a): Find Supporting Moments... looks in other recordings of the same
+/// teacher for moments that support this recording's main points. Prakriti only finds them; adding one to the video is not built yet,
+/// so this section says only what the button does.
+struct SupportingMomentsSection: View {
+    @Bindable var recording: Recording
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Section {
+            Text(model.teacherName(of: recording).map { "Moments where \($0) makes the same point in another recording. Prakriti finds them and shows them; nothing is added to the video." }
+                 ?? "Moments where the same teacher makes the same point in another recording. Choose who is teaching in Info first.")
+                .font(AppFont.body)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Find Supporting Moments…") { model.findSupportingMoments(recording) }
+                .disabled(!model.canFindSupportingMoments(recording))
+                .quickHelp("Looks in other recordings of the same teacher for moments that support this recording's main points, and shows up to three.",
+                           article: "editorial-direction")
+        } header: {
+            SectionHeader("Supporting Moments")
+        }
     }
 }

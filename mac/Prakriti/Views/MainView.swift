@@ -79,6 +79,10 @@ struct MainView: View {
         .sheet(item: $model.approveSheet) { request in
             ApproveSheet(request: request)
         }
+        // Find Supporting Moments (v2 part M12a, design spec 3.8).
+        .sheet(item: $model.momentsSheet, onDismiss: { model.closeMoments() }) { request in
+            SupportingMomentsSheet(request: request)
+        }
         // Review Possible Matches and Merge 2 People (v2 part M7b).
         .sheet(item: $model.reviewSheet) { request in
             ReviewSheet(request: request)

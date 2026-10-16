@@ -2,7 +2,7 @@
 id: editorial-direction
 title: Editorial direction
 summary: Steer one recording's edit with presets, your own words, a pace and a length, and see the plan before anything is made.
-keywords: [direction, edit, style, preset, energetic, calm, pace, cuts, zooms, punch-ins, motivating, enlightening, shorter, length, minutes, plan again, make video, make again, chips, versions, version, use this version, play, opening line, hook, key phrases, terms, chapters, held moment, moment, another recording, merge, supporting]
+keywords: [direction, edit, style, preset, energetic, calm, pace, cuts, zooms, punch-ins, motivating, enlightening, shorter, length, minutes, plan again, make video, make again, chips, versions, version, use this version, play, opening line, hook, key phrases, terms, chapters, held moment, moment, another recording, merge, supporting, supporting moments, find supporting moments, choosing moments]
 section: direction
 order: 1
 requires: direction
@@ -137,23 +137,43 @@ Prakriti keeps the five newest versions. They are copies that take no extra spac
 
 **Tip:** To go back to the house style for a recording, click **Clear Direction**.
 
+:::requires moments
+## Find a moment from another recording
+
+Sometimes a point made in one recording is supported by something the same teacher said in another.
+Prakriti can find those moments for you. It never adds one on its own.
+
+1. Choose who is teaching the recording in Info, if you have not yet.
+2. In the inspector's Direction tab, under Supporting Moments, click **Find Supporting Moments...**.
+   Prakriti looks for moments that support this recording's main points, which it reads from the parts
+   of the talk, so plan the edit first if it has not read them. Or select words in the transcript,
+   Control-click, and choose **Find Supporting Moments for This...**. The Recording menu has it too.
+3. A sheet shows up to three moments. Each has its recording and date, its exact words and how long it
+   is, one plain sentence saying how it relates to the point, and where it would go in this recording.
+   Click **Play** to hear it, or **Not This One** to set it aside.
+
+How Prakriti finds them: it divides the transcripts of the teacher's other recordings into stretches of
+whole sentences, 5 to 45 seconds each, and compares their meaning with the point on this Mac, with the
+text-embedding-nomic-embed-text-v1.5 model in LM Studio. What it works out is kept in an index on this
+Mac, as times and numbers, not words. The closest stretches are then read by the model you choose for
+**Choosing moments** in Settings, Models, which says in one sentence whether each supports the point
+without contradicting it. See [Models and API keys](09-models-and-api-keys.md).
+
+Where Prakriti looks: only in other recordings of the same teacher whose people it has checked, and
+only in stretches where everyone seen or heard is set to Include and has a signed release on file. A
+stretch with someone you set to Hide Face or Leave Out is never offered, even if you change it after a
+search. If nothing fits, the sheet says so, with the number of recordings it searched.
+
+LM Studio must be open with text-embedding-nomic-embed-text-v1.5 downloaded, because the comparing
+always happens on this Mac.
+:::
+
 :::requires merge
-## Bring in a moment from another recording
+## Add a moment to the video
 
-Sometimes a point made in one recording is supported by something the same person said in another.
-Prakriti can find those moments. It never adds one on its own.
-
-1. In the inspector's Direction tab, click Moments From Other Recordings.
-2. Prakriti lists moments where the same person makes a related point, each with its words, its
-   recording and its date.
-3. Play a moment to hear it. To use it, click Add and choose where it goes.
-4. Click Make Again.
-
-An added moment shows the date it was recorded on screen, so viewers know it comes from another day.
-It follows the people choices of the recording it came from. To take it out, click Remove beside it.
-
-Prakriti only suggests moments from recordings of people who have agreed to be recognized. See
-[Privacy and students](07-people-and-privacy.md).
+To use a moment you found, click Add and choose where it goes, then click Make Again. An added moment
+shows the date it was recorded on screen, so viewers know it comes from another day. It follows the
+people choices of the recording it came from. To take it out, click Remove beside it.
 :::
 
 ## Who does the work

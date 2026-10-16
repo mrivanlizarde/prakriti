@@ -1024,6 +1024,24 @@ and TikTok, each field in its form's order with Copy or Show in Finder and PASS,
 approved once its people check ran. Help 05 and 06 (`thumbnails` capability). `make accept-thumbnails`; `make accept-shorts
 PRAKRITI_SHORTS_WHOLE=1` runs M11a's checks on the whole talks.
 
+**v2 part M12a, supporting moments, found, Fri 16 Oct (see BUILD-LOG "v2 part M12a"):** the first part of M12 (REQUEST item 9).
+**Find Supporting Moments...** (the Direction tab's new Supporting Moments section, the Recording menu, and the transcript's context menu as
+**Find Supporting Moments for This...** on selected words) opens a sheet (`Views/Inspector/SupportingMomentsSheet.swift`) and searches in
+the background (`App/MomentActions.swift`): the points are this recording's main points (from its parts of the talk, `beats.json`: the main
+point first, then the parts that stand alone, each searched by its summary and key line) or the selected words; only other recordings with
+the same **Who is teaching** whose people check ran are read. **The index** (`Merge/EmbeddingIndex.swift`, `MomentIndex`, SQLite at
+`<Application Support>/Merge/moments.sqlite`): every transcript as windows of whole sentences, 5 to 45 s (`MomentWindows`, each sentence and
+the ones after it to 15 s), only where everyone seen or heard is on Include for the video and released (`MomentPeople`), embedded by
+`text-embedding-nomic-embed-text-v1.5` in LM Studio through `Writing/LocalEmbeddings.swift` (refuses any host but this Mac); it keeps times,
+word numbers and vectors, never words, and is embedded again when a transcript, the people or the model change. **The search**
+(`Merge/Suggestions.swift`, `MomentFinder`): windows at cosine 0.66 or more (measured), each span checked again against today's choices,
+never two overlapping, each point's best in turn; the model chosen for the new built task **Choosing moments** (follows Writing until
+chosen; `Writing/MomentJudge.swift`) reads at most 8, each under the privacy lock for its pair of recordings, and says in one sentence
+whether it supports the point without contradicting it; at most 3 kept. The sheet: header, each moment's source and date ("Sun 6 Sep 2026,
+Talk with Gabriel"), its words in quotes and length, why, where it would go, **Play** (the sheet's own system player on the original) and
+**Not This One**; empty: "No other recording makes this point clearly. Prakriti searched N recordings of Gabriel." Nothing is added to a
+plan or a video: Add, the date label and the join are M12b. Help 08 and 09 (`moments` capability). `make accept-merge`.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -1168,6 +1186,9 @@ cd ~/Code/prakriti/mac && make accept-podcast MILESTONE=podcast
 ```
 ```bash
 cd ~/Code/prakriti/mac && make accept-episode-text MILESTONE=episode-text
+```
+```bash
+cd ~/Code/prakriti/mac && make accept-merge MILESTONE=v2-m12a
 ```
 ```bash
 cd ~/Code/prakriti/mac && make accept-gallery MILESTONE=v2-m7b
@@ -2610,6 +2631,25 @@ top and its end. Reading the code is not verification, and neither is a passing 
 214. **Media Intelligence's KeyFrameAnalysisRequest is not used for thumbnails.** Reason: measured 16 Oct, it chose 0:00 on the 13 Sep
     excerpt (a frame every card picture leaves out) and took 105 s on the whole talk for one moment with no score; Vision's face quality,
     aesthetics and open eyes over 24 moments choose in seconds (PLAN's fallback).
+215. **`Merge/` reaches a model's embeddings only through `LocalEmbeddings`, which refuses any address whose host is not this Mac before
+    anything is sent; the model only through `MomentJudge` in Writing/.** `RulesTests.testFaceWorkCannotReachTheNetwork` reads Merge/
+    too, and `MergeTests.testTheEmbeddingsRefuseAnyHostButThisMac` plants five remote addresses (0 requests). Reason: PLAN 2.2 rule 2; a
+    changed LM Studio address in Settings would otherwise carry every transcript off the Mac.
+216. **A span is indexed and offered only when everyone seen or heard in it is on Include for the video and has a signed release on file
+    (`MomentPeople.problem`), and the people check ran; every candidate is checked again against the choices of now at every search.**
+    An unnamed person on Include does not keep a span out. Reason: Ivan, Mon 12 Oct, every participant signed a release (never reintroduce a
+    student-specific block); a person he set to Hide Face or Leave Out, or marked "no release", must never come back through another video.
+217. **The moments index keeps times, word numbers and vectors, never words; a moment's words are read from its transcript when shown
+    (`MomentWindows.text`).** Reason: a moment must be the transcript's own words (PLAN M12 check 2), and the index file then holds no
+    text of anyone (`MergeTests` searches its bytes for a word).
+218. **The lock decides "Choosing moments" per pair of recordings (`LockSubject.joined`, `MomentJudge.client(for:)`), never once for
+    every recording searched.** Reason: each request carries words of the recording being edited and of one other; one subject for all
+    would send every search to LM Studio the day anyone in any other recording of the teacher is set to Leave Out.
+219. **A main point is searched by its part's summary and key line, never its whole text, at cosine 0.66 or more.** Reason: measured 16
+    Oct (13 Sep parts against 6 Sep's 563 windows): the whole text came closest to windows that only name the school (0.78), the key line
+    to windows making the same point; median 0.608, 90th percentile 0.672, a sentence about baking bread 0.616 at best.
+220. **Find Supporting Moments never adds anything.** Part M12a has no Add; adding by hand (`addedBy: "ivan"`), the date label and the
+    join are M12b. Reason: REQUEST item 9, "not always and not as a rule", and PLAN M12's split; the sheet and Help say so.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

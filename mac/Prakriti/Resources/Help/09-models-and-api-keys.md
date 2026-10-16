@@ -33,8 +33,10 @@ These tasks use the model you choose:
   chapters; after that they are kept beside the plan. Prakriti checks every line it picks word for word
   against the transcript. If it does not answer, the video is made without them.
 :::
-:::requires merge
-- **Finding related moments** in other recordings.
+:::requires moments
+- **Choosing moments:** reading a moment from another recording of the same teacher beside a point of
+  this one, and saying in one sentence whether it supports it. Until you choose, it uses the same
+  model as Writing.
 :::
 
 These always run on this Mac, whatever you choose:
@@ -60,6 +62,10 @@ These always run on this Mac, whatever you choose:
 :::requires direction
 - Reading the common phrases of a direction, choosing the parts of a talk under a length, and planning
   the edit from them.
+:::
+:::requires moments
+- Finding moments in the teacher's other recordings by meaning, with text-embedding-nomic-embed-text-v1.5 in LM
+  Studio, and the index it keeps.
 :::
 
 ## The choices

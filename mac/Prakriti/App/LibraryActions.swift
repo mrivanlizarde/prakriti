@@ -191,6 +191,8 @@ extension AppModel {
         let sourceName = recording.source?.name
         // Its people file goes with it (research-people.md 5.4): what Prakriti knew of the faces in it.
         peopleFolders.removePeopleFile(for: recording.id)
+        // And its windows in the moments index (v2 part M12a).
+        forgetMoments(of: recording.id)
         // And its card picture (v2 part M6d), the only picture Prakriti keeps of it.
         cardPictureWork[recording.id]?.cancel()
         cardPictureWork[recording.id] = nil

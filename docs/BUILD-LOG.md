@@ -111,6 +111,12 @@ again on it) or a crop that follows the speaker; the Viewer plays them (Short 1 
 thumbnails from the best frames of the teacher (cut out by Vision, Yoga Marga's colours, a headline from the writing model), the chosen one on
 every card; Approve as a sheet of deliverables that unticks a failing one and copies nothing for a yes that covers it, by clone, with every
 file's hash in APPROVAL.md; Ready only while what was approved still passes; upload checklists for YouTube, Shorts, Reels and TikTok.
+**Then part M12a, supporting moments, found** (the last section, "v2 part M12a", Fri 16 Oct): Find Supporting Moments (the Direction tab, the
+Recording menu, or selected words in the transcript) looks in other recordings of the same teacher for moments that support a point, by meaning
+on this Mac (nomic-embed-text in LM Studio, an index of times and numbers), and the model chosen for Choosing moments says in one sentence
+whether each supports it, under the privacy lock per pair of recordings; up to three are shown with their date, exact words, why and where they
+would go. Nothing is added to a video yet (M12b). On the real talks: 13 Sep's main points found nothing in 6 Sep (12 read, all declined; the
+talks are on different subjects), and the 13 Sep part about Gabriel's sales career found 3 moments in 6 Sep, each its own words.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -6614,3 +6620,98 @@ the install: Thumbnails is off for every folder, and no approval in the live sto
   first?
 - [ ] **Alegreya (serif) for headlines** needs a yes to download it from Google Fonts (OFL); until then Alegreya Sans ExtraBold.
 - [ ] **Before any real upload**, the private YouTube test upload of SCOPE SET-13 (PLAN M11 "Needs Ivan").
+
+## v2 part M12a: supporting moments, found. Fri 16 Oct 2026
+
+The first part of M12 (`docs/v2/PLAN.md`, M12, part M12a; REQUEST item 9: "merge sections from different videos ... added to the video at hand
+but not always and not as a rule"). Built on `main` Fri 16 Oct 08:10 to about 10:00. No Swift package added, nothing downloaded (LM Studio
+already served `text-embedding-nomic-embed-text-v1.5`, listed by `GET /v1/models` at 08:12), no SwiftData model changed (the index is its own
+SQLite file; the sheet's state lives in memory). Under Ivan's decision of Mon 12 Oct every participant counts as released; this run's rules:
+no frame of Gabriel's talks was looked at (this part draws no picture of a recording; the sheets were drawn with made-up words and a test
+pattern), nothing was sent to any cloud provider (Choosing moments was set to LM Studio in the acceptance, a refusing cloud client counted 0
+calls; the lock's route to Anthropic was worked out, not sent), and the cloud path was tested only on made-up words with a scripted client.
+The whole talks were read (text only: transcripts and people checks), because finding a moment needs another talk's whole transcript.
+
+### What was built
+
+- **The index** (`Merge/EmbeddingIndex.swift`): `MomentWindows.make` cuts a transcript into windows of whole sentences, each sentence and the ones
+  after it until 15 s, never over 45 s, kept when 5 to 45 s (563 on the 6 Sep talk). `MomentPeople` reads the people file, the voices, Ivan's
+  names and choices and the releases: a span may be indexed and offered only when the people check ran (faces and voices) and everyone seen or
+  heard in it is on Include for the video with a release on file (an unnamed person on Include no longer blocks, Ivan 12 Oct). `MomentIndex`:
+  SQLite at `<Application Support>/Merge/moments.sqlite` (development: `.../Prakriti/Development/Merge/`), a recordings table (teacher,
+  signature, model, windows) and a windows table (times, first and last word, the vector as Float32): never words. A recording is embedded
+  again only when its transcript, its offerable spans or the model change (`MomentIndex.signature`); Remove from Library takes it out.
+- **Embeddings on this Mac only** (`Writing/LocalEmbeddings.swift`): `POST <LM Studio>/v1/embeddings`, 48 texts a request, vectors scaled to
+  length 1, the task prefixes `search_document: ` and `search_query: `; any address whose host is not `localhost`, `127.0.0.1` or `::1` is refused
+  before anything is sent. The request shape was checked against LM Studio on the day (768 numbers per text; 64 texts in 0.61 s).
+- **The search** (`Merge/Suggestions.swift`, `MomentFinder`): points are this recording's main points (from `beats.json`: the main point, then the
+  parts that stand alone, strongest first, up to 5, never welcome, housekeeping or closing; each searched by its summary and key line) or the
+  selected words; only other recordings with the same Who is teaching whose people check ran are read (others counted as not searched); windows
+  at cosine 0.66 or more, each span checked again against today's choices and Ivan's copy rules, never two overlapping, each point's best in
+  turn; at most 12 read by the model, at most 3 kept. Each moment: the source's own words, its date and label ("Sun 6 Sep 2026, Talk with
+  Gabriel"), why, and where it would go (after the point's last sentence).
+- **The model's sentence** (`Writing/MomentJudge.swift`): the new built task **Choosing moments** (Settings, Models; follows Writing until chosen,
+  so Anthropic in Ivan's live settings); one JSON answer checked in Swift (supports, contradicts, one sentence of at most 30 words, dashes made
+  commas); under the privacy lock for each pair of recordings (`LockSubject.joined`), so a pair with someone left out or marked no release is
+  read by LM Studio and nothing goes to the cloud.
+- **In the app** (`App/MomentActions.swift`, `Views/Inspector/SupportingMomentsSheet.swift`): the Direction tab's **Supporting Moments** section
+  with **Find Supporting Moments...**; the Recording menu's **Find Supporting Moments...**; the transcript's context menu **Find Supporting
+  Moments for This...**. The sheet (720 pt wide): header, a progress line while it searches, each moment with the source's card picture, its
+  label and time, its words in quotes, why, where, **Play** (the system player in the sheet, the original from the moment's first word to its
+  last) and **Not This One**; the empty state with the real count; "Prakriti only finds moments. Nothing is added to the video." and Done.
+- Help 08 (a new "Find a moment from another recording" block; the adding block now describes only adding, for M12b) and 09 (Choosing moments,
+  and the embeddings in the "always on this Mac" list); the `moments` capability on (`merge` stays M12b's). Mac warnings 215 to 221.
+- **Tests**: `MergeTests` (8), `MergeAcceptanceTests` (`make accept-merge`), `RulesTests` reads Merge/ for network names.
+
+### Found by measuring (each with its measurement)
+
+1. **Similarity threshold** (13 Sep parts, summary and key line, against the 6 Sep windows): median 0.608, 90th percentile 0.672, 99th 0.723,
+   each part's best 0.678 to 0.752; a sentence about baking bread 0.616 at best. Threshold 0.66.
+2. **A part's whole text is the wrong query**: searched by its first 120 words, the 13 Sep main point came closest (0.781, 0.777) to 6 Sep
+   windows that only introduce the school; by summary and key line, to windows about meaning and connection.
+3. **The first run found 2 moments, and the second named money** ("$32,000 in 30 days", a 6 Sep opening line offered for the 13 Sep story of
+   going from a couch to a retreat center). Ivan's copy rules now leave out such windows: 273 of 563 on the 6 Sep talk, which is about filling
+   retreats. The first moment of that run ("We all attribute meaning...") is left out too ("if I sign up for a ... course").
+4. **13 Sep and 6 Sep make different points**: with the copy rules, 13 Sep's main points gave 44 candidates and Qwen3.8-27B declined all 12 it
+   read, each with a fair reason ("The moment discusses retreat payment timing, not the personal journey from couch to retreat center"). The
+   empty state is the true answer for the main points; the 13 Sep part about Gabriel's own sales career (selected as words) found 3.
+5. Each judgment took 18 to 76 s on Qwen3.8-27B (median about 25 s); a whole search 270 to 445 s locally. Embedding the 6 Sep talk took under
+   10 s.
+
+### Checks run, with results (PLAN M12, the checks part M12a runs: 1 (indexing, teacher), 2 (up to the suggestions), 4, 5 (sheet), 6)
+
+Originals unchanged: 13 Sep 730,464,600 bytes, 6 Sep 2,578,079,009, same dates. Report: `screens/mac/v2-m12a/acceptance-merge.txt`.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `MergeTests`: a span with someone not included is never indexed; suggestions refused for another teacher | **PASS.** Read with Ivan's 12 Oct decision: a span with an unnamed face on Hide Face is never indexed (0 windows within 0.5 s of it), the same face on Include is (more windows), a teacher marked no release and a recording without its voice step index 0 windows; Leave Out chosen after indexing drops the span at the next search and the next update; the index file holds no word. Another teacher's recording: 0 searched, the model asked 0 times, not even indexed; no teacher: refused with "Choose who is teaching in Info first". Plus windows on sentence boundaries 5 to 45 s, at most 3 moments in the source's own words, the main points from the parts, copy rules, the default following Writing (8 of 8) |
+| 2 | `make accept-merge`: 13 Sep and 6 Sep indexed (both Gabriel teaching); Find Supporting Moments on 13 Sep gives 1 to 3 moments from 6 Sep, each word for word in the 6 Sep transcript | **PASS.** Both talks made in development (87 s, 254 s), people checked; 6 Sep 563 windows indexed, 13 Sep not (it is the one edited). Main points: 0 moments, the sheet's true line "No other recording makes this point clearly. Prakriti searched 1 recording of Gabriel Galindo." (finding 4). Selected words, the part "Personal sales career and business work" (4:52 to 8:26): **3 moments from 6 Sep** at 55:03 (17.6 s, 62 words), 0:49 (25.7 s, 73 words), 36:11 (15.9 s, 48 words), each found word for word in the 6 Sep transcript, on sentence boundaries, no copy rule broken, with date, why (18 to 22 words) and where (after 8:26) |
+| 4 | The suggestion model's requests counted under the lock | **PASS.** Acceptance: 17 requests, all to LM Studio, 0 to a cloud provider, the refusing cloud client asked 0 times. The lock's route on the real pair with Choosing moments set to Anthropic: Anthropic while Gabriel's release is on file, LM Studio when he is marked no release (worked out, nothing sent). `MergeTests` with a scripted Anthropic: a released pair with an unnamed person 1 Anthropic request; the teacher marked no release 0 (1 local); someone set to Leave Out 0 (1 local) (`merge-lock-counts.txt`) |
+| 5 | Snapshots of the sheet (suggestions, empty), looked at | **PASS, looked at:** `29-moments-sheet-suggestions`, `-empty`, `-searching`, `-refused`, each light and dark, and `29-direction-supporting-moments` (made-up words, test-pattern card pictures). The player is not drawn in a bitmap (Mac warning 43) |
+| 6 | Regression set | **PASS.** `make build` no warnings; **`make test` 461 tests, 0 failures, 34 skipped by design, no restart** (1,716 s; a first run found `testTheEmbeddingsRefuseAnyHostButThisMac` crashing the host, a main-actor closure answering on URLSession's queue, fixed and run again: Mac warning 174); `make accept`: 13 Sep -16.8 LUFS, -1.7 dBFS, 137 captions; silent-60s refused at the sound check; 6 Sep -16.7 LUFS, -1.4 dBFS; `make accept-edits`: 38.82 s shorter (expected 38.82). No SwiftData change, so no `make migrate-check` |
+
+**Em dashes:** 0 in every line this part added (grep of the new files, Help 08 and 09, START_HERE and CHANGELOG for U+2014 and U+2013).
+
+### Decisions, each with its reason
+
+1. **PLAN M12 check 1's "a span with an unnamed person is never indexed" is read as "a span with anyone not on Include, or without a release".**
+   Reason: Ivan, Mon 12 Oct, every participant signed a release; the people Ivan hides or leaves out are what must never come back.
+2. **Check 2 is met on the selected-words entry point; the main points honestly find nothing.** Reason: measured (finding 4), the two talks
+   available make different points, and inventing a match would defeat the check. Both entry points are design spec 3.8's.
+3. **Copy rules apply to moments.** Reason: finding 3; a moment goes into a published video like the opening line (Mac warning 182). It leaves
+   out about half of a sales talk; Ivan can say if that is too strict.
+4. **The lock is decided per pair of recordings.** Reason: Mac warning 218.
+5. **No date-label switch and no Add in the sheet.** Reason: both are M12b's (the label is only meaningful once a moment is added).
+
+### What does not work yet
+
+- Adding a moment, the date label, per-source loudness, the join and the re-check at render (M12b).
+- Play plays the original, not the source's edited video (design spec 3.8 says "from the source's edited video if one exists").
+- The main points need the parts of the talk; a recording never planned says to plan it first.
+
+### For Ivan
+
+- [ ] **Try it on a recording you know well**: select a teacher's recording, Direction, Find Supporting Moments... (or select words in the
+  transcript and Control-click). It looks only in other recordings of the same teacher whose people were checked. Are the moments worth adding?
+- [ ] **The copy rules leave out moments that mention money, prices, signing up or offers** (half of the 6 Sep talk). Too strict for moments?
+- [ ] The moments found for the 13 Sep sales part are in `screens/mac/v2-m12a/acceptance-merge.txt` (words only): the third is weak.

@@ -283,9 +283,12 @@ final class RulesTests: XCTestCase {
     /// under People/ (v2 part M6a on), Render/ or Export/ may name a network type or a cloud provider's client.
     func testFaceWorkCannotReachTheNetwork() throws {
         let banned = ["URLSession", "URLRequest", "AnthropicClient", "OpenAIClient", "CloudHTTP", "LockedCloudClient", "CloudPayload", "LMStudioClient"]
-        let guarded = appSourceFiles.filter { url in ["People", "Render", "Export"].contains(url.deletingLastPathComponent().lastPathComponent) }
+        // Merge/ (v2 part M12a) too: it reaches LM Studio's embeddings only through Writing/'s LocalEmbeddings, which refuses any
+        // host but this Mac (MergeTests.testTheEmbeddingsRefuseAnyHostButThisMac), and the model only through Writing/'s MomentJudge.
+        let guarded = appSourceFiles.filter { url in ["People", "Render", "Export", "Merge"].contains(url.deletingLastPathComponent().lastPathComponent) }
         XCTAssertGreaterThanOrEqual(guarded.count, 4, "the People folder's files are read: \(guarded.map(\.lastPathComponent))")
         XCTAssertTrue(guarded.contains { $0.deletingLastPathComponent().lastPathComponent == "Render" }, "the Render folder's files are read (v2 part M8b)")
+        XCTAssertTrue(guarded.contains { $0.deletingLastPathComponent().lastPathComponent == "Merge" }, "the Merge folder's files are read (v2 part M12a)")
         for file in guarded {
             let text = try String(contentsOf: file, encoding: .utf8)
             for word in banned where text.contains(word) {

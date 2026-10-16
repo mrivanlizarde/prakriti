@@ -75,7 +75,10 @@ enum Capability: String, CaseIterable, Sendable {
     case shorts
     /// Thumbnails, the Approve sheet and Ready (M11b).
     case thumbnails
-    /// Moments from another recording (M12).
+    /// Moments from another recording, found (M12a): the index on this Mac, Find Supporting Moments (the Direction tab, the
+    /// transcript's selection, the Recording menu), the sheet with Play and Not This One, and the Choosing moments task.
+    case moments
+    /// Moments from another recording, added by hand (M12b): Add, the date label, the join, Remove.
     case merge
 }
 
@@ -86,9 +89,9 @@ enum Capabilities {
     /// edit plan (M8a), the rendered MP4 (M8b), the video in the Viewer (M8c), the House Style with its zooms (M9a), the title and
     /// names on screen (M9b), direction for one recording (M9c), and the opening line, key phrases, terms, chapters, versions and
     /// the Direction tab (M9d), the timelines for Final Cut Pro and DaVinci Resolve (M10a), the shorts (M11a), and the thumbnails, the Approve sheet,
-    /// the upload checklists and Ready (M11b). Each later part switches its own on.
+    /// the upload checklists and Ready (M11b), and Find Supporting Moments (M12a). Each later part switches its own on.
     static let built: Set<Capability> = [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery,
-                                         .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style, .timelines, .shorts, .thumbnails]
+                                         .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style, .timelines, .shorts, .thumbnails, .moments]
 
     /// Every capability, for the test that every article and every block is visible once all are built.
     static let all = Set(Capability.allCases)

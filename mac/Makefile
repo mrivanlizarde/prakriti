@@ -131,7 +131,7 @@ STYLE_ONLY ?=
 YES       ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: accept-thumbnails accept-shorts accept-timeline-full accept-timeline-people accept-timeline resolve-import accept-hook accept-direction accept-text accept-style accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: accept-merge accept-thumbnails accept-shorts accept-timeline-full accept-timeline-people accept-timeline resolve-import accept-hook accept-direction accept-text accept-style accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -253,6 +253,15 @@ accept-timeline-people:
 #                 (v2 part M11b, the last part of M11) runs the same checks on the whole talks and writes acceptance-shorts-whole.txt
 accept-shorts:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=shorts TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) TEST_RUNNER_PRAKRITI_SHORTS_ONLY="$(PRAKRITI_SHORTS_ONLY)" TEST_RUNNER_PRAKRITI_SHORTS_WHOLE="$(PRAKRITI_SHORTS_WHOLE)" $(XCB) test -only-testing:PrakritiTests/ShortsAcceptanceTests
+
+# accept-merge    v2 part M12a's acceptance (PLAN M12 check 2 up to the suggestions, and check 4) through the app in development: the REAL
+#                 13 Sep and 6 Sep talks, whole, made with the outputs every recording gets (transcript, people check), both "Who is teaching:
+#                 Gabriel"; Find Supporting Moments on 13 Sep (its parts of the talk from ~/Prakriti/Dev/Beats, else Qwen3.8-27B): one to three
+#                 moments, all from 6 Sep, each the 6 Sep transcript's own words, 5 to 45 s on sentence boundaries; every request of Choosing
+#                 moments counted under the lock (LM Studio here, 0 to the cloud) and the lock's route on the real pair worked out. Needs LM
+#                 Studio with text-embedding-nomic-embed-text-v1.5. Writes acceptance-merge.txt to ../screens/mac/$(MILESTONE)/ (about 25 minutes)
+accept-merge:
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=merge TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/MergeAcceptanceTests
 
 # accept-thumbnails  v2 part M11b's acceptance (PLAN M11 checks 4, 5 and 6) through the app's runner in development: the REAL 13 Sep
 #                 talk, whole (the last part of M11), made with the edited video, the shorts and the thumbnails on (Gabriel teaching, parts

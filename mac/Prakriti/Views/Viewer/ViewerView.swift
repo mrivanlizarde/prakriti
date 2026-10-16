@@ -380,7 +380,9 @@ struct ViewerTranscript: View {
                            shuttle: { viewer.shuttle($0) },
                            back: { model.back() },
                            canRemove: { model.canRemoveSelectedWords(recording) },
-                           canKeep: { model.canKeepSelectedWords(recording) }))
+                           canKeep: { model.canKeepSelectedWords(recording) },
+                           findMoments: { model.findSupportingMomentsForSelection(in: recording) },
+                           canFindMoments: { viewer.selectedWords != nil && model.canFindSupportingMoments(recording) }))
     }
 }
 

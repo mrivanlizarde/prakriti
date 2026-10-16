@@ -298,6 +298,9 @@ struct AppCommands: Commands {
             Button("Approve…") { model.focusedRecording.map { model.ask(.approve, for: $0) } }
                 .keyboardShortcut(.return, modifiers: [.command, .shift])
                 .disabled(model.focusedRecording.map { model.approvalCheck($0).canApprove } != true)
+            // Design spec 3.8 and 6.8 (v2 part M12a).
+            Button("Find Supporting Moments…") { model.focusedRecording.map { model.findSupportingMoments($0) } }
+                .disabled(model.focusedRecording.map(model.canFindSupportingMoments) != true)
             Divider()
             Button("Remove from Library…") { model.focusedRecording.map { model.ask(.removeFromLibrary, for: $0) } }
                 .disabled(model.focusedRecording.map(model.canRemoveFromLibrary) != true)

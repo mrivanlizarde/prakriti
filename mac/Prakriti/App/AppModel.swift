@@ -185,6 +185,14 @@ final class AppModel {
     var thumbnailsProblems: [UUID: String] = [:]
     /// The Approve sheet (v2 part M11b, design spec 3.11), for one recording, while it is open.
     var approveSheet: ApproveRequest?
+    /// Find Supporting Moments (v2 part M12a, design spec 3.8): the sheet asked for, what it shows, the moments Ivan set aside with
+    /// Not This One, the search running (one at a time), the requests it sent by provider, and the last search, for the acceptance.
+    var momentsSheet: MomentsRequest?
+    var momentsState: MomentsState?
+    var dismissedMoments: Set<String> = []
+    @ObservationIgnored var momentWork: Task<Void, Never>?
+    @ObservationIgnored let momentRequests = MomentRequestCounter()
+    @ObservationIgnored var lastMomentSearch: MomentSearch?
     /// The short the inspector's Play asked for, chosen once the Viewer has the recording open (v2 part M11a).
     @ObservationIgnored var pendingShortIndex: Int?
     /// How far Make Timelines has come, 0 to 1, by recording (v2 part M10b: privacy-safe media takes minutes, not seconds).

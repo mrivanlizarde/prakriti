@@ -5,6 +5,24 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-16, Fri: v2 part M12a, supporting moments, found
+
+- **Find Supporting Moments: Prakriti finds, Ivan decides.** Why: REQUEST item 9 asks to bring in sections from other videos "not always
+  and not as a rule". This part only finds and shows up to three moments (the Direction tab, the Recording menu, or selected words in the
+  transcript); nothing is added to a video until the next part builds Add, by hand.
+- **Only recordings of the same teacher, and only stretches where everyone is on Include with a release on file.** Why: Ivan's 12 Oct
+  decision makes everyone released, so an unnamed person no longer blocks; someone he hid or left out, or marked "no release", must never
+  come back through another video. Each stretch is checked again against today's choices at every search.
+- **Meaning is compared on this Mac, by nomic-embed-text in LM Studio, through a client that refuses any other host.** Why: the transcript
+  of every recording is read; a changed address must not carry it off the Mac. The index keeps times and numbers, never words.
+- **The one-sentence judgment runs on the model chosen for Choosing moments (follows Writing, so Anthropic in Ivan's settings), under the
+  privacy lock for each pair of recordings.** Why: the request carries words of both recordings; deciding per pair keeps one Leave Out in
+  another recording from sending every search to the slow local model.
+- **A main point is searched by its summary and key line, at a measured similarity of 0.66.** Why: measured on the 13 Sep and 6 Sep
+  talks, the part's whole text matched stretches that only name the school; an unrelated sentence reached 0.616 at best.
+
+---
+
 ## 2026-10-16, Fri: v2 part M11b, thumbnails, Approve and Ready
 
 - **Three designed YouTube thumbnails, not screenshots.** Why: Ivan, 12 Oct: one subject cut out, a few words, the school's colours,

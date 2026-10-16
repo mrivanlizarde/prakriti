@@ -248,7 +248,9 @@ final class HelpTests: XCTestCase {
         ("timeline", false, .timelines),
         ("shorts", false, .shorts), ("vertical short", false, .shorts),
         ("thumbnail", false, .thumbnails), ("thumbnails", false, .thumbnails),
-        ("Moments From Other Recordings", false, .merge), ("supporting moment", false, .merge),
+        ("Find Supporting Moments", false, .moments), ("supporting moment", false, .moments), ("Choosing moments", false, .moments),
+        ("nomic", false, .moments),
+        ("Moments From Other Recordings", false, .merge), ("Add a moment", false, .merge), ("date it was recorded", false, .merge),
     ]
 
     /// Every word a reader of this library can see.
@@ -280,7 +282,7 @@ final class HelpTests: XCTestCase {
     }
 
     func testOnlyWhatIsBuiltIsVisible() {
-        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style, .timelines, .shorts, .thumbnails], "v2 parts M2a, M2b, M3b, M4a, M4b, M5b, M6a, M6b, M6c, M6d, M7a, M7b, M8a, M8b, M8c, M9a, M9b, M9c, M9d, M10a and M11a build Help, the welcome, the Viewer, progress, the capture check, the cloud providers, faces, voices, choices applied to audio, hiding in pictures, the People gallery, recognition, the edit plan, the rendered MP4, the video in the Viewer, the House Style, the text on screen, direction, the opening line, key phrases, chapters and versions, the timelines and the shorts; each later part adds its own capability")
+        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style, .timelines, .shorts, .thumbnails, .moments], "v2 parts M2a, M2b, M3b, M4a, M4b, M5b, M6a, M6b, M6c, M6d, M7a, M7b, M8a, M8b, M8c, M9a, M9b, M9c, M9d, M10a and M11a build Help, the welcome, the Viewer, progress, the capture check, the cloud providers, faces, voices, choices applied to audio, hiding in pictures, the People gallery, recognition, the edit plan, the rendered MP4, the video in the Viewer, the House Style, the text on screen, direction, the opening line, key phrases, chapters and versions, the timelines, the shorts, the thumbnails and Find Supporting Moments (M12a); each later part adds its own capability")
         let library = built
         XCTAssertEqual(unbuiltNamesFound(in: library, built: library.capabilities), [])
         XCTAssertNotNil(library.visibleArticle(id: "editorial-direction"), "editorial direction is built (v2 part M9c)")

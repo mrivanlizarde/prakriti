@@ -298,8 +298,8 @@ enum LogLevel: String, Codable, CaseIterable, Sendable {
 /// The jobs a language model does in Prakriti.
 enum ModelTask: String, Codable, CaseIterable, Sendable {
     case writing, tagging, summarizing
-    /// Listed from v2 part M5b and greyed until the part that uses them is built (Mac warning 32): planning the edit is
-    /// built in part M9c; supporting moments (M12) are not yet.
+    /// Listed from v2 part M5b and greyed until the part that uses them was built (Mac warning 32): planning the edit in part
+    /// M9c, choosing moments (whether a moment from another recording supports a point) in part M12a.
     case planning, choosingMoments
 
     var title: String {
@@ -318,15 +318,14 @@ enum ModelTask: String, Codable, CaseIterable, Sendable {
         case .tagging: "Topics and terms for each recording."
         case .summarizing: "A short summary, in the show notes."
         case .planning: "The parts of a recording and what your direction asks for. Used only when a direction chooses among them."
-        case .choosingMoments: "Moments from another recording that support this one. Not built yet."
+        case .choosingMoments: "Whether a moment from another recording of the same teacher supports a point of this one, in one sentence."
         }
     }
 
     /// The tasks that run today. The others are shown greyed, and their choice is kept for later.
     var isBuilt: Bool {
         switch self {
-        case .writing, .tagging, .summarizing, .planning: true
-        case .choosingMoments: false
+        case .writing, .tagging, .summarizing, .planning, .choosingMoments: true
         }
     }
 

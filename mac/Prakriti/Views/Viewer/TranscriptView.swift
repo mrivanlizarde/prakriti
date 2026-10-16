@@ -33,6 +33,9 @@ struct TranscriptTextView: NSViewRepresentable {
         var back: () -> Void
         var canRemove: () -> Bool
         var canKeep: () -> Bool
+        /// Find Supporting Moments for This... (v2 part M12a, design spec 3.4.4).
+        var findMoments: () -> Void = {}
+        var canFindMoments: () -> Bool = { false }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -288,6 +291,11 @@ final class PlayableTextView: NSTextView {
         menu.addItem(remove)
         menu.addItem(keep)
         menu.addItem(.separator())
+        let moments = NSMenuItem(title: "Find Supporting Moments for This…", action: #selector(findMoments), keyEquivalent: "")
+        moments.target = self
+        moments.isEnabled = coordinator?.actions?.canFindMoments() == true
+        menu.addItem(moments)
+        menu.addItem(.separator())
         let copy = NSMenuItem(title: "Copy", action: #selector(copy(_:)), keyEquivalent: "")
         copy.target = self
         copy.isEnabled = selectedRange().length > 0
@@ -297,4 +305,5 @@ final class PlayableTextView: NSTextView {
 
     @objc private func removeFromEdit() { coordinator?.actions?.remove() }
     @objc private func keepInEdit() { coordinator?.actions?.keep() }
+    @objc private func findMoments() { coordinator?.actions?.findMoments() }
 }

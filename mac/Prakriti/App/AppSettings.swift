@@ -104,6 +104,10 @@ final class AppSettings {
         if defaults.string(forKey: Key.providerPrefix + ModelTask.planning.rawValue) == nil {
             provider[.planning] = provider[.writing] ?? .lmStudio
         }
+        // Choosing moments (v2 part M12a), never chosen before, follows the writing's choice for the same reason.
+        if defaults.string(forKey: Key.providerPrefix + ModelTask.choosingMoments.rawValue) == nil {
+            provider[.choosingMoments] = provider[.writing] ?? .lmStudio
+        }
         self.provider = provider
         lmStudioAddress = defaults.string(forKey: Key.lmStudioAddress) ?? Self.defaultLMStudioAddress
         lmStudioModel = defaults.string(forKey: Key.lmStudioModel) ?? Self.defaultLMStudioModel
