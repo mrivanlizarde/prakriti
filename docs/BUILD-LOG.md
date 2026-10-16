@@ -6480,6 +6480,13 @@ Originals unchanged: 13 Sep 730,464,600 bytes, 6 Sep 2,578,079,009, its vertical
   and Ready (M11b).
 - One 6 Sep short keeps the face in the middle third in 91.2% of frames: above the bar, not by much.
 
+### Installed
+
+**Installed** at 03:00:19 on Fri 16 Oct with `make install` (commit ea27e26): new pid **67129** from `~/Applications/Prakriti.app`, signed,
+only the installed copy registered (the build folder and `mac/build-verify` copies unregistered). Live log: "Prakriti 0.1 (1) opened. Mode:
+live.", "Finished launching. Mode: live.", **"03:00:20 Checked 2 folders. Nothing new."** and **"03:05:19 Checked 2 folders. Nothing new."**,
+pid 67129 still running. Nothing was made by the install: Shorts is off for every folder.
+
 ### For Ivan
 
 - [ ] **Look at the frames I could only measure** (they show the talk): `screens/mac/v2-m11a/for-ivan/m11a-6-Sep-short-*.png` and
