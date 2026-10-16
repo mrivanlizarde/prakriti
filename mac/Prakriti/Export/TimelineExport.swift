@@ -93,8 +93,14 @@ enum TimelineExport {
     /// (nil for a video made before part M8d: who is in it is unknown, so refused). Since part M10b anyone may be hidden or left out
     /// and a name muted: the timelines then point at privacy-safe media (`CleanedMedia.needed`).
     static func refusal(plan: EditPlan, hiddenFaces: Int?, leftOutVoices: Int?) -> String? {
-        hiddenFaces == nil || leftOutVoices == nil ? unknownRefusal : nil
+        if hiddenFaces == nil || leftOutVoices == nil { return unknownRefusal }
+        // A moment from another recording (v2 part M12b) needs that recording's media in the timeline too, which the timelines do not
+        // carry yet: refused in words rather than written without it (the timeline would not be the video).
+        if !plan.insertSpans.isEmpty { return momentsRefusal }
+        return nil
     }
+
+    static let momentsRefusal = "The video has a moment from another recording, and timelines with one are not made yet. The video itself has it. Remove the moment in Direction to make timelines."
 
     /// Whether this plan's timelines need privacy-safe media, from the video's counts.
     static func needsPrivacySafeMedia(_ setup: Setup) -> Bool {

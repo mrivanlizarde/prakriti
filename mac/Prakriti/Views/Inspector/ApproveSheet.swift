@@ -63,7 +63,9 @@ struct ApproveSheet: View {
                     SectionHeader("People")
                 }
                 Section {
-                    Text("None.").font(AppFont.body)
+                    ForEach(model.approvalMomentLines(recording), id: \.self) { line in
+                        Text(line).font(AppFont.body).fixedSize(horizontal: false, vertical: true)
+                    }
                 } header: {
                     SectionHeader("Moments from other recordings")
                 }

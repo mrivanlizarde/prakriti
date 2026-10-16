@@ -20,6 +20,12 @@ import Foundation
 //    ending, sits inside title safe, and no two overlap in time. Key phrases and term cards (v2 part M9d) as well, and each shows
 //    exactly the words it names (case, punctuation and accents aside), never over the opening line. The held moment lies inside
 //    one of the talk's spans (nothing cut inside it).
+// 8. Moments from another recording (v2 part M12b): each was added by Ivan (`addedBy: "ivan"`), comes from another recording, is that
+//    recording's own words word for word with its ends in the gaps next to its first and last word, on frames, 5 to 45 s of words,
+//    sits between two of the talk's spans (never first, never last), carries no zoom, and everyone seen or heard in it is, as Ivan's
+//    choices stand NOW, on Include with a release ("A moment from Sun 6 Sep now includes someone who is hidden. Remove it or change
+//    their choice."). A moment that cannot be checked against its recording fails (fail closed). The date label is a text like the
+//    others and sits on its moment.
 
 enum PlanValidation {
     struct Problem: Error, Equatable, Sendable {
@@ -29,7 +35,7 @@ enum PlanValidation {
 
     static let tolerance = 0.25
 
-    static func check(_ plan: EditPlan, words: PlanWords) -> [Problem] {
+    static func check(_ plan: EditPlan, words: PlanWords, inserts: [MomentInsert] = []) -> [Problem] {
         var problems: [Problem] = []
         let all = words.words
         func word(_ id: String) -> PlanWord? { PlanWord.index(of: id).flatMap { all.indices.contains($0) ? all[$0] : nil } }
@@ -39,7 +45,7 @@ enum PlanValidation {
         if plan.transcriptSHA256 != words.transcriptSHA256 {
             problems.append(Problem(rule: 1, line: "The transcript changed since the plan was made."))
         }
-        var ids = plan.spans.flatMap { [$0.from, $0.to] } + plan.words.map(\.id) + plan.removed.flatMap { ($0.words ?? []) + ($0.keptTake ?? []) }
+        var ids = plan.ownSpans.flatMap { [$0.from, $0.to] } + plan.words.map(\.id) + plan.removed.flatMap { ($0.words ?? []) + ($0.keptTake ?? []) }
         ids += plan.checks.map(\.at) + plan.chapters.map(\.at)
         for id in Set(ids) where word(id) == nil {
             problems.append(Problem(rule: 1, line: "The word \(id) is not in the transcript."))
@@ -128,7 +134,7 @@ enum PlanValidation {
             if !plan.frameDuration.isBoundary(item.from) || (!plan.frameDuration.isBoundary(item.to) && !atEnd) {
                 problems.append(Problem(rule: 3, line: "The \(item.kind.rawValue) at \(TimeText.string(item.from)) is not cut on a frame."))
             }
-            if plan.spans.contains(where: { $0.in < item.to - 1e-6 && $0.out > item.from + 1e-6 }) {
+            if plan.ownSpans.contains(where: { $0.in < item.to - 1e-6 && $0.out > item.from + 1e-6 }) {
                 problems.append(Problem(rule: 3, line: "The \(item.kind.rawValue) at \(TimeText.string(item.from)) is inside a kept span."))
             }
         }
@@ -144,7 +150,7 @@ enum PlanValidation {
         if let e = plan.basis.edits.end, e < plan.sourceDuration { forced.append(TimeRange(start: e, end: plan.sourceDuration)) }
         forced += plan.basis.edits.cuts
         for f in forced where f.end > f.start {
-            if let span = plan.spans.first(where: { $0.in < f.end - 0.001 && $0.out > f.start + 0.001 }) {
+            if let span = plan.ownSpans.first(where: { $0.in < f.end - 0.001 && $0.out > f.start + 0.001 }) {
                 let whose = plan.people.cuts.contains(f) ? "someone you chose to leave out" : "your trim or a cut"
                 problems.append(Problem(rule: 5, line: "Span \(span.id) keeps \(TimeText.string(max(span.in, f.start))) to \(TimeText.string(min(span.out, f.end))), which is \(whose)."))
             }
@@ -184,6 +190,10 @@ enum PlanValidation {
                 problems.append(Problem(rule: 7, line: "A \(item.kind) names span \(item.span), which the plan does not keep."))
                 continue
             }
+            if span.isInsert && item.kind != OverlayKind.dateLabel.rawValue {
+                problems.append(Problem(rule: 8, line: "A \(item.kind) is on the moment from another recording \(span.id), which carries only its date."))
+                continue
+            }
             switch item.kind {
             case EditPlan.Visual.punchIn, EditPlan.Visual.pushIn:
                 let scale = item.kind == EditPlan.Visual.punchIn ? item.scale : item.to
@@ -215,12 +225,16 @@ enum PlanValidation {
                 if span.id != plan.spans.last?.id || (item.seconds ?? 0) <= 0 || (item.seconds ?? 0) > 10 {
                     problems.append(Problem(rule: 7, line: "The held ending is not after the last span, or is not between 0 and 10 s."))
                 }
-            case EditPlan.Visual.title, EditPlan.Visual.lowerThird, EditPlan.Visual.keyPhrase, EditPlan.Visual.term:
+            case EditPlan.Visual.title, EditPlan.Visual.lowerThird, EditPlan.Visual.keyPhrase, EditPlan.Visual.term, OverlayKind.dateLabel.rawValue:
                 let name: String = switch item.kind {
                 case EditPlan.Visual.title: "title"
                 case EditPlan.Visual.lowerThird: "name on screen"
                 case EditPlan.Visual.keyPhrase: "key phrase"
+                case OverlayKind.dateLabel.rawValue: "date label"
                 default: "term card"
+                }
+                if item.kind == OverlayKind.dateLabel.rawValue && !span.isInsert {
+                    problems.append(Problem(rule: 8, line: "A date label is on span \(span.id), which is not a moment from another recording."))
                 }
                 guard let a = item.in, let seconds = item.seconds, let box = item.box, box.count == 4,
                       let lines = item.lines, !lines.isEmpty, lines.allSatisfy({ !$0.trimmingCharacters(in: .whitespaces).isEmpty }) else {
@@ -256,6 +270,63 @@ enum PlanValidation {
                 }
             default:
                 problems.append(Problem(rule: 7, line: "The plan holds a picture item Prakriti does not make yet (\(item.kind))."))
+            }
+        }
+        problems += checkInserts(plan, inserts: inserts)
+        return problems
+    }
+
+    /// Rule 8, the moments from other recordings (v2 part M12b).
+    static func checkInserts(_ plan: EditPlan, inserts: [MomentInsert]) -> [Problem] {
+        var problems: [Problem] = []
+        let frame = plan.frameDuration
+        for (k, span) in plan.spans.enumerated() where span.isInsert {
+            let day = span.sourceDate.map { Format.dayLabel($0) } ?? "another day"
+            if span.addedBy != AddedMoment.byIvan {
+                problems.append(Problem(rule: 8, line: "Span \(span.id) is a moment from another recording that you did not add."))
+                continue
+            }
+            if span.source == plan.recording {
+                problems.append(Problem(rule: 8, line: "Span \(span.id) is a moment from this same recording."))
+            }
+            // Between two of the talk's spans: never first, never last, never inside the opening line.
+            let before = plan.spans[..<k].last { !$0.isInsert }, after = plan.spans[(k + 1)...].first { !$0.isInsert }
+            if before == nil || before?.isHook == true || after == nil || after?.isHook == true {
+                problems.append(Problem(rule: 8, line: "The moment from \(day) is not between two parts of the talk."))
+            }
+            if !frame.isBoundary(span.in) || !frame.isBoundary(span.out) || span.out <= span.in {
+                problems.append(Problem(rule: 8, line: "The moment from \(day) is not cut on a frame."))
+            }
+            if let j = span.join, j < 0 || j > 30 { problems.append(Problem(rule: 8, line: "The moment from \(day) has a join of \(j) frames.")) }
+            if let c = span.colour, c.count != 3 || c.contains(where: { abs($0 - 1) > MomentInserts.mostGain + 1e-6 }) {
+                problems.append(Problem(rule: 8, line: "The moment from \(day) has a colour match past what Prakriti allows."))
+            }
+            // Against its own recording, as it is now.
+            guard let insert = inserts.first(where: { $0.name == span.source && ($0.original?.path ?? "") == (span.sourceFile ?? "")
+                && $0.moment.window.firstWord == PlanWord.index(of: span.from) && $0.moment.window.lastWord == PlanWord.index(of: span.to) }) else {
+                problems.append(Problem(rule: 8, line: "The moment from \(day) could not be checked against its own recording, so it is not used."))
+                continue
+            }
+            if let refusal = MomentInserts.refusal(insert) {
+                problems.append(Problem(rule: 8, line: refusal))
+                continue
+            }
+            guard let source = insert.words?.words, let a = PlanWord.index(of: span.from), let b = PlanWord.index(of: span.to), a <= b, b < source.count else {
+                problems.append(Problem(rule: 8, line: "The words of the moment from \(day) are not in its recording's transcript."))
+                continue
+            }
+            if PlanWords.comparable(span.text) != PlanWords.comparable(PlanWords.text(source[a...b]))
+                || span.words?.map(\.id) != (a...b).map({ source[$0].id }) || span.text.split(separator: " ").count != b - a + 1 {
+                problems.append(Problem(rule: 2, line: "The words of the moment from \(day) are not its recording's words."))
+            }
+            let previousEnd = a > 0 ? source[a - 1].end : 0
+            let nextStart = b + 1 < source.count ? source[b + 1].start : source[b].end + 1
+            if span.in < previousEnd - tolerance || span.in > source[a].start + tolerance || span.out > nextStart + tolerance || span.out < source[b].end - tolerance {
+                problems.append(Problem(rule: 8, line: "The moment from \(day) does not start and end in the gaps around its words."))
+            }
+            let spoken = source[b].end - source[a].start
+            if spoken < MomentWindows.shortest - 0.05 || spoken > MomentWindows.longest + 0.05 {
+                problems.append(Problem(rule: 8, line: String(format: "The moment from %@ is %.1f s of words, outside 5 to 45 s.", day, spoken)))
             }
         }
         return problems

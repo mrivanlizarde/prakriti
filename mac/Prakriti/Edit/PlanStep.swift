@@ -42,11 +42,15 @@ enum PlanStep {
         var reading: DirectionReading?
         /// The recording's beats (v2 part M9c), when the direction needs them: a length, a focus, something to leave out.
         var beats: BeatsFile?
+        /// The moments from other recordings Ivan added (v2 part M12b), each read again from its own recording for this plan.
+        var moments: [MomentInsert] = []
     }
 
     struct Outcome: Sendable {
         let plan: EditPlan
         let seconds: Double
+        /// What placing the moments from other recordings did (v2 part M12b), for the log.
+        var notes: [String] = []
         /// The step's line: what the plan keeps, then the plan in plain lines (v2 part M9c), which the progress block shows
         /// while the video is made. Numbers only, never a name.
         var stepLine: String { ([plan.summary] + (plan.planLines ?? [])).joined(separator: " ") }
@@ -61,7 +65,9 @@ enum PlanStep {
         }
         try FileManager.default.createDirectory(at: setup.jobFolder, withIntermediateDirectories: true)
         let raw = setup.jobFolder.appending(path: "plan-sound.f32")
-        defer { try? FileManager.default.removeItem(at: raw) }
+        // Only when it is still there: measured 16 Oct (Swift 6.4), a `try? removeItem` in this defer of a file already removed below
+        // replaced a refusal thrown later in the step with the remove's own error.
+        defer { if FileManager.default.fileExists(atPath: raw.path) { try? FileManager.default.removeItem(at: raw) } }
         try await decode(Envelope.decodeArguments(file: setup.original, raw: raw))
         let envelope = try Envelope.read(rawFloats: raw)
         try? FileManager.default.removeItem(at: raw)
@@ -85,6 +91,7 @@ enum PlanStep {
         // for a recording with a picture and beats, in a style that holds one. Chosen before the parts are, so the length a
         // direction asks for is measured with it: the main point is always kept (`Selection`).
         let picture = setup.frameRate != nil && setup.pictureHeight > 0
+        var momentNotes: [String] = []
         var held: TimeRange?
         if picture, let range = style.held, let all = setup.beats?.beats, !all.isEmpty {
             var forced = setup.people.cuts + input.edits.cuts
@@ -207,14 +214,38 @@ enum PlanStep {
             }
             // Chapters (v2 part M9d), from the kept parts, on the video's own clock.
             plan.chapters = Chapters.make(plan: plan, beats: keptBeats, words: words.words)
+            // The moments Ivan added (v2 part M12b), last, so nothing planned above reads another recording's frames as this one's.
+            // A moment that may not be used now (someone in it hidden since, its recording gone) stops the plan: no video is made.
+            if !setup.moments.isEmpty {
+                let size = CGSize(width: setup.text.pictureWidth > 0 ? setup.text.pictureWidth : setup.pictureHeight * 16 / 9, height: setup.pictureHeight)
+                do {
+                    momentNotes = try MomentInserts.place(setup.moments, into: &plan, words: words.words, pictureSize: size)
+                } catch let refusal as MomentInserts.Refusal {
+                    throw Failure(reason: refusal.reason)
+                }
+                // The colour match (research 2.8), measured on the two pictures around where each moment goes.
+                for k in plan.spans.indices where plan.spans[k].isInsert {
+                    let span = plan.spans[k]
+                    guard let file = span.sourceFile else { continue }
+                    var around: [TimeRange] = []
+                    if let before = plan.spans[..<k].last(where: { !$0.isInsert }) { around.append(TimeRange(start: max(before.in, before.out - 10), end: before.out)) }
+                    if let after = plan.spans[(k + 1)...].first(where: { !$0.isInsert }) { around.append(TimeRange(start: after.in, end: min(after.out, after.in + 10))) }
+                    plan.spans[k].colour = await MomentInserts.colour(main: setup.original, around: around, source: URL(fileURLWithPath: file),
+                                                                      moment: TimeRange(start: span.in, end: span.out))
+                    momentNotes.append("Colour match for the moment from \(span.sourceDate.map { Format.dayLabel($0) } ?? "another day"): "
+                                       + (plan.spans[k].colour.map { "red, green and blue times " + $0.map { String(format: "%.3f", $0) }.joined(separator: ", ") } ?? "none needed") + ".")
+                }
+            }
+        } else if !setup.moments.isEmpty {
+            momentNotes.append("Moments from other recordings go only into a video, and this recording has no picture.")
         }
         plan.planLines = Self.lines(plan, style: style, beats: setup.beats?.beats ?? [], choice: choice)
-        let problems = PlanValidation.check(plan, words: words)
+        let problems = PlanValidation.check(plan, words: words, inserts: setup.moments)
         if let first = problems.first {
             throw Failure(reason: "The plan did not pass its own check (rule \(first.rule): \(first.line)), so it was not saved.")
         }
         let d = clock.now - started
-        return Outcome(plan: plan, seconds: Double(d.components.seconds) + Double(d.components.attoseconds) / 1e18)
+        return Outcome(plan: plan, seconds: Double(d.components.seconds) + Double(d.components.attoseconds) / 1e18, notes: momentNotes)
     }
 
     /// Each kept part's key phrase as words to show (v2 part M9d): its words as said, the full stop or comma at the end left off.
@@ -319,6 +350,13 @@ enum PlanStep {
             lines.append(String(format: "Holds one still shot for %.0f s from %@, the main point, uncut.", held.end - held.start, Format.timecode(held.start)))
         }
         if !plan.chapters.isEmpty { lines.append(Format.count(plan.chapters.count, "chapter") + " for YouTube, the first at 0:00.") }
+        // The moments Ivan added (v2 part M12b).
+        for span in plan.insertSpans {
+            guard let piece = timeline.pieces.first(where: { $0.id == span.id }) else { continue }
+            lines.append(String(format: "Adds your moment from %@ (%.0f s) at %@, with %@.", span.sourceDate.map { Format.dayLabel($0) } ?? "another day",
+                                timeline.seconds(piece.frames), Format.timecode(timeline.seconds(piece.editFrame)),
+                                (span.join ?? 0) > 0 ? "a \(span.join ?? 0)-frame dissolve at each end" : "a cut at each end"))
+        }
         lines.append("Ends at \(Format.timecode(timeline.duration)).")
         return lines
     }

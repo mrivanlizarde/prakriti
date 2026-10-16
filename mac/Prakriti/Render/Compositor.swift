@@ -45,21 +45,53 @@ final class Compositor: NSObject, AVVideoCompositing, @unchecked Sendable {
         let crop = instruction.crop(at: request.compositionTime)
         // The text on screen at this frame (v2 part M9b), already moved and faded.
         let text = instruction.textLayers(at: request.compositionTime)
-        if regions.isEmpty && crop == nil && text.isEmpty && !instruction.throughCoreImage {
+        // A cross dissolve where a moment from another recording joins the talk (v2 part M12b): both pictures, each hidden, matched and
+        // framed as it is on its own, mixed by how far through the dissolve the frame is, then the text over both.
+        if let dissolve = instruction.dissolve {
+            guard let incoming = request.sourceReadOnlyPixelBuffer(byTrackID: dissolve.toTrackID) else {
+                request.finish(with: Failure.noFrame)
+                return
+            }
+            let into = dissolve.toHidden?.regions(atSourceFrame: instruction.incomingSourceFrame(at: request.compositionTime)) ?? []
+            let mix = dissolve.progress(atEditFrame: instruction.editFrame(at: request.compositionTime))
+            do {
+                request.finish(withComposedPixelBuffer: try draw(source, hiding: regions, colour: instruction.colour, crop: crop, text: text,
+                                                                 incoming: (incoming, into, dissolve.toColour, instruction.incomingCrop(), mix),
+                                                                 into: request.renderContext))
+            } catch {
+                request.finish(with: error)
+            }
+            return
+        }
+        if regions.isEmpty && crop == nil && text.isEmpty && instruction.colour == nil && !instruction.throughCoreImage {
             request.finish(withComposedPixelBuffer: source)
             return
         }
         do {
-            request.finish(withComposedPixelBuffer: try draw(source, hiding: regions, crop: crop, text: text, into: request.renderContext))
+            request.finish(withComposedPixelBuffer: try draw(source, hiding: regions, colour: instruction.colour, crop: crop, text: text, into: request.renderContext))
         } catch {
             request.finish(with: error)
         }
     }
 
+    /// One picture as the video shows it: matched in colour (a moment from another recording, v2 part M12b), its hidden faces hidden on
+    /// the whole picture, then framed to the render size.
+    static func picture(_ frame: CIImage, hiding: [FaceBox], colour: [Double]?, crop: CGRect?, to target: CGSize) -> CIImage {
+        var image = frame
+        if let colour, colour.count == 3 {
+            image = image.applyingFilter("CIColorMatrix", parameters: ["inputRVector": CIVector(x: colour[0], y: 0, z: 0, w: 0),
+                                                                    "inputGVector": CIVector(x: 0, y: colour[1], z: 0, w: 0),
+                                                                    "inputBVector": CIVector(x: 0, y: 0, z: colour[2], w: 0)])
+                .cropped(to: frame.extent)
+        }
+        return Self.frame(FaceHide.apply(image, regions: hiding), crop: crop, to: target)
+    }
+
     /// The frame through Core Image into a new buffer from the render context's pool, with `hiding`'s regions hidden by
     /// `FaceHide` (the same function as the card picture's), then framed by `crop` (v2 part M9a): the faces are hidden on
     /// the whole picture first, so a punch-in never shows a face the hiding did not cover.
-    func draw(_ source: CVReadOnlyPixelBuffer, hiding: [FaceBox] = [], crop: CGRect? = nil, text: [CIImage] = [],
+    func draw(_ source: CVReadOnlyPixelBuffer, hiding: [FaceBox] = [], colour: [Double]? = nil, crop: CGRect? = nil, text: [CIImage] = [],
+              incoming: (CVReadOnlyPixelBuffer, [FaceBox], [Double]?, CGRect?, Double)? = nil,
               into renderContext: AVVideoCompositionRenderContext) throws -> CVReadOnlyPixelBuffer {
         let output = try renderContext.makeMutablePixelBuffer()
         let frame = source.withUnsafeBuffer { CIImage(cvPixelBuffer: $0) }
@@ -67,7 +99,12 @@ final class Compositor: NSObject, AVVideoCompositing, @unchecked Sendable {
         // wider picture (v2 part M11a).
         let size = renderContext.size
         let target = size.width > 0 && size.height > 0 ? size : frame.extent.size
-        let image = Self.overlay(text, on: Self.frame(FaceHide.apply(frame, regions: hiding), crop: crop, to: target))
+        var picture = Self.picture(frame, hiding: hiding, colour: colour, crop: crop, to: target)
+        if let (buffer, regions, gains, rect, mix) = incoming {
+            let other = Self.picture(buffer.withUnsafeBuffer { CIImage(cvPixelBuffer: $0) }, hiding: regions, colour: gains, crop: rect, to: target)
+            picture = Self.dissolve(from: picture, to: other, progress: mix)
+        }
+        let image = Self.overlay(text, on: picture)
         output.withUnsafeBuffer { buffer in
             // The source's colour tags (BT.709 matrix, primaries and transfer) go on the new buffer first: Core Image reads
             // them to turn its working colour back into the same YCbCr. Without them it wrote another matrix (measured 13 Oct
@@ -99,6 +136,11 @@ final class Compositor: NSObject, AVVideoCompositing, @unchecked Sendable {
         let scaled = moved.applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: scale, kCIInputAspectRatioKey: (target.height / rect.height) / scale])
         return scaled.cropped(to: CGRect(x: 0, y: 0, width: target.width, height: target.height))
             .transformed(by: CGAffineTransform(translationX: extent.minX, y: extent.minY))
+    }
+
+    /// A cross dissolve (v2 part M12b): `to` over `from` at `progress` (0 is `from` alone, 1 is `to` alone), mixed on the linear picture.
+    static func dissolve(from: CIImage, to: CIImage, progress: Double) -> CIImage {
+        from.applyingFilter("CIDissolveTransition", parameters: ["inputTargetImage": to, kCIInputTimeKey: progress]).cropped(to: from.extent)
     }
 
     /// The text pictures laid over the framed picture (v2 part M9b), last: text is never scaled by a punch-in and never

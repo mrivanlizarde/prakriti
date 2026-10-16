@@ -200,6 +200,9 @@ struct PipelineOptions: Sendable {
     var planTitle = ""
     /// Ivan's direction for this recording (v2 part M9c): presets, his words, pace and length. Empty: the House Style alone.
     var direction = RecordingDirection()
+    /// The moments from other recordings Ivan added (v2 part M12b), each read again from its own recording when the make starts
+    /// (`AppModel.momentInserts`): its transcript and its people as Ivan has them now.
+    var moments: [MomentInsert] = []
     /// Who plans the edit when a model is needed (v2 part M9c): the "Planning the edit" task's provider from Settings, Models,
     /// under the privacy lock. Nil: no model is asked, and a direction that needs one says so.
     var planning: WritingSetup?
@@ -976,6 +979,7 @@ struct Pipeline: Sendable {
                     let plan = try await planTheEdit(file: file, staging: staging, duration: ready.duration, capture: result.capture,
                                                      namesSaid: result.namesSaid, faces: result.faces, voices: result.voices)
                     result.editPlan = plan.plan
+                    for note in plan.notes { log?.write("\(name): \(note)") }
                     await finish(.planEdit, plan.stepLine)
                 } catch is CancellationError {
                     throw CancellationError()
@@ -1268,7 +1272,7 @@ struct Pipeline: Sendable {
                         let reason = (error as? TimelineExport.Failure)?.reason ?? error.localizedDescription
                         result.timelineProblem = reason
                         log?.write("\(name): the timelines were not written. \(reason)")
-                        let refused = reason == TimelineExport.unknownRefusal
+                        let refused = reason == TimelineExport.unknownRefusal || reason == TimelineExport.momentsRefusal
                         await finish(.timelines, reason + " Everything else is kept.", state: refused ? .skipped : .failed)
                     }
                 } else {
@@ -1661,6 +1665,7 @@ struct Pipeline: Sendable {
                                                   picture: setup.frameRate != nil && setup.pictureHeight > 0)
         setup.reading = prepared.reading
         setup.beats = prepared.beats
+        setup.moments = options.moments
         defer { try? FileManager.default.removeItem(at: setup.jobFolder) }
         let ffmpeg = tools.ffmpeg
         let outcome = try await PlanStep.run(setup, now: Date()) { arguments in
@@ -1962,7 +1967,7 @@ struct Pipeline: Sendable {
                                    return clock.originalTime(t)
                                },
                                recordedAt: facts.recordedAt, label: label, people: people, hiding: hiding, faceTracks: tracks,
-                               voiceSegments: segments, folders: options.people?.folders, control: meter?.control,
+                               voiceSegments: segments, folders: options.people?.folders, control: meter?.control, moments: options.moments,
                                log: { [log] line in log?.write("\(label): the video's people check. " + line) })
     }
 

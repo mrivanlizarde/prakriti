@@ -1042,6 +1042,25 @@ Talk with Gabriel"), its words in quotes and length, why, where it would go, **P
 **Not This One**; empty: "No other recording makes this point clearly. Prakriti searched N recordings of Gabriel." Nothing is added to a
 plan or a video: Add, the date label and the join are M12b. Help 08 and 09 (`moments` capability). `make accept-merge`.
 
+**v2 part M12b, supporting moments, added, Fri 16 Oct (see BUILD-LOG "v2 part M12b"):** the last part of M12. **Add** in the sheet keeps a
+moment with the recording (`AddedMoment.added(byIvan:)`, `addedBy: "ivan"`, in `RecordingDirection.moments`: no store change); the sheet's
+footer switch "Clips from another day show their date on screen." (design spec C6) sets its date label. The Direction tab's Supporting
+Moments lists each added moment with **Show its date on screen** and **Remove**. At every plan (every Make Again) each moment is read again
+from its own recording (`AppModel.momentInserts`, `PipelineOptions.moments`): its original, transcript, frame rate, muted names and its people
+as Ivan has them now. `MomentInserts.place` (`Merge/AddedMoments.swift`) puts it after the point's last sentence (at the plan's join there, or
+splitting a span in the pause after the sentence), never after the last span, as an `insert` span on the other recording's own clock that
+carries its original's path, its word times (captions), its day, its colour match (`colour`: mean linear colour of 6 frames each side, at most
+15%, nil under 2%) and its join (Clear and Story a 12-frame cross dissolve, Calm 15, Energetic a hard cut, only where both sides have the
+frames); its date label (`dateLabel` visual, top corner, 3 s); texts that would run across it left out; chapters after it moved. **Rule 8**
+of `PlanValidation` checks every moment (added by Ivan, its own recording's words, its ends, 5 to 45 s, between two parts of the talk, and
+everyone in it on Include with a release now). The renderers: `EditTimeline.Piece.source`, `CompositionBuilder` (a track per other original,
+dissolves as two-track instructions), `Compositor` (colour, `CIDissolveTransition`), `VideoAudio` (each moment's sound decoded around it,
+measured on its own, matched to the recording's loudness, at most 12 dB, before the join), `Captions`, `VideoStep` (checked again before a
+frame is drawn). A moment from Sun 6 Sep whose people changed stops the plan and the video with "A moment from Sun 6 Sep now includes someone
+who is hidden. Remove it or change their choice." Timeline-lite draws it in teal where it goes with room of its own; Approve and APPROVAL.md
+list it. **Timelines are not made for a plan with a moment yet** (`TimelineExport.momentsRefusal`, the step skipped). Help 08 (`merge`
+capability). `make accept-merge PRAKRITI_MERGE_PART=add`; `MergeAddTests` (synthetic test patterns).
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -2648,8 +2667,31 @@ top and its end. Reading the code is not verification, and neither is a passing 
 219. **A main point is searched by its part's summary and key line, never its whole text, at cosine 0.66 or more.** Reason: measured 16
     Oct (13 Sep parts against 6 Sep's 563 windows): the whole text came closest to windows that only name the school (0.78), the key line
     to windows making the same point; median 0.608, 90th percentile 0.672, a sentence about baking bread 0.616 at best.
-220. **Find Supporting Moments never adds anything.** Part M12a has no Add; adding by hand (`addedBy: "ivan"`), the date label and the
-    join are M12b. Reason: REQUEST item 9, "not always and not as a rule", and PLAN M12's split; the sheet and Help say so.
+220. **Find Supporting Moments never adds anything; only Ivan's Add does (`AppModel.addMoment`, `AddedMoment.added(byIvan:)`, `addedBy:
+    "ivan"`), and `PlanValidation` rule 8 refuses any insert span with another `addedBy`.** Reason: REQUEST item 9, "not always and not as a
+    rule"; PLAN M12 check 1.
+221. **Every plan reads each added moment again from its own recording, as Ivan's choices stand now (`AppModel.momentInserts` in
+    `PipelineRunner.options`), and the plan step and the video step both refuse a moment with anyone no longer on Include, in PLAN M12's
+    words.** Reason: a choice changed later in the source must reach a video that already borrowed from it (PLAN review item 16). A refused
+    plan leaves no video: the make's place step takes the old Video folder out too, and that video held the moment.
+222. **A moment's frames and samples are another recording's: `EditTimeline.Piece.source` marks them, `editTime`, `originalTime` and
+    `editTimeAtOrAfter` skip them, `VideoHiding` reads `ownPieces` only, the sound check's clock maps them far before 0, and nothing planned
+    before them (zooms, texts, chapters) is placed on them.** Reason: frame numbers of two recordings collide; a face hidden at 6 Sep's frame
+    1,000 is not 13 Sep's.
+223. **`CompositionBuilder.append`: media goes at a track's end, then an empty edit is inserted before it; each other original's asset is
+    kept alive with its track; `VideoWriter` reads every picture track.** Reason: measured 16 Oct: inserted straight past the end of an empty
+    track, the moment landed at 0; a track whose asset had gone failed "The operation could not be completed"; with only the main track read,
+    the compositor got no frame of the moment (`Compositor.Failure` 1).
+224. **The `defer` that removes a job's scratch file in `PlanStep.run` and `VideoStep.make` checks the file is there first.** Reason:
+    measured 16 Oct: the `try?` removal of an already-removed file surfaced as the step's error in place of a refusal thrown later in it
+    ("plan-sound.f32 couldn't be removed"; "the .video-job couldn't be removed"). It did not reproduce in a small program, so keep the guard.
+225. **A moment's sound is measured on its own words' time and brought to the recording's own loudness (at most 12 dB) before the join; the
+    whole is then mastered once as before.** Reason: research 3.5, "each source is measured on its own"; PLAN M12 check 3's 1 LU.
+226. **A moment is joined with the style's dissolve only where both sides have the frames it needs, centred on the cut; the picture going out
+    keeps the framing it had; a moment carries no zoom and no text but its date.** Reason: research 2.4 and the FCPXML rule of handles; a
+    punch-in found on 13 Sep's face boxes means nothing on 6 Sep's frames.
+227. **Timelines are refused, as a skipped step, for a plan with a moment (`TimelineExport.momentsRefusal`).** Reason: they would point at
+    one recording only and not be the video; carrying the other recording's media is not built yet.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

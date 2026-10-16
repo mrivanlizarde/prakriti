@@ -55,6 +55,18 @@ enum Captions {
         let muted = plan.people.mutes
         var out: [Word] = []
         for span in plan.spans {
+            // A moment from another recording (v2 part M12b): its own words at its own times, carried in the span.
+            if span.isInsert {
+                let texts = span.text.split(separator: " ").map(String.init)
+                guard let times = span.words, times.count == texts.count else { continue }
+                for (word, text) in zip(times, texts) {
+                    let start = max(word.in, span.in), end = min(word.out, span.out)
+                    guard let s = timeline.editTime(start, span: span.id), let e = timeline.editTime(max(start, end), span: span.id) else { continue }
+                    let closes = PlanWord.closing(text)
+                    out.append(Word(text: text, start: s, end: max(s, e), endsSentence: closes == .sentence || closes == .question, endsClause: closes == .clause))
+                }
+                continue
+            }
             guard let a = PlanWord.index(of: span.from), let b = PlanWord.index(of: span.to), a <= b, b < all.count else { continue }
             for i in a...b {
                 let word = all[i]

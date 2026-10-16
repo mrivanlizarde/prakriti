@@ -275,7 +275,7 @@ enum Approval {
         var namesSaid: [String] = []
         /// The thumbnail chosen, with its headline.
         var thumbnail: String?
-        /// Moments from other recordings (M12): "None" until that part.
+        /// Moments from other recordings in the video (v2 part M12b), one line each, or "None.".
         var moments: [String] = []
         /// Where each model step ran.
         var models: [String] = []

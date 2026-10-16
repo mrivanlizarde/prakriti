@@ -43,6 +43,10 @@ extension AppModel {
         if (plan.basis.direction ?? "") != recording.direction.signature {
             return "Your newest direction is not in the plan yet."
         }
+        // The moments added by hand (v2 part M12b).
+        if plan.basis.moments != MomentInserts.signature(recording.direction.moments) {
+            return "Your newest moments from other recordings are not in the plan yet."
+        }
         // The title on screen (v2 part M9b) is the recording's title as it was when the plan was made.
         if let shown = plan.visual.first(where: { $0.kind == EditPlan.Visual.title })?.lines?.joined(separator: " "),
            shown != recording.title.split(whereSeparator: \.isWhitespace).joined(separator: " ") {

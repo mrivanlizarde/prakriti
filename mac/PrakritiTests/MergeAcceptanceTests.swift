@@ -25,6 +25,7 @@ final class MergeAcceptanceTests: XCTestCase {
         guard ProcessInfo.processInfo.environment["PRAKRITI_ACCEPTANCE"] == "merge" else {
             throw XCTSkip("Reads the 13 Sep and 6 Sep talks. Run it with: cd ~/Code/prakriti/mac && make accept-merge MILESTONE=v2-m12a")
         }
+        guard (ProcessInfo.processInfo.environment["PRAKRITI_MERGE_PART"] ?? "") != "add" else { throw XCTSkip("PRAKRITI_MERGE_PART=add runs part M12b's half only") }
         var lines: [String] = []
         var failures = 0
         func verdict(_ name: String, _ pass: Bool, _ measured: String) {
@@ -182,6 +183,7 @@ final class MergeAcceptanceTests: XCTestCase {
         report()
         model.log.write("Acceptance test for v2 part M12a finished.")
     }
+
 
     private func fingerprint(_ url: URL) -> String {
         let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])

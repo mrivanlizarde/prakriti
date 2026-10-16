@@ -260,8 +260,14 @@ accept-shorts:
 #                 moments, all from 6 Sep, each the 6 Sep transcript's own words, 5 to 45 s on sentence boundaries; every request of Choosing
 #                 moments counted under the lock (LM Studio here, 0 to the cloud) and the lock's route on the real pair worked out. Needs LM
 #                 Studio with text-embedding-nomic-embed-text-v1.5. Writes acceptance-merge.txt to ../screens/mac/$(MILESTONE)/ (about 25 minutes)
+#                 v2 part M12b's half (PLAN M12 checks 2 (add, Make Again), 3, 5 and 7, MergeAddAcceptanceTests): the same two talks made, Find
+#                 Supporting Moments on 13 Sep's part about the sales career, Add on the first, the edited video on, Make Again on the whole
+#                 talk: Parakeet hears the moment's words at the planned time, Vision reads "6 Sep 2026" 1 s into it, each recording within
+#                 1 LU of -14 LUFS, the plan valid, the Ready checklist passing, the Timeline-lite drawn; then a face planted in the corner of
+#                 the 6 Sep people file inside the moment on Leave Out: Make Again refused with PLAN M12's line, nothing new in Video/ (the 6 Sep
+#                 people file is put back). Writes acceptance-merge-add.txt (about 40 minutes). PRAKRITI_MERGE_PART=find or add runs one half
 accept-merge:
-	TEST_RUNNER_PRAKRITI_ACCEPTANCE=merge TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/MergeAcceptanceTests
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=merge TEST_RUNNER_PRAKRITI_MERGE_PART="$(PRAKRITI_MERGE_PART)" TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/MergeAcceptanceTests -only-testing:PrakritiTests/MergeAddAcceptanceTests
 
 # accept-thumbnails  v2 part M11b's acceptance (PLAN M11 checks 4, 5 and 6) through the app's runner in development: the REAL 13 Sep
 #                 talk, whole (the last part of M11), made with the edited video, the shorts and the thumbnails on (Gabriel teaching, parts

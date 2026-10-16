@@ -158,19 +158,28 @@ struct VersionRow: View {
     }
 }
 
-/// Supporting Moments (design spec 3.5.3 item 8, v2 part M12a): Find Supporting Moments... looks in other recordings of the same
-/// teacher for moments that support this recording's main points. Prakriti only finds them; adding one to the video is not built yet,
-/// so this section says only what the button does.
+/// Supporting Moments (design spec 3.5.3 item 8, v2 parts M12a and M12b): the moments Ivan added from other recordings, each with
+/// its day, length and where it goes, whether its date shows on screen, and Remove; then Find Supporting Moments..., which looks in
+/// other recordings of the same teacher for moments that support this recording's main points.
 struct SupportingMomentsSection: View {
     @Bindable var recording: Recording
     @Environment(AppModel.self) private var model
 
     var body: some View {
         Section {
-            Text(model.teacherName(of: recording).map { "Moments where \($0) makes the same point in another recording. Prakriti finds them and shows them; nothing is added to the video." }
-                 ?? "Moments where the same teacher makes the same point in another recording. Choose who is teaching in Info first.")
-                .font(AppFont.body)
-                .fixedSize(horizontal: false, vertical: true)
+            let added = recording.direction.moments
+            if added.isEmpty {
+                Text(model.teacherName(of: recording).map { "Moments where \($0) makes the same point in another recording. Prakriti finds them; you choose which to add." }
+                     ?? "Moments where the same teacher makes the same point in another recording. Choose who is teaching in Info first.")
+                    .font(AppFont.body)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                ForEach(added) { moment in
+                    AddedMomentRow(moment: moment, showDate: Binding(get: { moment.showDate }, set: { model.setMomentShowsDate(moment.id, $0, in: recording) }),
+                                   remove: { model.removeMoment(moment.id, from: recording) })
+                }
+                RowNote("Added moments are in the video from the next Make Again.")
+            }
             Button("Find Supporting Moments…") { model.findSupportingMoments(recording) }
                 .disabled(!model.canFindSupportingMoments(recording))
                 .quickHelp("Looks in other recordings of the same teacher for moments that support this recording's main points, and shows up to three.",
@@ -178,5 +187,37 @@ struct SupportingMomentsSection: View {
         } header: {
             SectionHeader("Supporting Moments")
         }
+    }
+}
+
+/// One added moment (v2 part M12b): "From Sun 6 Sep 2026, Talk with Gabriel", its length and where it goes, its date switch and Remove.
+struct AddedMomentRow: View {
+    let moment: AddedMoment
+    @Binding var showDate: Bool
+    let remove: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: "rectangle.stack.badge.plus")
+                    .font(AppFont.body)
+                    .foregroundStyle(Color.teal)
+                    .accessibilityHidden(true)
+                Text("From \(moment.sourceLabel)")
+                    .font(AppFont.headline)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                Button("Remove") { remove() }
+                    .quickHelp("Takes this moment out of the video at the next Make Again.", article: "editorial-direction")
+            }
+            Text("\(Format.timecode(moment.seconds)) long, after \(Format.timecode(moment.after)). Added by you.")
+                .font(AppFont.secondary)
+                .foregroundStyle(.appSecondary)
+            Toggle("Show its date on screen", isOn: $showDate)
+                .toggleStyle(.checkbox)
+                .font(AppFont.body)
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .contain)
     }
 }

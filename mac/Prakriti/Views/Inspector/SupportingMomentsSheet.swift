@@ -5,7 +5,8 @@ import SwiftUI
 /// Find Supporting Moments (v2 part M12a, design spec 3.8, about 720 by 600 pt): what the moments should support, then up to three
 /// moments from other recordings of the same teacher, each with its source and date, its exact words in quotes with their length,
 /// one plain sentence saying why, and where it would go; Play plays it in the sheet's own player, Not This One sets it aside. The empty
-/// state gives the real count searched. Prakriti only finds: nothing here adds a moment to the video.
+/// state gives the real count searched. Add (v2 part M12b) keeps the moment with the recording, by Ivan's click only; it goes into
+/// the video at the next Make Again. The footer's switch (design spec C6) says whether a moment added from here shows its date on screen.
 struct SupportingMomentsSheet: View {
     let request: MomentsRequest
     @Environment(AppModel.self) private var model
@@ -46,10 +47,12 @@ struct SupportingMomentsSheet: View {
             }
             Divider()
             HStack(spacing: 10) {
-                Text("Prakriti only finds moments. Nothing is added to the video.")
-                    .font(AppFont.secondary)
-                    .foregroundStyle(.appSecondary)
+                @Bindable var model = model
+                Toggle("Clips from another day show their date on screen.", isOn: $model.momentsShowDate)
+                    .toggleStyle(.switch)
+                    .font(AppFont.body)
                     .fixedSize(horizontal: false, vertical: true)
+                    .quickHelp("A moment you add shows the day it was recorded, small in the top corner, for its first 3 seconds.", article: "editorial-direction")
                 Spacer()
                 Button("Done") {
                     player.stop()
@@ -97,12 +100,14 @@ struct SupportingMomentsSheet: View {
                     }
                 }
             } else {
+                let recording = model.recording(id: request.recordingID)
                 ForEach(shown) { moment in
-                    MomentRow(moment: moment, playing: player.playing == moment.id,
-                              play: { player.play(moment) }, stop: { player.stop() }, setAside: { model.dismissMoment(moment) })
+                    MomentRow(moment: moment, playing: player.playing == moment.id, added: recording.map { model.isAdded(moment, to: $0) } ?? false,
+                              play: { player.play(moment) }, stop: { player.stop() }, setAside: { model.dismissMoment(moment) },
+                              add: { if let recording { model.addMoment(moment, to: recording) } })
                     Divider()
                 }
-                Text("Found among \(Format.count(search.searched, "recording")) of \(search.teacherName) by meaning on this Mac; each read by \(search.by).")
+                Text("Found among \(Format.count(search.searched, "recording")) of \(search.teacherName) by meaning on this Mac; each read by \(search.by). A moment you add goes into the video at the next Make Again.")
                     .font(AppFont.secondary)
                     .foregroundStyle(.appSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -121,13 +126,15 @@ struct SupportingMomentsSheet: View {
     }
 }
 
-/// One moment: its source and date, its words in quotes with their length, why, where it would go, Play and Not This One.
+/// One moment: its source and date, its words in quotes with their length, why, where it would go, Play, Add and Not This One.
 struct MomentRow: View {
     let moment: SupportingMoment
     let playing: Bool
+    var added = false
     let play: () -> Void
     let stop: () -> Void
     let setAside: () -> Void
+    var add: () -> Void = {}
     @Environment(AppModel.self) private var model
 
     var body: some View {
@@ -171,7 +178,16 @@ struct MomentRow: View {
                     Button("Play") { play() }
                         .disabled(!FileManager.default.fileExists(atPath: moment.filePath))
                 }
-                Button("Not This One") { setAside() }
+                if added {
+                    Label("Added", systemImage: "checkmark.circle")
+                        .font(AppFont.body)
+                        .foregroundStyle(.appSecondary)
+                        .accessibilityLabel("Added. It goes into the video at the next Make Again.")
+                } else {
+                    Button("Add") { add() }
+                        .quickHelp("Adds this moment to the video at the next Make Again, after the sentence shown above.", article: "editorial-direction")
+                    Button("Not This One") { setAside() }
+                }
             }
         }
         .accessibilityElement(children: .contain)

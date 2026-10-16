@@ -5,7 +5,8 @@ import SwiftData
 // main points), from the transcript's selected words (Find Supporting Moments for This...) and from the Recording menu. It opens the
 // sheet at once and searches in the background: the index on this Mac is brought up to date (`MomentFinder.update`), the windows
 // above the threshold are read by the model chosen for "Choosing moments" under the privacy lock, and up to three moments are shown.
-// Nothing is added to any plan or video: adding one by hand is part M12b. Searches run one at a time (`momentWork`).
+// Searches run one at a time (`momentWork`). Adding one is by hand only (v2 part M12b, `addMoment`): Add in the sheet keeps it with the
+// recording's direction, and it goes into the video at the next Make Again, read again from its own recording then (`momentInserts`).
 
 /// The sheet's request: one recording, and the words chosen in its transcript when it came from them.
 struct MomentsRequest: Identifiable, Equatable {
@@ -40,6 +41,7 @@ extension AppModel {
         let request = MomentsRequest(recordingID: recording.id, selection: selection)
         momentsSheet = request
         dismissedMoments = []
+        momentsShowDate = true
         momentsState = .searching("Looking for moments.")
         let previous = momentWork
         momentWork = Task { @MainActor [weak self] in
@@ -173,6 +175,81 @@ extension AppModel {
                 ?? (error as? MomentIndex.Failure)?.reason ?? (error as? ModelFailure)?.reason ?? error.localizedDescription
             record("\(label): supporting moments were not found. \(reason)", level: .attention)
             return .refused(reason)
+        }
+    }
+
+    // MARK: Added by hand (v2 part M12b)
+
+    /// Whether this moment is already in the recording.
+    func isAdded(_ moment: SupportingMoment, to recording: Recording) -> Bool {
+        recording.direction.moments.contains { $0.sourceID == moment.sourceID && $0.window == moment.window }
+    }
+
+    /// Add: Ivan's click, and the only way a moment joins a recording. Nothing is planned or made until Make Again.
+    func addMoment(_ moment: SupportingMoment, to recording: Recording) {
+        guard !isAdded(moment, to: recording) else { return }
+        var direction = recording.direction
+        direction.moments.append(AddedMoment.added(byIvan: moment, showDate: momentsShowDate, at: now()))
+        recording.direction = direction
+        recording.updatedAt = now()
+        try? context.save()
+        record("\(Format.dayLabel(recording.sessionDate)) (\(recording.fileName)): you added a moment from \(Format.dayLabel(moment.sourceDate)) "
+               + "(\(Format.length(moment.seconds))) after \(Format.timecode(moment.after)). It goes into the video at the next Make Again.")
+    }
+
+    /// Remove beside an added moment.
+    func removeMoment(_ id: String, from recording: Recording) {
+        var direction = recording.direction
+        guard let moment = direction.moments.first(where: { $0.id == id }) else { return }
+        direction.moments.removeAll { $0.id == id }
+        recording.direction = direction
+        recording.updatedAt = now()
+        try? context.save()
+        record("\(Format.dayLabel(recording.sessionDate)) (\(recording.fileName)): you removed the moment from \(Format.dayLabel(moment.sourceDate)). "
+               + "It leaves the video at the next Make Again.")
+    }
+
+    /// The date on screen for one added moment (design spec C6, switchable per clip).
+    func setMomentShowsDate(_ id: String, _ show: Bool, in recording: Recording) {
+        var direction = recording.direction
+        guard let i = direction.moments.firstIndex(where: { $0.id == id }), direction.moments[i].showDate != show else { return }
+        direction.moments[i].showDate = show
+        recording.direction = direction
+        recording.updatedAt = now()
+        try? context.save()
+    }
+
+    /// The moments of a recording as a make reads them, each from its own recording as it is NOW: its original, transcript, frame rate,
+    /// and its people and Ivan's choices of this moment (PLAN M12, "Re-checked at every render").
+    func momentInserts(for recording: Recording) -> [MomentInsert] {
+        recording.direction.moments.map { moment in
+            var insert = MomentInsert(moment: moment, name: "", people: MomentPeople(checked: false))
+            guard let other = self.recording(id: moment.sourceID) else {
+                insert.unreadable = "its recording is not in the library any more"
+                return insert
+            }
+            insert.name = URL(fileURLWithPath: other.filePath).deletingPathExtension().lastPathComponent
+            insert.original = URL(fileURLWithPath: other.filePath)
+            insert.duration = other.duration
+            if !FileManager.default.fileExists(atPath: other.filePath) {
+                insert.unreadable = "its original is not where it was found"
+            }
+            if let source = momentSource(other) {
+                insert.words = PlanWords(words: source.words, transcriptSHA256: source.transcriptSHA256, sentences: Set(source.words.map(\.sentence)).count)
+                insert.people = source.people
+            } else if insert.unreadable == nil {
+                insert.unreadable = "its transcript could not be read"
+            }
+            // The same frame rate as this recording, or the moment's frames would be counted wrong.
+            if let mine = recording.capture?.video?.frameRate, let theirs = other.capture?.video?.frameRate, abs(mine - theirs) > 0.01, insert.unreadable == nil {
+                insert.unreadable = "it was recorded at another frame rate"
+            }
+            // A name said aloud that Ivan muted in that recording stays muted: a moment holding one is not used.
+            let muted = other.choices.muted(other.namesSaid?.moments ?? [])
+            if muted.contains(where: { $0.end > moment.window.start && $0.start < moment.window.end }), insert.unreadable == nil {
+                insert.unreadable = "a name said aloud in it is muted"
+            }
+            return insert
         }
     }
 

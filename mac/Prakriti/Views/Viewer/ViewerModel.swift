@@ -595,7 +595,8 @@ final class ViewerModel {
 /// A span of the Timeline-lite: kept time, or time the trim or a cut takes out, on the original's clock. On the Original,
 /// once a recording has an edit plan (v2 part M8a), the spans are the plan's: `planned` time taken out, with its reason.
 struct TimelineSpan: Identifiable, Equatable, Hashable, Sendable {
-    enum Kind: String, Sendable { case kept, trimmedStart, trimmedEnd, cut, planned }
+    /// `moment`: a moment from another recording Ivan added (v2 part M12b), drawn in teal where it goes, as long as it plays.
+    enum Kind: String, Sendable { case kept, trimmedStart, trimmedEnd, cut, planned, moment }
     let kind: Kind
     let start: Double
     let end: Double
@@ -604,7 +605,8 @@ struct TimelineSpan: Identifiable, Equatable, Hashable, Sendable {
     var detail: String?
     var id: String { "\(kind.rawValue)-\(Int(start * 1000))-\(Int(end * 1000))" }
     var length: Double { end - start }
-    var isRemoved: Bool { kind != .kept }
+    var isRemoved: Bool { kind != .kept && kind != .moment }
+    var isMoment: Bool { kind == .moment }
     /// From the edit plan, so Restore (which changes Ivan's trim and cuts) does not apply to it.
     var isPlanned: Bool { kind == .planned || detail != nil }
 
@@ -629,6 +631,7 @@ struct TimelineSpan: Identifiable, Equatable, Hashable, Sendable {
         case .trimmedStart: return "Removed: trimmed from the start, \(Format.length(length)), \(times)."
         case .trimmedEnd: return "Removed: trimmed from the end, \(Format.length(length)), \(times)."
         case .planned: return "Removed by the plan, \(times): " + (detail ?? "")
+        case .moment: return (detail ?? "A moment from another recording") + ", \(Format.length(length)), added by you after \(TimeText.string(start))."
         }
     }
 
@@ -637,7 +640,15 @@ struct TimelineSpan: Identifiable, Equatable, Hashable, Sendable {
         // The opening line repeats time the talk keeps in its place (v2 part M9d): it is a mark, not a span.
         var spans = plan.mainSpans.map { TimelineSpan(kind: .kept, start: $0.in, end: $0.out, detail: $0.text) }
         spans += plan.removed.map { TimelineSpan(kind: .planned, start: $0.from, end: $0.to, reason: $0.kind, detail: $0.say) }
-        return spans.sorted { $0.start < $1.start }
+        spans.sort { $0.start < $1.start }
+        // The moments from other recordings (v2 part M12b): each where it goes on this original's clock (after the span before it),
+        // as long as it plays; Timeline-lite makes room for it.
+        for (k, span) in plan.spans.enumerated() where span.isInsert {
+            guard let before = plan.spans[..<k].last(where: { !$0.isInsert && !$0.isHook }) else { continue }
+            let label = "From " + (span.sourceDate.map { Format.fullDay($0) } ?? (span.sourceLabel ?? "another recording"))
+            spans.append(TimelineSpan(kind: .moment, start: before.out, end: before.out + (span.out - span.in), detail: label))
+        }
+        return spans
     }
 
     /// The spans of a recording as its edits stand now (the newest trim and cuts, made or not): what

@@ -171,9 +171,28 @@ always happens on this Mac.
 :::requires merge
 ## Add a moment to the video
 
-To use a moment you found, click Add and choose where it goes, then click Make Again. An added moment
-shows the date it was recorded on screen, so viewers know it comes from another day. It follows the
-people choices of the recording it came from. To take it out, click Remove beside it.
+To use a moment you found, click **Add** beside it in the sheet. It is kept with this recording and goes
+into the video the next time you click **Make Again**. Nothing is ever added on its own.
+
+- **Where it goes:** after the sentence shown under "Where it would go", always between two sentences of
+  this recording, never at the very end.
+- **Its date:** an added moment shows the day it was recorded, small in the top corner, for its first 3
+  seconds, so viewers know it comes from another day. The switch at the bottom of the sheet sets this for
+  the moments you add from it, and **Show its date on screen** in the Direction tab changes it for one
+  moment.
+- **Its sound:** the loudness of each recording is measured on its own, and the moment is brought to this
+  recording's level before they are joined.
+- **Its picture:** its colour is matched to this recording's around where it goes, a small correction of
+  at most 15%. In the Clear and Story styles it joins with a short cross dissolve at each end, in Calm a
+  slightly longer one, and in Energetic with a straight cut.
+- **Checked every time:** each Make Again reads the moment again from the recording it came from. If
+  someone seen or heard in it has since been set to Hide Face or Leave Out there, or marked "no release",
+  no video is made, and Prakriti says "A moment from Sun 6 Sep now includes someone who is hidden. Remove
+  it or change their choice."
+
+An added moment shows in teal in the Timeline-lite where it goes, and in the Direction tab under
+Supporting Moments. To take it out, click **Remove** beside it, then Make Again. Timelines for Final Cut
+Pro and DaVinci Resolve are not made for a video with an added moment yet; the video itself has it.
 :::
 
 ## Who does the work

@@ -236,7 +236,7 @@ enum VideoThumbnails {
     /// The moments to look at, pure: where the subject's face is seen, every face there someone included or a hidden track,
     /// inside a kept span of the plan (never the opening line twice), 2 s from the ends; the beats' key lines first; spread.
     static func moments(_ file: PeopleFile, plan: EditPlan, subjectRow: Int, hidePlan: HidePlan, keyLines: [TimeRange], tries: Int = tries) -> [Double] {
-        let kept = plan.spans.filter { !$0.isHook }.map { TimeRange(start: $0.in + 0.5, end: $0.out - 0.5) }.filter { $0.end > $0.start }
+        let kept = plan.mainSpans.map { TimeRange(start: $0.in + 0.5, end: $0.out - 0.5) }.filter { $0.end > $0.start }
         let hiddenTracks = Set(hidePlan.tracks.map(\.id))
         let all = CardPicture.moments(file).filter { moment in
             moment.time >= 2 && moment.time <= file.duration - 2

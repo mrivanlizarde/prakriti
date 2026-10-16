@@ -29,7 +29,22 @@ enum VideoAudio {
         let samples: Int64
         let inputLUFS: Double?
         let normalizationType: String?
+        /// Each moment from another recording (v2 part M12b): its own loudness, the recording's, and the gain that matched them (dB).
+        var matched: [Matched] = []
     }
+
+    /// How a moment's sound was matched to the recording's before the join (v2 part M12b, research 3.5).
+    struct Matched: Equatable, Sendable {
+        var source: String
+        var momentLUFS: Double
+        var recordingLUFS: Double
+        var gain: Double
+    }
+
+    /// The most a moment's sound is raised or lowered to match: more, and something is wrong with one of the recordings.
+    static let mostMatch = 12.0
+    /// Sound decoded around a moment, either side, so its joins have their handles and nothing is read past what was decoded.
+    static let momentPad = 1.0
 
     struct Failure: Error, Equatable, Sendable {
         let reason: String
@@ -80,7 +95,39 @@ enum VideoAudio {
         }
         _ = try await tool(decodeArguments(original: original, raw: raw, mutes: mutes))
         let held = timeline.totalSamples - timeline.sample(atFrame: timeline.keptFrames)
-        let written = try join(raw: raw, pieces: timeline.audioPieces, holdSamples: held, into: joined)
+        // The moments from other recordings (v2 part M12b): each one's sound decoded around it on its own, measured on its own words'
+        // time, and raised or lowered to the recording's loudness before the join (research 3.5: "each source is measured on its
+        // own"). The whole is then mastered as one, as before.
+        var sources: [String: SampleSource] = [:]
+        var gains: [String: Float] = [:]
+        var matched: [Matched] = []
+        var extra: [URL] = []
+        defer { for url in extra { try? fm.removeItem(at: url) } }
+        let pieces = timeline.audioPieces
+        if pieces.contains(where: { $0.source != nil }) {
+            let first = try await tool(measureArguments(raw: raw))
+            guard let recording = Measure.loudnorm(stderr: first)?.inputLUFS, recording.isFinite, recording > -70 else {
+                throw Failure(reason: "The loudness of the recording's own sound could not be measured, so a moment could not be matched to it.")
+            }
+            for (k, piece) in pieces.enumerated() {
+                guard let path = piece.source else { continue }
+                let key = "\(path)#\(piece.sourceSample)"
+                let pad = Int64(momentPad * Double(EditTimeline.sampleRate))
+                let start = max(0, piece.sourceSample - pad)
+                let file = job.appending(path: "moment-\(k).f32")
+                extra.append(file)
+                _ = try await tool(momentDecodeArguments(source: URL(fileURLWithPath: path), from: start, samples: piece.samples + 2 * pad, raw: file))
+                let measured = try await tool(measureArguments(raw: file, from: piece.sourceSample - start, samples: piece.samples))
+                guard let moment = Measure.loudnorm(stderr: measured)?.inputLUFS, moment.isFinite, moment > -70 else {
+                    throw Failure(reason: "The sound of a moment from another recording could not be measured, so it was not joined.")
+                }
+                let gain = min(mostMatch, max(-mostMatch, recording - moment))
+                sources[key] = try SampleSource(file, offset: start)
+                gains[key] = Float(pow(10, gain / 20))
+                matched.append(Matched(source: URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent, momentLUFS: moment, recordingLUFS: recording, gain: gain))
+            }
+        }
+        let written = try join(main: try SampleSource(raw), sources: sources, gains: gains, pieces: pieces, holdSamples: held, into: joined)
         try? fm.removeItem(at: raw)
         guard written == timeline.totalSamples else {
             throw Failure(reason: "The sound for the video came out \(written) samples long instead of \(timeline.totalSamples).")
@@ -91,7 +138,23 @@ enum VideoAudio {
             throw Failure(reason: "The loudness of the video's sound could not be measured.")
         }
         let second = try await tool(masterArguments(joined: joined, measured: measured, wav: wav))
-        return Made(wav: wav, samples: written, inputLUFS: measured.inputLUFS, normalizationType: Measure.loudnorm(stderr: second)?.normalizationType)
+        return Made(wav: wav, samples: written, inputLUFS: measured.inputLUFS, normalizationType: Measure.loudnorm(stderr: second)?.normalizationType,
+                    matched: matched)
+    }
+
+    /// ffmpeg's arguments to decode a moment's sound (v2 part M12b): the other original's first audio track from sample `from`, `samples`
+    /// long, 48 kHz stereo floats, as the recording's own is decoded.
+    static func momentDecodeArguments(source: URL, from: Int64, samples: Int64, raw: URL) -> [String] {
+        let rate = Double(EditTimeline.sampleRate)
+        return ["-y", "-v", "error", "-ss", String(format: "%.6f", Double(from) / rate), "-i", source.path, "-map", "0:a:0", "-vn",
+                "-t", String(format: "%.6f", Double(samples) / rate), "-ac", String(channels), "-ar", String(EditTimeline.sampleRate), "-f", "f32le", raw.path]
+    }
+
+    /// The first pass of loudness on a decoded sound, all of it or `samples` from sample `from`.
+    static func measureArguments(raw: URL, from: Int64? = nil, samples: Int64? = nil) -> [String] {
+        let rate = Double(EditTimeline.sampleRate)
+        let trim = from.map { f in String(format: "atrim=start=%.6f:duration=%.6f,", Double(f) / rate, Double(samples ?? 0) / rate) } ?? ""
+        return ["-hide_banner", "-nostats"] + rawInput(raw) + ["-af", trim + Mastering.firstPass(target: target, ceiling: ceiling, channels: .stereo), "-f", "null", "-"]
     }
 
     /// Fades the first and last `frames` sample frames of a joined stereo float file in place, a quarter cosine each way.
@@ -125,7 +188,21 @@ enum VideoAudio {
 
     @discardableResult
     static func join(raw: URL, pieces: [EditTimeline.AudioPiece], holdSamples: Int64 = 0, into output: URL) throws -> Int64 {
-        let source = try SampleSource(raw)
+        try join(main: try SampleSource(raw), sources: [:], gains: [:], pieces: pieces, holdSamples: holdSamples, into: output)
+    }
+
+    /// The same, with pieces from other recordings (v2 part M12b): each piece read from its own sound (`sources`, by the other original's
+    /// path and its first sample) at its matching gain, the recording's own from `main`. A join between two recordings is the same
+    /// crossfade, each side read from its own sound.
+    @discardableResult
+    static func join(main: SampleSource, sources: [String: SampleSource], gains: [String: Float], pieces: [EditTimeline.AudioPiece], holdSamples: Int64 = 0,
+                     into output: URL) throws -> Int64 {
+        func key(_ piece: EditTimeline.AudioPiece) -> String? { piece.source.map { "\($0)#\(piece.sourceSample)" } }
+        func reader(_ piece: EditTimeline.AudioPiece) throws -> PieceReader {
+            guard let k = key(piece) else { return PieceReader(source: main, gain: 1) }
+            guard let other = sources[k] else { throw Failure(reason: "The sound of a moment from another recording was not decoded.") }
+            return PieceReader(source: other, gain: gains[k] ?? 1)
+        }
         FileManager.default.createFile(atPath: output.path, contents: nil)
         let out = try FileHandle(forWritingTo: output)
         defer { try? out.close() }
@@ -139,6 +216,7 @@ enum VideoAudio {
         // Half of each join's crossfade, in samples: 10 ms, or less where a piece is too short to hold both of its ends.
         let halves = zip(pieces, pieces.dropFirst()).map { min(handle, Int($0.samples / 2), Int($1.samples / 2)) }
         for (index, piece) in pieces.enumerated() {
+            let source = try reader(piece)
             let lead = index == 0 ? 0 : halves[index - 1]
             let tail = index == pieces.count - 1 ? 0 : halves[index]
             // The body: from after the lead crossfade (written with the piece before) to the start of the tail crossfade.
@@ -168,12 +246,13 @@ enum VideoAudio {
             }
             if tail > 0 {
                 let next = pieces[index + 1]
+                let nextSource = try reader(next)
                 // 2 x tail samples centred on the cut: the end of this piece runs on into its handle, the next piece starts
                 // from its handle, before its own start.
                 let outgoing = try source.read(from: piece.sourceSample + piece.samples - Int64(tail), count: 2 * tail)
-                let incoming = try source.read(from: next.sourceSample - Int64(tail), count: 2 * tail)
+                let incoming = try nextSource.read(from: next.sourceSample - Int64(tail), count: 2 * tail)
                 // What follows the fade in the output: the next piece from its own start plus `tail`.
-                let following = mono(try source.read(from: next.sourceSample + Int64(tail), count: around + 1))
+                let following = mono(try nextSource.read(from: next.sourceSample + Int64(tail), count: around + 1))
                 wrote(joinFade(outgoing, incoming, frames: 2 * tail, before: recent, after: following))
                 written += Int64(2 * tail)
             }
@@ -316,20 +395,35 @@ enum VideoAudio {
         return na > 0 && nb > 0 ? dot / sqrt(na * nb) : 0
     }
 
+    /// One piece's sound: where it is read from and at what gain (v2 part M12b; 1 for the recording's own).
+    struct PieceReader {
+        let source: SampleSource
+        let gain: Float
+
+        func read(from start: Int64, count: Int) throws -> [Float] {
+            let frames = try source.read(from: start, count: count)
+            return gain == 1 ? frames : frames.map { $0 * gain }
+        }
+    }
+
     /// Interleaved stereo floats read by sample frame; anything before the start or past the end of the file is silence.
+    /// `offset` is the sample of its recording the file starts at (a moment's sound is decoded from a little before it, v2 part M12b).
     final class SampleSource {
         let handle: FileHandle
         let frames: Int64
+        let offset: Int64
 
-        init(_ url: URL) throws {
+        init(_ url: URL, offset: Int64 = 0) throws {
             handle = try FileHandle(forReadingFrom: url)
             let bytes = (try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value ?? 0
             frames = bytes / Int64(4 * channels)
+            self.offset = offset
         }
 
         deinit { try? handle.close() }
 
-        func read(from start: Int64, count: Int) throws -> [Float] {
+        func read(from absolute: Int64, count: Int) throws -> [Float] {
+            let start = absolute - offset
             var out = [Float](repeating: 0, count: count * channels)
             let first = max(0, start), last = min(frames, start + Int64(count))
             guard last > first else { return out }

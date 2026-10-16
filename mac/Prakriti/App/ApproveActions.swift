@@ -62,6 +62,21 @@ extension Recording {
 }
 
 extension AppModel {
+    /// The moments from other recordings in the video Approve covers (v2 part M12b, design spec 3.8): each with its recording, its time
+    /// there and where it plays, read from the plan the video was made from; "None." when there are none.
+    func approvalMomentLines(_ recording: Recording) -> [String] {
+        guard let plan = editPlan(for: recording), !plan.insertSpans.isEmpty else { return ["None."] }
+        let timeline = EditTimeline(plan: plan)
+        return plan.insertSpans.map { span in
+            let at = timeline.pieces.first { $0.id == span.id }.map { Format.timecode(timeline.seconds($0.editFrame)) } ?? "?"
+            let file = span.sourceFile.map { URL(fileURLWithPath: $0).lastPathComponent } ?? span.source
+            return "From \(span.sourceLabel ?? span.source) (\(file)), \(Format.timecode(span.in)) to \(Format.timecode(span.out)) of that recording, "
+                + "at \(at) of the video. Added by you."
+        }
+    }
+}
+
+extension AppModel {
     private func approvalLabel(_ recording: Recording) -> String {
         "\(Format.dayLabel(recording.sessionDate)) (\(recording.fileName))"
     }
@@ -169,7 +184,7 @@ extension AppModel {
         if ids.contains("thumbnails"), let chosenThumbnail = recording.chosenThumbnail(thumbnails) {
             receipt.thumbnail = "Thumbnail \(chosenThumbnail.letter), \u{201C}\(chosenThumbnail.headline)\u{201D}: \(chosenThumbnail.reason)"
         }
-        receipt.moments = ["None."]
+        receipt.moments = approvalMomentLines(recording)
         receipt.models = approvalModelLines(recording)
         do {
             let copied = try Approval.copy(files, from: URL(fileURLWithPath: source, isDirectory: true), to: destination, receipt: receipt)

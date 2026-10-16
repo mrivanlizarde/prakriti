@@ -5,6 +5,22 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-16, Fri: v2 part M12b, supporting moments, added
+
+- **Add, by hand only, and kept with the recording until the next Make Again.** Why: REQUEST item 9, "added to the video at hand but not
+  always and not as a rule". A search never adds; Add keeps the moment, and every plan refuses an insert not added by Ivan.
+- **Checked again at every Make Again, against the other recording as it is now.** Why: Ivan can hide or leave someone out in 6 Sep after a
+  6 Sep moment went into 13 Sep's video; the next video must not carry them. The plan and the video step both refuse, in plain words.
+- **The day on screen for the first 3 s, on by default and switchable per moment.** Why: design spec C6, Serenity's accuracy condition: a
+  clip from another day, unlabeled, implies it was said in this session.
+- **Each recording's sound measured on its own and matched before the join; colour matched within 15%; a 12-frame dissolve in Clear.** Why:
+  research 3.5 and 2.4: a moment should sound and look as if it belongs, and the dissolve says honestly that time has changed.
+- **Timelines are skipped for a video with a moment.** Why: they would hold one recording's media only and not be the video; said in words.
+- **Found while building: a removal in a `defer` could replace the real error of a step.** Why it matters: a refusal surfaced as "couldn't
+  be removed"; the two places on this path now check the file is there first.
+
+---
+
 ## 2026-10-16, Fri: v2 part M12a, supporting moments, found
 
 - **Find Supporting Moments: Prakriti finds, Ivan decides.** Why: REQUEST item 9 asks to bring in sections from other videos "not always

@@ -96,8 +96,8 @@ final class WelcomeTests: XCTestCase {
     }
 
     func testOnlyWhatIsBuiltIsVisibleInThePanels() {
-        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style, .timelines, .shorts, .thumbnails, .moments],
-                       "v2 part M2b adds the welcome to Help, M3b the Viewer, M4a progress, M4b the capture check, M5b the cloud providers, M6a faces, M6b voices, M6c choices, M6d hiding, M7a the People gallery, M7b recognition, M8a the edit plan, M8b the rendered MP4, M8c the video in the Viewer, M9a the House Style, M9b the text on screen, M9c direction, M10a the timelines, M11a the shorts, M11b the thumbnails, M12a Find Supporting Moments")
+        XCTAssertEqual(Capabilities.built, [.help, .welcome, .viewer, .progress, .captureCheck, .cloudProviders, .faces, .voices, .choices, .hiding, .gallery, .recognition, .editPlan, .renderedVideo, .video, .houseStyle, .textOnScreen, .direction, .style, .timelines, .shorts, .thumbnails, .moments, .merge],
+                       "v2 part M2b adds the welcome to Help, M3b the Viewer, M4a progress, M4b the capture check, M5b the cloud providers, M6a faces, M6b voices, M6c choices, M6d hiding, M7a the People gallery, M7b recognition, M8a the edit plan, M8b the rendered MP4, M8c the video in the Viewer, M9a the House Style, M9b the text on screen, M9c direction, M10a the timelines, M11a the shorts, M11b the thumbnails, M12a Find Supporting Moments, M12b moments added by hand")
         XCTAssertEqual(unbuiltNamesFound(in: visibleText(built, capabilities: Capabilities.built), built: Capabilities.built), [])
         // At M2b, panel 1 lists finding recordings, the podcast and "nothing is posted without you".
         XCTAssertEqual(built.map(\.id), ["welcome", "record", "outputs", "privacy", "start"])

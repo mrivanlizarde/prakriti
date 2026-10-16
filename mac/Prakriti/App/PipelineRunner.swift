@@ -310,6 +310,9 @@ final class PipelineRunner {
         // Ivan's direction for this recording (v2 part M9c), the model that plans with it, and the folder holding the last
         // plan and the beats, so neither is asked for twice.
         options.direction = recording.direction
+        // The moments Ivan added (v2 part M12b), each read again from its own recording now, so a choice changed there since reaches
+        // this make (PLAN M12, "Re-checked at every render").
+        options.moments = model.momentInserts(for: recording)
         // The model is set up (and a cloud key read) for a recording with a direction, and (v2 part M9d) for a video, whose key
         // phrases, opening line and chapters come from the parts of the talk; otherwise planning asks no model.
         options.wantBeats = askForBeats

@@ -22,6 +22,14 @@ struct EditTimeline: Equatable, Sendable {
         /// A piece of the opening line (v2 part M9d): played first and again in its place, so a moment of the original it holds
         /// is found in the talk's own piece by `editTime`, never here.
         var hook = false
+        /// A moment from another recording (v2 part M12b): the path of that recording's original, whose frames `sourceFrame` counts.
+        /// Nil for the recording's own pieces. Its frames are never this recording's, so no lookup of the original's clock finds it.
+        var source: String?
+        /// Its join at each end in frames (0: a hard cut), and its colour match.
+        var join = 0
+        var colour: [Double]?
+
+        var insert: Bool { source != nil }
     }
 
     var frame: FrameDuration
@@ -41,9 +49,12 @@ struct EditTimeline: Equatable, Sendable {
         for span in plan.spans {
             let first = Int64((span.in / plan.frameDuration.seconds).rounded())
             var last = Int64((span.out / plan.frameDuration.seconds).rounded())
-            if let pictureFrames { last = min(last, pictureFrames) }
+            // The original's picture length bounds its own pieces only: a moment's frames are another recording's (v2 part M12b).
+            if let pictureFrames, !span.isInsert { last = min(last, pictureFrames) }
             guard last > first else { continue }
-            pieces.append(Piece(id: span.id, sourceFrame: first, frames: last - first, editFrame: at, hook: span.isHook))
+            pieces.append(Piece(id: span.id, sourceFrame: first, frames: last - first, editFrame: at, hook: span.isHook,
+                                source: span.isInsert ? (span.sourceFile ?? span.source) : nil, join: span.isInsert ? (span.join ?? 0) : 0,
+                                colour: span.isInsert ? span.colour : nil))
             at += last - first
         }
         self.pieces = pieces
@@ -81,13 +92,21 @@ struct EditTimeline: Equatable, Sendable {
         var sourceSample: Int64
         var editSample: Int64
         var samples: Int64
+        /// Which recording's sound it takes: nil for this recording's own, else the other original's path (v2 part M12b).
+        var source: String? = nil
     }
 
     var audioPieces: [AudioPiece] {
         pieces.map { piece in
             let editStart = sample(atFrame: piece.editFrame), editEnd = sample(atFrame: piece.editFrame + piece.frames)
-            return AudioPiece(sourceSample: sample(atFrame: piece.sourceFrame), editSample: editStart, samples: editEnd - editStart)
+            return AudioPiece(sourceSample: sample(atFrame: piece.sourceFrame), editSample: editStart, samples: editEnd - editStart, source: piece.source)
         }
+    }
+
+    /// The same timeline with only this recording's own pieces, each where it is (v2 part M12b): for what reads the original's
+    /// frames by number (the faces hidden), which must never count another recording's frames as its own.
+    var ownPieces: EditTimeline {
+        EditTimeline(frame: frame, pieces: pieces.filter { !$0.insert }, holdFrames: holdFrames)
     }
 
     var totalSamples: Int64 { sample(atFrame: totalFrames) }
@@ -96,7 +115,7 @@ struct EditTimeline: Equatable, Sendable {
     /// found in its place in the talk (v2 part M9d): the opening line's pieces are skipped.
     func editTime(_ original: Double) -> Double? {
         let f = original / frame.seconds
-        for piece in pieces where !piece.hook && f >= Double(piece.sourceFrame) - 1e-6 && f <= Double(piece.sourceFrame + piece.frames) + 1e-6 {
+        for piece in pieces where !piece.hook && !piece.insert && f >= Double(piece.sourceFrame) - 1e-6 && f <= Double(piece.sourceFrame + piece.frames) + 1e-6 {
             return (f - Double(piece.sourceFrame) + Double(piece.editFrame)) * frame.seconds
         }
         return nil
@@ -119,6 +138,8 @@ struct EditTimeline: Equatable, Sendable {
     func originalTime(_ edited: Double) -> Double? {
         let f = edited / frame.seconds
         for piece in pieces where f >= Double(piece.editFrame) - 1e-6 && f < Double(piece.editFrame + piece.frames) - 1e-6 {
+            // A moment from another recording (v2 part M12b) has no moment of this original.
+            if piece.insert { return nil }
             return (f - Double(piece.editFrame) + Double(piece.sourceFrame)) * frame.seconds
         }
         // The held last frame (v2 part M9a): every moment of the hold shows the last kept frame.
@@ -137,6 +158,6 @@ struct EditTimeline: Equatable, Sendable {
     func editTimeAtOrAfter(_ original: Double) -> Double? {
         if let t = editTime(original) { return t }
         let f = original / frame.seconds
-        return pieces.first { !$0.hook && Double($0.sourceFrame) >= f }.map { seconds($0.editFrame) }
+        return pieces.first { !$0.hook && !$0.insert && Double($0.sourceFrame) >= f }.map { seconds($0.editFrame) }
     }
 }

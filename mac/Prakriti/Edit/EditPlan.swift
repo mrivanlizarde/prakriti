@@ -82,9 +82,15 @@ struct EditPlan: Codable, Equatable, Sendable {
 
     /// A stretch kept: from one word to another, on the original's clock, with its exact words. A span whose role is `hook`
     /// (v2 part M9d) is the opening line: played first, out of the talk's order, and again in its place in the talk.
+    ///
+    /// A span whose role is `insert` (v2 part M12b, research 3.4 and 3.5) is a moment from another recording that Ivan added by hand:
+    /// `source` is that recording's name, `from`, `to`, `in` and `out` are on ITS clock and word numbers, and it carries what a renderer
+    /// needs to draw and hear it without a second plan: the original's path, its word times (for the captions), the day it was said,
+    /// the colour match and the join. `addedBy` is always "ivan": nothing else ever adds one (`MomentInserts`).
     struct Span: Codable, Equatable, Sendable {
         static let main = "main"
         static let hook = "hook"
+        static let insert = "insert"
 
         var id: String
         var source: String
@@ -94,8 +100,24 @@ struct EditPlan: Codable, Equatable, Sendable {
         var out: Double
         var role = "main"
         var text: String
+        // A moment from another recording (v2 part M12b); nil on the talk's own spans.
+        /// Who added it: "ivan", the only value a moment can have.
+        var addedBy: String?
+        /// The model's sentence about why it supports the point.
+        var reason: String?
+        /// The other recording's original, its label ("Sun 6 Sep 2026, Talk with Gabriel") and the day it was recorded.
+        var sourceFile: String?
+        var sourceLabel: String?
+        var sourceDate: Date?
+        /// Its words' times on its own recording's clock, in order (the captions are timed from them).
+        var words: [WordTime]?
+        /// The colour match (red, green and blue gains on the linear picture), nil when none is needed.
+        var colour: [Double]?
+        /// The join at each end, in frames: 0 for a hard cut, else a cross dissolve of that many frames centred on the cut.
+        var join: Int?
 
         var isHook: Bool { role == Self.hook }
+        var isInsert: Bool { role == Self.insert }
     }
 
     /// A stretch taken out. `from` and `to` are times on the original's clock; `words`, when there are any, is the
@@ -198,6 +220,8 @@ struct EditPlan: Codable, Equatable, Sendable {
         /// The direction it was made with (`RecordingDirection.signature`, v2 part M9c); empty for none. Nil in a plan made
         /// before M9c, read as none.
         var direction: String?
+        /// The moments Ivan added (`MomentInserts.signature`, v2 part M12b); nil for none.
+        var moments: String?
     }
 
     // MARK: Made from a rough cut
@@ -306,8 +330,12 @@ struct EditPlan: Codable, Equatable, Sendable {
 
     /// The opening line's spans (v2 part M9d), played first; empty when the video opens on the talk.
     var hookSpans: [Span] { spans.filter(\.isHook) }
-    /// The talk's own spans, in its order.
-    var mainSpans: [Span] { spans.filter { !$0.isHook } }
+    /// The talk's own spans, in its order: never the opening line, never a moment from another recording (v2 part M12b).
+    var mainSpans: [Span] { spans.filter { !$0.isHook && !$0.isInsert } }
+    /// The moments from other recordings Ivan added (v2 part M12b), in the video's order.
+    var insertSpans: [Span] { spans.filter(\.isInsert) }
+    /// Every span of this recording's own clock: the opening line and the talk, never a moment from another recording.
+    var ownSpans: [Span] { spans.filter { !$0.isInsert } }
     /// The opening line, from its first word to its last, or nil.
     var hook: (from: String, to: String, seconds: Double)? {
         let h = hookSpans
@@ -335,6 +363,11 @@ struct EditPlan: Codable, Equatable, Sendable {
         if leftOutParts > 0 { parts.append(Format.count(leftOutParts, "part") + " your direction leaves out") }
         var line = "Keeps \(Format.timecode(keptSeconds)) of \(Format.timecode(sourceDuration))."
         if !parts.isEmpty { line += " Taken out: " + parts.joined(separator: ", ") + "." }
+        let added = insertSpans
+        if !added.isEmpty {
+            line += " Added by you: " + Format.count(added.count, "moment") + " from another recording ("
+                + Format.timecode(added.reduce(0) { $0 + $1.out - $1.in }) + ")."
+        }
         if !checks.isEmpty { line += " " + Format.count(checks.count, "moment") + " to check." }
         return line
     }

@@ -63,20 +63,21 @@ struct TimelineLite: View {
             let width = geometry.size.width
             ZStack(alignment: .topLeading) {
                 ForEach(spans) { span in
-                    let left = x(span.start, width)
-                    let w = max(2, x(span.end, width) - left)
+                    let left = span.isMoment ? momentLeft(span, width) : x(span.start, width, edge: .start)
+                    let w = max(2, (span.isMoment ? left + CGFloat(span.length / total) * width : x(span.end, width, edge: .end)) - left)
                     SpanShape(span: span, width: w, isSelected: span == selected)
                         .frame(width: w, height: Self.height)
                         .offset(x: left)
                         .contentShape(Rectangle())
-                        .onTapGesture { choose(span) }
+                        .onTapGesture { if !span.isMoment { choose(span) } }
                         .accessibilityElement()
                         .accessibilityLabel(span.line)
-                        .accessibilityAddTraits(.isButton)
-                        .accessibilityAction { choose(span) }
-                        .quickHelp(span.line + (span.isRemoved ? " Click to play from it and see it in the inspector, with Restore."
-                                                               : " Click to play from it and see it in the inspector, with Remove."),
-                                   article: "reviewing-and-approving")
+                        .accessibilityAddTraits(span.isMoment ? [] : .isButton)
+                        .accessibilityAction { if !span.isMoment { choose(span) } }
+                        .quickHelp(span.isMoment ? span.line + " Remove it in the Direction tab."
+                                   : span.line + (span.isRemoved ? " Click to play from it and see it in the inspector, with Restore."
+                                                                 : " Click to play from it and see it in the inspector, with Remove."),
+                                   article: span.isMoment ? "editorial-direction" : "reviewing-and-approving")
                 }
                 if let position, duration > 0 {
                     Rectangle()
@@ -91,9 +92,25 @@ struct TimelineLite: View {
         .frame(height: Self.height)
     }
 
-    private func x(_ t: Double, _ width: CGFloat) -> CGFloat {
+    // The moments from other recordings (v2 part M12b) take room of their own: the map is the original plus every moment, and each
+    // moment sits where it goes, everything after it moved along by its length.
+    private var moments: [TimelineSpan] { spans.filter(\.isMoment) }
+    private var total: Double { duration + moments.reduce(0) { $0 + $1.length } }
+
+    private enum Edge { case start, end }
+
+    /// Where a moment of the original is drawn: a start at a moment's place goes after the moment, an end at it before.
+    private func x(_ t: Double, _ width: CGFloat, edge: Edge = .start) -> CGFloat {
         guard duration > 0 else { return 0 }
-        return CGFloat(min(max(0, t), duration) / duration) * width
+        let clamped = min(max(0, t), duration)
+        let room = moments.filter { edge == .start ? $0.start <= clamped + 1e-6 : $0.start < clamped - 1e-6 }.reduce(0) { $0 + $1.length }
+        return CGFloat((clamped + room) / total) * width
+    }
+
+    private func momentLeft(_ span: TimelineSpan, _ width: CGFloat) -> CGFloat {
+        guard total > 0 else { return 0 }
+        let earlier = moments.filter { $0.start < span.start - 1e-6 || ($0.start <= span.start + 1e-6 && $0.id < span.id) }.reduce(0) { $0 + $1.length }
+        return CGFloat((span.start + earlier) / total) * width
     }
 }
 
@@ -102,6 +119,14 @@ private struct SpanShape: View {
     let span: TimelineSpan
     let width: CGFloat
     let isSelected: Bool
+
+    /// A moment's words in its span: "From Sun 6 Sep 2026" when it fits, "6 Sep" when only that does, else nothing.
+    static func momentText(_ detail: String, width: CGFloat) -> String? {
+        if width >= 150 { return detail }
+        let words = detail.split(separator: " ")
+        if width >= 44, words.count >= 5 { return "\(words[2]) \(words[3])" }
+        return nil
+    }
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 5, style: .continuous)
@@ -112,6 +137,17 @@ private struct SpanShape: View {
                     Image(systemName: span.symbol)
                         .font(AppFont.label)
                         .foregroundStyle(.appSecondary)
+                        .accessibilityHidden(true)
+                }
+            } else if span.isMoment {
+                // Teal, with its day when there is room (design spec 3.8); never colour alone: the label and VoiceOver say what it is.
+                shape.fill(Color.teal.opacity(0.85))
+                if let shown = Self.momentText(span.detail ?? "", width: width) {
+                    Text(shown)
+                        .font(AppFont.label)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .padding(.horizontal, 6)
                         .accessibilityHidden(true)
                 }
             } else {
@@ -163,6 +199,12 @@ struct TimelineMark: Identifiable, Equatable, Sendable {
             case EditPlan.Visual.term: out.append(TimelineMark(kind: .text, time: at, line: "A term on screen at \(TimeText.string(at))."))
             default: break
             }
+        }
+        // A moment from another recording joined with a dissolve (v2 part M12b): marked where it goes.
+        for (k, span) in plan.spans.enumerated() where span.isInsert && (span.join ?? 0) > 0 {
+            guard let before = plan.spans[..<k].last(where: { !$0.isInsert && !$0.isHook }) else { continue }
+            out.append(TimelineMark(kind: .transition, time: before.out, line: "A cross dissolve into the moment from "
+                                    + (span.sourceDate.map { Format.dayLabel($0) } ?? "another day") + " and out of it."))
         }
         if let hook = plan.hook, let at = times[hook.from]?.in {
             out.append(TimelineMark(kind: .opening, time: at, line: String(format: "The opening line, %.0f s from %@, plays first.", hook.seconds, TimeText.string(at))))

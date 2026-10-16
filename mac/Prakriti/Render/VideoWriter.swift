@@ -59,7 +59,8 @@ enum VideoWriter {
 
         // The picture, drawn by the compositor.
         let videoReader = try AVAssetReader(asset: built.composition)
-        let videoOutput = AVAssetReaderVideoCompositionOutput(videoTracks: [built.track],
+        // Every picture track of the composition: a moment from another recording is on its own track (v2 part M12b).
+        let videoOutput = AVAssetReaderVideoCompositionOutput(videoTracks: built.composition.tracks(withMediaType: .video),
                                                               videoSettings: [kCVPixelBufferPixelFormatTypeKey as String: Compositor.pixelFormat])
         videoOutput.videoComposition = built.videoComposition
         let frames = videoReader.outputProvider(for: videoOutput)

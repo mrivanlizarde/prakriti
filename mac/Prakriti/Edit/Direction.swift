@@ -195,6 +195,10 @@ struct RecordingDirection: Codable, Equatable, Sendable {
     /// (the shorts are cut from it), so neither is in `isEmpty` or `signature`.
     var shortsCount: Int?
     var shortsLength: Int?
+    /// The moments from other recordings Ivan added by hand (v2 part M12b), in the order he added them. Kept with the direction
+    /// because they steer this recording's video the same way, so no store change comes with them; not in `isEmpty` or `signature`
+    /// (the plan keeps their own, `MomentInserts.signature`).
+    var moments: [AddedMoment] = []
 
     init(prompt: String = "", presets: [DirectionPreset] = [], pace: Pace? = nil, length: LengthChoice = .everything, removed: [String] = [],
          shortsCount: Int? = nil, shortsLength: Int? = nil) {
@@ -225,6 +229,7 @@ struct RecordingDirection: Codable, Equatable, Sendable {
         removed = (try? c.decodeIfPresent([String].self, forKey: .removed)) ?? []
         shortsCount = try? c.decodeIfPresent(Int.self, forKey: .shortsCount)
         shortsLength = try? c.decodeIfPresent(Int.self, forKey: .shortsLength)
+        moments = (try? c.decodeIfPresent([AddedMoment].self, forKey: .moments)) ?? []
     }
 
     var trimmedPrompt: String { prompt.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -253,7 +258,7 @@ struct RecordingDirection: Codable, Equatable, Sendable {
     }
 
     func json() -> String? {
-        guard !isEmpty || !removed.isEmpty || shortsCount != nil || shortsLength != nil else { return nil }
+        guard !isEmpty || !removed.isEmpty || shortsCount != nil || shortsLength != nil || !moments.isEmpty else { return nil }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         return (try? encoder.encode(self)).map { String(decoding: $0, as: UTF8.self) }

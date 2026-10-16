@@ -193,6 +193,8 @@ final class AppModel {
     @ObservationIgnored var momentWork: Task<Void, Never>?
     @ObservationIgnored let momentRequests = MomentRequestCounter()
     @ObservationIgnored var lastMomentSearch: MomentSearch?
+    /// The sheet's switch (design spec C6, v2 part M12b): a moment added from it shows its date on screen. On every time the sheet opens.
+    var momentsShowDate = true
     /// The short the inspector's Play asked for, chosen once the Viewer has the recording open (v2 part M11a).
     @ObservationIgnored var pendingShortIndex: Int?
     /// How far Make Timelines has come, 0 to 1, by recording (v2 part M10b: privacy-safe media takes minutes, not seconds).

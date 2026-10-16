@@ -97,6 +97,9 @@ enum VideoStep {
         /// nobody hidden while the gate still knows who should be, so the picture output check must stop it. Never set by the
         /// app.
         var hidingOffForTest = false
+        /// The moments from other recordings Ivan added (v2 part M12b), read again from their own recordings when the make started:
+        /// each is checked once more here, before a frame is drawn.
+        var moments: [MomentInsert] = []
         /// Where the output checks write their details (times, boxes, counts; never a name): the make's log.
         var log: (@Sendable (String) -> Void)?
     }
@@ -136,7 +139,17 @@ enum VideoStep {
         guard let data = try? Data(contentsOf: setup.transcript), let words = PlanWords.from(json: data) else {
             throw Failure(reason: "The words with their times (transcript.json) could not be read, so no video was made.")
         }
-        let problems = PlanValidation.check(setup.plan, words: words)
+        // A moment from another recording whose people changed since it was added (v2 part M12b): refused in PLAN M12's words.
+        for span in setup.plan.insertSpans {
+            if let insert = setup.moments.first(where: { $0.name == span.source && PlanWord.index(of: span.from) == $0.moment.window.firstWord }),
+               let refusal = MomentInserts.refusal(insert) {
+                throw Failure(reason: refusal)
+            }
+        }
+        let problems = PlanValidation.check(setup.plan, words: words, inserts: setup.moments)
+        if let first = problems.first, first.rule == 8 {
+            throw Failure(reason: first.line + " No video was made.")
+        }
         if let first = problems.first {
             throw Failure(reason: "The edit plan did not pass its own check (rule \(first.rule): \(first.line)), so no video was made from it.")
         }
@@ -145,7 +158,7 @@ enum VideoStep {
         try? fm.removeItem(at: folder)
         try fm.createDirectory(at: folder, withIntermediateDirectories: true)
         let job = setup.staging.appending(path: ".video-job", directoryHint: .isDirectory)
-        defer { try? fm.removeItem(at: job) }
+        defer { if fm.fileExists(atPath: job.path) { try? fm.removeItem(at: job) } }
 
         // The faces hidden in the video (v2 part M8d): followed in order through the original before anything is drawn, so
         // the compositor (for the file and the Viewer alike) only looks them up.
@@ -154,7 +167,8 @@ enum VideoStep {
         let hidingShare = setup.hiding.isEmpty ? 0.0 : 0.25
         let hidden: HiddenFaces
         do {
-            hidden = try await VideoHiding.make(original: setup.original, plan: setup.hidingOffForTest ? HidePlan() : setup.hiding, timeline: timeline, planMadeAt: setup.plan.madeAt,
+            // Only the recording's own frames are read for faces: a moment's frames are another recording's (v2 part M12b).
+            hidden = try await VideoHiding.make(original: setup.original, plan: setup.hidingOffForTest ? HidePlan() : setup.hiding, timeline: timeline.ownPieces, planMadeAt: setup.plan.madeAt,
                                                 control: setup.control, progress: { progress(0.01 + hidingShare * $0) })
         } catch let failure as VideoHiding.Failure {
             throw Failure(reason: failure.reason)
@@ -185,6 +199,10 @@ enum VideoStep {
         }
         try? fm.removeItem(at: audio.wav)
 
+        for match in audio.matched {
+            setup.log?(String(format: "a moment from %@: its sound %.1f LUFS, this recording's %.1f LUFS, matched by %+.1f dB before the join",
+                              match.source, match.momentLUFS, match.recordingLUFS, match.gain))
+        }
         let cues = Captions.cues(Captions.words(plan: setup.plan, words: words, timeline: built.timeline), duration: built.timeline.duration)
         try Captions.srt(cues).write(to: srt, atomically: true, encoding: .utf8)
         let description = VideoDescription.make(title: setup.title, notes: setup.notes, written: setup.written, toOriginal: setup.writtenToOriginal,
@@ -231,8 +249,11 @@ enum VideoStep {
         // The sound output check: the made file's sound told apart again; every voice in it is someone included.
         var sound: AudioCheck?
         if leftOut > 0, let folders = setup.folders {
-            let clock = EpisodeClock(intro: 0, segments: made.timeline.pieces.map {
-                Mastering.Span(start: made.timeline.seconds($0.sourceFrame), end: made.timeline.seconds($0.sourceFrame + $0.frames))
+            let clock = EpisodeClock(intro: 0, segments: made.timeline.pieces.enumerated().map { k, piece in
+                // A moment from another recording (v2 part M12b) is mapped far before this original's start, so no moment of it is ever
+                // read as a moment of this recording; its people were checked against its own recording.
+                let start = piece.insert ? -1e7 - Double(k) * 1e4 : made.timeline.seconds(piece.sourceFrame)
+                return Mastering.Span(start: start, end: start + made.timeline.seconds(piece.frames))
             })
             do {
                 sound = try await AudioOutputCheck.run(original: setup.original, made: [.init(name: "the video", url: made.mp4, clock: clock)],

@@ -117,6 +117,12 @@ on this Mac (nomic-embed-text in LM Studio, an index of times and numbers), and 
 whether each supports it, under the privacy lock per pair of recordings; up to three are shown with their date, exact words, why and where they
 would go. Nothing is added to a video yet (M12b). On the real talks: 13 Sep's main points found nothing in 6 Sep (12 read, all declined; the
 talks are on different subjects), and the 13 Sep part about Gabriel's sales career found 3 moments in 6 Sep, each its own words.
+**Then part M12b, supporting moments, added** (the last section, "v2 part M12b", Fri 16 Oct), the last of M12: **Add** in the sheet keeps a moment
+with the recording, by Ivan's click only (`addedBy: "ivan"`), and it goes into the video at the next Make Again, between two sentences, on the other
+recording's own frames, with its date on screen for 3 s (switchable per moment), its sound matched to this recording's, its colour matched, and a
+12-frame cross dissolve in Clear; every Make Again reads it again from its own recording and refuses it in plain words once anyone in it is hidden. On
+the whole 13 Sep talk with a 6 Sep moment: Parakeet hears it at the planned time (0.05 s off), Vision reads "6 Sep 2026" 1 s in, both recordings
+measure -13.9 to -14.1 LUFS, and a corner face planted on Leave Out in 6 Sep stops the next Make Again.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -6722,3 +6728,104 @@ no index is built until Find Supporting Moments is used, and Choosing moments fo
   transcript and Control-click). It looks only in other recordings of the same teacher whose people were checked. Are the moments worth adding?
 - [ ] **The copy rules leave out moments that mention money, prices, signing up or offers** (half of the 6 Sep talk). Too strict for moments?
 - [ ] The moments found for the 13 Sep sales part are in `screens/mac/v2-m12a/acceptance-merge.txt` (words only): the third is weak.
+
+## v2 part M12b: supporting moments, added. Fri 16 Oct 2026
+
+The last part of M12 (`docs/v2/PLAN.md`, M12, part M12b; REQUEST item 9: "added to the video at hand but not always and not as a rule"). Built on
+`main` Fri 16 Oct about 11:00 to 14:00. No Swift package added, nothing downloaded, no SwiftData model changed (the added moments live in the
+recording's direction JSON, `RecordingDirection.moments`; old directions decode with none). Under Ivan's decision of Mon 12 Oct every participant
+counts as released; this run's rules: no frame of Gabriel's talks was looked at (the date label, the dissolve and every screen were looked at on test
+patterns and made-up words; the real frame 1 s into the moment was measured by Vision and written for Ivan), nothing was sent to any cloud provider
+(every model task set to LM Studio, a refusing cloud client asked 0 times).
+
+### What was built
+
+- **Add, by hand only** (`Merge/AddedMoments.swift`, `App/MomentActions.swift`, the sheet): **Add** beside each moment keeps it with the recording
+  (`AddedMoment.added(byIvan:)`, `addedBy: "ivan"`); the row then says **Added**. The sheet's footer switch "Clips from another day show their date on
+  screen." (design spec C6) sets the date label of what is added from it. The Direction tab's Supporting Moments lists each added moment ("From Sun 6 Sep
+  2026, Talk with Gabriel", its length, where it goes, "Added by you.") with **Show its date on screen** and **Remove**. Nothing is planned or made until
+  Make Again; the plan is "behind" until then (`planIsBehind`, `basis.moments`).
+- **Read again at every plan** (`AppModel.momentInserts`, `PipelineOptions.moments`): the other recording's original, length, transcript, frame rate,
+  muted names and `MomentPeople` as Ivan's choices stand now.
+- **Placed** (`MomentInserts.place`): after the point's last sentence, at the plan's join there or by splitting a kept span in the pause after the
+  sentence (never through the opening line or the held moment), never after the last span; an `insert` span on the other recording's clock with its
+  original's path, label, day, word times, colour match and join; a `dateLabel` text (top corner, 3 s, `OverlayLayout.dateLabel` from M9b); texts that
+  would run across it left out; chapters after it moved by its length; a plan line ("Adds your moment from Sun 6 Sep (18 s) at 8:05, with a 12-frame
+  dissolve at each end."), the summary ("Added by you: 1 moment from another recording (0:18).").
+- **Checked** (`PlanValidation` rule 8): added by Ivan, another recording, its own words word for word with its word times, its ends in the gaps
+  around its words and on frames, 5 to 45 s of words, between two parts of the talk, no zoom or text but its date, colour within 15%, and everyone in
+  it on Include with a release now, else PLAN M12's line. Fails closed without its recording to check against.
+- **Drawn and heard**: `EditTimeline.Piece.source` (skipped by every lookup of the original's clock), `CompositionBuilder` (one track per other
+  original, `append` with empty edits, dissolves as two-track instructions, the picture going out keeping its framing), `Compositor` (colour by
+  `CIColorMatrix`, `CIDissolveTransition`), `VideoWriter` (every picture track), `VideoAudio` (each moment's sound decoded around it, measured on its own
+  words' time, raised or lowered to this recording's loudness, at most 12 dB, before the 20 ms joins), `Captions` (its words at its times), `VideoStep`
+  (refuses before a frame is drawn), `VideoHiding` (own frames only), the sound check's clock. The Viewer's preview uses the same builder.
+- **Shown**: Timeline-lite draws the moment in teal where it goes, with room of its own (the map is the original plus every moment), its day when wide
+  enough, a dissolve mark; never selectable for Restore. Approve and APPROVAL.md list each moment ("From Sun 6 Sep 2026, Talk with Gabriel
+  (2026-09-06 18-06-33.mp4), 55:03 to 55:21 of that recording, at 8:05 of the video. Added by you.").
+- **Timelines are refused for a plan with a moment** (`TimelineExport.momentsRefusal`, the step skipped, not failed).
+- Help 08 "Add a moment to the video" (the `merge` capability on). START_HERE Mac warnings 220 to 227. Tests: `MergeAddTests` (4),
+  `MergeAddAcceptanceTests` (`make accept-merge PRAKRITI_MERGE_PART=add`).
+
+### Found by measuring (each with its measurement)
+
+1. **The colour of the two days differs by about 20%**: mean colour, one frame a minute, 13 Sep R 108.9 G 96.8 B 85.7, 6 Sep R 130.6 G 117.3 B
+   106.5 (numbers only). Matched around the moment the gains reached the 15% limit (0.850 on all three): the 6 Sep moment is darkened by 15%, mostly
+   exposure, the hue already close.
+2. **Composition tracks**: media inserted straight at a time past the end of an empty track landed at 0 (the compositor then found no frame:
+   `Compositor.Failure` 1); a track whose asset had been released failed "The operation could not be completed"; the reader read only the main track.
+   All three fixed (Mac warning 223).
+3. **A `defer { try? removeItem }` surfaced its own error in place of the step's**: "plan-sound.f32 couldn't be removed" hid "There is no place between
+   two sentences..."; ".video-job couldn't be removed" hid the composition failure. Not reproduced in a small Swift 6.4 program; both defers now check
+   the file is there (Mac warning 224).
+4. **The synthetic talk had no join at a sentence end**, so a moment could not go "after the sentence": a span is now split in the pause after it.
+5. **Vision did not read the 34 px label on the whole 1080p frame** (648 white pixels in its box, none beside it): read in the top corner at twice its
+   size with no smallest text height, it reads "6 Sep 2026". The label is small by design (design spec C6).
+6. **Parakeet writes "Uh" or not**: the first word compared is the moment's first word that is not a filler. The moment found starts with "Uh"; the
+   insert keeps the moment's words as said.
+
+### Checks run, with results (PLAN M12, the checks part M12b runs: 1 (`addedBy`), 2 (add, Make Again), 3, 5 (Timeline-lite), 6, 7)
+
+Originals unchanged: 13 Sep 730,464,600 bytes, 6 Sep 2,578,079,009, same dates. Report: `screens/mac/v2-m12b/acceptance-merge-add.txt`.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `MergeAddTests`: an added span carries `addedBy: "ivan"` and nothing is added without that call | **PASS.** A search's result adds nothing (0 kept); Add keeps 1 with `addedBy` "ivan" (twice is once), the switch kept with it, Remove takes it out; a moment with `addedBy` "model" stops the plan ("was not added by you"); the plan's span says "ivan"; a span with `addedBy` taken away fails rule 8; a plan with no moment holds no insert. On the real talks: 0 moments before Add, 1 after, `addedBy ivan` |
+| 2 | `make accept-merge MILESTONE=v2-m12b PRAKRITI_MERGE_PART=add`: 13 Sep and 6 Sep indexed (Gabriel teaching); Find Supporting Moments on 13 Sep gives 1 to 3 from 6 Sep; add the first; Make Again | **PASS.** Both made in development (89 s, 272 s), people checked; the part "Personal sales career and business work" (4:52 to 8:26) found 3 in 272 s (55:03, 0:49, 36:11 of 6 Sep, the same as M12a); the first (55:03 to 55:21, 18 s, 62 words) added; Make Again with the edited video on (Clear) in 290 s: span m1 from 2026-09-06 18-06-33, the 6 Sep transcript's own words, a 12-frame dissolve each end, at 8:05 of a 15:21 video |
+| 3 | In the new 13 Sep video: Parakeet hears the added words at the planned time within 0.5 s; the date label "6 Sep 2026" visible 1 s in (Vision and a look); each source within 1 LU of the target; the plan validates; the Ready checklist passes | **PASS.** First word planned 484.82 s, heard 484.87 s (0.05 s); 60 of 61 words heard in order. Vision reads "6 Sep 2026" at 485.55 s (the real frame for Ivan: `screens/mac/v2-m12b/for-ivan/13sep-moment-date-label-1s.png`, not looked at here, D1; **the look** was on the test pattern: `30-moment-date-label-test-pattern.png`, the label white, small, top left, inside title safe, clear of the pattern's counter). Loudness: 13 Sep before the moment -13.9 LUFS, the 6 Sep moment -14.1, 13 Sep after it -14.1 (target -14; the match was +0.8 dB: 6 Sep -27.5, 13 Sep -26.7 LUFS before mastering). PlanValidation: no problem, against both recordings. Ready checklist: 18 passed, 0 failed, 2 missing (title and description: Ivan's words, writing off in the test). Synthetic (`MergeAddTests`): the moment's frame 45.0 dB against the other recording's own frame (18.2 against this one's), 8 frames before the cut 45.8 dB against this recording, at the cut 22.1 and 23.3 dB against each alone (a mix: `30-moment-dissolve-middle-test-pattern.png`, looked at), -13.0 and -13.4 LUFS each side after a 9 dB quieter source, its words in the captions, the Viewer's composition the same frame (45 dB) |
+| 5 | Snapshots: the Timeline-lite with the teal span; looked at | **PASS, looked at:** `30-timeline-lite-moment-light/dark` (made-up spans, teal at the end of a kept span with its own room), `30-timeline-lite-13sep-light/dark` (the real 13 Sep plan: bars and symbols only, the teal moment after 8:25), and `30-moments-sheet-add-light/dark` (Add, Added, the date switch), `30-direction-moment-added-light/dark` (the row, Show its date on screen, Remove) |
+| 6 | Regression set | **PASS.** `make build` no warnings; **`make regress`: `make test` 466 tests, 0 failures, 35 skipped by design** (1,763 s; the first run failed only `HelpTests` and `WelcomeTests`, which list the capabilities built and now include `merge`, then the whole set was run again); `make accept`: 13 Sep -16.8 LUFS, -1.7 dBFS, 137 captions; silent-60s refused at the sound check; 6 Sep -16.7 LUFS, -1.4 dBFS; `make accept-edits`: 38.82 s shorter (expected 38.82). 2,482 s in all. No SwiftData change, so no `make migrate-check` |
+| 7 | After the moment is added, a corner face planted in the 6 Sep people file inside the moment, an unnamed person on Leave Out: Make Again on 13 Sep refused with the line, nothing new in Video/ | **PASS.** Planted 2 s into the moment for 4 s at the top right corner (box 0.86, 0.06, 0.08 by 0.14), set to Leave Out for the video; Make Again (92 s): the plan step "A moment from Sun 6 Sep now includes someone who is hidden. Remove it or change their choice.", the video step "No video was made, because the edit plan could not be made: A moment from Sun 6 Sep now includes...". Video/ held 4 files before and 0 after, nothing new: the make's place step takes the old video out with the plan, and that video held the moment. The 6 Sep people file and choices put back. Synthetic: the same line from the plan step and from `VideoStep.make` on its own, Video/'s files and the MP4's date unchanged |
+
+**Em dashes:** 0 in every line this part added (grep of the new and changed files, Help 08, START_HERE, CHANGELOG and this entry for U+2014 and U+2013).
+
+### Decisions, each with its reason
+
+1. **Added moments live in the recording's direction JSON.** Reason: they steer one recording's video like the direction does; no store change, so no
+   migration for the live store.
+2. **The colour match is the mean linear colour of 6 frames each side, at most 15% per channel, none under 2%.** Reason: PLAN's [proposal, measured on two
+   real days]: the days differ by about 20% in exposure; 15% keeps a match a correction, never a grade. Ivan can say if the darkened 6 Sep moment looks
+   wrong (the frame is in for-ivan/).
+3. **The join follows research 2.4: Clear and Story a 12-frame dissolve, Calm 15, Energetic a hard cut.** Reason: PLAN M12 "the style's join"; there is no
+   House Style "Transitions" setting yet, so the style decides.
+4. **A refused plan leaves no video.** Reason: the old video held the moment with someone now hidden; keeping it would be the leak check 7 guards against.
+5. **Timelines are skipped, in words, for a video with a moment.** Reason: they would carry one recording's media only and not be the video.
+6. **A moment never goes after the talk's last span.** Reason: the held ending is the talk's own last frame.
+
+### What does not work yet
+
+- Timelines with a moment (they need the other recording's media and the dissolve as a transition, gated as in M10).
+- The transcript's "From Sun 6 Sep 2026" band (design spec 3.8) is not drawn; the moment shows in Timeline-lite, the Direction tab and Approve.
+- Play in the sheet still plays the original, not the source's edited video.
+- A moment keeps its words as said, a leading "Uh" included (the first one found starts with one).
+
+### Installed
+
+Recorded in the commit after this one, once `make install` has run.
+
+### For Ivan
+
+- [ ] **Look at the date label and the colour match on the real frame**: `screens/mac/v2-m12b/for-ivan/13sep-moment-date-label-1s.png` (8:06 of the
+  13 Sep video in development). The 6 Sep moment was darkened by the full 15% to match 13 Sep. Right, or too much?
+- [ ] **Try Add on a recording you know well**, then Make Again, and watch the join (Clear dissolves for 12 frames each side).
+- [ ] The moment found first starts with "Uh". Should Prakriti trim a filler at a moment's start?
