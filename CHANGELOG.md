@@ -5,6 +5,27 @@ why. Weekdays computed with `date(1)`.
 
 ---
 
+## 2026-10-15, Thu: v2 part M10b, privacy-safe timeline media
+
+- **A recording with anyone hidden or left out, or a muted name, now gets timelines, pointing at a privacy-safe copy instead of the
+  recording.** Why: Hide Face and Leave Out are Ivan's editing choices (12 Oct), and a timeline that points at the whole recording
+  undoes them with one dragged clip edge (PLAN R2). M10a refused these recordings; the copy is what lets the refusal go.
+- **The copy holds only the used ranges with 2 s handles, faces burned in on every frame of them, removed speech replaced by the
+  room's own sound on every track, and a left-out person's own microphone track not at all.** Why: the handle is what a dragged edge
+  reveals, so it must be as clean as the kept span; a person's own microphone carries their voice even while others speak; and room
+  tone, unlike silence, leaves an editor nothing to fill from the original (research-people.md 3.3, 3.4).
+- **The copy passes the MP4's own picture and sound checks, plus a measure of every replaced stretch, inside the gate, before any
+  timeline points at it.** Why: PLAN M10 ("checked like the MP4"). A needed check that did not run counts as failed.
+- **Face hiding is padded 2.0 times the face, not 1.6.** Why: the copy's denser check found the chin of the small corner face under
+  the old ellipse in 2 of 377 frames; one of those frames is in the MP4 too, so it was a real leak the MP4's own sampling had missed.
+- **Make Timelines refuses when Ivan's choices of who is hidden or heard are newer than the video.** Why: the timelines are the
+  video's edit; someone just chosen to hide must never reach a timeline made from an older video, and the fix is one Make Again.
+- **Push-ins can be written as moves, but stay markers until Ivan's round trips pass.** Why: in-XML animation fails silently (the
+  vault's 2026-07-30 lesson); the moves are valid against both DTDs, and the switch is flipped only by a commit with the evidence.
+- **Make Timelines shows how far it has come.** Why: the copy takes minutes, not seconds, and a spinner with no number reads as stuck.
+
+---
+
 ## 2026-10-15, Thu: v2 part M10a, timelines for Final Cut Pro and DaVinci Resolve
 
 - **The edit can now be finished by hand: FCPXML 1.14 for Final Cut Pro and 1.10 for DaVinci Resolve, from one generator.** Why:

@@ -140,3 +140,14 @@ Moved out of the article in v2 part M2a so the app bundle holds user text only. 
 - 07: "In the timelines", under `timelines`. The older line under `people` (cleaned media) stays hidden for M10b.
 - Unverified until Ivan's round trips (PLAN M10 checks 5 to 7): that Resolve 20.2.1 imports the 1.10 file with its captions,
   markers and the texts' lanes; that Final Cut Pro shows the punch-ins exactly as the MP4.
+
+## Built in v2 part M10b (Thu 15 Oct 2026)
+
+- 05: the refusal is gone. "Media" now says clone when everyone is included, privacy-safe copy otherwise; the Important note
+  describes the copy as built (the parts used with 2 s to spare, faces burned in, removed speech replaced by the room's own
+  sound on every track, a left-out person's own microphone track not in it, looked at and listened to again before it is kept,
+  about 22 GB an hour of edit, measured 49.2 Mbps on two-people-mixed). Push-ins stay markers: the round trips are Ivan's.
+- 07: "In the timelines" rewritten to the privacy-safe copy and its checks; the bullet under `choices` ("uses the video with
+  your choices already applied") now names the privacy-safe copy, which is what is built.
+- 10: "If there is no timeline" names the two new reasons (choices newer than the video, the copy failing its own check) and
+  the disk room the copy needs.

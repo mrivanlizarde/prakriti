@@ -262,10 +262,16 @@ is still made, and the inspector's Outputs say why the writing stopped.
 
 ### If there is no timeline
 
-Timelines are made from the edited video, so make the video first. A timeline is written only when everyone in the
-video is included and no name is muted: for anyone set to Hide Face or Leave Out, the inspector's Outputs, under
-Timelines, says "A timeline for a recording with hidden people arrives in the next update." If it says the edit plan
-changed, click Make Video Again, then Make Timelines.
+Timelines are made from the edited video, so make the video first. If the inspector's Outputs, under Timelines, says
+the edit plan changed, or that your newest choices of who is hidden or heard are not in the video yet, click Make
+Video Again, then Make Timelines.
+
+If it says a face could not be accounted for, or that a sound track is louder than the room where speech was
+removed, the privacy-safe copy did not pass its own check and nothing was kept. Check the person's choice in People,
+make the video again, then Make Timelines.
+
+A recording with anyone hidden needs room for its privacy-safe copy: about 22 GB for an hour of edit. If the Mac is
+nearly full, free some space first.
 
 ### If the media shows as missing or offline
 

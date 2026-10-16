@@ -3,8 +3,8 @@ import SwiftUI
 
 /// The timelines in the inspector's Outputs tab (v2 part M10a, design spec 3.5.1 rows 3 and 4): one row for Final Cut Pro and one
 /// for DaVinci Resolve, each with Open in [the app] (only when the app is on this Mac) and Show in Finder, and Make Timelines,
-/// which writes them from the video already made. A recording with anyone hidden or left out, or a muted name, gets the refusal
-/// in words and nothing is written (until M10b's privacy-safe media).
+/// which writes them from the video already made. A recording with anyone hidden or left out, or a muted name, gets them too (v2
+/// part M10b), pointing at privacy-safe media, which takes minutes: the row shows how far it has come.
 struct TimelineSection: View {
     @Bindable var recording: Recording
     @Environment(AppModel.self) private var model
@@ -15,9 +15,10 @@ struct TimelineSection: View {
         let writing = model.writingTimelines.contains(recording.id)
         Section {
             if writing {
-                HStack(spacing: 10) {
-                    ProgressView()
-                    Text("Writing the timelines.").font(AppFont.body)
+                let share = model.timelineProgress[recording.id] ?? 0
+                VStack(alignment: .leading, spacing: 6) {
+                    ProgressView(value: share)
+                    Text(share > 0 ? "Writing the timelines, \(Int((share * 100).rounded(.down)))%." : "Writing the timelines.").font(AppFont.body)
                 }
             } else if let record, model.timelineFolder(recording) != nil {
                 if !model.timelineIsCurrent(recording) {
@@ -27,9 +28,20 @@ struct TimelineSection: View {
                     note: nil)
                 row(.resolve, detail: "FCPXML \(FCPXMLVersion.resolve.rawValue), the same edit, with its captions beside it as \(record.captionsName).",
                     note: "In DaVinci Resolve, choose File > Import > Timeline and select the file.")
-                RowNote("Both use the copy of the recording in Media and the text in Graphics, inside the Timeline folder. Slow push-ins are markers, and each text has an editable copy switched off above it. Read Me.txt says how to open each.")
+                if record.privacySafe == true {
+                    RowNote("Both use a privacy-safe copy of the recording in Media: hidden faces are burned in and removed speech is replaced by the room's own sound, so nobody you hid comes back, even with every effect off. "
+                            + (TimelineAnimations.verified ? "" : "Slow push-ins are markers. ") + "Read Me.txt says how to open each.")
+                } else {
+                    RowNote("Both use the copy of the recording in Media and the text in Graphics, inside the Timeline folder. "
+                            + (TimelineAnimations.verified ? "" : "Slow push-ins are markers, and each text has an editable copy switched off above it. ") + "Read Me.txt says how to open each.")
+                }
             } else if refusal == nil {
-                Text("Prakriti can write the same edit as the video for Final Cut Pro and DaVinci Resolve: every cut, punch-in, caption and title, the text as clips that look exactly as in the video. It takes a few seconds.")
+                let safe = EditPlan.read(folder: recording.outputFolder).map {
+                    CleanedMedia.needed(plan: $0, hiddenFaces: recording.video?.hiddenFaces ?? 0, leftOutVoices: recording.video?.leftOutVoices ?? 0)
+                } ?? false
+                Text(safe
+                     ? "Prakriti can write the same edit as the video for Final Cut Pro and DaVinci Resolve. Someone is hidden or left out, so it first makes a privacy-safe copy of the parts used, with faces burned in and removed speech replaced. That takes a few minutes."
+                     : "Prakriti can write the same edit as the video for Final Cut Pro and DaVinci Resolve: every cut, punch-in, caption and title, the text as clips that look exactly as in the video. It takes a few seconds.")
                     .font(AppFont.body)
                     .fixedSize(horizontal: false, vertical: true)
             }

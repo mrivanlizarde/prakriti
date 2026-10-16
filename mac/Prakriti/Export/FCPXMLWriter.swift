@@ -48,6 +48,21 @@ struct TimelineSpec: Sendable {
         var audioSources = 1
         var audioChannels = 2
         var audioRate = 48_000
+        /// The privacy-safe media's used ranges (v2 part M10b, `CleanedMedia.ranges`): each piece a range of the original, end to
+        /// end on the file's own clock. Nil for a clone, whose clock is the original's.
+        var ranges: [EditTimeline.Piece]?
+
+        /// The file's frame that shows the original's frame `source`. A frame outside every range (never asked for by a timeline
+        /// made from the same plan) maps to the nearest range's edge.
+        func frame(ofSource source: Int64) -> Int64 {
+            guard let ranges, !ranges.isEmpty else { return source }
+            if let range = ranges.first(where: { source >= $0.sourceFrame && source < $0.sourceFrame + $0.frames }) {
+                return range.editFrame + (source - range.sourceFrame)
+            }
+            if let last = ranges.last, source == last.sourceFrame + last.frames { return last.editFrame + last.frames }
+            let nearest = ranges.min { abs($0.sourceFrame - source) < abs($1.sourceFrame - source) }!
+            return source < nearest.sourceFrame ? nearest.editFrame : nearest.editFrame + nearest.frames
+        }
     }
 
     /// A rendered clip (a text, or the held last frame), where it will be.
@@ -104,7 +119,16 @@ struct TimelineLayout: Equatable, Sendable {
         var fadeIn = false
         var fadeOut = false
         var pushInHere = false
+        /// A slow push-in written as a move (only once `TimelineAnimations.verified`): the scale and position at each key, the key's
+        /// time in the clip's own time.
+        var keys: [Key] = []
         var editEnd: Int64 { editStart + frames }
+
+        struct Key: Equatable, Sendable {
+            var frame: Int64
+            var scale: Double
+            var position: CGPoint
+        }
     }
 
     struct Anchored: Equatable, Sendable {
@@ -124,6 +148,13 @@ struct TimelineLayout: Equatable, Sendable {
     var captions: Int { anchored.filter { if case .caption = $0.kind { true } else { false } }.count }
     var markers: Int { anchored.filter { if case .marker = $0.kind { true } else { false } }.count }
     var chapterMarkers: Int { anchored.filter { if case .chapter = $0.kind { true } else { false } }.count }
+}
+
+/// Whether slow push-ins go into the timelines as moves (v2 part M10b, PLAN M10 checks 6 and 7). Off until a round trip in Final
+/// Cut Pro and in DaVinci Resolve has shown a keyed `adjust-transform` arrive as the same move (the vault's 2026-07-30 lesson: in-XML
+/// animation fails silently on import). Turned on only by a commit that carries the evidence (Mac warning 191).
+enum TimelineAnimations {
+    static let verified = false
 }
 
 enum FCPXMLWriter {
@@ -155,12 +186,24 @@ enum FCPXMLWriter {
             let base = piece.hook ? "Opening line" : "Part \(mainNumber)"
             for k in 0..<(points.count - 1) {
                 let a = points[k], b = points[k + 1]
-                var clip = TimelineLayout.Clip(name: base, asset: "media", editStart: a, frames: b - a, sourceStart: piece.sourceFrame + (a - start))
+                var clip = TimelineLayout.Clip(name: base, asset: "media", editStart: a, frames: b - a,
+                                               sourceStart: spec.media.frame(ofSource: piece.sourceFrame + (a - start)))
                 if let s = spec.framing.segment(at: a) {
-                    if s.easeFrames == 0 || spec.animationsVerified {
+                    if s.easeFrames == 0 {
                         clip.scale = s.scale
                         clip.position = position(rect: s.rect, scale: s.scale, aspect: aspect)
                         clip.name = base + String(format: ", punch-in %.2f", s.scale)
+                    } else if spec.animationsVerified {
+                        // The push-in as a move, keyed where the compositor's ease starts and ends inside this clip (v2 part M10b,
+                        // written only once the round trips in both apps have passed: `TimelineAnimations.verified`).
+                        let from = max(a, s.start), to = min(b - 1, s.start + s.easeFrames)
+                        clip.keys = [from, to].map { f in
+                            let rect = spec.framing.rect(atEditFrame: f) ?? Framing.whole
+                            let scale = 1 / max(0.01, rect.width)
+                            return TimelineLayout.Clip.Key(frame: clip.sourceStart + (f - a), scale: (scale * 10_000).rounded() / 10_000,
+                                                           position: position(rect: rect, scale: scale, aspect: aspect))
+                        }
+                        clip.name = base + String(format: ", push-in %.2f", s.scale)
                     } else {
                         // A slow push-in stays wide, marked, until the round trip passes.
                         clip.pushInHere = s.start == a
@@ -293,6 +336,19 @@ enum FCPXMLWriter {
             x.append(open + ">")
             if let scale = clip.scale, let p = clip.position {
                 x.append("              <adjust-transform position=\"\(number(p.x)) \(number(p.y))\" scale=\"\(number(scale)) \(number(scale))\"/>")
+            } else if clip.keys.count >= 2 {
+                x.append("              <adjust-transform>")
+                for name in ["position", "scale"] {
+                    x.append("                <param name=\"\(name)\">")
+                    x.append("                  <keyframeAnimation>")
+                    for key in clip.keys {
+                        let value = name == "scale" ? "\(number(key.scale)) \(number(key.scale))" : "\(number(key.position.x)) \(number(key.position.y))"
+                        x.append("                    <keyframe time=\"\(t(key.frame))\" value=\"\(value)\" interp=\"ease\"/>")
+                    }
+                    x.append("                  </keyframeAnimation>")
+                    x.append("                </param>")
+                }
+                x.append("              </adjust-transform>")
             }
             if clip.asset == "media" && m.hasAudio && (clip.fadeIn || clip.fadeOut) {
                 x.append("              <adjust-volume>")

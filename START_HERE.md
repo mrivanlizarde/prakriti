@@ -680,7 +680,7 @@ yet (M6d). With nobody left out and nothing muted the episode is made exactly as
 **v2 part M6d, hiding in pictures, Tue 13 Oct (built, not installed: see BUILD-LOG "v2 part M6d"):** once faces are
 known, a recording's card, list row and Activity row show a frame from it instead of the plain tile, chosen so everyone
 in it is someone Ivan included; failing that, with the face of everyone set to Hide Face or Leave Out hidden by
-`FaceHide` (padded 1.6 times, blurred and pixelated, held 0.5 s around each sighting, followed at the full frame rate by
+`FaceHide` (padded 1.6 times, 2.0 since M10b (Mac warning 197), blurred and pixelated, held 0.5 s around each sighting, followed at the full frame rate by
 Vision's tracker); failing that, the tile. Vision checks every frame before it is kept. The picture lives in
 `<Application Support>/Thumbnails/` and is the only picture Prakriti keeps; a change of choice or name deletes it at once
 and chooses again. In the Viewer, on the Original, **People** (top right of the picture, or View > People) draws a box and
@@ -944,6 +944,26 @@ Final Cut Pro Timeline** (Command-E) and **Export DaVinci Resolve Timeline**. Ap
 not keep it (it points at Outputs by absolute path). Help 05, 07 and 10 (`timelines` capability). `make accept-timeline`, then `make
 resolve-import`.
 
+**v2 part M10b, privacy-safe timeline media, Thu 15 Oct (see BUILD-LOG "v2 part M10b"):** M10a's refusal is gone. Whenever anyone in the
+video is hidden or left out, or a name is muted (`CleanedMedia.needed`), `Timeline/Media` holds `<recording> privacy-safe.mov` instead of
+a clone, and both timelines point at it (`Export/CleanedMedia.swift`): only the used ranges (every kept span with 2 s handles each side,
+joined where they meet, `CleanedMedia.ranges`), end to end; faces burned in by the same `Compositor` and the same `VideoHiding` regions
+over every frame of the ranges, handles included (`CompositionBuilder.buildMedia`: no punch-in, no text, no hold); removed speech (the
+plan's people cuts and muted names, `CleanedMedia.silenced`) replaced on **every** kept audio track by that track's own room tone (the
+quietest second where no voice, word or cut is, found on the first track and taken at the same moment on each, laid forward then back,
+with a 10 ms blend outside the stretch); a left-out voice's own microphone track (OBS track 2 and up, `FoundVoice.track`) left out
+entirely; HEVC Main 10 at 50 Mbps at 1080p (scaled by pixels above), 24-bit PCM per kept track, in a `.mov`. The timelines place each
+clip on the media's own clock (`TimelineSpec.Media.ranges`, `frame(ofSource:)`); the held last frame is read from the safe media. Before
+anything points at it, `CleanedMedia.check` runs the MP4's own picture output check (five frames a second) and sound output check (every
+kept track on its own, `AudioOutputCheck.Made.map`) and measures every replaced stretch on every track against the room tone's loudest
+100 ms; `OutputGate.admitTimeline` reads the results (`timelineMediaProblems`, fail closed: a clone where anyone is hidden, or a needed
+check that did not run, is refused) and alone moves the folder into place. The lint gains rule 8 (every clip inside its media). Refused
+in words only for a video made before M8d, when the people check's file cannot be read while someone is hidden, and (Make Timelines)
+when Ivan's choices of who is hidden or heard changed after the video was made. Make Timelines shows a percent while the media is made
+(`AppModel.timelineProgress`). `FaceHide.pad` is 2.0 (was 1.6, measured: see Mac warning 197). Push-ins as moves (keyed position and
+scale) exist behind `TimelineAnimations.verified`, off until Ivan's round trips pass. Measured on two-people-mixed: 75.2 s of media in
+14 s (5.4 times real time), 49.2 Mbps (about 22 GB an hour of edit). `make accept-timeline-people`.
+
 **Two copies, two jobs.** The live Prakriti is the copy in `~/Applications` (`make install` puts it
 there); it watches the real folders and opens at login. Everything run from the build folder for
 testing opens with `--development`: its own store, preferences, log, lock and `~/Prakriti/Dev`
@@ -1145,6 +1165,9 @@ cd ~/Code/prakriti/mac && make accept-timeline MILESTONE=v2-m10a
 ```
 ```bash
 cd ~/Code/prakriti/mac && make resolve-import MILESTONE=v2-m10a
+```
+```bash
+cd ~/Code/prakriti/mac && make accept-timeline-people MILESTONE=v2-m10b
 ```
 ```bash
 cd ~/Code/prakriti/mac && TEST_RUNNER_PRAKRITI_VIDEO_DIRECTION="More energetic. Faster, more frequent cuts." make accept-video MILESTONE=v2-m9d
@@ -1398,7 +1421,7 @@ top and its end. Reading the code is not verification, and neither is a passing 
 | Progress and Activity (v2 part M4a) | `mac/Prakriti/Progress/`: `JobProgress.swift` (`ProgressTracker`, the pure arithmetic: weights, the percent that never goes back, the time left only from a measured rate, the stall line; `ProgressSnapshot` with its status line; `TimeLeft`; `JobProgress`, published at most twice a second), `ProgressMeter.swift` (what the pipeline and ffmpeg report, read twice a second; `ProcessControl`, Pause by SIGSTOP and SIGCONT), `StageTimings.swift` (`StageTiming`, a SwiftData model, the last 10 runs of each stage, seeded once from the store; `firstGuess`, measured 12 Oct). `Engine/Subprocess.swift` (`onStdoutLine`, `control`), `Engine/Pipeline.swift` (`meter`, `passes`, ffmpeg's `-progress pipe:1` in `tool`), `App/PipelineRunner.swift` (`currentJob`, `pause`, `resume`, `stop`, `makeNext`, `queueFraction`, `queueTimeLeft`, `showSample`), `App/StatusSummary.swift` (`noteStatusLine`, `--debug-status-log`); views: `Views/Activity/ActivityWindow.swift` (the window, Now, Finished, Log, `ActivityButton`), `Views/ProgressViews.swift` (`ProgressRing`, `ProgressBlock`, `ProgressButtons`), the card's `StatusCapsule`, the list's Status column, `StatusBlock` in `OutputsTab`, `ViewerBanner`, `Views/MenuBar.swift`; `Fixtures.showProgress` (the sample talk being made, for snapshots and captures); tests `ProgressTests` (in `make test`) and `ProgressAcceptanceTests` (`make accept-progress`) |
 | The edited video (v2 parts M8b and M8c) | `mac/Prakriti/Render/`: `VideoPreview.swift` (M8c: the Viewer's Video, built from the plan the video was made from, `VideoSampleFolder`), `EditTimeline.swift` (the plan in frames and samples), `CompositionBuilder.swift`, `Instructions.swift` (`RenderInstruction`), `Compositor.swift`, `VideoAudio.swift` (decode, join with crossfades, master), `VideoWriter.swift`, `Mp4Boxes.swift` (moov, edit lists), `Captions.swift`, `VideoDescription.swift` (`Description.txt`), `ReadyChecklist.swift`, `OutputGate.swift` (the not-checked refusal, the people output checks since M8d, and the only move), `VideoStep.swift` (`VideoRecord`, make and check); since M8d `VideoHiding.swift` (`HiddenFaces`, `video-hiding.json`) and `People/PictureOutputCheck.swift`; the pipeline's `.renderVideo` and `.checkVideo` steps and `PipelineOptions.makeVideo`; `Recording.videoJSON` and `videoProblem`; `App/VideoActions.swift` (Make Video); `Views/Inspector/VideoSection.swift`; since M8c `App/VideoEditActions.swift` (Restore, Remove, Take Out Again, Keep, Delete, Undo, `Recording.planRestores`, `restoresPending`, Watch Video), the Video rendition in `Views/Viewer/ViewerModel.swift`, `CaptionsOverlay` and `PictureToggle` in `Views/Viewer/PeopleOverlay.swift`, `Captions.cues(srt:)`; tests `RenderTests`, `ViewerVideoTests` (in `make test`), `VideoAcceptanceTests` (`make accept-video`), `ViewerVideoAcceptanceTests` (`make accept-viewer-video`), `PeopleInVideoTests` (in `make test`), `PeopleVideoAcceptanceTests` (`make accept-people-video`) and `capture-window.swift --video` (`make look-video`) |
 | House style and zooms (v2 part M9a) | `mac/Prakriti/Edit/Style.swift` (`StyleName`, `Pace`, `PunchLevel`, `Length`, `HouseStyle`, `Style` with research 2.3 and 2.4's numbers, `maxScale`), `Edit/VisualPlan.swift` (`FaceSpot`, `VisualPlan.make`, `assign`, `center`, `shots`, `count`; `Framing`), the plan's `visual` items and `holdSeconds` (`EditPlan.Visual`), PlanValidation rule 7, `EditTimeline.holdFrames`, the hold in `CompositionBuilder`, `VideoWriter` and `VideoAudio.join`, `Compositor.frame`, `RenderInstruction.crop`, `Pipeline.subject`, `PipelineOptions.house`, `AppSettings.houseStyle`, `Views/Settings/HouseStylePane.swift`; tests `StyleTests` (in `make test`) and `StyleAcceptanceTests` (`make accept-style`) |
-| Timelines (v2 part M10a) | `mac/Prakriti/Export/`: `FCPXMLWriter.swift` (`FCPXMLVersion`, `TimelineSpec`, `TimelineLayout`, the spine, punch-ins, push-in markers, texts and their editable copies, captions, chapters, markers, the XML), `FCPXMLLint.swift` (the lint's seven rules, the DTDs copied out of Final Cut Pro, `xmllint`), `GraphicsClips.swift` (texts as ProRes 4444 through `OverlayTable.layers`, the held last frame), `TimelineMedia.swift` (the clone, `cloneFacts` with getattrlist, `info`, `tailFrames`), `ReadMe.swift`, `TimelineExport.swift` (the refusal, `Record` in `Timeline/.timeline.json`, make and check); `OutputGate.admitTimeline`; `OutputKind.timelines`; `PipelineStep.timelines`, `PipelineOptions.makeTimelines`, `PipelineResult.timeline`; `App/TimelineActions.swift` (Make Timelines, Open In, Export); `Views/Inspector/TimelineSection.swift`; File menu items in `App/PrakritiApp.swift`; tests `FCPXMLTests` (in `make test`), `TimelineAcceptanceTests` (`make accept-timeline`), `scripts/resolve-import.py` (`make resolve-import`) |
+| Timelines (v2 part M10a) | `mac/Prakriti/Export/`: `FCPXMLWriter.swift` (`FCPXMLVersion`, `TimelineSpec`, `TimelineLayout`, the spine, punch-ins, push-in markers, texts and their editable copies, captions, chapters, markers, the XML), `FCPXMLLint.swift` (the lint's eight rules, the DTDs copied out of Final Cut Pro, `xmllint`), `GraphicsClips.swift` (texts as ProRes 4444 through `OverlayTable.layers`, the held last frame), `TimelineMedia.swift` (the clone, `cloneFacts` with getattrlist, `info`, `tailFrames`, `privacySafeName`), `CleanedMedia.swift` (v2 part M10b: the used ranges, room tone, the sound per track, HEVC and PCM writer, its checks), `ReadMe.swift`, `TimelineExport.swift` (the refusal, `Record` in `Timeline/.timeline.json`, make and check); `OutputGate.admitTimeline`; `OutputKind.timelines`; `PipelineStep.timelines`, `PipelineOptions.makeTimelines`, `PipelineResult.timeline`; `App/TimelineActions.swift` (Make Timelines, Open In, Export); `Views/Inspector/TimelineSection.swift`; File menu items in `App/PrakritiApp.swift`; tests `FCPXMLTests` (in `make test`), `TimelineAcceptanceTests` (`make accept-timeline`), `TimelinePeopleAcceptanceTests` (`make accept-timeline-people`, M10b), `scripts/resolve-import.py` (`make resolve-import`) |
 | Hook, chapters, versions (v2 part M9d) | `mac/Prakriti/Edit/Hook.swift` (`Hook`, `HeldMoment`), `Edit/Chapters.swift`, `Edit/TextLight.swift`, key phrases and terms in `Edit/TextPlan.swift` (`Moment`, `placePhrase`) and `PlanStep.keyPhrases`, `terms`, `Lexicon.terms`, `Beat.keyPhrase`, `OverlayKind.keyPhrase` and `.term` with `OverlayLayout.wordEdges` and `OverlayTable.wordLayers`, `EditPlan.Span.hook`, `hookSpans`, `mainSpans`, `held`, `Chapter.seconds`, `EditTimeline.Piece.hook`, `editTime(_:span:)`, `hookFrames`, `RoughCut.Input.held`, `VisualPlan.Input.held` and `textChanges`, `Count.textIns`, `PlanValidation` (opening line, chapters on the video's clock, key phrases and terms word for word, zooms on the video's clock), `HouseStyle.keyPhrases`, `termCards`, `openingLine`, `Style.opening`, `keyPhraseEvery`, `held`, `termCards`, `VideoDescription.make(planChapters:)`; versions in `Model/Models.swift` (`EditVersion`, `EditVersions`, `Recording.versionsJSON`) and `App/VersionActions.swift`, `ViewerModel.versionPlaying`, `Approval.Receipt.version`; `Views/Inspector/DirectionTab.swift`, `InspectorTab.direction`, `TimelineMark` in `Views/Viewer/TimelineLite.swift`; tests in `HookTests` and `VersionTests` (in `make test`), `HookAcceptanceTests` (`make accept-hook`), `BeatsCache` and `BeatsWarmTests` |
 | Beats and direction (v2 part M9c) | `mac/Prakriti/Edit/Beats.swift` (`BeatTag`, `BeatKind`, `Beat`, `BeatsFile` and `beats.json`, `BeatSentence`, `BeatCheck`), `Edit/Direction.swift` (`DirectionPreset`, `LengthChoice`, `TextLevel`, `DirectionFields` and its vocabulary, `DirectionChip`, `RecordingDirection`, `DirectionReading`, `Direction.read`, `house`, `style`, `chips`, `DirectionModelCheck`), `Edit/DirectionRules.swift` (the rules table, `tagPatterns`, the people and publishing patterns), `Edit/Selection.swift` (the knapsack), `Writing/Planner.swift` (the beats and the direction's own words through the "Planning the edit" model under the lock), `PlanStep` (selection, `RemovedKind.beat`, `planLines`), `Pipeline.prepareDirection`, `PipelineOptions.direction`, `planning`, `planFolder`, `EditPlan.Direction`, `BeatChoice`, `planLines`, `Basis.direction`, `Style.changeAim`, `VisualPlan.Input.beatStarts` and `keyLines`, `ModelRequest.deterministic` and `Shape.planning`, `Recording.directionJSON`, `AppModel.setDirection` and `planningLine`, `Views/Inspector/DirectionSection.swift` (with `FlowLayout`), the plan's lines in `EditPlanSection` and `ProgressBlock`; tests in `StyleTests` (in `make test`) and `DirectionAcceptanceTests` (`make accept-direction`) |
 | Text and graphics (v2 part M9b) | `mac/Prakriti/Render/TypeFace.swift` (Alegreya Sans, `register`, `prepared`, `missing`), `Render/Overlays.swift` (`OverlayKind` and its motion, `OverlayLayout`, `OverlayView`, `OverlayCache`, `OverlayTable`, `EditTimeline.editFrame(span:original:)`), `Edit/TextPlan.swift` (the title and lower thirds, `Faces`), `Resources/Fonts/` (three weights and `OFL.txt`), the text fields of `EditPlan.Visual`, rule 7's text half, `Compositor.overlay`, `RenderInstruction.textLayers`, `Pipeline.textSetup`, `PipelineOptions.planTitle`, `PeopleSetup.teachers`, `HouseStyle.titleOnScreen` and `namesOnScreen`, the pane's Text on Screen; tests `TextTests` (in `make test`) and `TextAcceptanceTests` (`make accept-text`) |
@@ -2130,8 +2153,8 @@ top and its end. Reading the code is not verification, and neither is a passing 
     `TrackObjectRequest` started again from every sighting), and also keeps each sighting within 0.5 s of the frame and
     the last place a lost face was seen, plus the head of any body there.** Never hide from held or interpolated boxes
     alone. Reason: research-people.md 3.2 and plan review item 12; measured 13 Oct on a test square moving 300 px a second,
-    the followed box overlapped it 0.84 to 0.91 between sightings, the held box alone 0.14 to 0.60. `FaceHide` pads 1.6
-    times, blurs 30% of the face's width and pixelates 5 blocks across the face (research: at least a quarter, at most 8).
+    the followed box overlapped it 0.84 to 0.91 between sightings, the held box alone 0.14 to 0.60. `FaceHide` pads 2.0
+    times (1.6 until M10b, warning 197), blurs 30% of the face's width and pixelates 5 blocks across the face (research: at least a quarter, at most 8).
 126. **The People overlay shows the Original as recorded and hides nothing; its boxes come from the people file, two a
     second, moved in a straight line between sightings, and a hidden face's box is dashed with its choice in words.**
     Reason: design spec Q3 (Ivan decides who appears by seeing them) and the rule that color is never alone. The toggle is
@@ -2421,13 +2444,14 @@ top and its end. Reading the code is not verification, and neither is a passing 
     (`Selection.floor`).** Reason: measured 15 Oct on the 13 Sep talk with the M9d beats, the best value under 10 minutes was a
     7:58 video, under PLAN M9 check 3's 8:30 floor, because the one part left that fit was 3:34 long.
 
-188. **A timeline is written only when everyone in the video is included and no name is muted, and never points at the original
-    (`TimelineExport.refusal`, read again in `OutputGate.admitTimeline`, and Ivan's choices now in `AppModel.timelineRefusal`).**
-    Reason: an editing app's timeline points at whole source files, so one clip edge dragged out or one blur switched off would bring
-    back a person Ivan hid (research-edit-engine.md 5.5, PLAN R2). Only M10b's privacy-safe media may lift the refusal. The gate also
-    refuses a file that names the original's path.
+188. **A timeline never points at the original, and never at a clone of it while anyone in the video is hidden or left out or a
+    name is muted: then it points at privacy-safe media that passed its own checks (`CleanedMedia`, `OutputGate.timelineMediaProblems`,
+    read inside `admitTimeline`).** Reason: an editing app's timeline points at whole source files, so one clip edge dragged out or one
+    blur switched off would bring back a person Ivan hid (research-edit-engine.md 5.5, PLAN R2). M10a refused those recordings; M10b
+    replaced the refusal with the media, never with a weaker rule. The gate also refuses a file that names the original's path, and
+    Make Timelines refuses when Ivan's choices of who is hidden or heard are newer than the video (`AppModel.timelineRefusal`).
 
-189. **The timelines' media is a clone in `Timeline/Media`, proved per file with getattrlist (the same clone id as the source, 0
+189. **When everyone is included, the timelines' media is a clone in `Timeline/Media`, proved per file with getattrlist (the same clone id as the source, 0
     bytes of its own), never by free disk space.** Reason: PLAN M10 check 2; another agent may write to the same disk, and pointing at
     Outputs keeps iCloud from evicting the shared Studio Recordings original under an open timeline.
 
@@ -2435,9 +2459,11 @@ top and its end. Reading the code is not verification, and neither is a passing 
     15 Oct, `xmllint --dtdvalid` with the DTD in the recording's own folder failed with "parser error : xmlSAX2ResolveEntity"; the same
     file and DTD from a path without spaces were valid. Research 5.8 saw the same inside the app bundle.
 
-191. **No animation and no dissolve in a timeline: a slow push-in is the marker "Push-in here" and the clip stays wide.** Reason: the
-    vault's 2026-07-30 lesson (in-XML animation fails silently on import) and PLAN M10's gate; M10b turns animation on only after the
-    round trips in both apps, with `timelineAnimationsVerified`.
+191. **No animation and no dissolve in a timeline: a slow push-in is the marker "Push-in here" and the clip stays wide, until
+    `TimelineAnimations.verified` is true.** Reason: the vault's 2026-07-30 lesson (in-XML animation fails silently on import) and PLAN
+    M10's gate. M10b wrote the moves (keyed `position` and `scale` in `adjust-transform`, valid against both DTDs) behind that switch,
+    off; it is turned on only by a commit that carries the evidence of the round trips in both apps (PLAN checks 6 and 7), which are
+    Ivan's. The round-trip files are in `~/Prakriti/Dev/Round trip v2-m10b/`.
 
 192. **Every text in `Graphics/` is drawn by `OverlayTable.layers`, the compositor's own code, frame by frame; never a second drawing
     of the text.** Reason: the timeline must look exactly like the MP4 (research 5.4); measured 15 Oct, the title clip decoded by
@@ -2450,6 +2476,27 @@ top and its end. Reading the code is not verification, and neither is a passing 
 194. **Approve never copies the Timeline folder, and versions do not keep it.** Reason: the files point at `Timeline/Media` and
     `Timeline/Graphics` in Outputs by absolute path, so a copy in Approved or Versions would quietly point back at Outputs, and at media
     a later make replaces.
+
+195. **The privacy-safe media holds only the used ranges with 2 s handles (`CleanedMedia.handleSeconds`), every frame of them hidden by
+    `VideoHiding` (handles included), and every stretch of removed speech replaced by room tone on every kept track, with the blend
+    OUTSIDE the stretch.** Reason: PLAN M10 and research-people.md 3.3; a handle is exactly what a dragged clip edge reveals, so it must be
+    as clean as the kept span; a blend inside the stretch would let its first 10 ms of speech through. Room tone, never silence: a hole
+    in the sound is an edit an editor would fill from the original.
+
+196. **A left-out voice's own microphone track is left out of the media entirely (`CleanedMedia.People.leftOutTracks`).** Reason:
+    research-people.md 3.3 and 3.4; their voice is on their microphone even while others speak, so cutting their speech stretches is
+    not enough. Measured 15 Oct on two-people-tracks.mov: 3 tracks in, 2 in the media, Parakeet 0 runs of the second voice on both.
+
+197. **`FaceHide.pad` is 2.0, never smaller.** Reason: measured 15 Oct on two-people-mixed's corner face (about 70 pixels): with 1.6 the
+    privacy-safe media's picture check found Vision's "face" in 2 of 377 frames (23.22 s and 30.03 s of the original), each a box whose
+    middle sat 0.05 to 0.06 of the picture below the sighting's middle, the chin under the ellipse read with the blob above it; the MP4
+    shows 23.22 s too, so the MP4 had the same weakness at a frame its own check did not sample. With 2.0: 0 of 377 and 0 of 376.
+
+198. **The privacy-safe media's checks run on the made file inside the gate: the picture output check five frames a second, the sound
+    output check on every kept track on its own, and every replaced stretch measured against the loudest 100 ms of its room tone (1 dB
+    allowed).** Reason: PLAN M10 ("checked like the MP4", research-people.md 3.6 item 3). The room tone is not even: a 0.3 s stretch
+    measured against the whole second's level came out 3.1 dB over it (two-people-mixed, 15 Oct), while removed speech is 20 dB or
+    more over it.
 
 ## The engine's standing warnings (from SCOPE, for the parts still to come)
 

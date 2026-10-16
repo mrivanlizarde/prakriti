@@ -13,7 +13,8 @@ import XCTest
 ///   because xmllint cannot read them in place), and clean under the semantic lint. Skipped, with a message, when Final Cut Pro is
 ///   not on this Mac.
 /// - The lint catches each of its rules when one is broken on purpose.
-/// - The refusal: anyone hidden or left out, or a muted name, and nothing is written.
+/// - Since v2 part M10b, only a video made before the people check is refused; anyone hidden or left out, or a muted name, and the
+///   timelines point at privacy-safe media, which the gate keeps only when its own checks pass (`timelineMediaProblems`).
 /// - A clone is proved per file, never by free space.
 /// - End to end on synthetic media only (ffmpeg's test pattern, no face of anyone): the video made as a make makes it, then the
 ///   timelines from it, through the gate: every file there, both valid, a graphics clip ProRes 4444 with its transparency equal to
@@ -210,31 +211,169 @@ final class FCPXMLTests: XCTestCase {
         XCTAssertTrue(rules(outside).contains(7), "\(FCPXMLLint.check(outside))")
     }
 
-    // MARK: The refusal
+    // MARK: The refusal, and the gate on the media (v2 part M10b)
 
-    func testATimelineIsRefusedWhenAnyoneIsHiddenOrANameIsMuted() {
+    func testOnlyAVideoOfUnknownPeopleIsRefusedAndHiddenPeopleNeedPrivacySafeMedia() {
         let plan = HookTests.talk(minutes: 1).plan
         XCTAssertNil(TimelineExport.refusal(plan: plan, hiddenFaces: 0, leftOutVoices: 0))
-        XCTAssertEqual(TimelineExport.refusal(plan: plan, hiddenFaces: 1, leftOutVoices: 0), TimelineExport.hiddenRefusal)
-        XCTAssertEqual(TimelineExport.refusal(plan: plan, hiddenFaces: 0, leftOutVoices: 1), TimelineExport.hiddenRefusal)
+        XCTAssertNil(TimelineExport.refusal(plan: plan, hiddenFaces: 1, leftOutVoices: 0), "M10a's refusal of hidden people is lifted")
+        XCTAssertNil(TimelineExport.refusal(plan: plan, hiddenFaces: 0, leftOutVoices: 1))
         XCTAssertEqual(TimelineExport.refusal(plan: plan, hiddenFaces: nil, leftOutVoices: 0), TimelineExport.unknownRefusal, "unknown is refused")
+        XCTAssertFalse(CleanedMedia.needed(plan: plan, hiddenFaces: 0, leftOutVoices: 0), "everyone included: a clone")
+        XCTAssertTrue(CleanedMedia.needed(plan: plan, hiddenFaces: 1, leftOutVoices: 0))
+        XCTAssertTrue(CleanedMedia.needed(plan: plan, hiddenFaces: 0, leftOutVoices: 1))
         var leftOut = plan
         leftOut.people.leftOut = [2]
-        XCTAssertEqual(TimelineExport.refusal(plan: leftOut, hiddenFaces: 0, leftOutVoices: 0), TimelineExport.hiddenRefusal)
+        XCTAssertTrue(CleanedMedia.needed(plan: leftOut, hiddenFaces: 0, leftOutVoices: 0))
         var cut = plan
         cut.people.cuts = [TimeRange(start: 10, end: 12)]
-        XCTAssertEqual(TimelineExport.refusal(plan: cut, hiddenFaces: 0, leftOutVoices: 0), TimelineExport.hiddenRefusal)
+        XCTAssertTrue(CleanedMedia.needed(plan: cut, hiddenFaces: 0, leftOutVoices: 0))
         var muted = plan
         muted.people.mutes = [TimeRange(start: 10, end: 10.4)]
-        XCTAssertEqual(TimelineExport.refusal(plan: muted, hiddenFaces: 0, leftOutVoices: 0), TimelineExport.mutedRefusal)
-        XCTAssertEqual(TimelineExport.hiddenRefusal, "A timeline for a recording with hidden people arrives in the next update.")
+        XCTAssertTrue(CleanedMedia.needed(plan: muted, hiddenFaces: 0, leftOutVoices: 0), "a muted name: the media too")
+        XCTAssertEqual(CleanedMedia.silenced(muted), [TimeRange(start: 10, end: 10.4)])
+    }
+
+    func testTheGateKeepsTimelinesOnlyWhenTheirMediaPassesItsChecks() throws {
+        let passed = PictureCheck(checkedAt: Date(), frames: 50, faces: 0)
+        let failed = PictureCheck(checkedAt: Date(), frames: 50, faces: 1, findings: [.init(at: 3, original: 9, box: FaceBox(x: 0.1, y: 0.1, width: 0.1, height: 0.1), how: "hidden")])
+        let heard = AudioCheck(checkedAt: Date(), files: ["sound track 1 of the media"])
+        let leak = AudioCheck(checkedAt: Date(), files: ["sound track 1 of the media"], findings: [.init(file: "sound track 1 of the media", at: 4, seconds: 2, voice: 2, how: "sounds like")])
+        var whole = CleanedMedia.Check(picture: passed, sound: heard)
+        whole.whole = true
+        func facts(_ needed: Bool, _ safe: Bool, faces: Int = 1, voices: Int = 1, _ check: CleanedMedia.Check?) -> OutputGate.TimelineMediaFacts {
+            OutputGate.TimelineMediaFacts(needed: needed, privacySafe: safe, hiddenFaces: faces, leftOutVoices: voices, check: check)
+        }
+        XCTAssertEqual(OutputGate.timelineMediaProblems(facts(false, false, faces: 0, voices: 0, nil)), [], "everyone included: a clone is right")
+        XCTAssertEqual(OutputGate.timelineMediaProblems(facts(true, true, whole)), [], "privacy-safe media that passes")
+        XCTAssertEqual(OutputGate.timelineMediaProblems(facts(true, false, nil)).count, 1, "a clone where anyone is hidden is never kept")
+        var noPicture = whole
+        noPicture.picture = nil
+        XCTAssertTrue(OutputGate.timelineMediaProblems(facts(true, true, noPicture)).first?.contains("not checked") == true, "a needed check that did not run fails")
+        var noSound = whole
+        noSound.sound = nil
+        XCTAssertTrue(OutputGate.timelineMediaProblems(facts(true, true, noSound)).first?.contains("not checked") == true)
+        XCTAssertEqual(OutputGate.timelineMediaProblems(facts(true, true, faces: 0, voices: 0, noSound)), [], "no one left out: no sound check is needed")
+        var badPicture = whole
+        badPicture.picture = failed
+        XCTAssertTrue(OutputGate.timelineMediaProblems(facts(true, true, badPicture)).first?.contains("cannot account for at 0:03") == true)
+        var badSound = whole
+        badSound.sound = leak
+        XCTAssertTrue(OutputGate.timelineMediaProblems(facts(true, true, badSound)).first?.contains("whom you chose to leave out") == true)
+        var loud = whole
+        loud.silenceProblems = ["Sound track 1 of the media is 12.0 dB over its room tone at 0:04, where speech was removed."]
+        XCTAssertEqual(OutputGate.timelineMediaProblems(facts(true, true, loud)), loud.silenceProblems)
+        var broken = whole
+        broken.whole = false
+        XCTAssertEqual(OutputGate.timelineMediaProblems(facts(true, true, broken)).count, 1)
         // The gate refuses and deletes what was made.
         let staged = FileManager.default.temporaryDirectory.appending(path: "gate-\(UUID().uuidString)", directoryHint: .isDirectory)
-        try? FileManager.default.createDirectory(at: staged, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: staged, withIntermediateDirectories: true)
         let to = staged.deletingLastPathComponent().appending(path: "gate-to-\(UUID().uuidString)")
-        XCTAssertThrowsError(try OutputGate.admitTimeline(staged: staged, to: to, refusal: TimelineExport.hiddenRefusal, problems: []))
+        XCTAssertThrowsError(try OutputGate.admitTimeline(staged: staged, to: to, refusal: nil, problems: [], media: facts(true, false, nil)))
         XCTAssertFalse(FileManager.default.fileExists(atPath: staged.path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: to.path))
+    }
+
+    // MARK: The privacy-safe media's arithmetic (v2 part M10b)
+
+    func testTheUsedRangesAreTheKeptSpansWithTwoSecondHandlesJoined() {
+        let fd = FrameDuration.ntsc30
+        let video = EditTimeline(frame: fd, pieces: [
+            .init(id: "h1", sourceFrame: 3_000, frames: 90, editFrame: 0, hook: true),
+            .init(id: "k1", sourceFrame: 30, frames: 300, editFrame: 90),
+            .init(id: "k2", sourceFrame: 400, frames: 300, editFrame: 390),
+            .init(id: "k3", sourceFrame: 2_000, frames: 600, editFrame: 690),
+            .init(id: "k4", sourceFrame: 3_050, frames: 100, editFrame: 1_290),
+        ], holdFrames: 150)
+        let handle = CleanedMedia.handleFrames(fd)
+        XCTAssertEqual(handle, 60, "2 s at 29.97")
+        let media = CleanedMedia.ranges(video, pictureFrames: 3_180, handle: handle)
+        // k1 and k2 meet once their handles are on; k3 alone; the opening line, k4 and the held frame inside one range, cut at the end.
+        XCTAssertEqual(media.pieces.map(\.sourceFrame), [0, 1_940, 2_940])
+        XCTAssertEqual(media.pieces.map(\.frames), [760, 720, 240])
+        XCTAssertEqual(media.pieces.map(\.editFrame), [0, 760, 1_480])
+        XCTAssertEqual(media.totalFrames, 1_720)
+        XCTAssertEqual(media.holdFrames, 0)
+        // Every kept frame of the video, and every handle, is in the media, at one place.
+        let spec = TimelineSpec.Media(name: "m", url: URL(fileURLWithPath: "/tmp/m.mov"), frames: media.totalFrames, width: 1920, height: 1080, ranges: media.pieces)
+        for piece in video.pieces {
+            for f in [piece.sourceFrame - handle, piece.sourceFrame, piece.sourceFrame + piece.frames - 1] where f >= 0 {
+                let m = spec.frame(ofSource: f)
+                XCTAssertTrue(m >= 0 && m < media.totalFrames, "\(f) maps to \(m)")
+                let range = media.pieces.first { m >= $0.editFrame && m < $0.editFrame + $0.frames }!
+                XCTAssertEqual(range.sourceFrame + (m - range.editFrame), f, "frame \(f) is the original's own frame")
+            }
+        }
+        XCTAssertEqual(TimelineSpec.Media(name: "c", url: URL(fileURLWithPath: "/tmp/c.mp4"), frames: 9, width: 1, height: 1).frame(ofSource: 1_234), 1_234,
+                       "a clone's clock is the original's")
+    }
+
+    func testTheRoomToneIsTheQuietestSecondWhereNobodySpeaks() {
+        // 20 s in blocks of 50 ms: speech everywhere but a quiet second at 6 s and a quieter one at 12 s that a voice covers.
+        var energy = [Double](repeating: 1e-2, count: 400)
+        for i in 120..<140 { energy[i] = 1e-6 }
+        for i in 240..<260 { energy[i] = 1e-8 }
+        let busy = [TimeRange(start: 11.9, end: 13.2)]
+        let tone = CleanedMedia.roomTone(blockEnergy: energy, blockSeconds: 0.05, busy: busy, duration: 20)
+        XCTAssertEqual(tone.start, 6, accuracy: 0.001, "the quietest free second, not the one under a voice")
+        XCTAssertEqual(tone.end - tone.start, CleanedMedia.roomToneSeconds, accuracy: 1e-9)
+        // With speech everywhere, the quietest anywhere.
+        let everywhere = CleanedMedia.roomTone(blockEnergy: energy, blockSeconds: 0.05, busy: [TimeRange(start: 0, end: 20)], duration: 20)
+        XCTAssertEqual(everywhere.start, 12, accuracy: 0.001)
+    }
+
+    func testRemovedSpeechBecomesRoomToneWithABlendOutsideIt() {
+        // One channel of loud speech, 1 s at 48 kHz; the room tone a quiet ramp; the region 0.4 to 0.6 s.
+        var chunk = [Float](repeating: 0.8, count: 48_000)
+        let tone = (0..<4_800).map { Float($0) / 4_800 * 0.01 }
+        CleanedMedia.replace(&chunk, start: 0, channels: 1, regions: [(19_200, 28_800)], tone: tone, toneFrames: 4_800)
+        XCTAssertTrue((19_200..<28_800).allSatisfy { chunk[$0] <= 0.01 }, "the whole region is room tone")
+        XCTAssertEqual(chunk[19_200], tone[0], accuracy: 1e-6, "the tone starts from its beginning")
+        XCTAssertEqual(chunk[19_200 + 4_800], tone[4_799], accuracy: 1e-6, "then runs back, so it never jumps")
+        XCTAssertEqual(chunk[18_000], 0.8, "kept speech away from the region is untouched")
+        XCTAssertTrue(chunk[18_900] < 0.8 && chunk[18_900] > 0.01, "the blend is outside the region")
+        XCTAssertEqual(chunk[29_400], 0.8)
+        // Stereo, and a region starting before the chunk.
+        var stereo = [Float](repeating: 0.5, count: 2 * 1_000)
+        let toneStereo = [Float](repeating: 0.001, count: 2 * 100)
+        CleanedMedia.replace(&stereo, start: 5_000, channels: 2, regions: [(4_000, 5_500)], tone: toneStereo, toneFrames: 100)
+        XCTAssertTrue((0..<1_000).allSatisfy { stereo[$0] == 0.001 }, "both channels of the first 500 frames")
+        XCTAssertEqual(stereo[2 * 999], 0.5)
+    }
+
+    func testTheLintCatchesAClipPastItsMediaAndKeyedPushInsAreValid() async throws {
+        let scratch = FileManager.default.temporaryDirectory.appending(path: "lint8-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: scratch) }
+        var styled = try XCTUnwrap(Self.fixtures(in: scratch).first { $0.0 == "styled" }?.1)
+        try Self.placeholders(styled)
+        // Rule 8: the media made shorter than the clips that show it.
+        var short = styled
+        short.media.frames = 100
+        XCTAssertTrue(FCPXMLLint.check(FCPXMLWriter.xml(short, version: .finalCut)).contains { $0.rule == 8 })
+        XCTAssertFalse(FCPXMLLint.check(FCPXMLWriter.xml(styled, version: .finalCut)).contains { $0.rule == 8 })
+        // Push-ins as moves, written only once the round trips pass (`TimelineAnimations.verified`, off in this build).
+        XCTAssertFalse(TimelineAnimations.verified, "turned on only by a commit with the round trips' evidence")
+        styled.animationsVerified = true
+        let layout = FCPXMLWriter.layout(styled)
+        let keyed = layout.clips.filter { !$0.keys.isEmpty }
+        XCTAssertEqual(keyed.count, styled.framing.segments.filter { $0.easeFrames > 0 }.count, "every push-in keyed")
+        XCTAssertEqual(layout.clips.filter(\.pushInHere).count, 0, "no marker once they are moves")
+        for clip in keyed {
+            XCTAssertEqual(clip.keys.first?.scale ?? 0, 1, accuracy: 0.001, "a push-in starts from the whole picture")
+            XCTAssertGreaterThan(clip.keys.last?.scale ?? 0, 1)
+        }
+        let xml = FCPXMLWriter.xml(styled, version: .finalCut)
+        XCTAssertTrue(xml.contains("<keyframeAnimation>"))
+        XCTAssertEqual(FCPXMLLint.check(xml), [])
+        if let dtds = try Self.dtds() {
+            for version in FCPXMLVersion.allCases {
+                let file = scratch.appending(path: "keyed \(version.rawValue).fcpxml")
+                try FCPXMLWriter.xml(styled, version: version).write(to: file, atomically: true, encoding: .utf8)
+                let dtd = await FCPXMLLint.validate(file, version: version, dtds: dtds)
+                XCTAssertNil(dtd, "keyed push-ins against \(version.dtdName): \(dtd ?? "")")
+            }
+        }
     }
 
     // MARK: Clones, proved per file
@@ -350,21 +489,101 @@ final class FCPXMLTests: XCTestCase {
                                                                          timelineFolder.appending(path: "Graphics/Held last frame.mov").path]).stdout
         XCTAssertTrue(held.contains("codec_name=prores") && held.contains("nb_read_frames=\(made.timeline.holdFrames)"), held)
 
-        // Refused: someone left out, and nothing is kept.
+        // v2 part M10b: someone hidden and a name muted. The timelines point at privacy-safe media: only the used ranges with their
+        // handles, the hidden face's place blurred on every frame (a made-up track over the test pattern, no face of anyone), the
+        // muted stretch room tone, checked inside the gate, and never the clone.
         var hidden = plan
-        hidden.people.leftOut = [2]
-        var refused = export
-        refused.plan = hidden
-        refused.final = output.appending(path: "Refused", directoryHint: .isDirectory)
-        refused.admitTo = refused.final
+        hidden.people.mutes = [TimeRange(start: 6.0, end: 7.0)]
+        let box = FaceBox(x: 0.40, y: 0.30, width: 0.18, height: 0.30)
+        let spots = stride(from: 0.0, through: 30.0, by: 0.5).map { HiddenTrack.Spot(time: $0, box: box) }
+        var people = CleanedMedia.People()
+        people.hiding = HidePlan(tracks: [HiddenTrack(id: 1, spots: spots)])
+        people.faceTracks = [PictureOutputCheck.Track(id: 1, hidden: true, spots: spots)]
+        people.hiddenFaces = 1
+        let safeFolder = output.appending(path: "Safe", directoryHint: .isDirectory)
+        var safe = export
+        safe.plan = hidden
+        safe.hiddenFaces = 1
+        safe.final = safeFolder
+        safe.admitTo = safeFolder
+        safe.build = scratch.appending(path: "Outputs/.timeline safe", directoryHint: .isDirectory)
+        // Without the people check's facts it is refused, fail closed.
         do {
-            _ = try await TimelineExport.make(refused, now: Date())
-            XCTFail("a plan with someone left out is refused")
+            _ = try await TimelineExport.make(safe, now: Date())
+            XCTFail("hidden people with no people facts are refused")
         } catch let failure as TimelineExport.Failure {
-            XCTAssertEqual(failure.reason, TimelineExport.hiddenRefusal)
+            XCTAssertEqual(failure.reason, TimelineExport.peopleUnreadable)
         }
-        XCTAssertFalse(FileManager.default.fileExists(atPath: refused.final.path))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: refused.build.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: safeFolder.path))
+        safe.people = people
+        safe.ffmpeg = RenderTests.ffmpeg()
+        let safeStarted = Date()
+        let safeRecord = try await TimelineExport.make(safe, now: Date())
+        let mediaName = TimelineMedia.privacySafeName(original)
+        let media = safeFolder.appending(path: TimelineMedia.folderName).appending(path: mediaName)
+        print(String(format: "Privacy-safe timelines in %.1f s: %@ media %@, %lld bytes, %.2f s, %d ranges; check %@", Date().timeIntervalSince(safeStarted),
+                     safeRecord.summary, mediaName, safeRecord.mediaBytes ?? -1, safeRecord.mediaSeconds ?? -1, safeRecord.mediaRanges ?? -1,
+                     "\(String(describing: safeRecord.mediaCheck))"))
+        XCTAssertEqual(safeRecord.privacySafe, true)
+        XCTAssertFalse(safeRecord.mediaCloned)
+        XCTAssertEqual(Pipeline.madeFiles(in: safeFolder.appending(path: TimelineMedia.folderName)), [mediaName], "the safe copy only, never a clone")
+        XCTAssertFalse(TimelineMedia.isClone(media, of: original))
+        let check = try XCTUnwrap(safeRecord.mediaCheck)
+        XCTAssertTrue(check.whole, check.wholeLine)
+        XCTAssertEqual(check.picture?.passed, true, "the picture output check ran on the media and passed")
+        XCTAssertGreaterThanOrEqual(check.replacedStretches, 1)
+        XCTAssertEqual(check.silenceProblems, [])
+        // HEVC Main 10, PCM, the ranges' length.
+        let mediaProbe = try await Subprocess.run(ToolPaths.standard.ffprobe, ["-v", "error", "-show_entries", "stream=codec_type,codec_name,profile,pix_fmt,channels",
+                                                                               "-of", "compact=p=0", media.path]).stdout
+        print("Privacy-safe media: " + mediaProbe.replacingOccurrences(of: "\n", with: "; "))
+        XCTAssertTrue(mediaProbe.contains("codec_name=hevc") && mediaProbe.contains("profile=Main 10") && mediaProbe.contains("pix_fmt=yuv420p10le"), mediaProbe)
+        XCTAssertTrue(mediaProbe.contains("codec_name=pcm_s24le"), mediaProbe)
+        let pictureFrames = try await CompositionBuilder.pictureFrames(original: original, plan: hidden)
+        let ranges = CleanedMedia.ranges(EditTimeline(plan: hidden, pictureFrames: pictureFrames), pictureFrames: pictureFrames,
+                                         handle: CleanedMedia.handleFrames(hidden.frameDuration))
+        XCTAssertEqual(safeRecord.mediaSeconds ?? 0, ranges.duration, accuracy: 1e-6, "the used ranges plus 2 s handles")
+        // Both files valid in place, every clip on the media's own clock, the Read Me says so.
+        for version in FCPXMLVersion.allCases {
+            let xml = try String(contentsOf: safeFolder.appending(path: version.fileName), encoding: .utf8)
+            XCTAssertEqual(FCPXMLLint.check(xml), [], "\(version.rawValue) on the privacy-safe media")
+            XCTAssertTrue(xml.contains(FCPXMLWriter.fileURL(media)), "points at the safe copy")
+            XCTAssertFalse(xml.contains(FCPXMLWriter.fileURL(original)) || xml.contains(original.path), "never the original")
+        }
+        if FCPXMLLint.dtdFolder() != nil { XCTAssertEqual(safeRecord.dtd, ["1.14": "valid", "1.10": "valid"]) }
+        let safeReadMe = try String(contentsOf: safeFolder.appending(path: TimelineReadMe.fileName), encoding: .utf8)
+        XCTAssertEqual(safeReadMe.split(separator: "\n").count, 5)
+        XCTAssertTrue(safeReadMe.contains("privacy-safe copy"))
+        // Each spine clip shows the original's own frame at its start (outside the hidden place), and the hidden place is blurred.
+        let layout = FCPXMLWriter.layout(TimelineSpec(project: "", frame: hidden.frameDuration, width: 1920, height: 1080,
+                                                      media: .init(name: "m", url: media, frames: ranges.totalFrames, width: 1920, height: 1080, ranges: ranges.pieces),
+                                                      timeline: EditTimeline(plan: hidden, pictureFrames: pictureFrames), framing: Framing()))
+        let videoTimeline = EditTimeline(plan: hidden, pictureFrames: pictureFrames)
+        var checked = 0
+        for (clip, piece) in zip(layout.clips.filter { $0.asset == "media" }, videoTimeline.pieces).prefix(4) {
+            let fromMedia = try await RenderTests.frame(AVURLAsset(url: media), at: videoTimeline.time(clip.sourceStart + 2))
+            let fromOriginal = try await RenderTests.frame(AVURLAsset(url: original), at: videoTimeline.time(piece.sourceFrame + 2))
+            let outside = PeopleInVideoTests.variance(fromMedia, in: FaceBox(x: 0.02, y: 0.7, width: 0.3, height: 0.25))
+            let outsideOriginal = PeopleInVideoTests.variance(fromOriginal, in: FaceBox(x: 0.02, y: 0.7, width: 0.3, height: 0.25))
+            let inside = PeopleInVideoTests.variance(fromMedia, in: box), insideOriginal = PeopleInVideoTests.variance(fromOriginal, in: box)
+            print(String(format: "Clip at media frame %lld = original frame %lld: outside the hidden place variance %.1f against %.1f; inside %.1f against %.1f",
+                         clip.sourceStart + 2, piece.sourceFrame + 2, outside, outsideOriginal, inside, insideOriginal))
+            XCTAssertEqual(outside, outsideOriginal, accuracy: max(5, outsideOriginal * 0.1), "the same frame of the original")
+            XCTAssertLessThan(inside, insideOriginal * 0.5, "the hidden place is burned in")
+            checked += 1
+        }
+        XCTAssertGreaterThanOrEqual(checked, 2)
+        // The muted stretch is room tone in the media, and was speech in the original.
+        let muteAt = try XCTUnwrap(ranges.pieces.first { 6.0 >= ranges.seconds($0.sourceFrame) && 7.0 <= ranges.seconds($0.sourceFrame + $0.frames) })
+        let mediaStart = ranges.seconds(muteAt.editFrame) + 6.0 - ranges.seconds(muteAt.sourceFrame)
+        func level(_ file: URL, at start: Double) async throws -> Double {
+            let out = try await Subprocess.run(ToolPaths.standard.ffmpeg, ["-hide_banner", "-nostats", "-ss", String(format: "%.3f", start + 0.05), "-t", "0.9",
+                                                                           "-i", file.path, "-vn", "-af", "volumedetect", "-f", "null", "-"]).stderr
+            return Double(out.components(separatedBy: "mean_volume: ").last?.split(separator: " ").first ?? "") ?? 0
+        }
+        let mediaLevel = try await level(media, at: mediaStart), originalLevel = try await level(original, at: 6.0)
+        print(String(format: "The muted second: %.1f dB in the original, %.1f dB in the media", originalLevel, mediaLevel))
+        XCTAssertLessThan(mediaLevel, originalLevel - 20, "the muted second is room tone")
     }
 
     /// The picture's bytes, premultiplied RGBA 8-bit, 1920 by 1080.

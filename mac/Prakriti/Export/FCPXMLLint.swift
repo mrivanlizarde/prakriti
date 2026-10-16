@@ -14,6 +14,8 @@ import Foundation
 //    clip's end (research 5.7 rule 4).
 // 7. **Captions do not overlap** on the sequence's clock, and **every caption and marker lies inside its clip**
 //    (research 5.7 rule 5).
+// 8. **Every clip shows media its file holds** (v2 part M10b): its start and length inside its asset's duration, so a clip placed on
+//    the privacy-safe media's own clock can never ask for a frame the file does not have.
 //
 // Load-bearing: `xmllint` cannot read the DTD inside Final Cut Pro's bundle in place (research 5.8, the path has spaces), so the
 // DTDs are copied out first (`copyDTDs`).
@@ -172,6 +174,17 @@ enum FCPXMLLint {
         captions.sort { $0.from < $1.from }
         for k in captions.indices.dropFirst() where captions[k].from < captions[k - 1].to {
             add(7, "Two captions overlap at frame \(captions[k].from) of the sequence.")
+        }
+
+        // Rule 8: every clip shows media its file holds (v2 part M10b: on the privacy-safe media, whose clock is its own ranges').
+        for case let clip as XMLElement in (try? root.nodes(forXPath: "//asset-clip")) ?? [] {
+            guard let ref = attr(clip, "ref"), let asset = ids[ref], asset.name == "asset",
+                  let length = Rational(attr(asset, "duration"))?.frames(fd),
+                  let duration = Rational(attr(clip, "duration"))?.frames(fd) else { continue }
+            let start = Rational(attr(clip, "start"))?.frames(fd) ?? 0
+            if start < 0 || start + duration > length {
+                add(8, "\(attr(clip, "name") ?? "A clip") shows frames \(start) to \(start + duration) of a file \(length) frames long.")
+            }
         }
         return problems
     }

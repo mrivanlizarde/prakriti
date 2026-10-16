@@ -1209,20 +1209,31 @@ struct Pipeline: Sendable {
             }
 
             // 9c. The timelines (v2 part M10a): from the plan the video was just made from, only once the video was kept, into a
-            //     hidden folder, checked, and let through `OutputGate` into Timeline. Every path inside them points at the
+            //     hidden folder, checked, and let through `OutputGate` into Timeline; with anyone hidden or left out, or a name
+            //     muted, against privacy-safe media made and checked first (v2 part M10b). Every path inside them points at the
             //     recording's own folder, where the place step below puts them. A refusal or a failure costs only this step.
             if options.makeVideo && options.makeTranscript && options.makeTimelines {
                 await begin(.timelines)
                 meter?.startPass()
                 if let video = result.video, let plan = result.editPlan {
-                    let (faces, voices) = OutputGate.hidden(peopleFacts(result: result))
+                    let gate = peopleFacts(result: result)
+                    let (faces, voices) = OutputGate.hidden(gate)
                     let style = StyleName(rawValue: plan.style)?.title ?? plan.style
-                    let setup = TimelineExport.Setup(original: file, plan: plan, videoFolder: staging.appending(path: VideoStep.folderName, directoryHint: .isDirectory),
+                    var setup = TimelineExport.Setup(original: file, plan: plan, videoFolder: staging.appending(path: VideoStep.folderName, directoryHint: .isDirectory),
                                                      captionsName: video.captionsName, project: "\(label), \(style)",
                                                      build: staging.appending(path: ".timeline", directoryHint: .isDirectory),
                                                      final: outputFolder.appending(path: TimelineExport.folderName, directoryHint: .isDirectory),
                                                      admitTo: staging.appending(path: TimelineExport.folderName, directoryHint: .isDirectory),
                                                      hiddenFaces: faces, leftOutVoices: voices)
+                    // Who is hidden and left out (v2 part M10b), from the people check's own file, for the privacy-safe media. When
+                    // someone is hidden and the file cannot be read, `people` stays nil and the plan is refused (fail closed).
+                    let peopleFile = options.people.flatMap { $0.folders.read($0.recordingID) }
+                    if faces == 0 || peopleFile != nil {
+                        setup.people = CleanedMedia.People.from(file: peopleFile, gate: gate, plan: plan, folders: options.people?.folders, control: meter?.control,
+                                                                log: { [log] line in log?.write("\(label): the timelines' people check. " + line) })
+                    }
+                    let ffmpeg = tools.ffmpeg, limit = limit(ready.duration), control = meter?.control
+                    setup.ffmpeg = { arguments in try await Subprocess.run(ffmpeg, arguments, timeout: limit, control: control).stderr }
                     do {
                         let record = try await TimelineExport.make(setup, now: Date(), progress: { [meter] in meter?.passProgress($0) })
                         result.timeline = record
@@ -1233,7 +1244,7 @@ struct Pipeline: Sendable {
                         let reason = (error as? TimelineExport.Failure)?.reason ?? error.localizedDescription
                         result.timelineProblem = reason
                         log?.write("\(name): the timelines were not written. \(reason)")
-                        let refused = reason == TimelineExport.hiddenRefusal || reason == TimelineExport.mutedRefusal || reason == TimelineExport.unknownRefusal
+                        let refused = reason == TimelineExport.unknownRefusal
                         await finish(.timelines, reason + " Everything else is kept.", state: refused ? .skipped : .failed)
                     }
                 } else {

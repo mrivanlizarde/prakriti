@@ -131,7 +131,7 @@ STYLE_ONLY ?=
 YES       ?=
 XCB       = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS'
 
-.PHONY: accept-timeline resolve-import accept-hook accept-direction accept-text accept-style accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
+.PHONY: accept-timeline-full accept-timeline-people accept-timeline resolve-import accept-hook accept-direction accept-text accept-style accept-people-video accept-viewer-video look-video accept-video calibrate-people accept-gallery accept-people accept-capture generate build test snapshots fixtures accept accept-progress regress accept-outputs accept-edits accept-models accept-podcast accept-episode-text accept-names accept-providers accept-help accept-first-launch migrate-check run look check install drop
 
 generate:
 	xcodegen generate
@@ -227,6 +227,26 @@ KEEP_BEATS ?=
 #                 and Approve into the development Approved folder. Writes acceptance-hook.txt (about 30 minutes)
 accept-hook:
 	TEST_RUNNER_PRAKRITI_ACCEPTANCE=hook TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/HookAcceptanceTests
+
+# accept-timeline-people  v2 part M10b's acceptance (PLAN M10 check 3, and the left-out microphone track): two-people-mixed.mp4
+#                 and two-people-tracks.mov made in development with the edited video and the Timelines on, everyone included (a
+#                 clone), then Gabriel teaching and everyone else Leave Out: the timelines kept on privacy-safe media, grep "Studio
+#                 Recordings" 0 over both files, Vision on the media five frames a second finds no face in the hidden place,
+#                 Parakeet hears 0 runs of the second voice on every track and in the removed stretches, the media the used ranges plus
+#                 2 s handles to the frame, the second voice's own microphone track left out. Then writes the round-trip files for
+#                 PLAN checks 6 and 7 (push-ins as moves) to ~/Prakriti/Dev/Round trip v2-m10b. Writes acceptance-timeline-people.txt
+#                 to ../screens/mac/$(MILESTONE)/ (about 10 minutes)
+accept-timeline-people:
+	./scripts/make-fixtures.sh --if-missing
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=timeline-people TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/TimelinePeopleAcceptanceTests
+
+# accept-timeline-full  v2 part M10b, the whole talks (the last part of M10): the REAL 13 Sep and 6 Sep talks made in development
+#                 with the edited video and the Timelines on (Clear, Gabriel teaching, parts from ~/Prakriti/Dev/Beats): both files valid
+#                 and clean, the video's length, a clone; then 13 Sep with every other face set to Hide Face, the timelines on
+#                 privacy-safe media of the whole talk, its size and speed measured. About 40 minutes; needs about 15 GB free.
+#                 Writes acceptance-timeline-full.txt to ../screens/mac/$(MILESTONE)/
+accept-timeline-full:
+	TEST_RUNNER_PRAKRITI_ACCEPTANCE=timeline-full TEST_RUNNER_PRAKRITI_SNAPSHOT_MILESTONE=$(MILESTONE) $(XCB) test -only-testing:PrakritiTests/TimelinePeopleAcceptanceTests/testTimelinesForTheWholeTalks
 
 # accept-timeline  v2 part M10a's acceptance (PLAN M10 checks 2 and 4): the REAL 13 Sep talk's 5-minute excerpt made in development
 #                 with the edited video and the Timelines on (Clear, a test title, Gabriel named; the parts of the talk from ~/Prakriti/Dev/Beats

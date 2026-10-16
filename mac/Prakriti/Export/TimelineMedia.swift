@@ -5,8 +5,8 @@ import Foundation
 // What the timelines point at (v2 part M10a, docs/v2/PLAN.md M10; research-edit-engine.md 5.3 and 5.5): `Media/` beside the
 // timelines holds an APFS clone of the recording (`clonefile(2)`, what `cp -c` does): no extra disk until either file changes,
 // and the timelines never point into the shared Studio Recordings folder, where iCloud could evict the original and leave them
-// offline. Since M10a writes a timeline only when everyone in the video is included, the clone is the whole truth; a recording
-// with anyone hidden needs the privacy-safe copy of M10b instead, and gets no timeline until then.
+// offline. The clone is used only when everyone in the video is included and nothing is muted; otherwise `Media/` holds the
+// privacy-safe copy instead (`CleanedMedia`, v2 part M10b), and never the clone.
 //
 // A clone is proved per file, never by free disk space (another agent may write to the same disk, PLAN M10 check 2): the
 // volume's own record of the file, read with getattrlist(2), says how many of its bytes are its own (ATTR_CMNEXT_PRIVATESIZE,
@@ -16,6 +16,11 @@ import Foundation
 
 enum TimelineMedia {
     static let folderName = "Media"
+
+    /// The privacy-safe media's name (v2 part M10b): the recording's name and "privacy-safe", a QuickTime movie.
+    static func privacySafeName(_ original: URL) -> String {
+        original.deletingPathExtension().lastPathComponent + " privacy-safe.mov"
+    }
 
     struct CloneFacts: Codable, Equatable, Sendable {
         /// Bytes of the file shared with no other file.

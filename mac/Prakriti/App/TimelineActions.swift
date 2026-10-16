@@ -7,8 +7,10 @@ import Foundation
 // Timeline and Export DaVinci Resolve Timeline. Make Timelines also turns the Timelines output on for the recording, so every
 // Make Again writes them with the video. Nothing starts by itself (PLAN rule 2.1.7).
 //
-// Refused in words, and nothing written, unless everyone in the video is included and no name is muted, both in the video as it
-// was made and in Ivan's choices now (fail closed): "A timeline for a recording with hidden people arrives in the next update."
+// Since part M10b a recording with anyone hidden or left out, or a name muted, gets timelines too, pointing at privacy-safe media
+// (`CleanedMedia`) made from Ivan's choices for the video; that takes minutes, with a percent in the row. Refused in words, and
+// nothing written, when the video is from before part M8d (who is in it unknown) or when his choices of who is heard changed after
+// the video was made (fail closed: the timelines are the video's edit).
 extension AppModel {
     /// The bundle identifiers Prakriti looks for (design spec 3.5.1, measured on this Mac).
     static func timelineAppID(_ version: FCPXMLVersion) -> String {
@@ -56,9 +58,12 @@ extension AppModel {
             return "The edit plan changed after the video was made. Make the video again, then make the timelines."
         }
         if let refusal = TimelineExport.refusal(plan: plan, hiddenFaces: video.hiddenFaces, leftOutVoices: video.leftOutVoices) { return refusal }
-        // Ivan's choices now, too: someone he has just chosen to hide is never put in a timeline.
+        // Ivan's choices now: who is hidden, left out or muted must be what the video was made with (the timelines are its edit).
+        // Someone he has just chosen to hide is never put in a timeline made from an older video.
         let now = OutputGate.hidden(videoPeople(recording))
-        if now.faces > 0 || now.voices > 0 { return TimelineExport.hiddenRefusal }
+        if plan.basis.peopleSignature != recording.videoSignature || now.faces != (video.hiddenFaces ?? 0) || now.voices != (video.leftOutVoices ?? 0) {
+            return TimelineExport.behindRefusal
+        }
         return nil
     }
 
@@ -90,21 +95,37 @@ extension AppModel {
         guard let folder = recording.outputFolder, let video = recording.video, let plan = EditPlan.read(folder: folder) else { return false }
         let output = URL(fileURLWithPath: folder, isDirectory: true)
         let style = StyleName(rawValue: plan.style)?.title ?? plan.style
-        let setup = TimelineExport.Setup(original: URL(fileURLWithPath: recording.filePath), plan: plan,
+        let gate = videoPeople(recording)
+        let counts = OutputGate.hidden(gate)
+        let log = self.log
+        let people = CleanedMedia.People.from(file: peopleFolders.read(recording.id), gate: gate, plan: plan, folders: peopleFolders,
+                                              log: { line in log.write("\(label): the timelines' people check. " + line) })
+        let ffmpeg = runner.tools.ffmpeg
+        var setup = TimelineExport.Setup(original: URL(fileURLWithPath: recording.filePath), plan: plan,
                                          videoFolder: output.appending(path: VideoStep.folderName, directoryHint: .isDirectory), captionsName: video.captionsName,
                                          project: "\(Format.dayLabel(recording.sessionDate)), \(style)",
                                          build: output.deletingLastPathComponent().appending(path: ".timeline " + output.lastPathComponent, directoryHint: .isDirectory),
                                          final: output.appending(path: TimelineExport.folderName, directoryHint: .isDirectory),
                                          admitTo: output.appending(path: TimelineExport.folderName, directoryHint: .isDirectory),
-                                         hiddenFaces: video.hiddenFaces, leftOutVoices: video.leftOutVoices)
+                                         hiddenFaces: max(video.hiddenFaces ?? 0, counts.faces), leftOutVoices: max(video.leftOutVoices ?? 0, counts.voices))
+        // The people check's own file must be there when anyone is hidden (fail closed in `TimelineExport.make`).
+        if counts.faces == 0 || peopleFolders.read(recording.id) != nil { setup.people = people }
+        setup.ffmpeg = { arguments in try await Subprocess.run(ffmpeg, arguments, timeout: .seconds(4 * 3600)).stderr }
         writingTimelines.insert(recording.id)
         timelineProblems[recording.id] = nil
-        defer { writingTimelines.remove(recording.id) }
+        timelineProgress[recording.id] = 0
+        defer {
+            writingTimelines.remove(recording.id)
+            timelineProgress[recording.id] = nil
+        }
         if !OutputResolver.isOn(.timelines, recording: recording, source: nil, defaults: defaultSettings()) {
             setOutput(.timelines, on: true, for: recording)
         }
         do {
-            let made = try await TimelineExport.make(setup, now: now())
+            let id = recording.id
+            let made = try await TimelineExport.make(setup, now: now(), progress: { [weak self] value in
+                Task { @MainActor in self?.timelineProgress[id] = value }
+            })
             if !recording.madeFiles.contains(TimelineExport.folderName) { recording.madeFiles = (recording.madeFiles + [TimelineExport.folderName]).sorted() }
             timelineRevision += 1
             record("\(label): the timelines for Final Cut Pro and DaVinci Resolve, \(made.summary.lowercasedFirst)")

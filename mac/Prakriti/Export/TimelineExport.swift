@@ -10,12 +10,14 @@ import Foundation
 //     <video name>.srt                  the video's own captions, for an app that drops caption lanes
 //     Read Me.txt                       five lines: how to open each, what is switched off
 //     Graphics/                         every text as ProRes 4444 with transparency, and the held last frame
-//     Media/                            an APFS clone of the recording
+//     Media/                            an APFS clone of the recording, or its privacy-safe copy (v2 part M10b)
 //
-// **By construction, a timeline is written only when everyone in the video is included** and no name is muted (PLAN M10a): an
-// editable timeline points at whole source files, so one drag of a clip edge or one switched-off blur would undo a privacy
-// choice. Anyone hidden or left out, or a muted name, and nothing is written: "A timeline for a recording with hidden people
-// arrives in the next update." M10b (privacy-safe media) is the only part that lifts that refusal.
+// **A timeline never points at the recording while anyone is hidden or left out, or a name is muted** (PLAN M10, R2): an editable
+// timeline points at whole media files, so one drag of a clip edge or one switched-off blur would undo a privacy choice. Part M10a
+// refused those recordings; part M10b writes them against privacy-safe media instead (`CleanedMedia`: only the used ranges with
+// 2 s handles, faces burned in, removed speech replaced by room tone on every track, a left-out person's own microphone track left
+// out), which passes the MP4's own picture and sound output checks inside `OutputGate` before any timeline that points at it is
+// kept. With everyone included and nothing muted, `Media/` is a clone, as before.
 //
 // Everything is made in a hidden folder, checked (the lint and Final Cut Pro's own DTDs on both files, every clip's last frames
 // decoded), and only then moved into place by `OutputGate.admitTimeline` (PLAN 2.1.11). A timeline that fails is deleted where it
@@ -26,9 +28,9 @@ enum TimelineExport {
     /// What was made, beside the files (hidden: Ivan's Finder shows only the files he uses).
     static let recordName = ".timeline.json"
 
-    static let hiddenRefusal = "A timeline for a recording with hidden people arrives in the next update."
-    static let mutedRefusal = "A timeline for a recording with a muted name arrives in the next update."
     static let unknownRefusal = "Make the video again first, so Prakriti knows who is in it, then make the timelines."
+    static let behindRefusal = "Your newest choices of who is hidden or heard in the video are not in it yet. Make the video again, then make the timelines."
+    static let peopleUnreadable = "Who is hidden in the video could not be read from the people check, so no timeline was written. Click Check People, then make the timelines again."
 
     struct Failure: Error, Equatable, Sendable {
         let reason: String
@@ -53,6 +55,15 @@ enum TimelineExport {
         var captionsName: String
         /// Each version's DTD check: "valid", or why it was not checked.
         var dtd: [String: String]
+        /// The privacy-safe media (v2 part M10b), when anyone is hidden or left out or a name is muted: its size, length, how long it
+        /// took, the ranges it holds, the audio tracks left out (OBS numbers) and what its checks found. Nil for a clone.
+        var privacySafe: Bool?
+        var mediaBytes: Int64?
+        var mediaSeconds: Double?
+        var mediaRenderSeconds: Double?
+        var mediaRanges: Int?
+        var tracksLeftOut: [Int]?
+        var mediaCheck: CleanedMedia.Check?
 
         /// "4:57, 31 clips, 3 texts, captions and 2 chapters."
         var summary: String {
@@ -78,14 +89,16 @@ enum TimelineExport {
         }
     }
 
-    /// Why no timeline is written for this plan, or nil when it may be: everyone in the video included, nobody left out, no
-    /// name muted. `hiddenFaces` and `leftOutVoices` are the video's own counts (nil for a video made before part M8d: unknown,
-    /// so refused).
+    /// Why no timeline is written for this plan, or nil when it may be. `hiddenFaces` and `leftOutVoices` are the video's own counts
+    /// (nil for a video made before part M8d: who is in it is unknown, so refused). Since part M10b anyone may be hidden or left out
+    /// and a name muted: the timelines then point at privacy-safe media (`CleanedMedia.needed`).
     static func refusal(plan: EditPlan, hiddenFaces: Int?, leftOutVoices: Int?) -> String? {
-        guard let hiddenFaces, let leftOutVoices else { return unknownRefusal }
-        if hiddenFaces > 0 || leftOutVoices > 0 || !plan.people.leftOut.isEmpty || !plan.people.cuts.isEmpty { return hiddenRefusal }
-        if !plan.people.mutes.isEmpty { return mutedRefusal }
-        return nil
+        hiddenFaces == nil || leftOutVoices == nil ? unknownRefusal : nil
+    }
+
+    /// Whether this plan's timelines need privacy-safe media, from the video's counts.
+    static func needsPrivacySafeMedia(_ setup: Setup) -> Bool {
+        CleanedMedia.needed(plan: setup.plan, hiddenFaces: setup.hiddenFaces ?? 0, leftOutVoices: setup.leftOutVoices ?? 0)
     }
 
     struct Setup: Sendable {
@@ -104,7 +117,12 @@ enum TimelineExport {
         var admitTo: URL
         var hiddenFaces: Int?
         var leftOutVoices: Int?
-        var animationsVerified = false
+        var animationsVerified = TimelineAnimations.verified
+        /// Who is hidden and left out (v2 part M10b), read from the people check: needed for the privacy-safe media. Nil when it
+        /// could not be read, which refuses any plan that needs that media (fail closed).
+        var people: CleanedMedia.People?
+        /// Runs ffmpeg for the privacy-safe media's sound and its checks.
+        var ffmpeg: CleanedMedia.Tool?
     }
 
     /// Makes, checks and admits the timelines. Throws `Failure` with one plain sentence, after deleting what it made.
@@ -112,19 +130,28 @@ enum TimelineExport {
         if let refusal = refusal(plan: setup.plan, hiddenFaces: setup.hiddenFaces, leftOutVoices: setup.leftOutVoices) {
             throw Failure(reason: refusal)
         }
+        if needsPrivacySafeMedia(setup) && (setup.people == nil || setup.ffmpeg == nil) { throw Failure(reason: peopleUnreadable) }
         let fm = FileManager.default
         try? fm.removeItem(at: setup.build)
         try fm.createDirectory(at: setup.build, withIntermediateDirectories: true)
         do {
             let record = try await build(setup, now: now, progress: progress)
+            let media = OutputGate.TimelineMediaFacts(needed: needsPrivacySafeMedia(setup), privacySafe: record.privacySafe == true,
+                                                      hiddenFaces: setup.hiddenFaces ?? 0, leftOutVoices: setup.leftOutVoices ?? 0, check: record.mediaCheck)
             try OutputGate.admitTimeline(staged: setup.build, to: setup.admitTo,
                                          refusal: refusal(plan: setup.plan, hiddenFaces: setup.hiddenFaces, leftOutVoices: setup.leftOutVoices),
-                                         problems: try await check(setup, record: record))
+                                         problems: try await check(setup, record: record), media: media)
             return record
         } catch let refused as OutputGate.Refused {
             try? fm.removeItem(at: setup.build)
             throw Failure(reason: refused.reason)
         } catch let failure as GraphicsClips.Failure {
+            try? fm.removeItem(at: setup.build)
+            throw Failure(reason: failure.reason)
+        } catch let failure as CleanedMedia.Failure {
+            try? fm.removeItem(at: setup.build)
+            throw Failure(reason: failure.reason)
+        } catch let failure as VideoHiding.Failure {
             try? fm.removeItem(at: setup.build)
             throw Failure(reason: failure.reason)
         } catch {
@@ -136,25 +163,53 @@ enum TimelineExport {
     /// Everything written into `setup.build`.
     private static func build(_ setup: Setup, now: Date, progress: @escaping @Sendable (Double) -> Void) async throws -> Record {
         let plan = setup.plan, fd = plan.frameDuration
-        // Media: the clone.
-        let cloned = try TimelineMedia.clone(setup.original, into: setup.build.appending(path: TimelineMedia.folderName, directoryHint: .isDirectory))
-        let finalMedia = setup.final.appending(path: TimelineMedia.folderName).appending(path: setup.original.lastPathComponent)
-        let media = try await TimelineMedia.info(cloned.url, name: setup.original.deletingPathExtension().lastPathComponent, finalURL: finalMedia, frame: fd)
-        progress(0.05)
-        let pictureFrames = try await CompositionBuilder.pictureFrames(original: cloned.url, plan: plan)
+        let mediaFolder = setup.build.appending(path: TimelineMedia.folderName, directoryHint: .isDirectory)
+        let pictureFrames = try await CompositionBuilder.pictureFrames(original: setup.original, plan: plan)
         let timeline = EditTimeline(plan: plan, pictureFrames: pictureFrames)
+        // Media: the clone, or (anyone hidden or left out, or a name muted) the privacy-safe copy, checked before anything points at it.
+        var media: TimelineSpec.Media
+        var mediaFile: URL
+        var cloned = false
+        var safe: (made: CleanedMedia.Made, check: CleanedMedia.Check, bytes: Int64)?
+        var mediaShare = 0.05
+        if needsPrivacySafeMedia(setup), let people = setup.people, let ffmpeg = setup.ffmpeg {
+            mediaShare = 0.8
+            try FileManager.default.createDirectory(at: mediaFolder, withIntermediateDirectories: true)
+            let name = TimelineMedia.privacySafeName(setup.original)
+            let made = try await CleanedMedia.make(original: setup.original, plan: plan, people: people, to: mediaFolder.appending(path: name),
+                                                   job: setup.build.appending(path: ".media-job", directoryHint: .isDirectory), ffmpeg: ffmpeg,
+                                                   progress: { progress(0.6 * $0) })
+            let check = try await CleanedMedia.check(made, original: setup.original, people: people, ffmpeg: ffmpeg, now: now,
+                                                     progress: { progress(0.6 + 0.2 * $0) })
+            mediaFile = made.url
+            let bytes = (try? made.url.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? 0
+            safe = (made, check, bytes)
+            media = try await TimelineMedia.info(made.url, name: (name as NSString).deletingPathExtension,
+                                                 finalURL: setup.final.appending(path: TimelineMedia.folderName).appending(path: name), frame: fd)
+            media.ranges = made.timeline.pieces
+            media.audioSources = max(1, made.tracksKept.count)
+        } else {
+            let clone = try TimelineMedia.clone(setup.original, into: mediaFolder)
+            mediaFile = clone.url
+            cloned = clone.cloned
+            media = try await TimelineMedia.info(clone.url, name: setup.original.deletingPathExtension().lastPathComponent,
+                                                 finalURL: setup.final.appending(path: TimelineMedia.folderName).appending(path: setup.original.lastPathComponent), frame: fd)
+        }
+        progress(mediaShare)
+        let graphicsFrom = mediaShare
         guard timeline.totalFrames > 0 else { throw Failure(reason: "The plan keeps no frame of the picture, so no timeline was written.") }
         let size = CGSize(width: media.width, height: media.height)
         // Graphics: every text, then the held last frame.
         let graphicsFolder = setup.build.appending(path: GraphicsClips.folderName, directoryHint: .isDirectory)
         let finalGraphics = setup.final.appending(path: GraphicsClips.folderName, directoryHint: .isDirectory)
         let graphics = try await GraphicsClips.make(plan: plan, timeline: timeline, renderSize: size, into: graphicsFolder, finalFolder: finalGraphics,
-                                                    progress: { progress(0.05 + 0.8 * $0) })
+                                                    progress: { progress(graphicsFrom + (0.9 - graphicsFrom) * $0) })
         var held: TimelineSpec.Clip?
         if timeline.holdFrames > 0, let frame = timeline.holdSourceFrame {
             try FileManager.default.createDirectory(at: graphicsFolder, withIntermediateDirectories: true)
             let name = GraphicsClips.heldName + ".mov"
-            try await GraphicsClips.writeHeld(media: cloned.url, sourceFrame: frame, frame: fd, frames: timeline.holdFrames, to: graphicsFolder.appending(path: name))
+            try await GraphicsClips.writeHeld(media: mediaFile, sourceFrame: media.frame(ofSource: frame), frame: fd, frames: timeline.holdFrames,
+                                              to: graphicsFolder.appending(path: name))
             held = TimelineSpec.Clip(name: GraphicsClips.heldName, url: finalGraphics.appending(path: name), kind: nil, start: timeline.keptFrames, frames: timeline.holdFrames)
         }
         progress(0.9)
@@ -178,7 +233,7 @@ enum TimelineExport {
         for version in FCPXMLVersion.allCases {
             try FCPXMLWriter.xml(spec, layout: layout, version: version).write(to: setup.build.appending(path: version.fileName), atomically: true, encoding: .utf8)
         }
-        try TimelineReadMe.text(captions: setup.captionsName).write(to: setup.build.appending(path: TimelineReadMe.fileName), atomically: true, encoding: .utf8)
+        try TimelineReadMe.text(captions: setup.captionsName, privacySafe: safe != nil).write(to: setup.build.appending(path: TimelineReadMe.fileName), atomically: true, encoding: .utf8)
         // Final Cut Pro's own DTDs, when it is on this Mac, copied where the path has no space: xmllint cannot resolve a DTD whose
         // path has one (measured 15 Oct: "parser error : xmlSAX2ResolveEntity" from the recording's own folder, valid from /tmp).
         let dtds = FileManager.default.temporaryDirectory.appending(path: "prakriti-dtd-\(UUID().uuidString)", directoryHint: .isDirectory)
@@ -193,8 +248,10 @@ enum TimelineExport {
         try? FileManager.default.removeItem(at: dtds)
         let record = Record(madeAt: now, planMadeAt: plan.madeAt, project: setup.project, seconds: timeline.duration, frames: layout.totalFrames,
                             clips: layout.clips.count, graphics: graphics.count, captions: layout.captions, chapters: layout.chapterMarkers,
-                            markers: layout.markers, pushInMarkers: layout.clips.filter(\.pushInHere).count, mediaName: setup.original.lastPathComponent,
-                            mediaCloned: cloned.cloned, captionsName: setup.captionsName, dtd: dtd)
+                            markers: layout.markers, pushInMarkers: layout.clips.filter(\.pushInHere).count, mediaName: mediaFile.lastPathComponent,
+                            mediaCloned: cloned, captionsName: setup.captionsName, dtd: dtd, privacySafe: safe == nil ? nil : true, mediaBytes: safe?.bytes,
+                            mediaSeconds: safe.map { $0.made.timeline.duration }, mediaRenderSeconds: safe?.made.seconds, mediaRanges: safe?.made.timeline.pieces.count,
+                            tracksLeftOut: safe?.made.tracksLeftOut, mediaCheck: safe?.check)
         try record.encoded().write(to: setup.build.appending(path: recordName), options: .atomic)
         progress(1)
         return record
@@ -226,8 +283,11 @@ enum TimelineExport {
         for name in Pipeline.madeFiles(in: graphics) where await TimelineMedia.tailFrames(graphics.appending(path: name)) == 0 {
             problems.append("The graphics clip \(name) does not decode to its end.")
         }
-        let media = setup.build.appending(path: TimelineMedia.folderName).appending(path: setup.original.lastPathComponent)
+        let media = setup.build.appending(path: TimelineMedia.folderName).appending(path: record.mediaName)
         if await TimelineMedia.tailFrames(media) == 0 { problems.append("The media copy's last 5 seconds do not decode.") }
+        // Nothing in the Media folder but the one file the timelines point at: never a stray copy of the recording.
+        let others = Pipeline.madeFiles(in: setup.build.appending(path: TimelineMedia.folderName, directoryHint: .isDirectory)).filter { $0 != record.mediaName }
+        if !others.isEmpty { problems.append("The Media folder holds a file the timelines do not use.") }
         return problems
     }
 }

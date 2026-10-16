@@ -67,6 +67,9 @@ enum AudioOutputCheck {
         var name: String
         var url: URL
         var clock: EpisodeClock
+        /// Which sound of the file is listened to (ffmpeg's stream map): the first, unless a file carries several (v2 part M10b,
+        /// the timelines' privacy-safe media, where every track it keeps is checked on its own).
+        var map = "0:a:0"
     }
 
     static func run(original: URL, made: [Made], segments: [VoiceSegment], leftOut: Set<Int>, folders: PeopleFolders, now: Date,
@@ -104,7 +107,7 @@ enum AudioOutputCheck {
 
         // 2 and 3. Each file: by sound, and by time.
         for (index, file) in made.enumerated() {
-            let heard = try await Diarizer.listen(try await samples(of: file.url, map: "0:a:0", name: "made-\(index)"))
+            let heard = try await Diarizer.listen(try await samples(of: file.url, map: file.map, name: "made-\(index)"))
             for speaker in Set(heard.segments.map(\.voice)).sorted() {
                 let own = heard.segments.filter { $0.voice == speaker }.sorted { $0.start < $1.start }
                 let speaking = total(own)

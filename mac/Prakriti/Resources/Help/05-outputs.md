@@ -277,16 +277,21 @@ Timelines, in the inspector's Outputs, under Timelines. They are in the recordin
   Subtitle and select the .srt file beside it.
 - **Graphics:** the title, the teacher's name, key phrases and terms as clips that look exactly as in the video. Each
   has an editable copy on the lane above it, switched off.
-- **Media:** a copy of the recording that takes no extra space on this Mac until one of them changes.
+- **Media:** when everyone is included, a copy of the recording that takes no extra space on this Mac until one of
+  them changes. When anyone is set to Hide Face or Leave Out, or a name is muted, a privacy-safe copy instead (see
+  below).
 - **Read Me.txt:** how to open each file, in five lines.
 
 Slow push-ins are markers named "Push-in here", not moves, until they have been checked in both apps. File > Export
 Final Cut Pro Timeline (Command-E) and File > Export DaVinci Resolve Timeline show the file in the Finder, and write it
 first if needed.
 
-**Important:** A timeline is written only when everyone in the video is included and no name is muted. For a
-recording with anyone set to Hide Face or Leave Out, Timelines says "A timeline for a recording with hidden people
-arrives in the next update." and nothing is written.
+**Important:** A timeline never points at the recording itself while anyone is hidden or left out. For such a
+recording, Prakriti first makes a privacy-safe copy of the parts the edit uses, with 2 seconds to spare on each side:
+hidden faces are burned into the picture, removed speech is replaced by the room's own sound on every sound track, and
+the microphone track of anyone you left out is not in it at all. It looks for faces and listens again before the
+timelines are kept, so a clip edge dragged out or an effect switched off cannot bring anyone back. This copy takes a
+few minutes to make and about 22 GB for an hour of edit; the row shows how far it has come.
 
 Keep the Timeline folder together. If you move it, Final Cut Pro or Resolve asks you to find the media again.
 :::

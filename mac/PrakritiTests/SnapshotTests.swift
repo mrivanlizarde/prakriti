@@ -674,16 +674,42 @@ final class SnapshotTests: XCTestCase {
         }
         var hiddenVideo = timedVideo
         hiddenVideo.hiddenFaces = 1
-        // Refused, and nothing written: no Timeline folder.
+        // v2 part M10b: the same recording with the sample's made-up corner face set to Hide Face, first while its timelines are
+        // written (the privacy-safe media takes minutes, so the row shows how far), then written against privacy-safe media.
         try? FileManager.default.removeItem(at: timelineFolder)
-        try draw("26-timelines-refused") { model in
-            _ = try openPlan(model) { r in
+        try draw("26-timelines-writing") { model in
+            let r = try openPlan(model) { r in
                 r.videoJSON = hiddenVideo.json()
                 if !r.madeFiles.contains(VideoStep.folderName) { r.madeFiles += [VideoStep.folderName] }
                 Fixtures.showPeopleOverlay(model, on: r)
             }
+            model.writingTimelines.insert(r.id)
+            model.timelineProgress[r.id] = 0.42
             model.inspectorTab = .outputs
         }
+        try FileManager.default.createDirectory(at: timelineFolder, withIntermediateDirectories: true)
+        for version in FCPXMLVersion.allCases { try Data().write(to: timelineFolder.appending(path: version.fileName)) }
+        var safeRecord = timelineRecord
+        safeRecord.mediaName = "2026-09-13 18-25-44 privacy-safe.mov"
+        safeRecord.mediaCloned = false
+        safeRecord.privacySafe = true
+        safeRecord.mediaBytes = 5_210_000_000
+        safeRecord.mediaSeconds = 902.3
+        try safeRecord.encoded().write(to: timelineFolder.appending(path: TimelineExport.recordName))
+        try draw("26-timelines-privacy-safe") { model in
+            _ = try openPlan(model) { r in
+                Fixtures.showPeopleOverlay(model, on: r)
+                // The video as made with the choices the sample now holds, so the row is not behind them.
+                var made = hiddenVideo
+                let counts = OutputGate.hidden(model.videoPeople(r))
+                made.hiddenFaces = counts.faces
+                made.leftOutVoices = counts.voices
+                r.videoJSON = made.json()
+                r.madeFiles = (Set(r.madeFiles).union([VideoStep.folderName, TimelineExport.folderName])).sorted()
+            }
+            model.inspectorTab = .outputs
+        }
+        try? FileManager.default.removeItem(at: timelineFolder)
         // The edited video in the Viewer (v2 part M8c): the sample talk on Video, a filler chosen on the strip with Restore, then
         // restored (Take Out Again, the line under the toolbar "Not in the video yet"). The video file is the test pattern, so
         // nothing of anyone is drawn; the player's picture is black in a bitmap (Mac warning 43), the real window is look-video's.
@@ -797,7 +823,7 @@ final class SnapshotTests: XCTestCase {
             model.inspectorTab = .direction
         }
         try? FileManager.default.removeItem(at: planURL)
-        let viewerCount = 28 * 2 // v2 part M10a: 26-timelines-ready and -refused; v2 part M8d: 22-video-hidden; v2 part M9c: 24-direction and 24-direction-people; v2 part M9d: 25-direction-*
+        let viewerCount = 29 * 2 // v2 part M10b: 26-timelines-writing and -privacy-safe in place of -refused; v2 part M10a: 26-timelines-ready; v2 part M8d: 22-video-hidden; v2 part M9c: 24-direction and 24-direction-people; v2 part M9d: 25-direction-*
 
         if only == "recording" {
             print("Snapshots written to \(outputFolder.path): \(written.count) Viewer pictures")

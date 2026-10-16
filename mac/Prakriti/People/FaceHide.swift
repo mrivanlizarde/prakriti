@@ -20,7 +20,7 @@ import Vision
 //   around the frame when they are within 0.5 s, so a face turning into view is never shown for a frame. When the
 //   follower loses a face between sightings, the last place it was seen stays hidden, and so does the head of any body
 //   Vision finds there (unknown means hidden).
-// - `FaceHide`: the Core Image function. Each region padded to 1.6 times the face, as a soft-edged ellipse, then a
+// - `FaceHide`: the Core Image function. Each region padded to 2.0 times the face (1.6 until part M10b), as a soft-edged ellipse, then a
 //   heavy blur (a radius of half the face's width, more than the quarter research-people.md 3.2 asks), pixelated into
 //   blocks about a quarter of the face wide (under the 8 across that research allows), and the blocks softened by a last
 //   blur of one block, so no block pattern is left for a detector to read as eyes (part M8d, measured: `soften`). Where a
@@ -220,7 +220,12 @@ enum FaceFollower {
 enum FaceHide {
     /// Each region is padded to this times the face's box (Vision's revision 4 boxes are tight: hair, ears and the jaw
     /// fall outside them, research-people.md 1.7).
-    static let pad = 1.6
+    ///
+    /// 2.0 since part M10b, 1.6 before. Measured 15 Oct on two-people-mixed's corner face (about 70 by 70 pixels): the privacy-safe
+    /// media's picture check, five frames a second over 377 frames, found Vision's "face" in 2 hidden frames (23.22 s and 30.03 s
+    /// of the original), each a box whose middle sat 0.05 to 0.06 of the picture below the sighting's middle: the chin under the
+    /// 1.6 ellipse, read with the blob above it as a face. Padded 2.0 the solid ellipse reaches 0.064 below the middle. Never smaller.
+    static let pad = 2.0
     /// The ellipse is solid to this share of its radius, then fades to its edge.
     static let solid = 0.9
     /// The blur's radius, as a share of the face's width (research-people.md 3.2: at least a quarter). Half, since part M8d.

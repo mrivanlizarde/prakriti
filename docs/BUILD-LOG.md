@@ -99,6 +99,11 @@ Cut Pro and 1.10 for DaVinci Resolve, in a Timeline folder beside the video: eve
 as in the video, captions, chapters, a clone of the recording, Read Me; Make Timelines in the inspector writes them in seconds, Open in
 Final Cut Pro hands them over. Written only when everyone in the video is included. On the 13 Sep excerpt both files are valid against
 Final Cut Pro's own DTDs and the media is a proved clone; Resolve's import waits for Ivan (the free Resolve refuses outside scripts).
+**Then part M10b, privacy-safe timeline media** (the last section, "v2 part M10b", Thu 15 Oct), the last of M10: a recording with
+anyone hidden or left out gets timelines too, pointing at a privacy-safe copy of the parts used (2 s handles, faces burned in, removed
+speech replaced by the room's own sound on every track, a left-out microphone track left out), looked at and listened to again inside
+the gate. On two-people-mixed: 0 faces in the hidden place in 377 frames, 0 runs of the second voice, 49.2 Mbps. Face hiding is padded
+2.0 now. The round trips in Final Cut Pro and Resolve are Ivan's.
 Prakriti for Mac, installed in `~/Applications`, is the only thing watching the studio folder and
 `~/Prakriti/Drop` (the build and install time are in the last section). Titles, show notes and chapters, and
 the podcast-ready episode, can be made but are off for every folder until Ivan turns them on.
@@ -6257,3 +6262,118 @@ time anywhere is the picture before it; a second picture for a time already writ
 excerpt"`, passed): 8,685 pictures, 8,684 steps all exactly 1,001 units (one frame at 30000/1001), `duration_ts` 8,693,685 =
 8,685 x 1,001, largest key-frame gap 15 (the limit). Mac warning 161 widened. Done in a separate worktree while the v2 run
 worked on M10, then merged.
+
+## v2 part M10b: privacy-safe timeline media. Thu 15 Oct 2026
+
+The last part of M10 (`docs/v2/PLAN.md`, M10, part M10b; REQUEST item 4 and the "two deliverables per video" decision). Built on
+`main` Thu 15 Oct 21:55 to 23:55. No Swift package added, nothing downloaded, no SwiftData model changed (the timelines'
+record is a JSON file beside them; its new fields are optional). Under Ivan's decision of Mon 12 Oct every participant counts as
+released; this run's rules: frames of Gabriel's talks measured only (pictures listed for Ivan below), nothing sent to any cloud
+provider (no model call was needed: the parts of each talk came from `~/Prakriti/Dev/Beats`).
+
+### What was built
+
+- **Privacy-safe media** (`Export/CleanedMedia.swift`). Whenever anyone in the video is set to Hide Face or Leave Out, or a name is
+  muted (`CleanedMedia.needed`), `Timeline/Media` holds `<recording> privacy-safe.mov` and never the clone: only the used ranges
+  (every kept span with 2 s handles each side, joined where they meet, `ranges`); every frame of them, handles included, drawn by the
+  same `Compositor` with the same `VideoHiding` regions (`CompositionBuilder.buildMedia`: no punch-in, no text, no hold); every stretch
+  of removed speech (the plan's people cuts and muted names) replaced on every kept audio track by that track's own room tone (the
+  quietest second of the recording where no voice, word or cut is, taken at the same moment on each track, laid forward then back,
+  blended over 10 ms outside the stretch); a left-out voice's own microphone track left out entirely; HEVC Main 10 at 50 Mbps (1080p),
+  24-bit PCM per kept track, in a `.mov`.
+- **Its checks, inside the gate.** `CleanedMedia.check` runs the MP4's own picture output check (five frames a second) and sound output
+  check (every kept track on its own: `AudioOutputCheck.Made.map`), and measures every replaced stretch on every kept track against
+  the loudest 100 ms of its room tone. `OutputGate.admitTimeline` reads them (`timelineMediaProblems`, fail closed: a clone where
+  anyone is hidden, a needed check that did not run, a face it cannot account for, a voice left out, a stretch louder than the room)
+  and alone moves the Timeline folder into place. The timelines' own check also refuses a stray file in `Media/`.
+- **The timelines on the media's clock.** `TimelineSpec.Media.ranges` and `frame(ofSource:)` place each clip, caption and marker on
+  the media's own frames; the held last frame is read from the safe media. The lint gains rule 8: every clip shows frames its file
+  holds.
+- **The refusal is gone.** `TimelineExport.refusal` refuses only a video made before M8d. Make Timelines refuses when Ivan's choices of
+  who is hidden or heard are newer than the video ("Your newest choices of who is hidden or heard in the video are not in it yet...")
+  and passes the larger of the video's and today's counts, so nobody he has just hidden can reach a clone. When someone is hidden and
+  the people check's file cannot be read, nothing is written (`peopleUnreadable`).
+- **Push-ins as moves, gated.** With `TimelineAnimations.verified` (a constant, false) a slow push-in is written as keyed `position` and
+  `scale` in `adjust-transform`, valid against both DTDs; until then it stays the marker. Round-trip files with the moves on are in
+  `~/Prakriti/Dev/Round trip v2-m10b/` for Ivan (below).
+- **In the app:** Make Timelines shows a bar and a percent (`AppModel.timelineProgress`); the row says the timelines use a privacy-safe
+  copy when they do; Read Me's fifth line says so too. Help 05, 07 and 10 describe what is built (notes in
+  `docs/v2/help-notes/05-outputs.md`).
+- **`FaceHide.pad` 2.0, was 1.6** (finding 1). Mac warnings 188, 189 and 191 rewritten; 195 to 198 added.
+- **Tests:** `FCPXMLTests` gains seven (ranges and handles, room tone, replacement, the gate on the media, lint rule 8 and keyed push-ins
+  against the DTDs, and end to end on the test pattern with a made-up hidden track and a muted second); `TimelinePeopleAcceptanceTests`
+  (`make accept-timeline-people`, check 3, and `make accept-timeline-full`, the whole talks); snapshots `26-timelines-writing` and
+  `26-timelines-privacy-safe` replace `26-timelines-refused`.
+
+### Found by measuring (each with its measurement)
+
+1. **The corner face's chin showed under the hiding.** The first run on two-people-mixed: the media's picture check found Vision's
+   "face" in 2 of 377 frames, at 23.22 s ("hidden": inside a hidden region) and 30.03 s ("near hidden"), each box's middle 0.05 to 0.06
+   of the picture below the sighting's middle. The regions were there on those frames (read back: three each). 23.22 s is in the MP4
+   too, so the MP4 had the same weakness at a frame its own five-a-second check did not sample. `FaceHide.pad` 1.6 to 2.0: 0 of 377 and
+   0 of 376 frames, and the MP4 check (M8d acceptance) still passes. The gate refused both times it should have: nothing was kept.
+2. **A replaced stretch measured 3.1 dB over its room tone** on two-people-mixed: a 0.3 s stretch against the whole second's level,
+   the room not being even. The reference is now the room tone's loudest 100 ms with 1 dB allowed; removed speech measures 20 dB and
+   more over it (the test pattern's muted second: -17.7 dB in the original, -91.0 dB in the media).
+3. **grep exits 1 when it counts 0**, which the test's tool runner read as a failure; the count is read whatever grep exits with.
+4. **The whole 13 Sep talk with every other face set to Hide Face is refused by the edited video's own gate (M8d), so no timeline is
+   made for it.** "A face Prakriti cannot account for at 12:05": at 760.46 s of the original (12:40, just as the room's faces appear), a
+   face with no people-check track within 1 s (the face step looks twice a second). The gate is right to refuse; it means the whole-talk
+   privacy-safe media could not be measured on a real recording, and that Ivan cannot hide the 13 Sep audience today. Not fixed here
+   (M6a's face step and M8d's video, not this part's code); logged for the next session.
+
+### Checks run, with results (PLAN M10, the checks part M10b runs: 3, 6, 7, 8)
+
+Real media: `two-people-mixed.mp4` and `two-people-tracks.mov` (`~/Prakriti/Dev/Fixtures`), the 13 Sep excerpt, and (the last part of
+M10) the whole 13 Sep and 6 Sep talks. Originals unchanged: 13 Sep 730,464,600 bytes, 6 Sep 2,578,079,009 bytes, same dates; fixtures
+39,951,566 and 41,980,221 bytes, same dates. Reports in `screens/mac/v2-m10b/`.
+
+| # | Check | Result |
+|---|---|---|
+| 3 | On `two-people-mixed` with the corner person on Leave Out (Gabriel teaching): `grep -c "Studio Recordings"` over both files; Vision on the cleaned media finds no face in the hidden track's regions; Parakeet at the removed ranges finds 0 `say` runs; the cleaned media's length equals the used ranges plus 2 s handles | **PASS** (`acceptance-timeline-people.txt`). The make kept the video and the timelines (step 20.8 s), on `two-people-mixed privacy-safe.mov` only (not a clone). **grep: `Edit for Final Cut Pro.fcpxml:0`, `Edit for DaVinci Resolve.fcpxml:0`**, the fixture named 0 times, all 6 sources inside `Timeline/`. **Vision, five frames a second: 0 faces in the hidden place in 377 frames**; the place's variance down 87.4 to 98.2% against the original at six moments (measured only). **Parakeet: 0 of 59 five-word runs** of the second voice on the media's sound, 183 words heard; **the removed stretches alone (2, 3.8 s): 0 runs, 0 words**. **2,255 frames = 75.242 s = the 2 ranges** (67.267 s kept and the hold's frame, plus handles), HEVC Main 10 `yuv420p10le`, `pcm_s24le`. In the gate: whole, picture check 377 faces all someone included, sound check passed (Voice 1 0.994, Voice 2 0.320), 2 replaced stretches, the loudest -1.1 dB against the room tone's loudest 100 ms. Both files valid against `FCPXMLv1_14.dtd` and `FCPXMLv1_10.dtd`, 0 lint problems (8 rules). **Measured size and speed: 462,995,450 bytes for 75.2 s, 49.2 Mbps (about 22 GB an hour of edit), made in 14.0 s (5.4 times real time).** **Also on `two-people-tracks.mov`** (3 sound tracks): track 3, the second voice's own microphone, **left out (the media has 2)**; Parakeet 0 runs on both tracks and in the removed stretches; Vision 0 in 376 frames; 2,253 frames = the ranges. Everyone included first: both fixtures' timelines point at a clone, as in M10a. Nothing stored for strangers, Jobs empty, 0 cloud calls |
+| 6 | Final Cut Pro 12.4 round trip | **Not run: Ivan's** (not a ship gate; it needs a person or a screen-driving session). Files ready (below) |
+| 7 | The same five frames in Resolve; every effect off and a clip edge dragged out on `two-people-mixed`: no hidden face, no removed speech | **Not run: Ivan's.** What a program can measure was measured in check 3: the media the timelines point at holds no face in the hidden place and no second voice, handles included, so a dragged edge has nothing to reveal. `timelineAnimationsVerified` stays false |
+| 8 | Regression set | **PASS.** `make build`: no warnings. **`make test`: 430 tests, 0 failures, 30 skipped by design** (1,504 s; `26-timelines-writing` and `26-timelines-privacy-safe` looked at, light and dark: the bar at 42% with "Writing the timelines, 42%."; the two rows, the privacy-safe note, Make Timelines Again). `make accept`: 13 Sep -16.8 LUFS, -1.7 dBFS, transcript to 15:47 of 15:48; silent-60s refused at the sound check; 6 Sep -16.7 LUFS, -1.4 dBFS, the TXGAP stretches 72 and 59 words. `make accept-edits`: **38.82 s shorter (expected 38.82)**. Because `FaceHide` changed: `make accept-people-video` (M8d) every line PASS (361 faces all included, 0 of 59 runs, 15.90 Mbps, -13.8 LUFS). `make accept-timeline` (M10a): every line PASS, the refusal now `behindRefusal`; its `make resolve-import` again SKIPPED (Resolve not reachable from outside) |
+| Whole talks | `make accept-timeline-full` | **PASS where measurable** (`acceptance-timeline-full.txt`). 13 Sep, everyone included: 15:03, 99 clips, 9 texts, 11 chapters, **27,076 frames = the video's**, both files valid and clean, media a proved clone, make 255 s. 6 Sep: 50:52, 368 clips, 20 texts, 22 chapters, **91,477 frames = the video's**, valid and clean, a clone, make 831 s. 13 Sep with the other faces on Hide Face: **NOT MEASURED**, refused by the video's own gate (finding 4). The whole-talk videos were deleted afterwards to free the disk |
+
+**Em dashes:** 0 in every line this part added (grep for U+2014 and U+2013 over the diff and the new files).
+
+### Decisions, each with its reason
+
+1. **One media file of the joined ranges, not one file per range.** Reason: one asset per timeline is what M10a's writer, lint and
+   Resolve's relink already handle; clips are placed on its clock.
+2. **The held frame's range is kept too** (its frame plus handles). Reason: the held last frame is read from the media, never the original.
+3. **Room tone found once, on the first kept track, and taken at the same moment on every track.** Reason: each track keeps its own
+   room; the moment is one where nobody speaks on any of them.
+4. **Hiding in the media follows Ivan's choices for the video at make time; Make Timelines refuses when they are newer than the video.**
+   Reason: the timelines are the video's edit; refusing is one Make Again, a mismatch would be a silent difference.
+5. **`FaceHide.pad` raised for every output, not only the media.** Reason: finding 1's frame is in the MP4 too; strengthening only the
+   media would leave the MP4 with the weakness the media's check exposed.
+6. **Push-ins as moves are written but switched off by a constant.** Reason: PLAN M10 asks for a follow-up commit with the evidence;
+   a constant can only change by a commit.
+
+### What does not work yet
+
+- The round trips in Final Cut Pro and Resolve (checks 6 and 7) and Resolve's import (M10a check 5) are Ivan's.
+- A recording where the face step missed a face the video's check finds (finding 4: the 13 Sep audience) gets neither a video nor
+  timelines while anyone is hidden.
+- The media takes about 22 GB an hour of edit; the disk was at 13 to 28 GB free during this run (523 GB is in the Trash).
+
+### For Ivan
+
+- [ ] **Free the disk.** The Mac was at 99 to 100% full during this build (13 GB free at the start): the Trash holds 523 GB and
+  Downloads 570 GB. Emptying the Trash is yours; Prakriti needs room for videos, and about 22 GB an hour for a privacy-safe timeline.
+- [ ] **Round trip in Final Cut Pro (check 6, about 10 minutes).** In Final Cut Pro, File > New > Library, name it `Scratch` in
+  `~/Prakriti/Dev` (never your real library). File > Import > XML, choose
+  `~/Prakriti/Dev/Round trip v2-m10b/13 Sep excerpt/Edit for Final Cut Pro.fcpxml`. Play the two push-ins at 1:42 and 4:10: each
+  should ease in from the whole picture, as in the video
+  (`~/Prakriti/Dev/Outputs/2026-09-13 excerpt 2m to 7m/Video/The Lineage of Krsnamacarya.mp4`). Compare the frames at 0:30, 1:30,
+  2:29, 3:29 and 4:29 with the MP4's. Then File > Export XML and send me the file.
+- [ ] **Round trip in DaVinci Resolve (check 7).** File > Import > Timeline with Use sizing information on, the
+  `Edit for DaVinci Resolve.fcpxml` in the same folder; the same push-ins and frames. Then import
+  `~/Prakriti/Dev/Round trip v2-m10b/two-people-mixed/Edit for DaVinci Resolve.fcpxml`, turn off every effect, and drag the end of
+  the clip before 0:30 outward as far as it goes: the corner face must stay hidden and the second voice must not be heard. Same in
+  Final Cut Pro. Tell me what you saw; only then do push-ins become moves.
+- [ ] **Look at the frames I could only measure:** `screens/mac/v2-m10b/for-ivan/m10b-two-people-mixed-media.png` and
+  `m10b-two-people-tracks-media.png` (the privacy-safe media, corner face hidden).
+- [ ] **The 13 Sep audience cannot be hidden yet** (finding 4): for now, keep that talk's people on Include if you want its video.

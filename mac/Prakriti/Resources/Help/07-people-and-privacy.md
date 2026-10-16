@@ -162,10 +162,17 @@ faces is kept beside the edit plan as `video-hiding.json`: boxes and times only,
 :::requires timelines
 ## In the timelines
 
-A timeline for Final Cut Pro or DaVinci Resolve points at the whole recording, so a clip edge dragged out or a blur
-switched off there would bring back what you hid. So Prakriti writes a timeline only when everyone in the video is
-included and no name is muted. For a recording with anyone set to Hide Face or Leave Out, it says "A timeline for a
-recording with hidden people arrives in the next update." and writes nothing.
+A timeline for Final Cut Pro or DaVinci Resolve points at media files, and a clip edge dragged out or a blur switched
+off there would bring back whatever the file holds. So when anyone is set to Hide Face or Leave Out, or a name is
+muted, the timelines never point at the recording. They point at a privacy-safe copy of the parts the edit uses:
+
+- Faces you hid are burned into the picture, so there is no blur to switch off.
+- Speech you removed is replaced by the room's own sound, on every sound track.
+- A person you left out who had their own microphone track: that track is not in the copy at all.
+
+Before the timelines are kept, Prakriti looks for faces in the copy again and listens to every sound track in it. If
+anything it cannot account for turns up, nothing is kept and the inspector says when. If you change who is hidden
+after the video was made, make the video again first, so the timelines and the video match.
 :::
 
 :::requires choices
@@ -230,8 +237,8 @@ For each person, in each output, choose one:
 Everyone starts as **Include**, because the participants have signed releases.
 
 - Thumbnails only ever show people you included.
-- The timeline for Final Cut Pro or DaVinci Resolve uses the video with your choices already applied,
-  so the people you blurred or removed are not in it either.
+- The timelines for Final Cut Pro and DaVinci Resolve use a privacy-safe copy with your choices already applied,
+  so the people you blurred or removed are not in them either.
 
 **Tip:** Set a choice once for every output from the person's row, then change single outputs as needed.
 :::

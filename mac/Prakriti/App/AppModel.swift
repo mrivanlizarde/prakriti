@@ -179,6 +179,8 @@ final class AppModel {
     /// by Make Timelines, by recording.
     var timelineProblems: [UUID: String] = [:]
     var writingTimelines: Set<UUID> = []
+    /// How far Make Timelines has come, 0 to 1, by recording (v2 part M10b: privacy-safe media takes minutes, not seconds).
+    var timelineProgress: [UUID: Double] = [:]
     /// Bumped when timelines are written, so the window reads their record again.
     var timelineRevision = 0
     /// Bumped when a plan is written, so the window reads it again.

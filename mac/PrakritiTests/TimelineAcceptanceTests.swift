@@ -221,8 +221,10 @@ final class TimelineAcceptanceTests: XCTestCase {
         let refusal = model.timelineRefusal(recording)
         let kept = TimelineExport.Record.read(timeline)
         let refused = await model.writeTimelines(recording)
-        verdict("Refused with the teacher set to Hide Face: nothing written, the reason in words", refusal == TimelineExport.hiddenRefusal && !refused
-                    && TimelineExport.Record.read(timeline) == kept && model.timelineProblems[recording.id] == TimelineExport.hiddenRefusal,
+        // Since part M10b a recording with someone hidden gets timelines on privacy-safe media; one whose video was made before the
+        // choice is still refused, so a timeline never shows someone Ivan has just chosen to hide.
+        verdict("Refused with the teacher set to Hide Face after the video was made: nothing written, the reason in words", refusal == TimelineExport.behindRefusal && !refused
+                    && TimelineExport.Record.read(timeline) == kept && model.timelineProblems[recording.id] == TimelineExport.behindRefusal,
                 refusal ?? "no refusal")
         model.restoreChoices(choices, in: recording)
         verdict("Nothing reached a cloud provider", cloudCalls.count == 0, "\(cloudCalls.count) calls")

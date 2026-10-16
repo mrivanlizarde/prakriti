@@ -103,4 +103,45 @@ enum CompositionBuilder {
         return Built(composition: composition, videoComposition: AVVideoComposition(configuration: configuration), track: track,
                      timeline: timeline, renderSize: renderSize)
     }
+
+    /// The privacy-safe media of the timelines (v2 part M10b, `CleanedMedia`): the original's frames over `timeline`'s pieces (the
+    /// used ranges plus their handles, end to end), drawn by the same `Compositor` with the same hidden regions, and nothing else:
+    /// no punch-in, no text, no held frame. The editing app frames and titles it; the faces are already burned in.
+    static func buildMedia(timeline: EditTimeline, original: URL, hidden: HiddenFaces?) async throws -> Built {
+        let asset = AVURLAsset(url: original)
+        guard let source = try await asset.loadTracks(withMediaType: .video).first else {
+            throw Failure(reason: "The original has no picture, so no media can be made from it.")
+        }
+        let (size, transform) = try await source.load(.naturalSize, .preferredTransform)
+        guard transform.isIdentity else {
+            throw Failure(reason: "The original's picture is recorded turned, and Prakriti cannot make media from a turned picture yet.")
+        }
+        guard timeline.totalFrames > 0 else { throw Failure(reason: "No range of the picture is used, so no media was made.") }
+        let renderSize = CGSize(width: abs(size.width).rounded(), height: abs(size.height).rounded())
+        let composition = AVMutableComposition()
+        guard let track = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid) else {
+            throw Failure(reason: "The media could not be put together.")
+        }
+        for piece in timeline.pieces {
+            do {
+                try track.insertTimeRange(CMTimeRange(start: timeline.time(piece.sourceFrame), duration: timeline.time(piece.frames)), of: source,
+                                          at: timeline.time(piece.editFrame))
+            } catch {
+                throw Failure(reason: "A range of the recording could not be put into the media: \(error.localizedDescription)")
+            }
+        }
+        let frameDuration = timeline.time(1)
+        let table = hidden.flatMap { $0.isEmpty ? nil : $0.table() }
+        let instructions = timeline.pieces.map { piece in
+            RenderInstruction(timeRange: CMTimeRange(start: timeline.time(piece.editFrame), duration: timeline.time(piece.frames)),
+                              trackID: track.trackID, spanID: piece.id, sourceStart: timeline.seconds(piece.sourceFrame),
+                              firstSourceFrame: piece.sourceFrame, frameDuration: frameDuration, hidden: table)
+        }
+        let configuration = AVVideoComposition.Configuration(
+            colorPrimaries: AVVideoColorPrimaries_ITU_R_709_2, colorTransferFunction: AVVideoTransferFunction_ITU_R_709_2,
+            colorYCbCrMatrix: AVVideoYCbCrMatrix_ITU_R_709_2, customVideoCompositorClass: Compositor.self, frameDuration: frameDuration,
+            instructions: instructions, renderSize: renderSize)
+        return Built(composition: composition, videoComposition: AVVideoComposition(configuration: configuration), track: track,
+                     timeline: timeline, renderSize: renderSize)
+    }
 }

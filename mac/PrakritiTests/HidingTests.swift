@@ -136,7 +136,7 @@ final class HidingTests: XCTestCase {
         let away = FaceBox(x: 0.05, y: 0.05, width: 0.2, height: 0.2)
         let outside = (Int(away.y * 1080)..<Int((away.y + away.height) * 1080)).flatMap { y in (Int(away.x * 1920)..<Int((away.x + away.width) * 1920)).map { y * 1920 + $0 } }
         XCTAssertEqual(outside.filter { abs(before.values[$0] - after.values[$0]) > 0.5 }.count, 0)
-        // The ellipse is padded 1.6 times and covers the whole box, corners included.
+        // The ellipse is padded 2.0 times (1.6 until part M10b) and covers the whole box, corners included.
         for (x, y) in [(main.x, main.y), (main.x + main.width, main.y), (main.x, main.y + main.height), (main.x + main.width, main.y + main.height)] {
             XCTAssertTrue(FaceHide.covers(main, x: x, y: y), "corner \(x), \(y) of the box is inside the solid ellipse")
         }
@@ -145,6 +145,7 @@ final class HidingTests: XCTestCase {
         // 8 blocks across the face.
         XCTAssertGreaterThanOrEqual(FaceHide.blurShare, 0.25)
         XCTAssertLessThanOrEqual(FaceHide.blocksAcross / FaceHide.pad, 8)
+        XCTAssertGreaterThanOrEqual(FaceHide.pad, 2.0, "never smaller than measured in part M10b: the chin of a small face showed under 1.6")
         // No region, no change.
         XCTAssertEqual(FaceHide.apply(source, regions: []).extent, source.extent)
     }
