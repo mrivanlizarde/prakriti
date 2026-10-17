@@ -79,7 +79,7 @@ access.
 
 Neither page is listed in search engines.
 
-## Status on Thu 8 Oct 2026 (one line added Sat 10 Oct)
+## Status on Thu 8 Oct 2026 (lines added Sat 10 Oct and Fri 16 Oct)
 
 - **Sat 10 Oct:** Prakriti for Mac, on Ivan's laptop, is now what watches the studio folder (it
   replaced engine v0). All six of its first steps are built: it finds new recordings, checks their
@@ -95,7 +95,15 @@ Neither page is listed in search engines.
   The main window is now a library: recordings that need Ivan, that are being made, that are approved,
   or all of them, as a grid or a list, with a search that also finds what was said, and a panel on the
   right with each recording's files, checks and details. Settings have their own window.
-  Progress is in `docs/BUILD-LOG.md`.
+- **Fri 16 Oct, v2 finished:** besides the podcast, Prakriti now makes an edited video in a house style
+  (pauses, filler words and retakes out; zooms, titles, key phrases and chapters in), steered by a
+  sentence of direction, with vertical shorts, three designed thumbnails, and timelines to finish by
+  hand in Final Cut Pro or DaVinci Resolve. It lists everyone seen or heard; everyone starts included
+  (all participants signed releases), and anyone can be hidden or left out, with every file checked
+  for them. Approve shows every file with its checks, and an upload checklist lists what each platform
+  asks for. A moment from another recording of the same teacher can be found and added by hand.
+  Nothing is uploaded by Prakriti. What works, with its measurements, and what Ivan should try first
+  are in `docs/BUILD-LOG.md`, "v2 finish line".
 - Prakriti is named, researched and planned. The front page and roadmap are written; they go live
   on Ivan's yes. The web app behind sign-in is not built yet.
 - Podcast first: Gabriel's reply is due Mon 12 Oct, or at Ivan's studio visit if that comes first.
