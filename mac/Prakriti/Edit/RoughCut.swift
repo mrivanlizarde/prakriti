@@ -220,8 +220,13 @@ struct RoughCut: Sendable {
     static func refine(_ words: [PlanWord], envelope: Envelope, preset: RoughCutPreset) -> (starts: [Double], ends: [Double], soundless: [Bool]) {
         var starts: [Double] = [], ends: [Double] = [], soundless: [Bool] = []
         let reach = 3.0
-        for word in words {
+        for (index, word) in words.enumerated() {
             var s = word.start, e = max(word.end, word.start + 0.02)
+            // A word with no sound under it may move to the nearest sound, but never past its neighbours (16 Oct: the
+            // 20 Sep class's soundless "uh" at 2:55.6 moved 2.5 s forward onto "just", the plan's rule 3 refused span k17,
+            // and the class could not be planned at all). Out of room, it stays where the transcript put it, soundless.
+            let floor = index > 0 ? words[index - 1].end : 0
+            let ceiling = index + 1 < words.count ? words[index + 1].start : Double.greatestFiniteMagnitude
             var moved = false
             let heard = envelope.activeSeconds(from: s, to: e) >= preset.shortestSound
             if heard, let first = envelope.firstActive(from: s, to: e) {
@@ -240,6 +245,10 @@ struct RoughCut: Sendable {
                 case (nil, nil): break
                 }
                 moved = before != nil || after != nil
+                if moved && (s < floor - 1e-6 || e > ceiling + 1e-6) {
+                    (s, e) = (word.start, max(word.end, word.start + 0.02))
+                    moved = false
+                }
             }
             starts.append(s)
             ends.append(max(e, s + 0.02))
