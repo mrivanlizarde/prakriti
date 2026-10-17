@@ -1668,8 +1668,34 @@ struct Pipeline: Sendable {
         setup.moments = options.moments
         defer { try? FileManager.default.removeItem(at: setup.jobFolder) }
         let ffmpeg = tools.ffmpeg
-        let outcome = try await PlanStep.run(setup, now: Date()) { arguments in
-            _ = try await tool(.planEdit, ffmpeg, arguments, captureStdout: false, duration: duration)
+        // A plan that fails its own check is made again, simpler, instead of stopping every output after it (16 Oct: the
+        // 20 Sep class's refused plan left no video, timeline, short or thumbnail). Each step down keeps Ivan's trim, cuts
+        // and people choices; it drops what is optional: first the moments from other recordings, then the parts chosen
+        // by the direction (beats), then the text on screen. The note says what was skipped and why.
+        var attempt = setup
+        var skipped: [String] = []
+        var outcome: PlanStep.Outcome
+        var lastFailure: String = ""
+        var made: PlanStep.Outcome?
+        for step in 0..<4 {
+            if step == 1 && setup.moments.isEmpty { continue }
+            if step == 1 { attempt.moments = []; skipped.append("moments from other recordings") }
+            if step == 2 { attempt.beats = nil; skipped.append("the parts chosen by the direction") }
+            if step == 3 { attempt.text = TextPlan.Setup(); skipped.append("text on screen") }
+            do {
+                made = try await PlanStep.run(attempt, now: Date()) { arguments in
+                    _ = try await tool(.planEdit, ffmpeg, arguments, captureStdout: false, duration: duration)
+                }
+                break
+            } catch let failure as PlanStep.Failure where failure.reason.contains("did not pass its own check") {
+                lastFailure = failure.reason
+                continue
+            }
+        }
+        guard let firstMade = made else { throw PlanStep.Failure(reason: lastFailure) }
+        outcome = firstMade
+        if !skipped.isEmpty {
+            outcome.notes.insert("Made simpler, without " + skipped.joined(separator: ", ") + ", because the full plan failed its own check: " + lastFailure, at: 0)
         }
         do {
             try PlanStep.write(outcome.plan, into: staging)

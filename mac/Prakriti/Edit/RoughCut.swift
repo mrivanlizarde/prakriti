@@ -343,6 +343,20 @@ struct RoughCut: Sendable {
             }
         }
 
+        // Every word that lies wholly inside removed time belongs to that removal (16 Oct: a block removal such as a person
+        // left out carried no word list, so its words stayed "kept"; on the 20 Sep class span k16 began at 2:58.1 yet listed
+        // "so" at 2:50.0 as its first word, and the plan was refused). Words in a time range are consecutive, so one range.
+        for k in cut.removed.indices {
+            let r = cut.removed[k]
+            let inside = words.indices.filter { cut.refinedStart[$0] >= r.from - 0.05 && cut.refinedEnd[$0] <= r.to + 0.05 }
+            guard let lo = inside.first, let hi = inside.last else { continue }
+            let merged = r.words.map { min($0.lowerBound, lo)...max($0.upperBound, hi) } ?? lo...hi
+            // Never swallow a word another removal or a kept span already owns: only widen across words that are inside.
+            if merged.count == (r.words?.count ?? 0) + inside.filter({ !(r.words?.contains($0) ?? false) }).count {
+                cut.removed[k].words = merged
+            }
+        }
+
         // The kept spans: what lies between the removals.
         var spans: [KeptSpan] = []
         var cursor = 0.0
