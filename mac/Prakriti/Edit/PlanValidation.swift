@@ -67,7 +67,7 @@ enum PlanValidation {
             let before = a > 0 ? end(a - 1) : 0
             let after = b + 1 < all.count ? start(b + 1) : plan.sourceDuration
             if span.in < before - tolerance || span.in > start(a) + tolerance {
-                problems.append(Problem(rule: 3, line: "Span \(span.id) starts at \(TimeText.string(span.in)), away from its first word (\"\(all[a].text)\" at \(String(format: "%.2f", start(a))) s; the word before ends at \(String(format: "%.2f", before)) s; transcript \(String(format: "%.2f", all[a].start)) s)."))
+                problems.append(Problem(rule: 3, line: "Span \(span.id) starts at \(TimeText.string(span.in)), away from its first word (\"\(all[a].text)\" at \(String(format: "%.2f", start(a))) s; the word before ends at \(String(format: "%.2f", before)) s; transcript \(String(format: "%.2f", all[a].start)) s). Removed between: \(plan.removed.filter { $0.to > before - 1 && $0.from < span.in + 1 }.map { "\($0.kind) \(String(format: "%.2f", $0.from))-\(String(format: "%.2f", $0.to)) words \($0.words?.count ?? 0)" }.joined(separator: "; "))."))
             }
             if span.out > after + tolerance || span.out < end(b) - tolerance {
                 problems.append(Problem(rule: 3, line: "Span \(span.id) ends at \(TimeText.string(span.out)), away from its last word."))

@@ -343,6 +343,29 @@ struct RoughCut: Sendable {
             }
         }
 
+        // An automatic removal (pause, filler, stutter, restart) never reaches over a word it does not list (16 Oct: on the
+        // 20 Sep class a soundless "uh" was given a filler removal from 2:49.3 to 3:05.5 over 16 s of speech, overlapping a
+        // pause removal, and the spans after it lost their words). Each is held to the gap between its neighbours, on frames.
+        let automatic: Set<RemovedKind> = [.pause, .filler, .stutter, .restart]
+        var clamped: [Removal] = []
+        for r in cut.removed {
+            guard automatic.contains(r.kind) else { clamped.append(r); continue }
+            var lowest = 0.0, highest = input.duration
+            if let listed = r.words {
+                if listed.lowerBound > 0 { lowest = cut.refinedEnd[listed.lowerBound - 1] }
+                if listed.upperBound + 1 < words.count { highest = cut.refinedStart[listed.upperBound + 1] }
+            } else {
+                let mid = (r.from + r.to) / 2
+                if let before = words.indices.last(where: { cut.refinedEnd[$0] <= mid }) { lowest = cut.refinedEnd[before] }
+                if let after = words.indices.first(where: { cut.refinedStart[$0] >= mid }) { highest = cut.refinedStart[after] }
+            }
+            var fixed = r
+            if r.from < lowest - 1e-6 { fixed.from = frame.above(lowest) }
+            if r.to > highest + 1e-6 { fixed.to = frame.below(highest) }
+            if fixed.to - fixed.from > 1e-6 { clamped.append(fixed) }
+        }
+        cut.removed = clamped
+
         // Every word that lies wholly inside removed time belongs to that removal (16 Oct: a block removal such as a person
         // left out carried no word list, so its words stayed "kept"; on the 20 Sep class span k16 began at 2:58.1 yet listed
         // "so" at 2:50.0 as its first word, and the plan was refused). Words in a time range are consecutive, so one range.
@@ -371,9 +394,10 @@ struct RoughCut: Sendable {
                 w += inside.count
             }
         }
+        // Overlapping removals are taken as one stretch: a span starts only after all the time removed before it.
         for r in cut.removed.sorted(by: { $0.from < $1.from }) {
-            span(to: r.from)
-            cursor = r.to
+            if r.from > cursor { span(to: r.from) }
+            cursor = max(cursor, r.to)
         }
         span(to: frame.below(input.duration))
         cut.kept = spans
