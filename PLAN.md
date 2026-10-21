@@ -128,7 +128,7 @@ imagination"), so the first deliverable is not a feature.
 
 - [ ] **One finished package from Gabriel's clean, scripted recording, before Tue 27 Oct** (the in-person
   session, 3 to 5 pm at their home): long form, podcast audio, shorts. Ivan asked him for the recording.
-- [ ] **Local copy on arrival (20:00 to 28:24, 53:07).** The watcher reads iCloud placeholders ("file does not
+- [ ] **Local copy on arrival (28:24, 53:07).** The watcher reads iCloud placeholders ("file does not
   open"). Copy each new file from the shared folder into a non-synced local folder (Downloads), and work
   from that copy.
 - [ ] **The hand-off (41:14).** A "ready" notice when a recording finishes processing. Today nothing tells
